@@ -8,6 +8,7 @@ tool google.golang.org/protobuf/cmd/protoc-gen-go
 
 require (
 	github.com/Microsoft/go-winio v0.6.4
+	github.com/dlclark/regexp2 v1.12.0
 	github.com/metacubex/mihomo v1.19.33
 	golang.org/x/sys v0.49.0
 	google.golang.org/protobuf v1.36.10
@@ -24,7 +25,6 @@ require (
 	github.com/bodgit/windows v1.0.1 // indirect
 	github.com/coder/websocket v1.8.12 // indirect
 	github.com/coreos/go-iptables v0.8.0 // indirect
-	github.com/dlclark/regexp2 v1.12.0 // indirect
 	github.com/dunglas/httpsfv v1.0.2 // indirect
 	github.com/easytier/easytier/easytier-go v0.0.0-20260910071355-3d0c9c3ca5e2 // indirect
 	github.com/enfein/mieru/v3 v3.38.1 // indirect

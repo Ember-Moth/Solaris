@@ -58,11 +58,17 @@ type Engine struct {
 	// global state and must not do two of them at once.
 	lifecycle sync.Mutex
 
+	// geo refreshes the GEO data while a configuration asks for it; the lifecycle lock
+	// guards it.
+	geo *geoUpdater
+
 	mu        sync.RWMutex
 	state     controlpb.RunState
 	startedAt time.Time
 	lastError error
 	closed    bool
+	// entries ties the running rules to the plan's rule entries; nil for a profile's own rules.
+	entries *ruleEntries
 }
 
 var (
@@ -207,81 +213,94 @@ func (e *Engine) checkOpen() error {
 	return nil
 }
 
-// Validate runs the admission pipeline without applying the result.
-func (e *Engine) Validate(profile Profile) error {
+// Validate runs the admission pipeline without applying the result. A composition
+// comes back with its report; a profile's own YAML with none.
+func (e *Engine) Validate(profile Profile) (*controlpb.CompositionReport, error) {
 	e.lifecycle.Lock()
 	defer e.lifecycle.Unlock()
 	if err := e.checkOpen(); err != nil {
-		return err
+		return nil, err
 	}
-	_, err := e.admit(profile)
-	return err
+	admitted, err := e.admit(profile)
+	if err != nil {
+		return nil, err
+	}
+	return admitted.report, nil
 }
 
-func (e *Engine) admit(profile Profile) (*config.Config, error) {
+func (e *Engine) admit(profile Profile) (*admission, error) {
 	homeInUse = e.home
-	return admit(profile, e.tunMode)
+	return admitProfile(profile, e.tunMode)
+}
+
+// apply puts an admitted configuration in place and keeps what goes with it.
+func (e *Engine) apply(admitted *admission) {
+	hub.ApplyConfig(admitted.cfg)
+	e.setEntries(admitted.entries)
+	e.syncGeoUpdater(admitted.cfg)
 }
 
 // Start applies a profile to a stopped core.
-func (e *Engine) Start(profile Profile) error {
+func (e *Engine) Start(profile Profile) (*controlpb.CompositionReport, error) {
 	e.lifecycle.Lock()
 	defer e.lifecycle.Unlock()
 	if err := e.checkOpen(); err != nil {
-		return err
+		return nil, err
 	}
 	if state := e.State(); state == controlpb.RunState_RUN_STATE_RUNNING {
-		return ErrAlreadyRunning
+		return nil, ErrAlreadyRunning
 	}
-	cfg, err := e.admit(profile)
+	admitted, err := e.admit(profile)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	cfg := admitted.cfg
 	if err := probePorts(cfg); err != nil {
 		e.setState(controlpb.RunState_RUN_STATE_FAILED, err)
-		return fmt.Errorf("%w: %w", ErrApplyFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrApplyFailed, err)
 	}
 	e.setState(controlpb.RunState_RUN_STATE_STARTING, nil)
-	hub.ApplyConfig(cfg)
+	e.apply(admitted)
 	if err := checkApplied(cfg); err != nil {
 		e.teardown()
 		e.setState(controlpb.RunState_RUN_STATE_FAILED, err)
-		return fmt.Errorf("%w: %w", ErrApplyFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrApplyFailed, err)
 	}
 	e.setState(controlpb.RunState_RUN_STATE_RUNNING, nil)
-	return nil
+	return admitted.report, nil
 }
 
 // Reload applies a profile in place. mihomo keeps the TUN when its settings are unchanged.
-func (e *Engine) Reload(profile Profile) error {
+func (e *Engine) Reload(profile Profile) (*controlpb.CompositionReport, error) {
 	e.lifecycle.Lock()
 	defer e.lifecycle.Unlock()
 	if err := e.checkOpen(); err != nil {
-		return err
+		return nil, err
 	}
 	if !e.running() {
-		return ErrNotRunning
+		return nil, ErrNotRunning
 	}
-	cfg, err := e.admit(profile)
+	admitted, err := e.admit(profile)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	cfg := admitted.cfg
 	// The core keeps the profile it runs, and its ports, when a new port is taken.
 	if err := probePorts(cfg); err != nil {
-		return fmt.Errorf("%w: %w", ErrApplyFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrApplyFailed, err)
 	}
-	hub.ApplyConfig(cfg)
+	e.apply(admitted)
 	if err := checkApplied(cfg); err != nil {
 		// The rest of the profile applied; the core keeps running and reports the gap.
 		e.mu.Lock()
 		e.lastError = err
 		e.mu.Unlock()
-		return fmt.Errorf("%w: %w", ErrApplyFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrApplyFailed, err)
 	}
 	e.mu.Lock()
 	e.lastError = nil
 	e.mu.Unlock()
-	return nil
+	return admitted.report, nil
 }
 
 // Stop returns the core to its idle state. Stopping a stopped core does nothing.
@@ -393,6 +412,8 @@ func idleConfig() (*config.Config, error) {
 // teardown takes the running configuration down. executor.Shutdown alone is meant for
 // process exit: it closes the TUN but leaves the ports, DNS server and providers.
 func (e *Engine) teardown() {
+	e.syncGeoUpdater(nil)
+	e.setEntries(nil)
 	providers := tunnel.Providers()
 	ruleProviders := tunnel.RuleProviders()
 	executor.Shutdown()

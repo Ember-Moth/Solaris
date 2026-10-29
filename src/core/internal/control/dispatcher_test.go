@@ -13,6 +13,7 @@ import (
 
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/controlpb"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/engine"
+	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/geodata/geodatatest"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/peer"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/product"
 )
@@ -22,6 +23,10 @@ var core *engine.Engine
 
 func TestMain(m *testing.M) {
 	home, err := os.MkdirTemp("", "md-control-")
+	if err == nil {
+		// Composed configurations read GEO data; without it mihomo would download it.
+		err = geodatatest.Write(home)
+	}
 	if err == nil {
 		core, err = engine.New(engine.Options{HomeDir: home, Tun: engine.TunNone})
 	}

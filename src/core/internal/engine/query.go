@@ -429,12 +429,14 @@ func (e *Engine) ListRules() []*controlpb.Rule {
 		return nil
 	}
 	rules := T.Rules()
+	entries := e.ruleEntries()
 	out := make([]*controlpb.Rule, 0, len(rules))
-	for _, rule := range rules {
+	for i, rule := range rules {
 		out = append(out, &controlpb.Rule{
 			Type:    ruleKeyword(rule.RuleType().String()),
 			Payload: rule.Payload(),
 			Proxy:   rule.Adapter(),
+			EntryId: entries.index(i),
 		})
 	}
 	return out
@@ -496,8 +498,11 @@ func nonNegative(n int64) uint64 {
 // Connections snapshots the open connections, oldest first.
 func (e *Engine) Connections() *controlpb.ConnectionSnapshot {
 	snapshot := &controlpb.ConnectionSnapshot{}
+	entries := e.ruleEntries()
 	statistic.DefaultManager.Range(func(c statistic.Tracker) bool {
-		snapshot.Connections = append(snapshot.Connections, connectionToProto(c.Info()))
+		connection := connectionToProto(c.Info())
+		connection.RuleEntryId = entries.connection(c.Info())
+		snapshot.Connections = append(snapshot.Connections, connection)
 		return true
 	})
 	slices.SortStableFunc(snapshot.Connections, func(a, b *controlpb.Connection) int {

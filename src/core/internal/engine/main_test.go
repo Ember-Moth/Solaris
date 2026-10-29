@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	C "github.com/metacubex/mihomo/constant"
+
+	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/geodata/geodatatest"
 )
 
 // testHome is shared by every test: mihomo opens cache.db in the first home it uses and
@@ -33,6 +35,11 @@ func TestMain(m *testing.M) {
 	testHome = dir
 	// Tests that only run the pipeline still resolve provider paths against the home.
 	C.SetHomeDir(dir)
+	// Composed configurations read GEO data; without it mihomo would download it.
+	if err := geodatatest.Write(dir); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	code := m.Run()
 	_ = os.RemoveAll(dir)
 	os.Exit(code)
