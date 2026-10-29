@@ -1,0 +1,69 @@
+[project]
+name = "mihomo-desktop"
+version = "0.1.0"
+description = "mihomo desktop client for Windows and macOS (PySide6 / QML)"
+readme = "README.md"
+authors = [
+    { name = "Ember Moth", email = "ember_moth@proton.me" }
+]
+requires-python = ">=3.14.7"
+dependencies = [
+    "protobuf==6.33.4",
+    "pyside6>=6.11.2",
+]
+
+[project.scripts]
+mihomo-desktop = "mihomo_desktop.app:main"
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "mihomo_desktop"
+module-root = "src"
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.414",
+    "pytest>=9.1.1",
+    "ruff>=0.16.9",
+]
+
+[tool.ruff]
+extend-exclude = ["src/mihomo_desktop/protocol/*_pb2.py", "src/mihomo_desktop/protocol/*_pb2.pyi"]
+target-version = "py314"
+line-length = 100
+src = ["src", "tests", "packaging", "scripts"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort
+    "UP",       # pyupgrade
+    "B",        # bugbear
+    "N",        # pep8-naming
+    "SIM",      # simplify
+    "RUF",      # ruff-specific
+    "PT",       # pytest style
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Qt-facing API on ViewModels (slots, signals, properties) is camelCase to match QML.
+"src/mihomo_desktop/viewmodels/**" = ["N802", "N815"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.pyright]
+exclude = ["src/mihomo_desktop/protocol/*_pb2.py"]
+include = ["src", "tests", "packaging", "scripts"]
+pythonVersion = "3.14"
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "standard"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"

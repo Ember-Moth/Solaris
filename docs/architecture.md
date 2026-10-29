@@ -2,7 +2,9 @@
 
 本文记录 mihomo 桌面客户端（仓库 `Ember-Moth/mihomo-desktop`）的目标架构。项目最初计划基于 sing-box，
 后来因为官方 sing-box for Desktop 已经发布，改为基于 mihomo。产品名尚未确定，下文用 `<Product>`（显示名）和
-`<product>`（服务名、管道名、bundle id 等标识符）占位。
+`<product>`（服务名、管道名、bundle id 等标识符）占位。代码中暂用工作名 `mihomo-desktop`，
+集中在 `src/core/internal/product/product.go` 与 `src/mihomo_desktop/product.py`；协议草案见
+`proto/mihomo_desktop/protocol/control.proto`。
 
 状态：设计阶段，尚无代码。标注"待定"的内容见 [第 12 节](#12-待定事项)。
 
@@ -62,7 +64,7 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
 | NE 管理库 | Swift（C ABI） | 用户 | 系统扩展激活、隧道配置与启停、转发控制消息 |
 | NE 系统扩展 | Swift + Go | root（系统扩展） | 隧道网络设置、utun fd、运行内核、把 app message 交给分发器 |
 
-本仓库的 Go 模块（暂定 `core/`）import libclash engine，包含控制分发器和 Windows 服务；
+本仓库的 Go 模块（`src/core/`）import libclash engine，包含控制分发器和 Windows 服务；
 macOS 用的 xcframework 也由这个模块编出，其中同时包含 libclash 和控制分发器。
 
 ## 3. Go 内核层：libclash
@@ -126,7 +128,7 @@ Swift 侧（管理库和扩展）只转发字节，不解析消息。
 
 ```proto
 message Request  { uint32 protocol_version = 1; uint64 id = 2; oneof method { ... } }
-message Response { uint32 protocol_version = 1; uint64 id = 2; oneof result { ...; Error error = 15; } }
+message Response { uint32 protocol_version = 1; uint64 id = 2; oneof result { Error error = 3; ... } }
 message Error    { string code = 1; string message = 2; bool retryable = 3; }
 ```
 

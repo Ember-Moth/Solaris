@@ -1,0 +1,95 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"flag"
+	"fmt"
+	"log/slog"
+	"os"
+	"os/signal"
+	"path/filepath"
+
+	"github.com/Microsoft/go-winio"
+	"golang.org/x/sys/windows/svc"
+
+	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/peer"
+	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/product"
+	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/server"
+)
+
+const pipeBufferSize = 64 << 10
+
+func run() error {
+	console := flag.Bool("console", false, "run in the foreground from an administrator terminal")
+	flag.Parse()
+	isService, err := svc.IsWindowsService()
+	if err != nil {
+		return err
+	}
+	if isService {
+		return svc.Run(product.ServiceName, service{})
+	}
+	if !*console {
+		return errors.New("not started by the Service Control Manager; pass -console to run in the foreground")
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	return serve(ctx)
+}
+
+func serve(ctx context.Context) error {
+	executable, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	listener, err := winio.ListenPipe(product.PipeName, &winio.PipeConfig{
+		SecurityDescriptor: product.PipeSDDL,
+		InputBufferSize:    pipeBufferSize,
+		OutputBufferSize:   pipeBufferSize,
+	})
+	if err != nil {
+		return fmt.Errorf("listen on %s: %w", product.PipeName, err)
+	}
+	verify := peer.PipeClientVerifier(filepath.Join(filepath.Dir(executable), product.UIExecutable))
+	return server.Serve(ctx, listener, verify, newDispatcher(), slog.Default())
+}
+
+type service struct{}
+
+func (service) Execute(_ []string, requests <-chan svc.ChangeRequest, status chan<- svc.Status) (bool, uint32) {
+	status <- svc.Status{State: svc.StartPending}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- serve(ctx) }()
+	status <- svc.Status{
+		State:   svc.Running,
+		Accepts: svc.AcceptStop | svc.AcceptShutdown | svc.AcceptSessionChange,
+	}
+	exitCode := func(err error) uint32 {
+		if err != nil {
+			slog.Error("control server stopped", "error", err)
+			return 1
+		}
+		return 0
+	}
+	for {
+		select {
+		case err := <-done:
+			status <- svc.Status{State: svc.StopPending}
+			return false, exitCode(err)
+		case request := <-requests:
+			switch request.Cmd {
+			case svc.Interrogate:
+				status <- request.CurrentStatus
+			case svc.Stop, svc.Shutdown:
+				status <- svc.Status{State: svc.StopPending}
+				cancel()
+				return false, exitCode(<-done)
+			case svc.SessionChange:
+				// Owner logoff policy is still open (docs/architecture.md §12).
+			}
+		}
+	}
+}

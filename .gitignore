@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Tool caches / reports
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Qt
+*.qmlc
+*.jsc
+*.qm
+.qmlls.ini
+deployment/
+
+# Go and native build outputs
+*.a
+*.h.gch
+.build/
+.swiftpm/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.provisionprofile
+*.mobileprovision
+*.p12
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local-only config
+.env
+.claude/settings.local.json

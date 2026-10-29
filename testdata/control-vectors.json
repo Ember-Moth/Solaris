@@ -1,0 +1,5 @@
+{
+  "comment": "Shared by src/core/internal/control/vectors_test.go and tests/test_vectors.py. The response is what an unlinked Windows service (version dev) answers to the request.",
+  "get_info_request_frame": "4d4443500100010006000000080110015200",
+  "get_info_response_frame": "4d444350010002001b000000080110015215080112036465761a08756e6c696e6b656420012801"
+}

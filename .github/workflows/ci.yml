@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_HTTP_RETRIES: "5"
+
+jobs:
+  python:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86  # v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: src/core/go.mod
+          cache-dependency-path: src/core/go.sum
+      - uses: actions/setup-node@v4  # pyright runs on Node
+        with:
+          node-version: "22"
+      - name: Install (locked)
+        run: uv sync --frozen
+      - name: Lint and format
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+      - name: Types
+        run: uv run pyright
+      - name: Generated protocol bindings are current
+        if: runner.os == 'macOS'
+        run: uv run python scripts/gen_protocol.py --check
+      - name: Tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: uv run pytest -q
+
+  go:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-latest, ubuntu-latest]
+    defaults:
+      run:
+        working-directory: src/core
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: src/core/go.mod
+          cache-dependency-path: src/core/go.sum
+      - name: Format
+        if: runner.os != 'Windows'
+        run: test -z "$(gofmt -l .)"
+      - name: Vet and test
+        run: |
+          go vet ./...
+          go test ./...
+      - name: Windows service cross-build
+        if: runner.os == 'Linux'
+        run: GOOS=windows GOARCH=amd64 go build -o /dev/null ./service
+      - name: macOS extension archive
+        if: runner.os == 'macOS'
+        run: go build -buildmode=c-archive -o "$RUNNER_TEMP/libmihomo_desktop.a" ./apple
