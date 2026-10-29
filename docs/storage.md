@@ -7,8 +7,8 @@
 
 ## 1. 范围
 
-- **存储内容**：配置（订阅和本地文件，以及各自的用途）、覆写（全局一份，每个配置各一份）、分流方案（策略组和规则，
-  见 [routing.md](routing.md)）、设置、当前使用的配置或方案。
+- **存储内容**：配置（订阅和本地文件，以及是否加入节点池）、覆写（全局一份，每个配置各一份）、分流方式与分流方案
+  （策略组和规则，见 [routing.md](routing.md)）、设置。
 - **不在本文范围内**：
   - Windows 服务在 `C:\ProgramData\<Product>\` 下保存的运行副本（architecture.md §5.1），它只用于开机恢复；
   - mihomo 自己的 provider 缓存和 `cache.db`。
@@ -25,10 +25,10 @@
 
 | 表 | 内容 |
 | --- | --- |
-| `profiles` | `id`、`name`、`kind`（`subscription` / `file`）、`usage`（`full` / `nodes`）、`url`、`auto_update_hours`、`position`、`created_at`、`updated_at`、`deleted_at` |
+| `profiles` | `id`、`name`、`kind`（`subscription` / `file`）、`in_pool`（是否加入节点池）、`url`、`auto_update_hours`、`position`、`created_at`、`updated_at`、`deleted_at` |
 | `profile_contents` | `profile_id`、配置 YAML 原文、`fetched_at`、用量（upload / download / total / expire）、`proxy_count`。这是本机缓存，订阅下载的内容不进入备份 |
 | `overrides` | `scope`（`global` 或某个 `profile_id`）、YAML 原文、`updated_at`、`deleted_at` |
-| `plans`、`plan_groups`、`plan_rules` | 分流方案、方案里的策略组（类型、成员条件）和规则（类型、值、目标、顺序、是否启用），见 routing.md |
+| `routing_state`、`plans`、`plan_groups`、`plan_rules` | 分流方式、节点池设置、分流方案及其策略组和规则条目，字段见 routing.md 第 9 节 |
 | `settings` | `key`、`value`（JSON）、`scope`（`synced` / `local`）、`updated_at`。每个设置项属于哪个 scope，由设置页的定义决定 |
 | `state` | 只属于本机的状态，例如当前配置 |
 | `backup_targets` | 已开启的备份目标：提供方、显示用的账户名、上次成功备份的时间、上次的错误。不存令牌（见 4 节） |
@@ -49,7 +49,7 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
 - `format`（固定为 `"mihomo-desktop-backup"`）、`version`、`created_at`、`device`（设备名）、`app_version`；
 - `profiles`：配置列表。订阅只存链接和更新设置，不存下载到的内容；本地文件配置存 YAML 原文；
 - `overrides`：全部覆写；
-- `plans`：全部分流方案，包括策略组和规则；
+- `routing`：分流方式、节点池设置和全部分流方案（包括策略组和规则条目）；
 - `settings`：只包含 `synced` 范围的设置；
 - 当前使用的配置或方案。
 
