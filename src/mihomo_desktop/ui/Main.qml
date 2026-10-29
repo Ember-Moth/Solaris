@@ -40,7 +40,7 @@ ApplicationWindow {
     font.pixelSize: Theme.type.bodyMd.fontSize
 
     // The Basic style's own drawing (scroll bars, text selection, Qt's context menus) takes
-    // the theme's tokens too; popups inherit the window's palette (architecture.md §7.6).
+    // the theme's tokens too; popups inherit the window's palette (ui.md §6).
     palette.window: Theme.background
     palette.windowText: Theme.text
     palette.base: Theme.surface

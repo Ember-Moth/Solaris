@@ -1,4 +1,4 @@
-"""Open the UI when the user signs in (docs/architecture.md §7.8).
+"""Open the UI when the user signs in (docs/ui.md §8).
 
 Windows registers a scheduled task with a logon trigger for the current user; macOS
 registers the app as a login item with ``SMAppService.mainAppService``. Both only exist for

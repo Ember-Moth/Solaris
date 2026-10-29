@@ -1,4 +1,4 @@
-"""Platform-neutral host boundary the models depend on (docs/architecture.md §7).
+"""Platform-neutral host boundary the models depend on (docs/ui.md).
 
 DTOs are immutable projections of the control protocol (proto/.../control.proto); enum
 values are the protocol names without their prefix, lower-cased (``RUN_STATE_RUNNING``

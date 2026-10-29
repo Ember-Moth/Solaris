@@ -1,13 +1,23 @@
 # mihomo-desktop
 
 mihomo 的 Windows / macOS 桌面客户端（PySide6 + Nuitka）。内核以 Go 库的形式内嵌：Windows 上运行在
-LocalSystem 服务里，macOS 上运行在 NetworkExtension 系统扩展里。设计见 [docs/architecture.md](docs/architecture.md)，
-开发计划见 [docs/roadmap.md](docs/roadmap.md)。
+LocalSystem 服务里，macOS 上运行在 NetworkExtension 系统扩展里，关闭界面后隧道继续运行。
 
-项目处于骨架阶段：控制协议、帧编解码、方法分发和服务入口已经就位，界面已实现概览和代理两页（配合模拟宿主）。
-内核层 engine（直接内嵌 mihomo）尚未实现，服务端除 `GetInfo` 外的方法都返回 `not_implemented`。
-`mihomo-desktop` 是产品命名前的工作名，集中在
+现状：内核（engine、控制协议、开发模式服务）和界面的六个页面都已实现，界面支持中英双语、浅色与深色；界面与真实服务的
+端到端联调、Windows 服务产品化、macOS 系统扩展、SQLite 存储与云备份、自定义分流还在计划中。进度和下一步见
+[docs/roadmap.md](docs/roadmap.md)。`mihomo-desktop` 是产品命名前的工作名，集中在
 `src/core/internal/product/product.go` 与 `src/mihomo_desktop/product.py`。
+
+## 文档
+
+| 文档 | 内容 |
+| --- | --- |
+| [docs/roadmap.md](docs/roadmap.md) | 进度、下一步计划、决策与风险 |
+| [docs/architecture.md](docs/architecture.md) | 系统架构：engine、控制协议、Windows 服务、macOS 扩展、安全模型、构建与测试 |
+| [docs/ui.md](docs/ui.md) | Python 界面：宿主接口、配置存储、订阅、覆写、多语言、外观、连接与日志、设置与桌面行为 |
+| [docs/storage.md](docs/storage.md) | 计划中的 SQLite 存储与云备份 |
+| [docs/routing.md](docs/routing.md) | 计划中的自定义分流 |
+| [DESIGN.md](DESIGN.md) | 视觉规范 |
 
 ## 目录
 
@@ -42,7 +52,7 @@ uv run python scripts/gen_theme.py
 ```
 
 改动界面文案后更新翻译目录并编译（源文是中文，英文译文在 `src/mihomo_desktop/translations/en.ts`，
-[architecture.md](docs/architecture.md) §7.5）：
+[ui.md](docs/ui.md) §5）：
 
 ```bash
 uv run python scripts/gen_i18n.py
@@ -70,8 +80,8 @@ go -C src/core run ./service -socket /tmp/mihomo-desktop-dev.sock
 uv run python scripts/control_ping.py --socket /tmp/mihomo-desktop-dev.sock
 ```
 
-用模拟宿主和示例数据预览界面（不需要服务；目前实现了概览和代理两页）。界面语言跟随系统，`--lang en` 或
-`--lang zh` 可以指定：
+用模拟宿主和示例数据预览界面（不需要服务）。界面语言和外观跟随系统，可以用 `--lang en|zh`、`--appearance
+light|dark` 指定；`--development` 模拟开发服务拒绝 TUN 和系统代理，`--crowd 2000` 模拟大量连接：
 
 ```bash
 uv run python scripts/preview.py

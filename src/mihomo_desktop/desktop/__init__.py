@@ -1,1 +1,1 @@
-"""Desktop integration: one UI per user, opening at login, the tray (docs/architecture.md §7.8)."""
+"""Desktop integration: one UI per user, opening at login, the tray (docs/ui.md §8)."""

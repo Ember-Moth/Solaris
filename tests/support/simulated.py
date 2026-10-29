@@ -61,7 +61,7 @@ NODES: dict[str, tuple[str, int | None]] = {
 }
 
 
-# The insert keys of an override (docs/architecture.md §7.4): key -> (target list, at front).
+# The insert keys of an override (docs/ui.md §4): key -> (target list, at front).
 INSERT_KEYS = {
     "prepend-rules": ("rules", True),
     "append-rules": ("rules", False),
@@ -115,7 +115,7 @@ def apply_override(
 
 
 def check_config(config: TunnelConfig) -> dict[str, Any]:
-    """The simulated pipeline (architecture §3.2, §7.4): parse the config, apply the
+    """The simulated pipeline (architecture §3.2, ui §4): parse the config, apply the
     overrides in order, then clear the controller keys. The result must define a proxy,
     inline or through a provider. Failures use the service's error code."""
     document = _load(config.config_yaml, "")

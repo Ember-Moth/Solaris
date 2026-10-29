@@ -59,7 +59,7 @@ def load_ui(engine: QQmlApplicationEngine, view_models: ViewModels) -> bool:
 def switch_language(
     translations: Translations, engine: QQmlApplicationEngine, view_models: ViewModels
 ) -> None:
-    """Show the running UI in the language the settings name (docs/architecture.md §7.5)."""
+    """Show the running UI in the language the settings name (docs/ui.md §5)."""
     translations.apply(resolve_language(view_models.settings_store.current.language))
     engine.retranslate()
     view_models.retranslate()

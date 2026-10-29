@@ -1,4 +1,4 @@
-"""The user's settings (docs/architecture.md §7.8).
+"""The user's settings (docs/ui.md §8).
 
 Code depends on the ``SettingsStore`` interface only: read ``current``, write with
 ``update``, and ``subscribe`` to hear of changes. ``JsonSettingsStore`` is a stand-in that

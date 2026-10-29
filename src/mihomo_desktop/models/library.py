@@ -4,9 +4,9 @@ A profile reaches the store only after the host validated it. Switching profiles
 updating the active one while the tunnel runs reloads it in place, with the TUN and
 system proxy state the host reports, so neither is interrupted.
 
-Every config goes to the host with the overrides that apply to it (docs/architecture.md
-§7.4): the global one, then the profile's own. An override is stored only after the host
-accepted it on the profile it affects. The run options come from the settings (§7.8): a
+Every config goes to the host with the overrides that apply to it (docs/ui.md
+§4): the global one, then the profile's own. An override is stored only after the host
+accepted it on the profile it affects. The run options come from the settings (ui.md §8): a
 start asks for the TUN and system proxy the user chose, a reload keeps the ones the tunnel
 runs with, and both use the settings' mixed port and LAN access.
 

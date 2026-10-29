@@ -1,4 +1,4 @@
-"""The tray icon's image (docs/architecture.md §7.8).
+"""The tray icon's image (docs/ui.md §8).
 
 macOS draws a template image in the menu bar's own colours. Windows shows the image as it
 is, so the notification area gets a dark glyph on a light taskbar and a white one on a

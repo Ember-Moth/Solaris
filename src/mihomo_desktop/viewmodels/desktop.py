@@ -1,7 +1,7 @@
 """Desktop ViewModel: the tray icon, what closing the window does, and requests to show it.
 
 Closing the window or quitting the UI never touches the tunnel; the service or the system
-extension keeps it running (docs/architecture.md §1, §7.8).
+extension keeps it running (docs/architecture.md §1, docs/ui.md §8).
 """
 
 from __future__ import annotations

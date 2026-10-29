@@ -1,7 +1,7 @@
 """The UI language: which one to show, and the translator that shows it.
 
 Source strings are Simplified Chinese; ``translations/<language>.qm`` carries the others.
-scripts/gen_i18n.py extracts the strings and compiles the catalogs (docs/architecture.md §7.5).
+scripts/gen_i18n.py extracts the strings and compiles the catalogs (docs/ui.md §5).
 """
 
 from __future__ import annotations

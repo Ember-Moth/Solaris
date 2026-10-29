@@ -1,4 +1,4 @@
-"""Profiles on disk, in the user data directory (docs/architecture.md §7.2).
+"""Profiles on disk, in the user data directory (docs/ui.md §2).
 
     <data>/profiles.json         index: version, active profile, metadata of every profile
     <data>/profiles/<id>.yaml    the config as downloaded or imported

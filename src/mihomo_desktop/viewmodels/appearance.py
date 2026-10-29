@@ -1,7 +1,7 @@
 """Appearance: light or dark, following the system or fixed by the user (DESIGN.md "深色").
 
 Theme.qml binds its colors to ``Appearance.dark``, so a change repaints the window at once.
-The settings page sets ``mode`` and stores it (docs/architecture.md §7.6).
+The settings page sets ``mode`` and stores it (docs/ui.md §6).
 """
 
 from __future__ import annotations

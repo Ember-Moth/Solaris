@@ -3,7 +3,7 @@
 本文描述界面侧用户数据的持久化方式（SQLite），以及如何把这些数据备份到 Google Drive 和 iCloud。
 相关决策是 [roadmap.md](roadmap.md) 中的 D13 和 D14，实施计划见 roadmap 的 M7。
 
-状态：设计已定，尚未实现。目前的实现仍是 [architecture.md](architecture.md) §7.2 的文件存储。
+状态：设计已定，尚未实现。目前的实现仍是 [architecture.md](ui.md) §2 的文件存储。
 
 ## 1. 范围
 

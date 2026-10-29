@@ -1,4 +1,4 @@
-"""One UI per user (docs/architecture.md §7.8).
+"""One UI per user (docs/ui.md §8).
 
 The first UI holds a lock file in the user's data directory and listens on a local server.
 A later one finds the lock taken, asks the first to show its window, and exits. The lock

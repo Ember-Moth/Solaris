@@ -503,7 +503,7 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
   - `shadow-overlay` `#00000066`：40%；
   - `shadow-segment` `#00000052`、`shadow-nav` `#0000003D`：32% 和 24%。
 - **焦点环**仍是 2px `primary` 外环，对比度见上文「强调色」。
-- **Qt 控件的默认调色板**也从这组 token 取值，包括滚动条、文字选区和 Qt 自带的输入框右键菜单，映射见 `docs/architecture.md` §7.6。
+- **Qt 控件的默认调色板**也从这组 token 取值，包括滚动条、文字选区和 Qt 自带的输入框右键菜单，映射见 `docs/ui.md` §6。
 
 ## Typography
 

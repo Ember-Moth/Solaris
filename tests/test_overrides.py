@@ -1,4 +1,4 @@
-"""Overrides (docs/architecture.md §7.4): the merge the simulated host shares with the core,
+"""Overrides (docs/ui.md §4): the merge the simulated host shares with the core,
 and how the library stores, validates and applies them."""
 
 from pathlib import Path
