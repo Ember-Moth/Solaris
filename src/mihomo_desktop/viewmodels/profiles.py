@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from PySide6.QtCore import Property, QObject, QTimer, QUrl, Signal, Slot
+from PySide6.QtCore import Property, QCoreApplication, QObject, QTimer, QUrl, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
@@ -33,12 +33,18 @@ def _origin(profile: Profile) -> str:
     return Path(profile.path).name
 
 
+# Module-level text is translated in the ViewModel's context, as self.tr() would.
 def _source(profile: Profile) -> str:
-    parts = ["订阅" if profile.is_subscription else "本地文件", _origin(profile)]
+    if profile.is_subscription:
+        kind = QCoreApplication.translate("ProfilesViewModel", "订阅")
+    else:
+        kind = QCoreApplication.translate("ProfilesViewModel", "本地文件")
+    parts = [kind, _origin(profile)]
     if profile.proxy_count:
-        parts.append(f"{profile.proxy_count} 个节点")
+        count = profile.proxy_count
+        parts.append(QCoreApplication.translate("ProfilesViewModel", "%n 个节点", None, count))
     if profile.has_override:
-        parts.append("已覆写")
+        parts.append(QCoreApplication.translate("ProfilesViewModel", "已覆写"))
     return " · ".join(parts)
 
 
@@ -54,14 +60,26 @@ def _usage(profile: Profile) -> tuple[str, float | None]:
 
 def _removal_text(removal: Removal) -> str:
     """The consequences of a removal, stated in its confirmation."""
-    text = ""
-    if removal.active and removal.successor is not None:
-        text = f"这是当前使用的配置，删除后改用「{removal.successor.name}」。"
-    elif removal.active:
-        text = "这是当前使用的配置，删除后需要重新导入配置才能连接。"
     if removal.profile.has_override:
-        return text + "配置文件和它的覆写会从本机删除，无法恢复。"
-    return text + "配置文件会从本机删除，无法恢复。"
+        deleted = QCoreApplication.translate(
+            "ProfilesViewModel", "配置文件和它的覆写会从本机删除，无法恢复。"
+        )
+    else:
+        deleted = QCoreApplication.translate(
+            "ProfilesViewModel", "配置文件会从本机删除，无法恢复。"
+        )
+    # Whole sentences, so that a translation can put a space between them.
+    if removal.active and removal.successor is not None:
+        text = QCoreApplication.translate(
+            "ProfilesViewModel", "这是当前使用的配置，删除后改用「{successor}」。{deleted}"
+        )
+        return text.format(successor=removal.successor.name, deleted=deleted)
+    if removal.active:
+        text = QCoreApplication.translate(
+            "ProfilesViewModel", "这是当前使用的配置，删除后需要重新导入配置才能连接。{deleted}"
+        )
+        return text.format(deleted=deleted)
+    return deleted
 
 
 def _expiry(profile: Profile, now: float) -> tuple[str, bool]:
@@ -69,7 +87,7 @@ def _expiry(profile: Profile, now: float) -> tuple[str, bool]:
     if profile.usage is None or not profile.usage.expire:
         return "—", False
     if profile.usage.expire <= now:
-        return "已过期", True
+        return QCoreApplication.translate("ProfilesViewModel", "已过期"), True
     return fmt.date(profile.usage.expire), False
 
 
@@ -154,7 +172,7 @@ class ProfilesViewModel(QObject):
     # -- list --------------------------------------------------------------------------------
     @Property(str, notify=changed)
     def summary(self) -> str:
-        return self._error or f"{len(self._list.profiles)} 个配置"
+        return self._error or self.tr("%n 个配置", "", len(self._list.profiles))
 
     @Property(bool, notify=changed)
     def hasError(self) -> bool:
@@ -169,9 +187,9 @@ class ProfilesViewModel(QObject):
             expiry, expired = _expiry(profile, now)
             updating = profile.id in self._updating
             if updating:
-                updated = "正在更新"
+                updated = self.tr("正在更新")
             elif profile.id in self._list.update_failed:
-                updated = "更新失败"
+                updated = self.tr("更新失败")
             else:
                 updated = fmt.ago(profile.updated_at, now)
             rows.append(
@@ -188,7 +206,7 @@ class ProfilesViewModel(QObject):
                     "updated": updated,
                     "updateFailed": profile.id in self._list.update_failed and not updating,
                     "updating": updating,
-                    "refreshLabel": "更新" if profile.is_subscription else "重新读取",
+                    "refreshLabel": self._refresh_label(profile),
                     "isSubscription": profile.is_subscription,
                     "autoUpdate": profile.auto_update_hours > 0,
                     "hasOverride": profile.has_override,
@@ -198,7 +216,10 @@ class ProfilesViewModel(QObject):
 
     @Property(str, constant=True)
     def autoUpdateLabel(self) -> str:
-        return f"每 {DEFAULT_AUTO_UPDATE_HOURS} 小时自动更新"
+        return self.tr("每 %n 小时自动更新", "", DEFAULT_AUTO_UPDATE_HOURS)
+
+    def _refresh_label(self, profile: Profile) -> str:
+        return self.tr("更新") if profile.is_subscription else self.tr("重新读取")
 
     @Slot(str)
     def use(self, profile_id: str) -> None:
@@ -243,7 +264,9 @@ class ProfilesViewModel(QObject):
 
     @Property(str, notify=changed)
     def removalTitle(self) -> str:
-        return f"删除「{self._removal.profile.name}」？" if self._removal else ""
+        if self._removal is None:
+            return ""
+        return self.tr("删除「{name}」？").format(name=self._removal.profile.name)
 
     @Property(str, notify=changed)
     def removalText(self) -> str:
@@ -300,7 +323,9 @@ class ProfilesViewModel(QObject):
 
     @Property(str, notify=changed)
     def globalOverrideDetail(self) -> str:
-        return "所有配置共用 · " + ("已设置" if self._list.has_global_override else "未设置")
+        if self._list.has_global_override:
+            return self.tr("所有配置共用 · 已设置")
+        return self.tr("所有配置共用 · 未设置")
 
     @Slot(str)
     def editOverride(self, profile_id: str) -> None:
@@ -333,8 +358,8 @@ class ProfilesViewModel(QObject):
     @Property(str, notify=changed)
     def overrideTitle(self) -> str:
         if self._override_target is None:
-            return "编辑全局覆写"
-        return f"编辑「{self._override_name}」的覆写"
+            return self.tr("编辑全局覆写")
+        return self.tr("编辑「{name}」的覆写").format(name=self._override_name)
 
     @Property(str, notify=changed)
     def overrideText(self) -> str:
@@ -450,10 +475,11 @@ class ProfilesViewModel(QObject):
         if active is None:
             return ""
         if active.id in self._updating:
-            return f"{_origin(active)} · 正在更新"
+            return self.tr("{origin} · 正在更新").format(origin=_origin(active))
         if active.id in self._list.update_failed:
-            return f"{_origin(active)} · 更新失败"
-        return f"{_origin(active)} · {fmt.ago(active.updated_at, self._clock())}更新"
+            return self.tr("{origin} · 更新失败").format(origin=_origin(active))
+        ago = fmt.ago(active.updated_at, self._clock())
+        return self.tr("{origin} · {ago}更新").format(origin=_origin(active), ago=ago)
 
     @Property(bool, notify=changed)
     def activeUpdating(self) -> bool:
@@ -463,7 +489,7 @@ class ProfilesViewModel(QObject):
     @Property(str, notify=changed)
     def activeRefreshLabel(self) -> str:
         active = self._active()
-        return "重新读取" if active and not active.is_subscription else "更新"
+        return self._refresh_label(active) if active else self.tr("更新")
 
     @Property(bool, notify=changed)
     def activeHasQuota(self) -> bool:
@@ -488,4 +514,4 @@ class ProfilesViewModel(QObject):
         text, expired = _expiry(active, self._clock())
         if text == "—":
             return ""
-        return text if expired else f"{text} 到期"
+        return text if expired else self.tr("{date} 到期").format(date=text)

@@ -2,6 +2,97 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="en" sourcelanguage="zh_CN">
 <context>
+    <name>Feedback</name>
+    <message>
+        <source>该功能尚未实现</source>
+        <translation>Not implemented yet</translation>
+    </message>
+    <message>
+        <source>当前平台不支持该操作</source>
+        <translation>Not supported on this platform</translation>
+    </message>
+    <message>
+        <source>未能连接到服务</source>
+        <translation>Can’t reach the service</translation>
+    </message>
+    <message>
+        <source>与服务的连接已断开</source>
+        <translation>Lost the connection to the service</translation>
+    </message>
+    <message>
+        <source>服务没有响应</source>
+        <translation>The service isn’t responding</translation>
+    </message>
+    <message>
+        <source>隧道正由其他用户使用</source>
+        <translation>Another user is using the tunnel</translation>
+    </message>
+    <message>
+        <source>配置无效</source>
+        <translation>Invalid configuration</translation>
+    </message>
+    <message>
+        <source>隧道未运行</source>
+        <translation>Tunnel not running</translation>
+    </message>
+    <message>
+        <source>隧道已在运行</source>
+        <translation>Tunnel already running</translation>
+    </message>
+    <message>
+        <source>链接无效</source>
+        <translation>Invalid URL</translation>
+    </message>
+    <message>
+        <source>下载失败</source>
+        <translation>Download failed</translation>
+    </message>
+    <message>
+        <source>配置文件过大</source>
+        <translation>The profile is too large</translation>
+    </message>
+    <message>
+        <source>配置不是 UTF-8 文本</source>
+        <translation>The profile isn’t UTF-8 text</translation>
+    </message>
+    <message>
+        <source>配置为空</source>
+        <translation>The profile is empty</translation>
+    </message>
+    <message>
+        <source>无法读取文件</source>
+        <translation>Can’t read the file</translation>
+    </message>
+    <message>
+        <source>配置文件丢失，请重新导入</source>
+        <translation>The profile file is missing; import it again</translation>
+    </message>
+    <message>
+        <source>配置不存在</source>
+        <translation>Profile not found</translation>
+    </message>
+    <message>
+        <source>尚未导入配置</source>
+        <translation>No profiles imported</translation>
+    </message>
+    <message>
+        <source>正在使用的配置需要先断开才能删除</source>
+        <translation>Disconnect before deleting the profile in use</translation>
+    </message>
+    <message>
+        <source>无法读取覆写文件</source>
+        <translation>Can’t read the override file</translation>
+    </message>
+    <message>
+        <source>操作失败：{detail}</source>
+        <translation>Operation failed: {detail}</translation>
+    </message>
+    <message>
+        <source>{text}：{detail}</source>
+        <translation>{text}: {detail}</translation>
+    </message>
+</context>
+<context>
     <name>Format</name>
     <message>
         <source>超时</source>
@@ -14,7 +105,7 @@
     </message>
     <message>
         <source>刚刚</source>
-        <translation>Just now</translation>
+        <translation>just now</translation>
     </message>
     <message numerus="yes">
         <source>%n 分钟前</source>
@@ -214,6 +305,114 @@
     </message>
 </context>
 <context>
+    <name>ProfilesViewModel</name>
+    <message>
+        <source>订阅</source>
+        <translation>Subscription</translation>
+    </message>
+    <message>
+        <source>本地文件</source>
+        <translation>Local file</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 个节点</source>
+        <translation>
+            <numerusform>%n proxy</numerusform>
+            <numerusform>%n proxies</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>已覆写</source>
+        <translation>Override set</translation>
+    </message>
+    <message>
+        <source>配置文件和它的覆写会从本机删除，无法恢复。</source>
+        <translation>The profile and its override will be deleted from this computer. This can’t be undone.</translation>
+    </message>
+    <message>
+        <source>配置文件会从本机删除，无法恢复。</source>
+        <translation>The profile will be deleted from this computer. This can’t be undone.</translation>
+    </message>
+    <message>
+        <source>这是当前使用的配置，删除后改用「{successor}」。{deleted}</source>
+        <translation>This is the profile in use; “{successor}” will be used instead. {deleted}</translation>
+    </message>
+    <message>
+        <source>这是当前使用的配置，删除后需要重新导入配置才能连接。{deleted}</source>
+        <translation>This is the profile in use; you’ll need to import another one to connect. {deleted}</translation>
+    </message>
+    <message>
+        <source>已过期</source>
+        <translation>Expired</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 个配置</source>
+        <translation>
+            <numerusform>%n profile</numerusform>
+            <numerusform>%n profiles</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>正在更新</source>
+        <translation>Updating…</translation>
+    </message>
+    <message>
+        <source>更新失败</source>
+        <translation>Update failed</translation>
+    </message>
+    <message numerus="yes">
+        <source>每 %n 小时自动更新</source>
+        <translation>
+            <numerusform>Update every %n hour</numerusform>
+            <numerusform>Update every %n hours</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>更新</source>
+        <translation>Update</translation>
+    </message>
+    <message>
+        <source>重新读取</source>
+        <translation>Reload</translation>
+    </message>
+    <message>
+        <source>删除「{name}」？</source>
+        <translation>Delete “{name}”?</translation>
+    </message>
+    <message>
+        <source>所有配置共用 · 已设置</source>
+        <translation>Shared by all profiles · Set</translation>
+    </message>
+    <message>
+        <source>所有配置共用 · 未设置</source>
+        <translation>Shared by all profiles · Not set</translation>
+    </message>
+    <message>
+        <source>编辑全局覆写</source>
+        <translation>Edit global override</translation>
+    </message>
+    <message>
+        <source>编辑「{name}」的覆写</source>
+        <translation>Edit override for “{name}”</translation>
+    </message>
+    <message>
+        <source>{origin} · 正在更新</source>
+        <translation>{origin} · Updating…</translation>
+    </message>
+    <message>
+        <source>{origin} · 更新失败</source>
+        <translation>{origin} · Update failed</translation>
+    </message>
+    <message>
+        <source>{origin} · {ago}更新</source>
+        <translation>{origin} · Updated {ago}</translation>
+    </message>
+    <message>
+        <source>{date} 到期</source>
+        <translation>Expires {date}</translation>
+    </message>
+</context>
+<context>
     <name>ProxiesPage</name>
     <message>
         <source>代理</source>
@@ -323,7 +522,7 @@ Protocol v{protocol}</translation>
     </message>
     <message>
         <source>未能连接到服务</source>
-        <translation>Can&apos;t reach the service</translation>
+        <translation>Can’t reach the service</translation>
     </message>
 </context>
 <context>

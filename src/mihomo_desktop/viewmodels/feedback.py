@@ -2,31 +2,34 @@
 
 from __future__ import annotations
 
+from PySide6.QtCore import QCoreApplication
+
 from mihomo_desktop.host.base import HostError
+from mihomo_desktop.i18n import QT_TRANSLATE_NOOP
 from mihomo_desktop.models.profiles import ProfileError
 
 _MESSAGES = {
-    "not_implemented": "该功能尚未实现",
-    "unsupported_method": "当前平台不支持该操作",
-    "service_unavailable": "未能连接到服务",
-    "connection_closed": "与服务的连接已断开",
-    "timeout": "服务没有响应",
-    "owned_by_other_user": "隧道正由其他用户使用",
-    "invalid_config": "配置无效",
-    "not_running": "隧道未运行",
-    "already_running": "隧道已在运行",
-    "invalid_url": "链接无效",
-    "download_failed": "下载失败",
-    "http_error": "下载失败",
-    "too_large": "配置文件过大",
-    "not_text": "配置不是 UTF-8 文本",
-    "empty_config": "配置为空",
-    "file_unreadable": "无法读取文件",
-    "config_missing": "配置文件丢失，请重新导入",
-    "unknown_profile": "配置不存在",
-    "no_profile": "尚未导入配置",
-    "profile_in_use": "正在使用的配置需要先断开才能删除",
-    "override_unreadable": "无法读取覆写文件",
+    "not_implemented": QT_TRANSLATE_NOOP("Feedback", "该功能尚未实现"),
+    "unsupported_method": QT_TRANSLATE_NOOP("Feedback", "当前平台不支持该操作"),
+    "service_unavailable": QT_TRANSLATE_NOOP("Feedback", "未能连接到服务"),
+    "connection_closed": QT_TRANSLATE_NOOP("Feedback", "与服务的连接已断开"),
+    "timeout": QT_TRANSLATE_NOOP("Feedback", "服务没有响应"),
+    "owned_by_other_user": QT_TRANSLATE_NOOP("Feedback", "隧道正由其他用户使用"),
+    "invalid_config": QT_TRANSLATE_NOOP("Feedback", "配置无效"),
+    "not_running": QT_TRANSLATE_NOOP("Feedback", "隧道未运行"),
+    "already_running": QT_TRANSLATE_NOOP("Feedback", "隧道已在运行"),
+    "invalid_url": QT_TRANSLATE_NOOP("Feedback", "链接无效"),
+    "download_failed": QT_TRANSLATE_NOOP("Feedback", "下载失败"),
+    "http_error": QT_TRANSLATE_NOOP("Feedback", "下载失败"),
+    "too_large": QT_TRANSLATE_NOOP("Feedback", "配置文件过大"),
+    "not_text": QT_TRANSLATE_NOOP("Feedback", "配置不是 UTF-8 文本"),
+    "empty_config": QT_TRANSLATE_NOOP("Feedback", "配置为空"),
+    "file_unreadable": QT_TRANSLATE_NOOP("Feedback", "无法读取文件"),
+    "config_missing": QT_TRANSLATE_NOOP("Feedback", "配置文件丢失，请重新导入"),
+    "unknown_profile": QT_TRANSLATE_NOOP("Feedback", "配置不存在"),
+    "no_profile": QT_TRANSLATE_NOOP("Feedback", "尚未导入配置"),
+    "profile_in_use": QT_TRANSLATE_NOOP("Feedback", "正在使用的配置需要先断开才能删除"),
+    "override_unreadable": QT_TRANSLATE_NOOP("Feedback", "无法读取覆写文件"),
 }
 # Codes whose message (a parse error, an HTTP status) helps the user fix the problem.
 _WITH_DETAIL = {
@@ -38,10 +41,18 @@ _WITH_DETAIL = {
 }
 
 
+def _failed(detail: str) -> str:
+    return QCoreApplication.translate("Feedback", "操作失败：{detail}").format(detail=detail)
+
+
 def failure_text(error: BaseException) -> str:
-    if isinstance(error, HostError | ProfileError):
-        text = _MESSAGES.get(error.code)
-        if text is None:
-            return f"操作失败：{error.message}"
-        return f"{text}：{error.message}" if error.code in _WITH_DETAIL and error.message else text
-    return f"操作失败：{error}"
+    if not isinstance(error, HostError | ProfileError):
+        return _failed(str(error))
+    message = _MESSAGES.get(error.code)
+    if message is None:
+        return _failed(error.message)
+    text = QCoreApplication.translate("Feedback", message)
+    if error.code in _WITH_DETAIL and error.message:
+        detailed = QCoreApplication.translate("Feedback", "{text}：{detail}")
+        return detailed.format(text=text, detail=error.message)
+    return text

@@ -7,10 +7,13 @@ import pytest
 from PySide6.QtCore import QCoreApplication, QLocale, QObject
 from pytestqt.qtbot import QtBot
 
+from mihomo_desktop.host.base import HostError
 from mihomo_desktop.i18n import LANG_ENV, resolve_language, ui_locale
 from mihomo_desktop.models import format as fmt
+from mihomo_desktop.models.profiles import ProfileError
 from mihomo_desktop.models.store import ProfileStore
 from mihomo_desktop.viewmodels.composition import ViewModels, compose
+from mihomo_desktop.viewmodels.feedback import failure_text
 from scripts.gen_i18n import stale_binaries, stale_catalogs, unfinished_messages
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
 
@@ -59,7 +62,7 @@ def test_dates_keep_the_system_conventions_of_the_same_language() -> None:
 
 @pytest.mark.usefixtures("english")
 def test_english_formats() -> None:
-    assert fmt.ago(NOW - 30, NOW) == "Just now"
+    assert fmt.ago(NOW - 30, NOW) == "just now"
     assert fmt.ago(NOW - 60, NOW) == "1 minute ago"
     assert fmt.ago(NOW - 5 * 60, NOW) == "5 minutes ago"
     assert fmt.ago(NOW - 3600, NOW) == "1 hour ago"
@@ -115,3 +118,42 @@ def test_english_view_models(qtbot: QtBot, view_models: ViewModels) -> None:
     assert prop(proxies, "summary").endswith(" proxy groups")
     assert [s["label"] for s in prop(proxies, "sortOptions")] == ["Default", "Name", "Latency"]
     assert prop(proxies, "currentHint") == "Click to select"
+
+
+def test_english_profiles(qtbot: QtBot, view_models: ViewModels) -> None:
+    profiles, overview = view_models.profiles, view_models.overview
+    assert prop(profiles, "summary") == "3 profiles"
+    a, b, c = prop(profiles, "profiles")
+    assert a["source"] == "Subscription · sub.example.com · 9 proxies"
+    assert (a["expiry"], a["updated"], a["refreshLabel"]) == (
+        "Dec 31, 2026",
+        "2 hours ago",
+        "Update",
+    )
+    assert b["updated"] == "3 days ago"
+    assert (c["source"], c["refreshLabel"]) == ("Local file · config.yaml · 9 proxies", "Reload")
+    assert prop(profiles, "activeDetail") == "sub.example.com · Updated 2 hours ago"
+    assert prop(profiles, "activeExpiry") == "Expires Dec 31, 2026"
+    assert prop(profiles, "autoUpdateLabel") == "Update every 12 hours"
+    assert prop(profiles, "globalOverrideDetail") == "Shared by all profiles · Not set"
+
+    # The two sentences of a removal's consequences are joined with a space.
+    qtbot.waitUntil(lambda: prop(overview, "connected"))
+    overview.toggleConnection()
+    qtbot.waitUntil(lambda: not prop(overview, "connected"))
+    with qtbot.waitSignal(profiles.removalRequested):
+        profiles.requestRemove("sample-a")
+    assert prop(profiles, "removalTitle") == "Delete “示例订阅 A”?"
+    assert prop(profiles, "removalText") == (
+        "This is the profile in use; “示例订阅 B” will be used instead. "
+        "The profile will be deleted from this computer. This can’t be undone."  # noqa: RUF001
+    )
+
+
+@pytest.mark.usefixtures("english")
+def test_english_failures() -> None:
+    assert failure_text(ProfileError("http_error", "HTTP 404")) == "Download failed: HTTP 404"
+    timeout = failure_text(HostError("timeout", "no reply"))
+    assert timeout == "The service isn’t responding"  # noqa: RUF001
+    assert failure_text(HostError("brand_new", "it broke")) == "Operation failed: it broke"
+    assert failure_text(RuntimeError("boom")) == "Operation failed: boom"
