@@ -23,6 +23,13 @@ class Ownership(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     OWNERSHIP_CALLER: _ClassVar[Ownership]
     OWNERSHIP_OTHER: _ClassVar[Ownership]
 
+class GroupKind(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    GROUP_KIND_UNSPECIFIED: _ClassVar[GroupKind]
+    GROUP_KIND_BUILTIN: _ClassVar[GroupKind]
+    GROUP_KIND_REGION: _ClassVar[GroupKind]
+    GROUP_KIND_CUSTOM: _ClassVar[GroupKind]
+
 class Mode(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     MODE_UNSPECIFIED: _ClassVar[Mode]
@@ -59,6 +66,10 @@ OWNERSHIP_UNSPECIFIED: Ownership
 OWNERSHIP_AVAILABLE: Ownership
 OWNERSHIP_CALLER: Ownership
 OWNERSHIP_OTHER: Ownership
+GROUP_KIND_UNSPECIFIED: GroupKind
+GROUP_KIND_BUILTIN: GroupKind
+GROUP_KIND_REGION: GroupKind
+GROUP_KIND_CUSTOM: GroupKind
 MODE_UNSPECIFIED: Mode
 MODE_RULE: Mode
 MODE_GLOBAL: Mode
@@ -76,7 +87,7 @@ LOG_LEVEL_WARNING: LogLevel
 LOG_LEVEL_ERROR: LogLevel
 
 class Request(_message.Message):
-    __slots__ = ("protocol_version", "id", "get_info", "claim", "validate", "start", "reload", "stop", "set_system_proxy", "get_status", "set_mode", "list_groups", "get_group", "select_proxy", "health_check", "test_delay", "list_providers", "update_provider", "list_rules", "close_connection", "close_all_connections", "flush_fake_ip", "flush_dns_cache", "subscribe_logs", "subscribe_traffic", "subscribe_connections", "poll_events", "unsubscribe")
+    __slots__ = ("protocol_version", "id", "get_info", "claim", "validate", "start", "reload", "stop", "set_system_proxy", "get_status", "set_mode", "list_groups", "get_group", "select_proxy", "health_check", "test_delay", "list_providers", "update_provider", "list_rules", "close_connection", "close_all_connections", "flush_fake_ip", "flush_dns_cache", "subscribe_logs", "subscribe_traffic", "subscribe_connections", "poll_events", "unsubscribe", "inspect_source", "list_geo_categories")
     PROTOCOL_VERSION_FIELD_NUMBER: _ClassVar[int]
     ID_FIELD_NUMBER: _ClassVar[int]
     GET_INFO_FIELD_NUMBER: _ClassVar[int]
@@ -105,6 +116,8 @@ class Request(_message.Message):
     SUBSCRIBE_CONNECTIONS_FIELD_NUMBER: _ClassVar[int]
     POLL_EVENTS_FIELD_NUMBER: _ClassVar[int]
     UNSUBSCRIBE_FIELD_NUMBER: _ClassVar[int]
+    INSPECT_SOURCE_FIELD_NUMBER: _ClassVar[int]
+    LIST_GEO_CATEGORIES_FIELD_NUMBER: _ClassVar[int]
     protocol_version: int
     id: int
     get_info: GetInfoRequest
@@ -133,15 +146,18 @@ class Request(_message.Message):
     subscribe_connections: SubscribeConnectionsRequest
     poll_events: PollEventsRequest
     unsubscribe: UnsubscribeRequest
-    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., get_info: _Optional[_Union[GetInfoRequest, _Mapping]] = ..., claim: _Optional[_Union[ClaimRequest, _Mapping]] = ..., validate: _Optional[_Union[ValidateRequest, _Mapping]] = ..., start: _Optional[_Union[StartRequest, _Mapping]] = ..., reload: _Optional[_Union[ReloadRequest, _Mapping]] = ..., stop: _Optional[_Union[StopRequest, _Mapping]] = ..., set_system_proxy: _Optional[_Union[SetSystemProxyRequest, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusRequest, _Mapping]] = ..., set_mode: _Optional[_Union[SetModeRequest, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsRequest, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupRequest, _Mapping]] = ..., select_proxy: _Optional[_Union[SelectProxyRequest, _Mapping]] = ..., health_check: _Optional[_Union[HealthCheckRequest, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayRequest, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersRequest, _Mapping]] = ..., update_provider: _Optional[_Union[UpdateProviderRequest, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesRequest, _Mapping]] = ..., close_connection: _Optional[_Union[CloseConnectionRequest, _Mapping]] = ..., close_all_connections: _Optional[_Union[CloseAllConnectionsRequest, _Mapping]] = ..., flush_fake_ip: _Optional[_Union[FlushFakeIPRequest, _Mapping]] = ..., flush_dns_cache: _Optional[_Union[FlushDNSCacheRequest, _Mapping]] = ..., subscribe_logs: _Optional[_Union[SubscribeLogsRequest, _Mapping]] = ..., subscribe_traffic: _Optional[_Union[SubscribeTrafficRequest, _Mapping]] = ..., subscribe_connections: _Optional[_Union[SubscribeConnectionsRequest, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsRequest, _Mapping]] = ..., unsubscribe: _Optional[_Union[UnsubscribeRequest, _Mapping]] = ...) -> None: ...
+    inspect_source: InspectSourceRequest
+    list_geo_categories: ListGeoCategoriesRequest
+    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., get_info: _Optional[_Union[GetInfoRequest, _Mapping]] = ..., claim: _Optional[_Union[ClaimRequest, _Mapping]] = ..., validate: _Optional[_Union[ValidateRequest, _Mapping]] = ..., start: _Optional[_Union[StartRequest, _Mapping]] = ..., reload: _Optional[_Union[ReloadRequest, _Mapping]] = ..., stop: _Optional[_Union[StopRequest, _Mapping]] = ..., set_system_proxy: _Optional[_Union[SetSystemProxyRequest, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusRequest, _Mapping]] = ..., set_mode: _Optional[_Union[SetModeRequest, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsRequest, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupRequest, _Mapping]] = ..., select_proxy: _Optional[_Union[SelectProxyRequest, _Mapping]] = ..., health_check: _Optional[_Union[HealthCheckRequest, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayRequest, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersRequest, _Mapping]] = ..., update_provider: _Optional[_Union[UpdateProviderRequest, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesRequest, _Mapping]] = ..., close_connection: _Optional[_Union[CloseConnectionRequest, _Mapping]] = ..., close_all_connections: _Optional[_Union[CloseAllConnectionsRequest, _Mapping]] = ..., flush_fake_ip: _Optional[_Union[FlushFakeIPRequest, _Mapping]] = ..., flush_dns_cache: _Optional[_Union[FlushDNSCacheRequest, _Mapping]] = ..., subscribe_logs: _Optional[_Union[SubscribeLogsRequest, _Mapping]] = ..., subscribe_traffic: _Optional[_Union[SubscribeTrafficRequest, _Mapping]] = ..., subscribe_connections: _Optional[_Union[SubscribeConnectionsRequest, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsRequest, _Mapping]] = ..., unsubscribe: _Optional[_Union[UnsubscribeRequest, _Mapping]] = ..., inspect_source: _Optional[_Union[InspectSourceRequest, _Mapping]] = ..., list_geo_categories: _Optional[_Union[ListGeoCategoriesRequest, _Mapping]] = ...) -> None: ...
 
 class Response(_message.Message):
-    __slots__ = ("protocol_version", "id", "error", "empty", "get_info", "get_status", "list_groups", "get_group", "test_delay", "list_providers", "list_rules", "subscribe", "poll_events")
+    __slots__ = ("protocol_version", "id", "error", "empty", "get_info", "composition", "get_status", "list_groups", "get_group", "test_delay", "list_providers", "list_rules", "subscribe", "poll_events", "inspect_source", "list_geo_categories")
     PROTOCOL_VERSION_FIELD_NUMBER: _ClassVar[int]
     ID_FIELD_NUMBER: _ClassVar[int]
     ERROR_FIELD_NUMBER: _ClassVar[int]
     EMPTY_FIELD_NUMBER: _ClassVar[int]
     GET_INFO_FIELD_NUMBER: _ClassVar[int]
+    COMPOSITION_FIELD_NUMBER: _ClassVar[int]
     GET_STATUS_FIELD_NUMBER: _ClassVar[int]
     LIST_GROUPS_FIELD_NUMBER: _ClassVar[int]
     GET_GROUP_FIELD_NUMBER: _ClassVar[int]
@@ -150,11 +166,14 @@ class Response(_message.Message):
     LIST_RULES_FIELD_NUMBER: _ClassVar[int]
     SUBSCRIBE_FIELD_NUMBER: _ClassVar[int]
     POLL_EVENTS_FIELD_NUMBER: _ClassVar[int]
+    INSPECT_SOURCE_FIELD_NUMBER: _ClassVar[int]
+    LIST_GEO_CATEGORIES_FIELD_NUMBER: _ClassVar[int]
     protocol_version: int
     id: int
     error: Error
     empty: Empty
     get_info: GetInfoResponse
+    composition: CompositionReport
     get_status: GetStatusResponse
     list_groups: ListGroupsResponse
     get_group: GetGroupResponse
@@ -163,7 +182,9 @@ class Response(_message.Message):
     list_rules: ListRulesResponse
     subscribe: SubscribeResponse
     poll_events: PollEventsResponse
-    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., error: _Optional[_Union[Error, _Mapping]] = ..., empty: _Optional[_Union[Empty, _Mapping]] = ..., get_info: _Optional[_Union[GetInfoResponse, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusResponse, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsResponse, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupResponse, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayResponse, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersResponse, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesResponse, _Mapping]] = ..., subscribe: _Optional[_Union[SubscribeResponse, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsResponse, _Mapping]] = ...) -> None: ...
+    inspect_source: InspectSourceResponse
+    list_geo_categories: ListGeoCategoriesResponse
+    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., error: _Optional[_Union[Error, _Mapping]] = ..., empty: _Optional[_Union[Empty, _Mapping]] = ..., get_info: _Optional[_Union[GetInfoResponse, _Mapping]] = ..., composition: _Optional[_Union[CompositionReport, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusResponse, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsResponse, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupResponse, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayResponse, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersResponse, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesResponse, _Mapping]] = ..., subscribe: _Optional[_Union[SubscribeResponse, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsResponse, _Mapping]] = ..., inspect_source: _Optional[_Union[InspectSourceResponse, _Mapping]] = ..., list_geo_categories: _Optional[_Union[ListGeoCategoriesResponse, _Mapping]] = ...) -> None: ...
 
 class Empty(_message.Message):
     __slots__ = ()
@@ -214,32 +235,108 @@ class RunOptions(_message.Message):
     def __init__(self, tun_enabled: _Optional[bool] = ..., system_proxy_enabled: _Optional[bool] = ..., mixed_port: _Optional[int] = ..., allow_lan: _Optional[bool] = ...) -> None: ...
 
 class ValidateRequest(_message.Message):
-    __slots__ = ("config_yaml", "overrides")
+    __slots__ = ("config_yaml", "composition", "overrides")
     CONFIG_YAML_FIELD_NUMBER: _ClassVar[int]
+    COMPOSITION_FIELD_NUMBER: _ClassVar[int]
     OVERRIDES_FIELD_NUMBER: _ClassVar[int]
     config_yaml: str
+    composition: Composition
     overrides: _containers.RepeatedScalarFieldContainer[str]
-    def __init__(self, config_yaml: _Optional[str] = ..., overrides: _Optional[_Iterable[str]] = ...) -> None: ...
+    def __init__(self, config_yaml: _Optional[str] = ..., composition: _Optional[_Union[Composition, _Mapping]] = ..., overrides: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class StartRequest(_message.Message):
-    __slots__ = ("config_yaml", "overrides", "options")
+    __slots__ = ("config_yaml", "composition", "overrides", "options")
     CONFIG_YAML_FIELD_NUMBER: _ClassVar[int]
+    COMPOSITION_FIELD_NUMBER: _ClassVar[int]
     OVERRIDES_FIELD_NUMBER: _ClassVar[int]
     OPTIONS_FIELD_NUMBER: _ClassVar[int]
     config_yaml: str
+    composition: Composition
     overrides: _containers.RepeatedScalarFieldContainer[str]
     options: RunOptions
-    def __init__(self, config_yaml: _Optional[str] = ..., overrides: _Optional[_Iterable[str]] = ..., options: _Optional[_Union[RunOptions, _Mapping]] = ...) -> None: ...
+    def __init__(self, config_yaml: _Optional[str] = ..., composition: _Optional[_Union[Composition, _Mapping]] = ..., overrides: _Optional[_Iterable[str]] = ..., options: _Optional[_Union[RunOptions, _Mapping]] = ...) -> None: ...
 
 class ReloadRequest(_message.Message):
-    __slots__ = ("config_yaml", "overrides", "options")
+    __slots__ = ("config_yaml", "composition", "overrides", "options")
     CONFIG_YAML_FIELD_NUMBER: _ClassVar[int]
+    COMPOSITION_FIELD_NUMBER: _ClassVar[int]
     OVERRIDES_FIELD_NUMBER: _ClassVar[int]
     OPTIONS_FIELD_NUMBER: _ClassVar[int]
     config_yaml: str
+    composition: Composition
     overrides: _containers.RepeatedScalarFieldContainer[str]
     options: RunOptions
-    def __init__(self, config_yaml: _Optional[str] = ..., overrides: _Optional[_Iterable[str]] = ..., options: _Optional[_Union[RunOptions, _Mapping]] = ...) -> None: ...
+    def __init__(self, config_yaml: _Optional[str] = ..., composition: _Optional[_Union[Composition, _Mapping]] = ..., overrides: _Optional[_Iterable[str]] = ..., options: _Optional[_Union[RunOptions, _Mapping]] = ...) -> None: ...
+
+class Composition(_message.Message):
+    __slots__ = ("sources", "info_filter", "plan_json")
+    SOURCES_FIELD_NUMBER: _ClassVar[int]
+    INFO_FILTER_FIELD_NUMBER: _ClassVar[int]
+    PLAN_JSON_FIELD_NUMBER: _ClassVar[int]
+    sources: _containers.RepeatedCompositeFieldContainer[CompositionSource]
+    info_filter: str
+    plan_json: str
+    def __init__(self, sources: _Optional[_Iterable[_Union[CompositionSource, _Mapping]]] = ..., info_filter: _Optional[str] = ..., plan_json: _Optional[str] = ...) -> None: ...
+
+class CompositionSource(_message.Message):
+    __slots__ = ("id", "name", "yaml")
+    ID_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    YAML_FIELD_NUMBER: _ClassVar[int]
+    id: str
+    name: str
+    yaml: str
+    def __init__(self, id: _Optional[str] = ..., name: _Optional[str] = ..., yaml: _Optional[str] = ...) -> None: ...
+
+class CompositionReport(_message.Message):
+    __slots__ = ("warnings", "groups", "rules", "nodes")
+    WARNINGS_FIELD_NUMBER: _ClassVar[int]
+    GROUPS_FIELD_NUMBER: _ClassVar[int]
+    RULES_FIELD_NUMBER: _ClassVar[int]
+    NODES_FIELD_NUMBER: _ClassVar[int]
+    warnings: _containers.RepeatedCompositeFieldContainer[CompositionWarning]
+    groups: _containers.RepeatedCompositeFieldContainer[ComposedGroup]
+    rules: _containers.RepeatedCompositeFieldContainer[Rule]
+    nodes: _containers.RepeatedCompositeFieldContainer[PoolNode]
+    def __init__(self, warnings: _Optional[_Iterable[_Union[CompositionWarning, _Mapping]]] = ..., groups: _Optional[_Iterable[_Union[ComposedGroup, _Mapping]]] = ..., rules: _Optional[_Iterable[_Union[Rule, _Mapping]]] = ..., nodes: _Optional[_Iterable[_Union[PoolNode, _Mapping]]] = ...) -> None: ...
+
+class CompositionWarning(_message.Message):
+    __slots__ = ("entry_id", "reason", "target")
+    ENTRY_ID_FIELD_NUMBER: _ClassVar[int]
+    REASON_FIELD_NUMBER: _ClassVar[int]
+    TARGET_FIELD_NUMBER: _ClassVar[int]
+    entry_id: str
+    reason: str
+    target: str
+    def __init__(self, entry_id: _Optional[str] = ..., reason: _Optional[str] = ..., target: _Optional[str] = ...) -> None: ...
+
+class ComposedGroup(_message.Message):
+    __slots__ = ("id", "name", "kind", "region", "node_count")
+    ID_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    KIND_FIELD_NUMBER: _ClassVar[int]
+    REGION_FIELD_NUMBER: _ClassVar[int]
+    NODE_COUNT_FIELD_NUMBER: _ClassVar[int]
+    id: str
+    name: str
+    kind: GroupKind
+    region: str
+    node_count: int
+    def __init__(self, id: _Optional[str] = ..., name: _Optional[str] = ..., kind: _Optional[_Union[GroupKind, str]] = ..., region: _Optional[str] = ..., node_count: _Optional[int] = ...) -> None: ...
+
+class PoolNode(_message.Message):
+    __slots__ = ("name", "original_name", "source_id", "type", "region")
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    ORIGINAL_NAME_FIELD_NUMBER: _ClassVar[int]
+    SOURCE_ID_FIELD_NUMBER: _ClassVar[int]
+    TYPE_FIELD_NUMBER: _ClassVar[int]
+    REGION_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    original_name: str
+    source_id: str
+    type: str
+    region: str
+    def __init__(self, name: _Optional[str] = ..., original_name: _Optional[str] = ..., source_id: _Optional[str] = ..., type: _Optional[str] = ..., region: _Optional[str] = ...) -> None: ...
 
 class StopRequest(_message.Message):
     __slots__ = ()
@@ -394,14 +491,16 @@ class UpdateProviderRequest(_message.Message):
     def __init__(self, kind: _Optional[_Union[ProviderKind, str]] = ..., name: _Optional[str] = ...) -> None: ...
 
 class Rule(_message.Message):
-    __slots__ = ("type", "payload", "proxy")
+    __slots__ = ("type", "payload", "proxy", "entry_id")
     TYPE_FIELD_NUMBER: _ClassVar[int]
     PAYLOAD_FIELD_NUMBER: _ClassVar[int]
     PROXY_FIELD_NUMBER: _ClassVar[int]
+    ENTRY_ID_FIELD_NUMBER: _ClassVar[int]
     type: str
     payload: str
     proxy: str
-    def __init__(self, type: _Optional[str] = ..., payload: _Optional[str] = ..., proxy: _Optional[str] = ...) -> None: ...
+    entry_id: str
+    def __init__(self, type: _Optional[str] = ..., payload: _Optional[str] = ..., proxy: _Optional[str] = ..., entry_id: _Optional[str] = ...) -> None: ...
 
 class ListRulesRequest(_message.Message):
     __slots__ = ()
@@ -506,7 +605,7 @@ class TrafficSample(_message.Message):
     def __init__(self, up_bytes_per_second: _Optional[int] = ..., down_bytes_per_second: _Optional[int] = ..., up_total_bytes: _Optional[int] = ..., down_total_bytes: _Optional[int] = ...) -> None: ...
 
 class Connection(_message.Message):
-    __slots__ = ("id", "network", "source", "destination", "host", "process", "chains", "rule", "rule_payload", "upload_bytes", "download_bytes", "started_at_unix_ms")
+    __slots__ = ("id", "network", "source", "destination", "host", "process", "chains", "rule", "rule_payload", "upload_bytes", "download_bytes", "started_at_unix_ms", "rule_entry_id")
     ID_FIELD_NUMBER: _ClassVar[int]
     NETWORK_FIELD_NUMBER: _ClassVar[int]
     SOURCE_FIELD_NUMBER: _ClassVar[int]
@@ -519,6 +618,7 @@ class Connection(_message.Message):
     UPLOAD_BYTES_FIELD_NUMBER: _ClassVar[int]
     DOWNLOAD_BYTES_FIELD_NUMBER: _ClassVar[int]
     STARTED_AT_UNIX_MS_FIELD_NUMBER: _ClassVar[int]
+    RULE_ENTRY_ID_FIELD_NUMBER: _ClassVar[int]
     id: str
     network: str
     source: str
@@ -531,10 +631,65 @@ class Connection(_message.Message):
     upload_bytes: int
     download_bytes: int
     started_at_unix_ms: int
-    def __init__(self, id: _Optional[str] = ..., network: _Optional[str] = ..., source: _Optional[str] = ..., destination: _Optional[str] = ..., host: _Optional[str] = ..., process: _Optional[str] = ..., chains: _Optional[_Iterable[str]] = ..., rule: _Optional[str] = ..., rule_payload: _Optional[str] = ..., upload_bytes: _Optional[int] = ..., download_bytes: _Optional[int] = ..., started_at_unix_ms: _Optional[int] = ...) -> None: ...
+    rule_entry_id: str
+    def __init__(self, id: _Optional[str] = ..., network: _Optional[str] = ..., source: _Optional[str] = ..., destination: _Optional[str] = ..., host: _Optional[str] = ..., process: _Optional[str] = ..., chains: _Optional[_Iterable[str]] = ..., rule: _Optional[str] = ..., rule_payload: _Optional[str] = ..., upload_bytes: _Optional[int] = ..., download_bytes: _Optional[int] = ..., started_at_unix_ms: _Optional[int] = ..., rule_entry_id: _Optional[str] = ...) -> None: ...
 
 class ConnectionSnapshot(_message.Message):
     __slots__ = ("connections",)
     CONNECTIONS_FIELD_NUMBER: _ClassVar[int]
     connections: _containers.RepeatedCompositeFieldContainer[Connection]
     def __init__(self, connections: _Optional[_Iterable[_Union[Connection, _Mapping]]] = ...) -> None: ...
+
+class InspectSourceRequest(_message.Message):
+    __slots__ = ("yaml", "info_filter")
+    YAML_FIELD_NUMBER: _ClassVar[int]
+    INFO_FILTER_FIELD_NUMBER: _ClassVar[int]
+    yaml: str
+    info_filter: str
+    def __init__(self, yaml: _Optional[str] = ..., info_filter: _Optional[str] = ...) -> None: ...
+
+class InspectSourceResponse(_message.Message):
+    __slots__ = ("nodes", "has_rules", "group_count", "rule_count")
+    NODES_FIELD_NUMBER: _ClassVar[int]
+    HAS_RULES_FIELD_NUMBER: _ClassVar[int]
+    GROUP_COUNT_FIELD_NUMBER: _ClassVar[int]
+    RULE_COUNT_FIELD_NUMBER: _ClassVar[int]
+    nodes: _containers.RepeatedCompositeFieldContainer[SourceNode]
+    has_rules: bool
+    group_count: int
+    rule_count: int
+    def __init__(self, nodes: _Optional[_Iterable[_Union[SourceNode, _Mapping]]] = ..., has_rules: _Optional[bool] = ..., group_count: _Optional[int] = ..., rule_count: _Optional[int] = ...) -> None: ...
+
+class SourceNode(_message.Message):
+    __slots__ = ("name", "type", "region", "info")
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    TYPE_FIELD_NUMBER: _ClassVar[int]
+    REGION_FIELD_NUMBER: _ClassVar[int]
+    INFO_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    type: str
+    region: str
+    info: bool
+    def __init__(self, name: _Optional[str] = ..., type: _Optional[str] = ..., region: _Optional[str] = ..., info: _Optional[bool] = ...) -> None: ...
+
+class ListGeoCategoriesRequest(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
+class ListGeoCategoriesResponse(_message.Message):
+    __slots__ = ("geosite", "geoip")
+    GEOSITE_FIELD_NUMBER: _ClassVar[int]
+    GEOIP_FIELD_NUMBER: _ClassVar[int]
+    geosite: GeoCategories
+    geoip: GeoCategories
+    def __init__(self, geosite: _Optional[_Union[GeoCategories, _Mapping]] = ..., geoip: _Optional[_Union[GeoCategories, _Mapping]] = ...) -> None: ...
+
+class GeoCategories(_message.Message):
+    __slots__ = ("names", "sha256", "updated_at_unix_ms")
+    NAMES_FIELD_NUMBER: _ClassVar[int]
+    SHA256_FIELD_NUMBER: _ClassVar[int]
+    UPDATED_AT_UNIX_MS_FIELD_NUMBER: _ClassVar[int]
+    names: _containers.RepeatedScalarFieldContainer[str]
+    sha256: str
+    updated_at_unix_ms: int
+    def __init__(self, names: _Optional[_Iterable[str]] = ..., sha256: _Optional[str] = ..., updated_at_unix_ms: _Optional[int] = ...) -> None: ...

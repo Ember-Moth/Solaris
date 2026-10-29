@@ -41,7 +41,14 @@ message Request {
     SubscribeConnectionsRequest subscribe_connections = 46;
     PollEventsRequest poll_events = 47;
     UnsubscribeRequest unsubscribe = 48;
+
+    // Routing methods (docs/routing.md §8.2), served on both platforms. They only read
+    // and need no running core. 51 to 54 are kept for PreviewGroup, MatchRule,
+    // ConvertToPlan and ExportPlan (M8b).
+    InspectSourceRequest inspect_source = 49;
+    ListGeoCategoriesRequest list_geo_categories = 50;
   }
+  reserved 51 to 54;
 }
 
 message Response {
@@ -51,6 +58,8 @@ message Response {
     Error error = 3;
     Empty empty = 4;
     GetInfoResponse get_info = 10;
+    // Validate, Start and Reload with a Composition; with config_yaml they answer Empty.
+    CompositionReport composition = 12;
     GetStatusResponse get_status = 30;
     ListGroupsResponse list_groups = 32;
     GetGroupResponse get_group = 33;
@@ -59,7 +68,10 @@ message Response {
     ListRulesResponse list_rules = 39;
     SubscribeResponse subscribe = 44;
     PollEventsResponse poll_events = 47;
+    InspectSourceResponse inspect_source = 49;
+    ListGeoCategoriesResponse list_geo_categories = 50;
   }
+  reserved 51 to 54;
 }
 
 message Empty {}
@@ -104,19 +116,84 @@ message RunOptions {
   bool allow_lan = 4;
 }
 
+// Validate, Start and Reload take the configuration from one of two sources: a
+// subscription's own YAML, or a Composition the core assembles from the node pool and a
+// plan (docs/routing.md §8.1). The overrides apply after either.
 message ValidateRequest {
-  string config_yaml = 1;
+  oneof source {
+    string config_yaml = 1;
+    Composition composition = 4;
+  }
   repeated string overrides = 2;
 }
 message StartRequest {
-  string config_yaml = 1;
+  oneof source {
+    string config_yaml = 1;
+    Composition composition = 4;
+  }
   repeated string overrides = 2;
   RunOptions options = 3;
 }
 message ReloadRequest {
-  string config_yaml = 1;
+  oneof source {
+    string config_yaml = 1;
+    Composition composition = 4;
+  }
   repeated string overrides = 2;
   RunOptions options = 3;
+}
+
+// The node pool and a plan, for "my plan" routing (docs/routing.md §8.5).
+message Composition {
+  // The subscriptions in the pool, in the order they were imported; the UI leaves out the
+  // ones kept out of the pool. A node whose name an earlier subscription took gets
+  // " · <subscription name>" appended.
+  repeated CompositionSource sources = 1;
+  // A regular expression in mihomo's syntax (regexp2) for information nodes such as
+  // "剩余流量"; the pool leaves out nodes whose names match it. Empty leaves out none.
+  string info_filter = 2;
+  // The plan as JSON, format version 1 (docs/routing.md §8.5).
+  string plan_json = 3;
+}
+message CompositionSource {
+  string id = 1;
+  string name = 2;
+  string yaml = 3; // the subscription as downloaded: a mihomo profile or share links
+}
+
+message CompositionReport {
+  repeated CompositionWarning warnings = 1;
+  repeated ComposedGroup groups = 2; // in configuration order
+  // Every rule the plan produced, in order, with the rule entry it came from.
+  repeated Rule rules = 3;
+  repeated PoolNode nodes = 4; // the pool after exclusions, in order
+}
+message CompositionWarning {
+  string entry_id = 1; // a rule entry, or "fallback"
+  // "region_empty": the target region has no nodes; "group_empty": the target group has
+  // no members. The entry goes to the built-in "proxy" group until that changes.
+  string reason = 2;
+  string target = 3; // the target the plan names
+}
+enum GroupKind {
+  GROUP_KIND_UNSPECIFIED = 0;
+  GROUP_KIND_BUILTIN = 1;
+  GROUP_KIND_REGION = 2;
+  GROUP_KIND_CUSTOM = 3;
+}
+message ComposedGroup {
+  string id = 1;   // "proxy", "auto", "region:HK" or the plan's own id
+  string name = 2; // the name in the generated configuration
+  GroupKind kind = 3;
+  string region = 4; // region groups only: the region code
+  uint32 node_count = 5;
+}
+message PoolNode {
+  string name = 1;          // the name in the generated configuration
+  string original_name = 2; // the name in the subscription
+  string source_id = 3;
+  string type = 4;   // mihomo adapter type, as in Proxy.type
+  string region = 5; // region code; "ZZ" when no region matched
 }
 message StopRequest {}
 message SetSystemProxyRequest { bool enabled = 1; }
@@ -202,6 +279,9 @@ message Rule {
   string type = 1;
   string payload = 2;
   string proxy = 3;
+  // The plan's rule entry this rule came from, or "fallback"; empty for rules that a
+  // subscription or an override wrote.
+  string entry_id = 4;
 }
 message ListRulesRequest {}
 message ListRulesResponse { repeated Rule rules = 1; }
@@ -263,5 +343,36 @@ message Connection {
   uint64 upload_bytes = 10;
   uint64 download_bytes = 11;
   uint64 started_at_unix_ms = 12;
+  string rule_entry_id = 13; // Rule.entry_id of the rule the connection matched
 }
 message ConnectionSnapshot { repeated Connection connections = 1; }
+
+message InspectSourceRequest {
+  string yaml = 1;        // a subscription as downloaded
+  string info_filter = 2; // as in Composition
+}
+message InspectSourceResponse {
+  repeated SourceNode nodes = 1;
+  bool has_rules = 2;
+  uint32 group_count = 3;
+  uint32 rule_count = 4;
+}
+message SourceNode {
+  string name = 1;
+  string type = 2;   // mihomo adapter type, as in Proxy.type
+  string region = 3; // region code; "ZZ" when no region matched
+  bool info = 4;     // the name matches info_filter, so the pool leaves the node out
+}
+
+message ListGeoCategoriesRequest {}
+message ListGeoCategoriesResponse {
+  GeoCategories geosite = 1;
+  GeoCategories geoip = 2;
+}
+// The categories in one GEO data file of the core's home, lower-cased and sorted. Without
+// the file, every field is empty.
+message GeoCategories {
+  repeated string names = 1;
+  string sha256 = 2; // of the file, which identifies the data release
+  uint64 updated_at_unix_ms = 3;
+}
