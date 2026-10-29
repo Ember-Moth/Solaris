@@ -84,9 +84,10 @@ func newDevelopmentEngine(home string) (*engine.Engine, error) {
 	return engine.New(engine.Options{HomeDir: home, Tun: engine.TunNone})
 }
 
-// newDevelopmentDispatcher serves the host methods so ServiceHost works against it.
+// newDevelopmentDispatcher serves the host methods so ServiceHost works against it, and
+// rejects the TUN and the system proxy with unsupported_method.
 func newDevelopmentDispatcher(core *engine.Engine) *control.Dispatcher {
-	return control.New(control.Options{Engine: core, HostMethods: true})
+	return control.New(control.Options{Engine: core, HostMethods: true, Development: true})
 }
 
 func refuseRoot(euid int) error {
