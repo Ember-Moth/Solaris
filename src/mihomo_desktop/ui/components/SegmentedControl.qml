@@ -15,7 +15,7 @@ Rectangle {
     implicitHeight: Theme.controlSm + 4
     radius: Theme.radiusSm
     color: Theme.controlTrack
-    opacity: enabled ? 1 : 0.4
+    opacity: enabled ? 1 : Theme.disabledOpacity
     Accessible.role: Accessible.Grouping
     Accessible.name: accessibleName
 
@@ -57,7 +57,7 @@ Rectangle {
                         anchors.topMargin: 1
                         anchors.bottomMargin: -1
                         radius: Theme.radiusXs
-                        color: "#1F15171C"
+                        color: Theme.shadowSegment
                         visible: segment.selected
                     }
                     Rectangle {

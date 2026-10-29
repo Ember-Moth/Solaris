@@ -13,6 +13,7 @@ ApplicationWindow {
     required property OverviewViewModel overviewViewModel
     required property ProxiesViewModel proxiesViewModel
     required property ProfilesViewModel profilesViewModel
+    required property Appearance appearance
 
     width: Theme.windowDefaultWidth
     height: Theme.windowDefaultHeight
@@ -23,6 +24,36 @@ ApplicationWindow {
     color: Theme.background
     font.family: Fonts.resolve(Theme.type.bodyMd.fontFamily)
     font.pixelSize: Theme.type.bodyMd.fontSize
+
+    // The Basic style's own drawing (scroll bars, text selection, Qt's context menus) takes
+    // the theme's tokens too; popups inherit the window's palette (architecture.md §7.6).
+    palette.window: Theme.background
+    palette.windowText: Theme.text
+    palette.base: Theme.surface
+    palette.alternateBase: Theme.surfaceSubtle
+    palette.text: Theme.text
+    palette.placeholderText: Theme.textMuted
+    palette.button: Theme.surface
+    palette.buttonText: Theme.text
+    palette.brightText: Theme.textOnPrimary
+    palette.highlight: Theme.primary
+    palette.highlightedText: Theme.textOnPrimary
+    palette.accent: Theme.primary
+    palette.link: Theme.link
+    palette.linkVisited: Theme.link
+    palette.light: Theme.surfaceSelected
+    palette.midlight: Theme.border
+    palette.mid: Theme.borderControl
+    palette.dark: Theme.textMuted
+    palette.shadow: Theme.scrim
+    palette.toolTipBase: Theme.surface
+    palette.toolTipText: Theme.text
+
+    Binding {
+        target: Theme
+        property: "appearance"
+        value: window.appearance
+    }
 
     RowLayout {
         anchors.fill: parent

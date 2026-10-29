@@ -14,7 +14,7 @@ Switch {
     implicitHeight: 24
     padding: 0
     spacing: 0
-    opacity: enabled ? 1 : 0.4
+    opacity: enabled ? 1 : Theme.disabledOpacity
     onToggled: {
         requested(checked)
         checked = Qt.binding(() => control.value)

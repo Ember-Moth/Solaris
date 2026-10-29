@@ -57,12 +57,38 @@ def px(value: str | int | float) -> str:
     sys.exit(f"unsupported dimension: {value!r}")
 
 
-def render(tokens: dict[str, Any]) -> str:
-    out = [HEADER, "pragma Singleton", "import QtQuick", "", "QtObject {"]
+def color_modes(colors: dict[str, Any]) -> tuple[dict[str, str], dict[str, str]]:
+    """The light values (the top level of `colors`) and the dark ones (`colors.dark`), which
+    must name the same roles."""
+    light = {name: value for name, value in colors.items() if name != "dark"}
+    dark = colors.get("dark") or {}
+    missing = [f"colors.dark.{name}" for name in light if name not in dark]
+    missing += [f"colors.{name}" for name in dark if name not in light]
+    if missing:
+        sys.exit(
+            "DESIGN.md: every color role needs a light and a dark value; missing "
+            + ", ".join(missing)
+        )
+    return light, dark
 
-    out.append("    // ---- colors ----")
-    for name, value in tokens["colors"].items():
-        out.append(f'    readonly property color {camel(name)}: "{qt_color(value)}"  // {name}')
+
+def render(tokens: dict[str, Any]) -> str:
+    out = [HEADER, "pragma Singleton", "import QtQuick", "import MihomoDesktop", "", "QtObject {"]
+
+    out.append(
+        "    // Main.qml binds this to the injected Appearance; the theme is light without one."
+    )
+    out.append("    property Appearance appearance")
+    out.append("    readonly property bool dark: appearance?.dark ?? false")
+
+    out.append("")
+    out.append("    // ---- colors: dark ? colors.dark.<role> : colors.<role> ----")
+    light, dark = color_modes(tokens["colors"])
+    for name, value in light.items():
+        out.append(
+            f"    readonly property color {camel(name)}: "
+            f'dark ? "{qt_color(dark[name])}" : "{qt_color(value)}"  // {name}'
+        )
 
     out.append("")
     out.append(
@@ -98,6 +124,13 @@ def render(tokens: dict[str, Any]) -> str:
         if prop[:1].isdigit():
             prop = f"space{prop}"
         out.append(f"    readonly property int {prop}: {px(value)}  // spacing.{name}")
+
+    out.append("")
+    out.append("    // ---- opacity ----")
+    for name, value in tokens["opacity"].items():
+        out.append(
+            f"    readonly property real {camel(name)}Opacity: {float(value)}  // opacity.{name}"
+        )
 
     out.append("}")
     return "\n".join(out) + "\n"

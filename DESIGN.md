@@ -32,6 +32,40 @@ colors:
   chart-upload: "#C2410C"
   scrim: "#15171C33"
   shadow-overlay: "#15171C1F"
+  shadow-segment: "#15171C1F"
+  shadow-nav: "#15171C14"
+  dark:
+    primary: "#6495FF"
+    primary-hover: "#76A1FF"
+    primary-pressed: "#88AEFF"
+    on-primary: "#101216"
+    link: "#8AAEFF"
+    link-hover: "#B5CBFF"
+    background: "#1B1D20"
+    sidebar: "#202227"
+    sidebar-hover: "#26292E"
+    surface: "#2B2D33"
+    surface-subtle: "#30343A"
+    surface-selected: "#383B43"
+    control-track: "#121416"
+    divider: "#34373E"
+    border: "#3B3F46"
+    border-button: "#4C505A"
+    border-control: "#818691"
+    text: "#E6E9ED"
+    text-secondary: "#CBCFD6"
+    text-tertiary: "#B7BCC4"
+    text-muted: "#A1A6AF"
+    success: "#45C4A6"
+    warning: "#E5A443"
+    latency-poor: "#F38B5E"
+    danger: "#FF8077"
+    info: "#8AAEFF"
+    chart-upload: "#F28A4B"
+    scrim: "#00000080"
+    shadow-overlay: "#00000066"
+    shadow-segment: "#00000052"
+    shadow-nav: "#0000003D"
 typography:
   title:
     fontFamily: Inter
@@ -127,6 +161,8 @@ spacing:
   dialog-width: 400px
   dialog-width-wide: 640px
   editor-min-height: 240px
+opacity:
+  disabled: 0.4
 components:
   page:
     backgroundColor: "{colors.background}"
@@ -419,9 +455,11 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
 - **平台**：Qt Quick。文中 `px` 指 Qt 的设备无关像素，高分屏由 Qt 缩放。
 - **窗口**：使用系统原生标题栏，不做无边框自绘窗口。
 - **语言**：界面提供简体中文和英文。简体中文是源语言，英文是它的译文；默认跟随系统，系统首选语言是中文时用中文，其他一律用英文。内核日志、协议名、规则，以及配置里的组名和节点名保持原文，不翻译。英文的写法见 [英文文案](#英文文案)。
-- **主题**：目前只定义浅色主题。深色主题尚未设计，实现时不要临时从浅色值推导；跟随系统深色模式之前需要先补齐这份契约。
+- **外观**：浅色和深色两套。默认跟随系统，系统在运行中切换外观时界面立即跟着变；也可以在设置里固定为浅色或深色。两套外观共用同一组语义角色和这份契约的全部规则，只换颜色取值（见 [深色](#深色)）；字体、间距、圆角和动效不变。原生标题栏随外观切换。
 
 ## Colors
+
+颜色 token 按语义角色命名。frontmatter 里 `colors` 下直接列出的是浅色取值；`colors.dark` 为每个角色给出深色取值，键名一一对应。组件引用的 `{colors.X}` 在深色外观下取 `{colors.dark.X}`。增删角色时两组同时改，`scripts/gen_theme.py` 发现两组的键不一致就报错。下面先写浅色，深色见 [深色](#深色)。其他章节说的「白底」「白色分组」指 `surface`，「浅灰底」指 `surface-selected`，深色外观下取各自的深色值。
 
 色彩分三层：窗口底色 `background` `#F3F4F6`，侧栏 `sidebar` `#E9EBEF`，内容容器 `surface` `#FFFFFF`。层级靠底色差和 1px 线条表达，不靠阴影。
 
@@ -443,13 +481,33 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
 
   这些颜色在白底上都在 6:1 以上。延迟和日志级别始终同时显示数字或文字，颜色只是辅助。
 - **图表**：下载用 `primary`，上传用 `chart-upload` `#C2410C`。蓝与橙在明度和色相上都能区分，不用红绿对比。
-- **浮层**只用两种半透明色，都以 `#RRGGBBAA` 书写（`scripts/gen_theme.py` 生成 Theme.qml 时换成 Qt 的 `#AARRGGBB` 顺序）：
-  - `scrim` `#15171C33`：20% 不透明度的文字色，只铺在模态对话框背后；
-  - `shadow-overlay` `#15171C1F`：12% 不透明度的文字色，只用于浮层阴影。
+- **半透明色**只有四种，都以 `#RRGGBBAA` 书写（`scripts/gen_theme.py` 生成 Theme.qml 时换成 Qt 的 `#AARRGGBB` 顺序），浅色下都是文字色加不透明度：
+  - `scrim` `#15171C33`：20%，只铺在模态对话框背后；
+  - `shadow-overlay` `#15171C1F`：12%，只用于浮层阴影；
+  - `shadow-segment` `#15171C1F`、`shadow-nav` `#15171C14`：12% 和 8%，分别是分段控件选中项和当前导航项的凸起阴影（见 [Elevation & Depth](#elevation--depth)）。
+
+### 深色
+
+参照 macOS 与 Windows 11 的原生深色外观：不用纯黑，层级靠明度差表达，越靠上的层越亮；仍然只有一个强调色。深色值只取 `colors.dark`，不要在实现里从浅色值反相、调暗或加透明度临时推导。以下括号里的数字是 CIE L\* 明度。
+
+- **底色分层**：窗口底色 `background` `#1B1D20`（11）→ 侧栏 `sidebar` `#202227`（13）→ 分组、浮层和输入框 `surface` `#2B2D33`（19）。行悬停和表头 `surface-subtle` `#30343A`（22），选中行 `surface-selected` `#383B43`（25），导航项悬停 `sidebar-hover` `#26292E`（17）。与浅色不同，侧栏比窗口底色亮一级，和 macOS 深色侧栏一致；当前导航项仍用 `surface`，比侧栏亮。
+- **分段控件底槽** `control-track` `#121416`（6）是唯一比窗口底色暗的颜色：底槽在深色下凹进去，选中项用 `surface`，与底槽差 12 个明度。
+- **文字**四级：`text` `#E6E9ED`（不用纯白，大面积暗底上不刺眼）、`text-secondary` `#CBCFD6`、`text-tertiary` `#B7BCC4`、`text-muted` `#A1A6AF`。深色下最亮的底色是 `surface-selected`，`text-muted` 在它上面仍有 4.6:1，在 `surface` 上 5.6:1。
+- **强调色** `primary` `#6495FF`，悬停 `primary-hover` `#76A1FF`，按下 `primary-pressed` `#88AEFF`：深色下越操作越亮，与浅色下越操作越暗一样，都是拉开与底色的差距。深色的主色是浅蓝，所以主按钮上的文字 `on-primary` 改为近黑 `#101216`（Windows 11 深色主按钮的做法），三种状态上的对比度为 6.5、7.4、8.5。`primary` 用作线条、图标和焦点环时，在窗口底色上 5.9:1、`surface` 上 4.8:1、`surface-selected` 上 3.9:1；下载速率的箭头是文字，只出现在 `surface` 上。
+- **链接**与 **INFO** 级别 `link` / `info` `#8AAEFF`，悬停 `link-hover` `#B5CBFF`，同样是悬停变亮。
+- **线条**都比 `surface` 亮，深色下靠亮线勾边：`divider` `#34373E`、`border` `#3B3F46`、`border-button` `#4C505A`。`border-control` `#818691` 在 `surface` 上 3.8:1、窗口底色上 4.6:1、`surface-selected` 上 3.1:1，满足非文字 3:1；开关的圆钮（`surface`）在关闭轨道上 3.8:1，在开启轨道（`primary`）上 4.8:1。
+- **状态色**保持浅色的色相，提高明度：`success` `#45C4A6`、`warning` `#E5A443`、`latency-poor` `#F38B5E`、`danger` `#FF8077`。它们在所有深色底色上（包括 `surface-selected`）都不低于 4.5:1。
+- **图表**：下载 `primary` `#6495FF`，上传 `chart-upload` `#F28A4B`（`surface` 上 5.6:1），参考线 `divider`。蓝与橙在深色下同样靠色相和明度区分。
+- **半透明色**改为纯黑加不透明度。暗底上的阴影不明显，所以比浅色更深；浮层的层次主要靠 1px `border` 亮边和更亮的 `surface`：
+  - `scrim` `#00000080`：50%；
+  - `shadow-overlay` `#00000066`：40%；
+  - `shadow-segment` `#00000052`、`shadow-nav` `#0000003D`：32% 和 24%。
+- **焦点环**仍是 2px `primary` 外环，对比度见上文「强调色」。
+- **Qt 控件的默认调色板**也从这组 token 取值，包括滚动条、文字选区和 Qt 自带的输入框右键菜单，映射见 `docs/architecture.md` §7.6。
 
 ## Typography
 
-拉丁字符用 **Inter**，数据用 **JetBrains Mono**，两者都是 OFL 许可，随应用打包（QML `FontLoader`），许可证文件一并分发。中文由系统字体回退：macOS 为 PingFang SC，Windows 为 Microsoft YaHei UI。Inter 不可用时回退到系统界面字体（SF Pro / Segoe UI Variable），JetBrains Mono 回退到 SF Mono / Consolas。
+拉丁字符用 **Inter**，数据用 **JetBrains Mono**，两者都是 OFL 许可，随应用打包在 `src/mihomo_desktop/ui/fonts/`（QML `FontLoader`），各自的 `OFL.txt` 一并分发。只打包用到的字重：Inter 4.1 的 400、500、600，JetBrains Mono 2.304 的 400。中文由系统字体回退：macOS 为 PingFang SC，Windows 为 Microsoft YaHei UI。Inter 不可用时回退到系统界面字体（SF Pro / Segoe UI Variable），JetBrains Mono 回退到 SF Mono / Consolas。
 
 | 角色 | token | 用途 |
 | --- | --- | --- |
@@ -509,9 +567,10 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
 
 - 分组、表格、日志面板**没有阴影**，只有 `border` 外框。
 - 页面内只有两处使用阴影，都是为了表现"凸起的选中块"：
-  - 分段控件的选中项：`0 1px 1px rgba(21, 23, 28, 0.12)`；
-  - 侧栏的当前导航项：`0 1px 2px rgba(21, 23, 28, 0.08)`。
-- 浮层（菜单、下拉菜单、弹出层、对话框）共用唯一一级浮层阴影 `overlay-shadow`：向下偏移 `overlay-shadow-y` 4px，模糊 `overlay-shadow-blur` 16px，颜色 `shadow-overlay`，即 `0 4px 16px rgba(21, 23, 28, 0.12)`；再加 1px `border` 外框。浮层之间不再分级。托盘弹出窗尚未设计，届时沿用这一级。
+  - 分段控件的选中项：`0 1px 1px`，颜色 `shadow-segment`（浅色即 `rgba(21, 23, 28, 0.12)`）；
+  - 侧栏的当前导航项：`0 1px 2px`，颜色 `shadow-nav`（浅色即 `rgba(21, 23, 28, 0.08)`）。
+- 浮层（菜单、下拉菜单、弹出层、对话框）共用唯一一级浮层阴影 `overlay-shadow`：向下偏移 `overlay-shadow-y` 4px，模糊 `overlay-shadow-blur` 16px，颜色 `shadow-overlay`，浅色即 `0 4px 16px rgba(21, 23, 28, 0.12)`；再加 1px `border` 外框。浮层之间不再分级。托盘弹出窗尚未设计，届时沿用这一级。
+- 深色外观下几何不变，只换颜色：阴影用 `colors.dark` 里更深的黑色半透明，浮层的 `border` 外框比 `surface` 亮，在暗底上勾出边缘。
 - **层级**从下到上：
   1. 页面内容；
   2. 菜单与弹出层：非模态，同一时间只开一个，打开新的会关掉旧的；
@@ -553,7 +612,7 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
   - 破坏性确认框里的确认按钮用 `button-destructive`：白底、`border-button` 外框、`danger` 文字，悬停和按下的底色与次要按钮相同。它只出现在确认框里。
 - **分段控件**：用于 2–4 个互斥选项（出站模式、排序、日志级别、TCP / UDP 筛选）。选中项用白底加 600 字重，不只靠底色区分。超过 4 个选项改用下拉框。
 - **开关**：40 × 24 的轨道，开启用 `switch-on`，关闭用 `switch-off`；圆钮 18px，内缩 3px。开关只用于立即生效的布尔设置，并通过 `aria-checked` 表达状态。
-- **输入框与下拉框**：白底加 `border-control` 外框。设置行里用 `input-compact`，表单里用 `input`。错误状态：外框改为 `danger`，下方用 `input-error`（`caption`、`danger`）原样写出错误，不加图标。
+- **输入框与下拉框**：`surface` 底（浅色下为白底）加 `border-control` 外框。设置行里用 `input-compact`，表单里用 `input`。错误状态：外框改为 `danger`，下方用 `input-error`（`caption`、`danger`）原样写出错误，不加图标。选中的文字用 `primary` 底、`on-primary` 字，输入框和 YAML 编辑框相同。
 - **YAML 编辑框** `code-editor`：多行等宽文本框，`data-md` 文字、`border-control` 外框、6px 圆角、10px 内边距，最小高度 `editor-min-height` 240px，内容更长时在框内滚动；不自动换行，长行横向滚动。错误状态与输入框相同。
 - **延迟**：用等宽文字显示数值，按阈值着色（`latency-good` < 150 ms、`latency-fair` 150–300 ms、`latency-poor` > 300 ms、`latency-timeout` 显示「超时」）。不用彩色药丸。
 - **流量**：
@@ -586,8 +645,9 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
   - Enter 执行默认按钮；用 Tab 把焦点移到其他按钮后，Enter 和空格执行聚焦的按钮。多行编辑框里 Enter 换行，Ctrl+Enter（macOS 上为 ⌘↩）执行默认按钮。
   - 浮层关闭后，焦点回到打开它的控件。
   - 打开时自动聚焦的按钮不显示焦点环，默认按钮靠主按钮样式辨认，用户按下 Tab 后照常显示；输入框和编辑框只要获得焦点就显示焦点环。
+- **滚动条**：沿用 Qt 的细滑块，滚动时出现、停下后淡出，不加轨道底色。滑块颜色 `border-control`，按下时 `text-muted`。表格只在容器内部横向滚动时常驻显示。
 - **焦点**：所有可交互元素在键盘聚焦时显示 2px `primary` 外环，外扩 2px；不能去掉焦点环。
-- **禁用**：保留原样式，降低到 40% 不透明度，鼠标指针不变为手形。
+- **禁用**：保留原样式，降低到 `opacity.disabled`（40%）不透明度，鼠标指针不变为手形。
 - **空状态**：在容器里写一句简短的事实，如「没有匹配的连接」「未连接」。不放插画，不加引导性营销文案。
 - **动效**：只用于状态切换反馈和浮层进出，不做页面转场、数字滚动或循环动画。
   - 开关圆钮、分段选中块：120ms ease-out。
@@ -602,7 +662,7 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
 - 先让用户一眼看到隧道状态、模式和当前节点，再给其他信息。
 - 用设置式分组列表、表格和单行状态文字来组织信息。
 - 让每个数字都有用途：速率、用量、延迟、连接列表都能直接指导下一步操作。
-- 状态同时用文字和颜色表达；颜色对比满足 WCAG AA（正文 4.5:1，控件边界 3:1）。
+- 状态同时用文字和颜色表达；颜色对比满足 WCAG AA（正文 4.5:1，控件边界 3:1），浅色和深色两种外观各核对一遍。
 - 数据和代码类内容（规则、版本、端口、日志）用等宽字体，保留原文。
 - 新增组件前先复用这里已有的分组、行、分段控件、开关和表格。
 - 破坏性操作先确认：确认框默认聚焦「取消」，标题写明对象，正文写清后果。
@@ -618,4 +678,5 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
 - 不要把状态做成彩色药丸或彩色横幅；不要靠红绿对比区分状态。
 - 不要在标题下写解释性副标题，不要写营销语气的文案，不要使用 emoji。
 - 不要超过一个强调色，也不要在一个页面里放多个主色按钮。
+- 不要用反相、调暗或叠加透明度从浅色值推导深色；深色值只取 `colors.dark`。不要用纯黑做底色。
 - 不要在实现中临时发明这份契约以外的颜色、圆角或间距；确有需要时先更新 DESIGN.md。

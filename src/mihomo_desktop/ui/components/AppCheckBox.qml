@@ -8,7 +8,7 @@ CheckBox {
 
     padding: 0
     spacing: Theme.space2
-    opacity: enabled ? 1 : 0.4
+    opacity: enabled ? 1 : Theme.disabledOpacity
     Accessible.name: text
 
     indicator: Rectangle {
