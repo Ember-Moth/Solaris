@@ -89,6 +89,9 @@ func TestRegionTable(t *testing.T) {
 		"CN2 GIA 香港":        "HK",
 		"Mars 1":            OtherRegion,
 		"Singapore Premium": "SG",
+		"UK 01":             "GB",
+		"剩余流量 12 GB":        OtherRegion,
+		"Premium 100GB":     OtherRegion,
 	} {
 		if got := RegionOf(name); got != want {
 			t.Errorf("RegionOf(%q) = %s, want %s", name, got, want)

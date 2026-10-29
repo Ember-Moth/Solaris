@@ -53,7 +53,8 @@ var Regions = []*Region{
 	{Code: "CA", Flag: "🇨🇦", NameZH: "加拿大", NameEN: "Canada",
 		Pattern: `🇨🇦|加拿大|多伦多|多倫多|温哥华|溫哥華|蒙特利尔|(?i:canada|toronto|vancouver|montreal)|` + code("CA|CAN")},
 	{Code: "GB", Flag: "🇬🇧", NameZH: "英国", NameEN: "United Kingdom",
-		Pattern: `🇬🇧|英国|英國|伦敦|倫敦|(?i:united ?kingdom|britain|london)|` + code("UK|GB|GBR")},
+		// Not "GB", which names gigabytes far more often ("剩余 12 GB").
+		Pattern: `🇬🇧|英国|英國|伦敦|倫敦|(?i:united ?kingdom|britain|london)|` + code("UK|GBR")},
 	{Code: "FR", Flag: "🇫🇷", NameZH: "法国", NameEN: "France",
 		Pattern: `🇫🇷|法国|法國|巴黎|(?i:france|paris)|` + code("FR|FRA")},
 	{Code: "DE", Flag: "🇩🇪", NameZH: "德国", NameEN: "Germany",
