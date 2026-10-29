@@ -6,18 +6,23 @@ from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
 from mihomo_desktop.host.base import HostInfo, TunnelHost
+from mihomo_desktop.i18n import QT_TRANSLATE_NOOP
 from mihomo_desktop.viewmodels.common.async_runner import AsyncRunner
 
 QML_IMPORT_NAME = "MihomoDesktop"
 QML_IMPORT_MAJOR_VERSION = 1
 
 PAGES = (
-    {"id": "overview", "label": "概览", "icon": "overview"},
-    {"id": "proxies", "label": "代理", "icon": "proxies"},
-    {"id": "profiles", "label": "配置", "icon": "profiles"},
-    {"id": "connections", "label": "连接", "icon": "connections"},
-    {"id": "logs", "label": "日志", "icon": "logs"},
-    {"id": "settings", "label": "设置", "icon": "settings"},
+    {"id": "overview", "label": QT_TRANSLATE_NOOP("ShellViewModel", "概览"), "icon": "overview"},
+    {"id": "proxies", "label": QT_TRANSLATE_NOOP("ShellViewModel", "代理"), "icon": "proxies"},
+    {"id": "profiles", "label": QT_TRANSLATE_NOOP("ShellViewModel", "配置"), "icon": "profiles"},
+    {
+        "id": "connections",
+        "label": QT_TRANSLATE_NOOP("ShellViewModel", "连接"),
+        "icon": "connections",
+    },
+    {"id": "logs", "label": QT_TRANSLATE_NOOP("ShellViewModel", "日志"), "icon": "logs"},
+    {"id": "settings", "label": QT_TRANSLATE_NOOP("ShellViewModel", "设置"), "icon": "settings"},
 )
 SERVICE_POLL_MS = 10_000
 
@@ -55,7 +60,7 @@ class ShellViewModel(QObject):
 
     @Property("QVariantList", constant=True)  # pyright: ignore[reportArgumentType]
     def pages(self) -> list[dict[str, str]]:
-        return list(PAGES)
+        return [{**page, "label": self.tr(page["label"])} for page in PAGES]
 
     @Property(str, notify=currentPageChanged)
     def currentPage(self) -> str:
@@ -77,13 +82,15 @@ class ShellViewModel(QObject):
 
     @Property(str, notify=serviceChanged)
     def serviceText(self) -> str:
-        return "服务运行中" if self._info is not None else "服务不可用"
+        return self.tr("服务运行中") if self._info is not None else self.tr("服务不可用")
 
     @Property(str, notify=serviceChanged)
     def serviceDetail(self) -> str:
         if self._info is None:
             return self._service_error
-        return f"{self._info.core_version} · 协议 v{self._info.protocol_version}"
+        return self.tr("{core} · 协议 v{protocol}").format(
+            core=self._info.core_version, protocol=self._info.protocol_version
+        )
 
     @Slot()
     def refreshService(self) -> None:
@@ -96,5 +103,5 @@ class ShellViewModel(QObject):
 
     def _info_failed(self, error: BaseException) -> None:
         self._info = None
-        self._service_error = "未能连接到服务"
+        self._service_error = self.tr("未能连接到服务")
         self.serviceChanged.emit()

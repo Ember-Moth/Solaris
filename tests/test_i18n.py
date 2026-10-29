@@ -1,11 +1,18 @@
+from collections.abc import Iterator
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 import pytest
-from PySide6.QtCore import QLocale
+from PySide6.QtCore import QCoreApplication, QLocale, QObject
+from pytestqt.qtbot import QtBot
 
 from mihomo_desktop.i18n import LANG_ENV, resolve_language, ui_locale
 from mihomo_desktop.models import format as fmt
+from mihomo_desktop.models.store import ProfileStore
+from mihomo_desktop.viewmodels.composition import ViewModels, compose
 from scripts.gen_i18n import stale_binaries, stale_catalogs, unfinished_messages
+from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
 
 NOW = datetime(2026, 10, 29, 12).timestamp()
 
@@ -61,3 +68,50 @@ def test_english_formats() -> None:
     assert fmt.ago(datetime(2025, 10, 20, 9).timestamp(), NOW) == "Oct 20, 2025"
     assert fmt.date(datetime(2026, 12, 31).timestamp()) == "Dec 31, 2026"
     assert fmt.latency(None) == ("Timeout", "timeout")
+
+
+@pytest.mark.usefixtures("english")
+def test_english_plurals() -> None:
+    def groups(count: int) -> str:
+        return QCoreApplication.translate("ProxiesViewModel", "%n 个代理组", None, count)
+
+    assert groups(1) == "1 proxy group"
+    assert groups(3) == "3 proxy groups"
+
+
+def prop(view_model: QObject, name: str) -> Any:
+    return view_model.property(name)
+
+
+@pytest.fixture
+def view_models(english: None, qtbot: QtBot, tmp_path: Path) -> Iterator[ViewModels]:
+    store = ProfileStore(tmp_path)
+    seed_profiles(store, NOW)
+    built = compose(SimulatedHost(), store, SimulatedFetcher(), lambda: NOW)
+    built.start()
+    yield built
+    built.shutdown()
+
+
+def test_english_view_models(qtbot: QtBot, view_models: ViewModels) -> None:
+    shell, overview, proxies = view_models.shell, view_models.overview, view_models.proxies
+    assert [page["label"] for page in prop(shell, "pages")][:3] == [
+        "Overview",
+        "Proxies",
+        "Profiles",
+    ]
+    qtbot.waitUntil(lambda: prop(shell, "serviceAvailable"))
+    assert prop(shell, "serviceText") == "Service running"
+    assert prop(shell, "serviceDetail") == "mihomo v1.19.33\nProtocol v1"
+
+    qtbot.waitUntil(lambda: prop(overview, "connected"))
+    assert prop(overview, "statusTitle") == "Connected"
+    assert prop(overview, "statusDetail").startswith("Running for ")
+    assert prop(overview, "connectLabel") == "Disconnect"
+    assert [mode["label"] for mode in prop(overview, "modeOptions")] == ["Rule", "Global", "Direct"]
+    assert prop(overview, "connectionsLink").startswith("All ")
+
+    qtbot.waitUntil(lambda: prop(proxies, "currentGroup") != "")
+    assert prop(proxies, "summary").endswith(" proxy groups")
+    assert [s["label"] for s in prop(proxies, "sortOptions")] == ["Default", "Name", "Latency"]
+    assert prop(proxies, "currentHint") == "Click to select"

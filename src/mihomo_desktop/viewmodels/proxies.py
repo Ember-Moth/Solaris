@@ -6,6 +6,7 @@ from PySide6.QtCore import Property, QObject, Signal, Slot
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
 from mihomo_desktop.host.base import ProxyGroup, TunnelHost
+from mihomo_desktop.i18n import QT_TRANSLATE_NOOP
 from mihomo_desktop.models import format as fmt
 from mihomo_desktop.models.proxies import SORTS, sort_proxies
 from mihomo_desktop.viewmodels.common.async_runner import AsyncRunner
@@ -14,7 +15,11 @@ from mihomo_desktop.viewmodels.feedback import failure_text
 QML_IMPORT_NAME = "MihomoDesktop"
 QML_IMPORT_MAJOR_VERSION = 1
 
-SORT_LABELS = {"config": "配置顺序", "name": "名称", "delay": "延迟"}
+SORT_LABELS = {
+    "config": QT_TRANSLATE_NOOP("ProxiesViewModel", "配置顺序"),
+    "name": QT_TRANSLATE_NOOP("ProxiesViewModel", "名称"),
+    "delay": QT_TRANSLATE_NOOP("ProxiesViewModel", "延迟"),
+}
 NO_DELAY_TYPES = ("Direct", "Reject")
 
 
@@ -58,7 +63,7 @@ class ProxiesViewModel(QObject):
     # -- groups ------------------------------------------------------------------------------
     @Property(str, notify=changed)
     def summary(self) -> str:
-        return self._error or f"{len(self._groups)} 个代理组"
+        return self._error or self.tr("%n 个代理组", "", len(self._groups))
 
     @Property("QVariantList", notify=changed)  # pyright: ignore[reportArgumentType]
     def groups(self) -> list[dict[str, object]]:
@@ -87,12 +92,12 @@ class ProxiesViewModel(QObject):
         group = self._group()
         if group is None:
             return ""
-        return "点击切换" if group.selectable else "由内核按测速结果选择"
+        return self.tr("点击切换") if group.selectable else self.tr("由内核按测速结果选择")
 
     # -- nodes -------------------------------------------------------------------------------
     @Property("QVariantList", constant=True)  # pyright: ignore[reportArgumentType]
     def sortOptions(self) -> list[dict[str, str]]:
-        return [{"value": s, "label": SORT_LABELS[s]} for s in SORTS]
+        return [{"value": s, "label": self.tr(SORT_LABELS[s])} for s in SORTS]
 
     @Property(str, notify=changed)
     def sort(self) -> str:

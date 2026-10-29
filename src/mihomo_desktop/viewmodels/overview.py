@@ -10,6 +10,7 @@ from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
 from mihomo_desktop.host.base import ProxyGroup, RunOptions, TunnelHost
+from mihomo_desktop.i18n import QT_TRANSLATE_NOOP
 from mihomo_desktop.models import format as fmt
 from mihomo_desktop.models.library import ProfileLibrary
 from mihomo_desktop.models.proxies import main_group, resolve
@@ -23,15 +24,15 @@ QML_IMPORT_MAJOR_VERSION = 1
 REFRESH_MS = 1000
 GROUPS_EVERY_TICKS = 5
 MODES = (
-    {"value": "rule", "label": "规则"},
-    {"value": "global", "label": "全局"},
-    {"value": "direct", "label": "直连"},
+    {"value": "rule", "label": QT_TRANSLATE_NOOP("OverviewViewModel", "规则")},
+    {"value": "global", "label": QT_TRANSLATE_NOOP("OverviewViewModel", "全局")},
+    {"value": "direct", "label": QT_TRANSLATE_NOOP("OverviewViewModel", "直连")},
 )
 STATE_TITLES = {
-    "running": "已连接",
-    "starting": "正在连接",
-    "stopping": "正在断开",
-    "failed": "连接失败",
+    "running": QT_TRANSLATE_NOOP("OverviewViewModel", "已连接"),
+    "starting": QT_TRANSLATE_NOOP("OverviewViewModel", "正在连接"),
+    "stopping": QT_TRANSLATE_NOOP("OverviewViewModel", "正在断开"),
+    "failed": QT_TRANSLATE_NOOP("OverviewViewModel", "连接失败"),
 }
 
 
@@ -161,27 +162,26 @@ class OverviewViewModel(QObject):
 
     @Property(str, notify=changed)
     def statusTitle(self) -> str:
-        if self._snapshot is None:
-            return "未连接"
-        return STATE_TITLES.get(self._snapshot.status.state, "未连接")
+        title = STATE_TITLES.get(self._snapshot.status.state) if self._snapshot else None
+        return self.tr(title) if title else self.tr("未连接")
 
     @Property(str, notify=changed)
     def statusDetail(self) -> str:
         if self._error:
             return self._error
         if not self._connected() or self._snapshot is None:
-            return "隧道未运行"
+            return self.tr("隧道未运行")
         started = self._snapshot.status.started_at_unix_ms / 1000
-        return "已运行 " + fmt.uptime(int(self._clock() - started))
+        return self.tr("已运行 {uptime}").format(uptime=fmt.uptime(int(self._clock() - started)))
 
     @Property(str, notify=changed)
     def connectLabel(self) -> str:
-        return "断开" if self._connected() else "连接"
+        return self.tr("断开") if self._connected() else self.tr("连接")
 
     # -- outbound ----------------------------------------------------------------------------
     @Property("QVariantList", constant=True)  # pyright: ignore[reportArgumentType]
     def modeOptions(self) -> list[dict[str, str]]:
-        return list(MODES)
+        return [{**mode, "label": self.tr(mode["label"])} for mode in MODES]
 
     @Property(str, notify=changed)
     def mode(self) -> str:
@@ -198,7 +198,7 @@ class OverviewViewModel(QObject):
     @Property(str, notify=changed)
     def nodeGroup(self) -> str:
         group = main_group(list(self._groups))
-        return group.name if group else "节点"
+        return group.name if group else self.tr("节点")
 
     @Property(str, notify=changed)
     def nodeName(self) -> str:
@@ -268,5 +268,5 @@ class OverviewViewModel(QObject):
     @Property(str, notify=changed)
     def connectionsLink(self) -> str:
         if not self._connected() or self._snapshot is None:
-            return "全部"
-        return f"全部 {self._snapshot.status.connection_count} 个"
+            return self.tr("全部")
+        return self.tr("全部 %n 个", "", self._snapshot.status.connection_count)

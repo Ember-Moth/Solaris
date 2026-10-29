@@ -141,6 +141,72 @@
     </message>
 </context>
 <context>
+    <name>OverviewViewModel</name>
+    <message>
+        <source>规则</source>
+        <translation>Rule</translation>
+    </message>
+    <message>
+        <source>全局</source>
+        <translation>Global</translation>
+    </message>
+    <message>
+        <source>直连</source>
+        <translation>Direct</translation>
+    </message>
+    <message>
+        <source>已连接</source>
+        <translation>Connected</translation>
+    </message>
+    <message>
+        <source>正在连接</source>
+        <translation>Connecting</translation>
+    </message>
+    <message>
+        <source>正在断开</source>
+        <translation>Disconnecting</translation>
+    </message>
+    <message>
+        <source>连接失败</source>
+        <translation>Connection failed</translation>
+    </message>
+    <message>
+        <source>未连接</source>
+        <translation>Not connected</translation>
+    </message>
+    <message>
+        <source>隧道未运行</source>
+        <translation>Tunnel not running</translation>
+    </message>
+    <message>
+        <source>已运行 {uptime}</source>
+        <translation>Running for {uptime}</translation>
+    </message>
+    <message>
+        <source>断开</source>
+        <translation>Disconnect</translation>
+    </message>
+    <message>
+        <source>连接</source>
+        <translation>Connect</translation>
+    </message>
+    <message>
+        <source>节点</source>
+        <translation>Proxy</translation>
+    </message>
+    <message>
+        <source>全部</source>
+        <translation>All</translation>
+    </message>
+    <message numerus="yes">
+        <source>全部 %n 个</source>
+        <translation>
+            <numerusform>All %n</numerusform>
+            <numerusform>All %n</numerusform>
+        </translation>
+    </message>
+</context>
+<context>
     <name>PlaceholderPage</name>
     <message>
         <source>尚未实现</source>
@@ -184,6 +250,80 @@
     <message>
         <source>延迟</source>
         <translation>Latency</translation>
+    </message>
+</context>
+<context>
+    <name>ProxiesViewModel</name>
+    <message>
+        <source>配置顺序</source>
+        <translation>Default</translation>
+    </message>
+    <message>
+        <source>名称</source>
+        <translation>Name</translation>
+    </message>
+    <message>
+        <source>延迟</source>
+        <translation>Latency</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 个代理组</source>
+        <translation>
+            <numerusform>%n proxy group</numerusform>
+            <numerusform>%n proxy groups</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>点击切换</source>
+        <translation>Click to select</translation>
+    </message>
+    <message>
+        <source>由内核按测速结果选择</source>
+        <translation>Chosen automatically by latency</translation>
+    </message>
+</context>
+<context>
+    <name>ShellViewModel</name>
+    <message>
+        <source>概览</source>
+        <translation>Overview</translation>
+    </message>
+    <message>
+        <source>代理</source>
+        <translation>Proxies</translation>
+    </message>
+    <message>
+        <source>配置</source>
+        <translation>Profiles</translation>
+    </message>
+    <message>
+        <source>连接</source>
+        <translation>Connections</translation>
+    </message>
+    <message>
+        <source>日志</source>
+        <translation>Logs</translation>
+    </message>
+    <message>
+        <source>设置</source>
+        <translation>Settings</translation>
+    </message>
+    <message>
+        <source>服务运行中</source>
+        <translation>Service running</translation>
+    </message>
+    <message>
+        <source>服务不可用</source>
+        <translation>Service unavailable</translation>
+    </message>
+    <message>
+        <source>{core} · 协议 v{protocol}</source>
+        <translation>{core}
+Protocol v{protocol}</translation>
+    </message>
+    <message>
+        <source>未能连接到服务</source>
+        <translation>Can&apos;t reach the service</translation>
     </message>
 </context>
 <context>
