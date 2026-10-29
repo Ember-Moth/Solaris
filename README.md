@@ -87,7 +87,16 @@ light|dark` 指定；`--development` 模拟开发服务拒绝 TUN 和系统代�
 uv run python scripts/preview.py
 ```
 
-启动界面并连接真实服务（Windows 上是已安装的服务；其他平台需设置 `MIHOMO_DESKTOP_DEV_SOCKET` 指向开发服务）：
+在 macOS 和 Linux 上让界面连开发服务：脚本构建并启动开发服务，配置和设置放在临时目录（`--data` 可指定目录，
+保留到下次），不读写用户数据目录（macOS 上是 `~/Library/Application Support/Mihomo Desktop/`），退出界面时停止
+服务。支持 `--lang`、`--appearance`：
+
+```bash
+uv run python scripts/dev.py
+```
+
+启动界面并连接真实服务（Windows 上是已安装的服务；其他平台需设置 `MIHOMO_DESKTOP_DEV_SOCKET` 指向开发服务；
+配置和设置在用户数据目录里）：
 
 ```bash
 uv run mihomo-desktop

@@ -485,6 +485,9 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   go -C src/core run ./service -socket /tmp/mihomo-desktop-dev.sock
   ```
 
+  `scripts/dev.py` 一步完成联调：构建并启动开发服务，界面的配置和设置放在单独的目录（默认临时目录），
+  mihomo 的 home 放在其中的 `dev-core`，不碰用户数据目录；"登录时打开"在源码运行时本来就不可用。
+
 - **本机开发不得改动本机网络**：开发机就是日常使用的机器，开发模式必须满足以下各条，并有测试覆盖
   （`internal/engine/admission_test.go` 的 `TestNoTUN*`，`service/service_unix_test.go` 用真实的开发服务接线验证）：
   - 不创建 TUN；用户配置或覆写里的 `tun`、`auto-route`、`auto-redirect`、`tproxy-port`、`redir-port` 一律被清除；
