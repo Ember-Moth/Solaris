@@ -457,6 +457,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 
 ### 7.2 配置存储
 
+> M7 会把本节的文件存储迁移到 SQLite，并支持备份到 Google Drive 和 iCloud，设计见 [storage.md](storage.md)。
+
 `ProfileStore` 存放在用户数据目录：Windows 为 `%LOCALAPPDATA%\<Product>\`，macOS 为
 `~/Library/Application Support/<Product>/`，`<Product>` 取 `product.py` 的 `DISPLAY_NAME`。
 
