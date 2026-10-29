@@ -19,6 +19,17 @@ Menu {
         popup(anchor, anchor.width - width, y)
     }
 
+    // At least menu-min-width, and as wide as the longest item: the ListView that holds the
+    // items reports no width of its own.
+    implicitWidth: {
+        let widest = implicitBackgroundWidth + leftInset + rightInset
+        for (let i = 0; i < count; i++) {
+            const item = itemAt(i)
+            if (item)
+                widest = Math.max(widest, item.implicitWidth + leftPadding + rightPadding)
+        }
+        return widest
+    }
     margins: Theme.overlayMargin
     padding: Theme.space1
 
