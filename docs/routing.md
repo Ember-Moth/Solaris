@@ -221,41 +221,221 @@ M8a 和 M8b。第一版里"每份订阅一个用途"的设计已取消，原因�
 
 ## 8. 内核与协议
 
+状态：8.1、8.2 的 `InspectSource` / `ListGeoCategories`、8.4 到 8.7 已在内核实现（roadmap B2）；界面部分是 C1，
+`PreviewGroup` 等四个方法是 M8b。
+
 ### 8.1 D16：配置在内核里拼装
 
 - 理由：YAML 只在 Go 里解析；节点筛选用 mihomo 自己的正则实现（regexp2，与 Python 的 `re` 不同），预览和实际
   结果一致；`validate` 校验的就是最终配置。
-- `ValidateRequest`、`StartRequest`、`ReloadRequest` 的配置来源改成二选一：
-  - 订阅原文 `config_yaml`（订阅自带）；
-  - `Composition`：各订阅的 `{id, 名称, YAML 原文}`、节点池设置（排除的订阅、信息节点表达式）、方案（JSON）。
-- 拼装方式：每份订阅转成一个内联的 proxy-provider，重名用 provider 的后缀覆写处理；地区组和条件筛选生成
-  `include-all` / `use` 加 `filter`、`exclude-filter` 的策略组；规则条目按顺序展开成 mihomo 规则。
-  具体字段在实现时按钉住的 mihomo 版本核实。
-- 拼装结果附带一张对照表：生成的第 N 条规则来自哪个规则条目。规则测试和连接页的规则名称都用它。
+- `ValidateRequest`、`StartRequest`、`ReloadRequest` 的配置来源是 oneof `source`，二选一：
+  - 订阅原文 `config_yaml`（字段 1，订阅自带）；
+  - `composition`（字段 4）：节点池里各订阅的 `{id, name, yaml}`，按导入顺序，不加入节点池的订阅界面不传；
+    信息节点表达式 `info_filter`；方案 `plan_json`（8.5 节）。
+- `overrides` 不变，在拼装之后应用。拼装结果照常进入准入流水线：拼装 → 覆写 → 平台补丁（开发模式护栏）→
+  安全项（architecture.md §3.2），engine 的 `TestCompositionGoesThroughThePipeline` 守住这一顺序。订阅只贡献
+  节点：它的 `rules`、端口、`tun`、控制器等字段都不进入拼装结果。
+- 实现在 `src/core/internal/compose`，mihomo 的字段写法按钉住的 v1.19.33 源码核实：
+  - **节点池**：每份订阅按 mihomo 的 proxy-provider 的方式读：YAML 映射取 `proxies`，否则当作分享链接（逐行或
+    base64，`convert.ConvertsV2Ray`）。订阅里的 `proxy-providers` 不读。名称匹配 `info_filter` 的节点不进入
+    节点池。同一份订阅里同名的节点只留第一个，与 mihomo 的 provider 一样。与之前订阅的节点、mihomo 的内置名称
+    （`DIRECT` 等）或任何策略组同名的节点，名称后加" · 订阅名"，仍然重名再加序号。
+  - **provider**：每份有节点的订阅生成一个 `type: inline` 的 proxy-provider，名为 `pool:<订阅 id>`，payload 是
+    改名后的节点。没有用 provider 的 `override.additional-suffix`：它给这个 provider 的全部节点加后缀，而 5.2 节
+    只给重名的节点加。也没有用 provider 的 `exclude-filter` 排除信息节点：mihomo 对 provider 没有节点时报错
+    （`file doesn't have any proxy`），由内核排除可以直接不生成这个 provider。
+  - **策略组**：成员在内核里按 4.5 节计算（regexp2，与 mihomo 相同的实现和选项），再写成
+    `use: [含成员的 provider]` 加只匹配这些成员名称的 `filter`（`^(?:名称1|名称2)$`，反引号写成 `\x60`，因为
+    mihomo 用反引号分隔多个 filter）；成员正好是节点池全部节点时不写 `filter`。其他成员（其他策略组、直连、
+    拒绝）写在 `proxies`，mihomo 把它们排在节点之前。没有用组的 `exclude-filter`：它同样作用于 `proxies` 里的
+    成员（`outboundgroup.GroupBase.GetProxies`），做不到"手动挑选和其他成员不受排除影响"。没有用
+    `include-all` / `include-all-providers`：它们会把覆写加进来的 provider 也算进去，和内核计算的成员不一致。
+    既没有节点也没有其他成员的组写成 `proxies: [COMPATIBLE]`，与 mihomo 自己对空组的处理相同。
+  - 地区识别和各种条件看的都是订阅里写的原名，不看加了后缀的名称，所以改名不会改变节点的地区和条件结果。
+  - **组的顺序**：节点选择、自动选择、有节点的地区组（按地区表顺序）、自建组（按方案顺序）。代理页和
+    `GLOBAL` 都按这个顺序。
+  - **规则**：启用的规则条目按顺序，每个匹配项展开成一条 `类型,值,目标[,no-resolve]`；停用的条目跳过；末尾是
+    `MATCH,兜底目标`。目标是没有节点的地区或没有成员的策略组时，这一条目改走"节点选择"，并在报告里给出警告；
+    条目本身不改，下一次拼装时目标可用就恢复。
+- **报告** `CompositionReport`：用 composition 的 Validate、Start、Reload 返回它（用 `config_yaml` 时仍是 Empty）：
+  - 警告：条目 id（兜底是 `fallback`）、原因（`region_empty` / `group_empty`）、方案里写的目标；
+  - 生成的策略组：id、名称、种类（内置 / 地区 / 自建）、地区代码、节点数；
+  - 生成的每条规则及其条目 id；
+  - 节点池：新名、原名、来源订阅、类型、地区代码。
+- **规则条目对照表**：engine 为运行中的配置保存"第 N 条规则 → 条目 id"，覆写插入的规则没有条目 id。
+  `ListRules` 的 `Rule.entry_id` 按位置取；连接快照的 `Connection.rule_entry_id` 按连接记录的规则类型、payload
+  和链路最外层（规则的目标）查找，同一组键取第一条，与 mihomo 的匹配顺序一致。改用 `config_yaml` 时对照表清空。
+- 拼装出错（方案、订阅或信息节点表达式不合法）返回 `invalid_config`，message 以 `plan: ` 或
+  `subscription "名称": ` 开头；生成的配置被 mihomo 拒绝（例如 GEO 数据里没有的分类）时是 mihomo 的原文。
 
 ### 8.2 新增方法
 
-| 方法 | 作用 |
-| --- | --- |
-| `InspectSource` | 解析一份订阅：节点列表（名称、类型、识别出的地区）、有没有规则、策略组和规则的数量 |
-| `PreviewGroup` | 按方案草稿和节点池计算一个策略组的成员，供编辑器实时预览 |
-| `MatchRule` | 用当前配置或方案草稿匹配一个域名或 IP（可带端口、协议），返回命中的规则条目、策略组和最终节点 |
-| `ListGeoCategories` | GEOSITE / GEOIP 分类名列表和数据版本 |
-| `ConvertToPlan` | 把一份订阅或 mihomo 配置转成方案（4.7 节） |
-| `ExportPlan` | 把方案生成为 YAML 片段 |
+| 方法 | 作用 | 状态 |
+| --- | --- | --- |
+| `InspectSource` | 按 8.1 节的方式读一份订阅：节点（名称、类型、地区代码、是否信息节点）、有没有规则、策略组和规则的数量 | 已实现 |
+| `ListGeoCategories` | 内核 GEO 数据里的 GEOSITE / GEOIP 分类名，以及每个文件的 sha256 和修改时间 | 已实现 |
+| `PreviewGroup` | 按方案草稿和节点池计算一个策略组的成员，供编辑器实时预览 | M8b，协议预留 51 |
+| `MatchRule` | 用当前配置或方案草稿匹配一个域名或 IP（可带端口、协议），返回命中的规则条目、策略组和最终节点 | M8b，预留 52 |
+| `ConvertToPlan` | 把一份订阅或 mihomo 配置转成方案（4.7 节） | M8b，预留 53 |
+| `ExportPlan` | 把方案生成为 YAML 片段 | M8b，预留 54 |
 
-这些方法在 Windows 服务和 macOS 扩展里都提供；只读，不改变运行状态。
+- 这些方法在 Windows 服务和 macOS 扩展里都提供；只读，不改变运行状态，也不需要内核在运行。
+- `InspectSource` 读不了订阅时返回 `invalid_config`。节点类型与 `Proxy.type` 相同（`Shadowsocks`、`Vless`……）。
+- `ListGeoCategories` 在 home 里没有某个文件时，那一类的结果为空；`ServiceHost` 这时用应用附带的清单代替，
+  并标为 `bundled`（8.4 节）。
 
 ### 8.3 规则测试
 
 - `MatchRule` 用 mihomo 的规则匹配逻辑。遇到 IP 类规则且输入是域名时，按配置的 DNS 解析一次。
 - 对草稿测试时，内核临时构建规则，不应用到运行中的实例。
+- 留意：mihomo 的 hosts 表默认把 `localhost` 映射到 127.0.0.1，这样的域名在匹配规则之前就有了 IP，会命中
+  `IP-CIDR` 规则（端到端测试里遇到过）。
 
 ### 8.4 D17：GEO 数据与分类列表
 
-- 分类列表由内核从它正在使用的 geosite / geoip 数据里读出，和实际匹配用的是同一份数据。
-- 安装包附带一份初始的 GEO 数据（MetaCubeX meta-rules-dat），第一次启动不必等下载；之后由内核按基础段里的周期更新。
-- 应用另外附带一份分类名清单作兜底，用于内核还没有 GEO 数据时的选择器。
+- 内核用 `.dat` 格式（基础段 `geodata-mode: true`）匹配 GEOSITE 和 GEOIP。文件在内核的 home 里，名为
+  `GeoSite.dat`、`GeoIP.dat`（mihomo 查找时不区分大小写）。`ListGeoCategories` 直接读这两个文件，只遍历
+  protobuf 里的分类字段，不解码域名和 IP 段；和实际匹配用的是同一份数据。
+- **附带的数据**：MetaCubeX/meta-rules-dat 的 release 分支，钉在 `be456e5`（2026-10-29 发布）。
+  `geosite.dat` 4.4 MB，1563 个分类；`geoip.dat` 16.5 MB，260 个分类；共 20.9 MB。版本、大小和 sha256 写在
+  `scripts/fetch_geodata.py`，与发布方的 `.sha256sum` 一致。脚本下载到 `build/geodata/`（已被 git 忽略），文件名
+  已是 mihomo 的写法，M4、M5 打包时原样复制进内核的 home；开发服务（`scripts/dev.py`）启动时也会放一份。
+- **兜底清单**：`src/mihomo_desktop/host/geo_categories.py`，由 `fetch_geodata.py --categories` 从附带的数据生成，
+  28 KB，带两个文件的 sha256。内核没有数据或连不上时（例如 macOS 隧道未连接），分类选择器用它。用 Python
+  模块而不是数据文件，Nuitka 打包时自动带上。CI 用 `--check` 核对清单与钉住的数据一致。
+- **更新**：基础段开启 `geo-auto-update`，周期 24 小时。mihomo 只在它自己的 `main` 里启动 GEO 更新器，内嵌时
+  不会运行，所以 engine 在配置开启自动更新时自己运行一个：每小时检查一次，数据文件比更新周期旧时调用 mihomo 的
+  `updater.UpdateGeoDatabases`，从 `geox-url` 下载（mihomo 的下载经内核自己的出站，按规则走）；内核停止时它也
+  停止。新数据在下一次 Start 或 Reload 时生效，已应用的规则不变。
+- 没有数据时，mihomo 在第一次需要时同步下载（解析 GEOSITE / GEOIP 规则，或基础段里的 `geosite:` DNS 策略时），
+  会让那次 Validate 等上下载完成，所以安装包必须附带数据。单元测试写入一份很小的数据（`geodatatest`），
+  从不下载；端到端测试用附带的数据。
+
+### 8.5 方案 JSON（版本 1）
+
+界面在 `plan_json` 里传方案。内核不认识的字段一律忽略，界面可以在里面放自己的字段（例如服务 id）。
+
+```json
+{
+  "version": 1,
+  "locale": "zh",
+  "test_url": "https://www.gstatic.com/generate_204",
+  "groups": [
+    {"id": "proxy", "kind": "builtin", "name": "节点选择", "type": "select",
+     "members": {"others": ["auto", "region:*", "DIRECT"]}},
+    {"id": "auto", "kind": "builtin", "name": "自动选择", "type": "url-test",
+     "members": {"all": true}, "options": {"interval": 300, "tolerance": 50}},
+    {"id": "region:JP", "kind": "region", "type": "select", "hidden": false},
+    {"id": "g-7f3a", "kind": "custom", "name": "低倍率", "type": "url-test",
+     "members": {"regions": ["HK", "JP"], "sources": ["sub-b"],
+                 "name": {"mode": "keyword", "pattern": "IPLC"},
+                 "exclude": {"mode": "regex", "pattern": "[2-9]x"},
+                 "nodes": [{"source": "sub-a", "name": "香港 01"}],
+                 "others": ["DIRECT"]},
+     "options": {"url": "https://cp.cloudflare.com", "interval": 600, "lazy": true}}
+  ],
+  "rules": [
+    {"id": "r-ads", "kind": "service", "enabled": true,
+     "items": [{"type": "GEOSITE", "value": "category-ads-all"}], "target": "REJECT"},
+    {"id": "r-tg", "kind": "service",
+     "items": [{"type": "GEOSITE", "value": "telegram"},
+               {"type": "GEOIP", "value": "telegram", "no_resolve": true}],
+     "target": "region:JP"}
+  ],
+  "fallback": "proxy"
+}
+```
+
+| 字段 | 含义 |
+| --- | --- |
+| `version` | 必须是 1，否则 `invalid_config`。格式不兼容地变化时加 1 |
+| `locale` | `zh`（默认）或 `en`：生成的内置组和地区组用哪种语言命名。界面另行本地化地区代码 |
+| `test_url` | 没有自己 `url` 的组用它测延迟；不填用 mihomo 的默认值 |
+| `groups` | 内置组、地区组的设置和自建组，见下文 |
+| `rules` | 规则条目，按列表顺序展开 |
+| `fallback` | 兜底目标，不填是 `proxy` |
+
+**策略组**
+
+- `id`：内置组是 `proxy`（节点选择）和 `auto`（自动选择）；地区组是 `region:` 加地区代码；自建组是界面自己的 id，
+  不能与前两种相同。目标、`others` 都用 id 引用策略组，地区组的 id 不随节点池变化。
+- `kind`：`builtin`、`region` 或 `custom`。方案里没有写的内置组用默认设置：节点选择是手动选择，成员为
+  自动选择、全部地区组、直连；自动选择是自动选择，成员为全部节点（第 6 节）。方案里写了、但地区没有节点的
+  地区组不生成。
+- `name`：自建组必填；内置组、地区组可填，覆盖内核按 `locale` 生成的名称（地区组是旗帜加名称，如"🇯🇵 日本"）。
+  名称不能为空、不能有首尾空格、逗号或换行，不能是 mihomo 的内置名称（`DIRECT`、`REJECT`、`REJECT-DROP`、`PASS`、
+  `COMPATIBLE`、`GLOBAL`），不能以 `pool:` 开头，也不能与其他组重名。
+- `type`：`select`、`url-test`、`fallback`、`load-balance`。不填时内置组如上，地区组 `url-test`，自建组 `select`。
+- `hidden`：从代理页隐藏（mihomo 的 `hidden`），规则仍可指向它。
+- `members`（内置组和自建组；地区组的成员由地区决定，写了也忽略），按 4.5 节计算：
+  - `regions`（地区代码）、`sources`（订阅 id）、`name`（名称条件）三者取并集；`all: true` 表示从全部节点开始；
+  - 再减去 `exclude`（名称条件）；
+  - `nodes`（手动挑选，`{source, name}`，`name` 是订阅里的原名，改名不影响）和 `others`（其他成员）总是加入，
+    不受排除影响。`others` 里是策略组 id、`region:*`（全部地区组，按地区表顺序）、`DIRECT`、`REJECT`、
+    `REJECT-DROP`；指向没有节点的地区时跳过。组不能把自己列为成员。
+  - 名称条件是 `{"mode": "keyword" | "regex", "pattern": "…"}`：`keyword` 是不区分大小写的子串，`regex` 是
+    mihomo 的正则（regexp2）。条件看订阅里的原名。
+  - 不存在的订阅 id、已经不在订阅里的手动挑选节点直接忽略。
+- `options`（高级参数）：`url`、`interval`（秒）、`tolerance`（毫秒，只对 `url-test`）、`timeout`（毫秒）、
+  `lazy`（不填用 mihomo 的默认值 true）、`strategy`（只对 `load-balance`：`consistent-hashing`、`round-robin`、
+  `sticky-sessions`）。
+
+**规则条目**
+
+- `id`：必填，方案内唯一，不能是 `fallback`（兜底规则的条目 id）。
+- `kind`：界面的种类（`service`、`category`、`domain`、`ip`、`raw`），内核不读。服务清单归界面：界面拼方案时把
+  服务展开成具体匹配项，内核只认识匹配项和条目 id。
+- `enabled`：不填为 true；false 的条目不展开，也没有警告。
+- `items`：至少一项，每项是一条不带目标的 mihomo 规则：
+  - `type`：`DOMAIN`、`DOMAIN-SUFFIX`、`DOMAIN-KEYWORD`、`DOMAIN-REGEX`、`DOMAIN-WILDCARD`、`GEOSITE`、`GEOIP`、
+    `IP-CIDR`、`IP-CIDR6`、`IP-SUFFIX`、`IP-ASN`、`SRC-GEOIP`、`SRC-IP-ASN`、`SRC-IP-CIDR`、`SRC-IP-SUFFIX`、
+    `SRC-PORT`、`DST-PORT`、`IN-PORT`、`IN-TYPE`、`IN-USER`、`IN-NAME`、`PROCESS-NAME`、`PROCESS-PATH`、
+    `PROCESS-NAME-REGEX`、`PROCESS-PATH-REGEX`、`PROCESS-NAME-WILDCARD`、`PROCESS-PATH-WILDCARD`、`NETWORK`、
+    `UID`、`DSCP`、`AND`、`OR`、`NOT`，大小写不限。`MATCH` 只由兜底生成；`RULE-SET`、`SUB-RULE` 需要规则之外的
+    配置，不接受（4.7 节的"原始规则"里如果有，M8b 再定）；
+  - `value`：不能为空或换行；除 `AND`、`OR`、`NOT` 和三种 `-REGEX` 外不能有逗号（mihomo 按逗号切分规则）；
+  - `no_resolve`：只对 `GEOIP`、`IP-CIDR`、`IP-CIDR6`、`IP-SUFFIX`、`IP-ASN`。
+- `target`：策略组 id、`region:代码`、`DIRECT`、`REJECT` 或 `REJECT-DROP`。未知的 id 或地区代码是
+  `invalid_config`；地区当前没有节点、自建组没有成员时改走节点选择并警告（8.1 节）。
+
+**信息节点表达式**不在方案里，随 `Composition.info_filter` 传，属于节点池设置。内核按给出的表达式原样匹配
+（regexp2，区分大小写），空串表示不排除。5.2 节的默认值里 `expire|traffic|website` 是小写，碰不到常见的
+"Expire"，界面的默认值宜写成 `(?i)剩余|到期|过期|流量|官网|套餐|expire|traffic|website`。
+
+### 8.6 基础段
+
+写在 `src/core/internal/compose/base.yaml`，嵌入内核，随版本更新，不在界面上编辑；需要调整的用户用全局覆写。
+
+- **通用**：`mode: rule`、`log-level: info`、`mixed-port: 7890`（`RunOptions.mixed_port` 非 0 时替换）、
+  `unified-delay`、`tcp-concurrent`，`profile` 保存节点选择和 fake-ip 映射。
+- **GEO 数据**：`geodata-mode: true`、`geodata-loader: memconservative`（按需读文件，内存占用小）、
+  `geo-auto-update: true`、`geo-update-interval: 24`；`geox-url` 是 meta-rules-dat 的 `latest` 发布（与 mihomo
+  的默认值相同）。
+- **嗅探**：开启；HTTP（80、8080–8880，覆盖目标地址）、TLS 和 QUIC（443、8443）；跳过 `Mijia Cloud` 和
+  `+.push.apple.com`；`parse-pure-ip`、`force-dns-mapping`。
+- **DNS**：
+  - `enhanced-mode: fake-ip`，地址段 `198.18.0.1/16`；`fake-ip-filter` 排除 `geosite:private`、局域网和本机
+    后缀、Windows 联网检测、NTP 和 STUN 的域名；
+  - 国内域名（`geosite:cn,private`）走国内 DoH：`dns.alidns.com`、`doh.pub`（`nameserver-policy`）；
+  - 其余走 `dns.cloudflare.com`、`dns.google`，并开启 `respect-rules`，让这些 DNS 连接按规则走（通常经代理）；
+  - 代理服务器的域名用 `proxy-server-nameserver` 单独解析（国内 DoH），不受规则影响；
+  - DoH 服务器自己的域名由 `default-nameserver`（223.5.5.5、119.29.29.29）解析。
+  - 不设 `dns.listen`：内核不开 DNS 端口；TUN 的 `dns-hijack` 直接交给内核的解析器，不需要端口
+    （architecture.md §3.1）。
+- 平台补丁和安全项在基础段之后应用，所以基础段里不写 `tun`、`allow-lan`、控制器等字段。
+
+### 8.7 地区表
+
+写在 `src/core/internal/compose/regions.go`：每行是地区代码（ISO 3166-1）、旗帜、中英文名称和正则（regexp2）。
+
+- 顺序：HK、TW、MO、JP、KR、SG、US、CA、GB、FR、DE、NL、RU、TR、ID、IN、TH、VN、MY、PH、AU、AR、BR、AE、CN，
+  最后是 `ZZ`（其他地区，CLDR 的"未知地区"）。按顺序找第一行匹配的，所以一个节点只属于一个地区，名称里提到
+  两个地方时由顺序决定（"香港 IPLC 日本"归香港，"🇨🇳 台湾"归台湾）。
+- 每行匹配旗帜、中文写法和城市（简繁）、不区分大小写的英文名称和城市，以及大写的代码。代码前后不能紧挨字母，
+  后面可以接数字（"HK01"、"US-02" 都算，"RUSSIA"、"plus" 不算）。
+- 例外：英国不认 `GB`（更常见的是流量单位，如"剩余 12 GB"），只认 `UK`、`GBR`、中文和旗帜；`CN` 后面不能接
+  数字（"CN2" 是线路名），而且中国放在最后，"中国香港"之类先被前面的地区认走。
+- 界面只拿地区代码，名称自己本地化；生成的地区组名称用表里的中文或英文（8.5 节 `locale`）。
 
 ## 9. 数据与存储
 

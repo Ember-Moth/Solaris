@@ -108,10 +108,20 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
   然后自检路径沙箱。开发服务的 home 默认在用户配置目录下的 `<Product>/dev-core`（`-home` 可改）；
   Windows 服务暂用 `%ProgramData%\<Product>\core`，按 SID 划分的目录随 M4 的 `Claim` 实现。
   mihomo 在进程内只打开一次 `cache.db`，所以 home 在进程生命周期内不能更换，更换属主需要新的服务进程。
-- **配置准入**：用户 YAML 解析为映射（锚点和合并键在这一步展开，补丁无法被别名绕过）→ 依次应用覆写
-  → 按 TUN 模式打补丁 → 最后一步强制安全项 → 重新编码后交给 `executor.ParseWithBytes`
-  → 校验解析结果，任一项不符就拒绝（fail closed）→ `hub.ApplyConfig`。`Validate`、`Start`、`Reload`
-  都走同一条流水线，`Validate` 走到校验为止。
+- **配置准入**：用户 YAML 解析为映射（锚点和合并键在这一步展开，补丁无法被别名绕过），或者由节点池和方案
+  拼装出映射 → 依次应用覆写 → 按 TUN 模式打补丁 → 最后一步强制安全项 → 重新编码后交给
+  `executor.ParseWithBytes` → 校验解析结果，任一项不符就拒绝（fail closed）→ `hub.ApplyConfig`。`Validate`、
+  `Start`、`Reload` 都走同一条流水线，`Validate` 走到校验为止。
+- **拼装**（决策 D16，[routing.md](routing.md) 第 8 节）：`Profile.Composition` 取代 YAML 时，
+  `internal/compose` 把每份订阅转成内联 proxy-provider，按方案生成内置组、地区组和自建组（成员在内核里算好，
+  写成 `use` 加精确的 `filter`），把规则条目展开成规则，再加上基础段（`compose/base.yaml`：fake-ip DNS、嗅探、
+  GEO 数据）。拼装只是流水线的起点：覆写、平台补丁和安全项照常在它之后，有测试守住这一顺序。`Validate`、
+  `Start`、`Reload` 返回拼装报告（警告、生成的组和规则、节点池）；应用后 engine 保存"规则 → 规则条目"的对照表，
+  `ListRules` 和连接快照用它带上条目 id，改用 YAML 时清空。
+- **GEO 数据**（D17）：拼装的配置用 home 里的 `GeoSite.dat`、`GeoIP.dat`。mihomo 只在它自己的 `main` 里启动 GEO
+  更新器，所以配置开启 `geo-auto-update` 时 engine 自己运行一个（每小时检查，数据过期就调用
+  `updater.UpdateGeoDatabases`），停止内核时一同停止；新数据在下一次应用时生效。home 里缺数据时 mihomo 会在解析
+  时同步下载，所以安装包附带一份（`scripts/fetch_geodata.py`），测试写入一份很小的数据，从不下载。
 - **覆写**（决策 D4：只做 Merge，不做 Script）：
   - 来源是一份全局覆写加上每个配置各一份。请求里的 `overrides` 是一组 YAML 映射原文，按顺序应用：
     先全局覆写，再当前配置的覆写，后面的覆盖前面的。空串或只有注释的覆写不做任何事。
@@ -250,7 +260,7 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 | `GetInfo` | 两者 | 协议版本、服务版本、mihomo 版本、运行状态；Windows 上还返回属主状态（空闲 / 调用者 / 其他用户） |
 | `Claim` | Windows | 服务空闲或调用者已是属主时认领 |
 | `Validate` | Windows | 配置只经过流水线解析，不应用 |
-| `Start` | Windows | 提交配置 YAML、覆写和运行选项，然后准入、应用、持久化 |
+| `Start` | Windows | 提交配置（YAML 或拼装来源）、覆写和运行选项，然后准入、应用、持久化 |
 | `Reload` | 两者 | 运行中替换配置，由 `hub.ApplyConfig` 原地应用 |
 | `Stop` | Windows | 停止内核并清除 `was_running` |
 | `SetSystemProxy` | Windows | 开启或关闭属主的系统代理 |
@@ -271,12 +281,24 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 | `SubscribeLogs` / `SubscribeTraffic` / `SubscribeConnections` | 开始订阅，返回 subscription_id |
 | `PollEvents` | 取走某个订阅自上次拉取以来缓存的事件 |
 | `Unsubscribe` | 结束订阅 |
+| `InspectSource` | 按拼装的方式读一份订阅：节点及其地区、有没有规则、策略组和规则的数量 |
+| `ListGeoCategories` | home 里 GEO 数据的 GEOSITE / GEOIP 分类名，以及文件的 sha256 和修改时间 |
+
+`PreviewGroup`、`MatchRule`、`ConvertToPlan`、`ExportPlan`（routing.md 8.2 节，M8b）在 `Request` / `Response` 里预留了
+字段号 51 到 54。
 
 方法的行为约定：
 
-- `Validate`、`Start`、`Reload` 携带配置 YAML、覆写列表 `overrides`（先全局、后当前配置，见 3.2 节）和
-  `RunOptions`（`Validate` 没有），经过 3.2 节的准入流水线。
+- `Validate`、`Start`、`Reload` 携带配置来源、覆写列表 `overrides`（先全局、后当前配置，见 3.2 节）和
+  `RunOptions`（`Validate` 没有），经过 3.2 节的准入流水线。配置来源是 oneof：订阅原文 `config_yaml`，或拼装
+  来源 `composition`（节点池的订阅、信息节点表达式、方案 JSON，routing.md 8.1、8.5 节）。用 `composition` 时
+  三个方法返回 `CompositionReport`，用 `config_yaml` 时返回 Empty。
   `mixed_port` 超过 65535 时返回 `invalid_request`。
+- `ListRules` 的 `Rule.entry_id` 和连接快照的 `Connection.rule_entry_id` 是运行中的规则来自哪个规则条目
+  （兜底是 `fallback`）；订阅自带的规则和覆写插入的规则为空。
+- `InspectSource`、`ListGeoCategories` 只读，不需要内核在运行，两种宿主都提供。`InspectSource` 读不了订阅时
+  返回 `invalid_config`；`ListGeoCategories` 在 home 里没有某个文件时那一类为空，`ServiceHost` 改用应用附带的
+  分类名清单。
 - `Stop` 对已停止的内核不做任何事。开发模式下 `Claim` 直接成功，因为开发 socket 只接受运行服务的那个用户。
 - 内核未运行时，列表类查询（代理组、provider、规则）返回空列表，改变状态的内核方法返回 `not_running`；
   `GetStatus` 和订阅随时可用。
@@ -293,7 +315,7 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 | `unsupported_protocol_version` | 协议版本不一致 | 否 |
 | `unsupported_method` | 当前宿主不提供该方法或该能力（如开发服务上的 TUN 和系统代理） | 否 |
 | `not_implemented` | 方法已定义、尚未实现 | 否 |
-| `invalid_config` | 配置无法解析，或被准入流水线拒绝；`message` 是 mihomo 的原始错误文本 | 否 |
+| `invalid_config` | 配置无法解析，或被准入流水线拒绝；`message` 是 mihomo 的原始错误文本。拼装出错时以 `plan: ` 或 `subscription "名称": ` 开头 | 否 |
 | `not_running` | 需要运行中的内核 | 否 |
 | `already_running` | 内核已在运行时调用 `Start`（切换配置走 `Reload`） | 否 |
 | `apply_failed` | 配置已应用，但端口或 TUN 没有打开；原因在 mihomo 日志里 | 是 |
