@@ -175,7 +175,8 @@ M1 的实测数据如下（v1.19.33，Go 1.27.3，`-trimpath -ldflags "-s -w"`�
 - TUN 栈：`system` 和 `mips`（mihomo 的默认栈）总是可用；`gvisor` 和 `mixed` 需要 `with_gvisor`，否则要到创建
   TUN 时才报错，所以准入流水线在缺少该标签时直接以 `invalid_config` 拒绝这两种栈。
 - macOS NE 开启 `includeAllNetworks` 时，sing-tun 拒绝 `system` 和 `mixed` 栈，只剩 `mips` 和 `gvisor`。
-- 各标签组合在两个平台上都能编译。真实 TUN 下各栈的可用性由 CI 的 `tun` job 验证（见第 11 节）。
+- 各标签组合在两个平台上都能编译。真实 TUN 下，四种栈在 Linux 的自管模式里都能建立 TUN 并转发流量
+  （Lima 虚拟机内的网络命名空间实测，Ubuntu 26.04 aarch64，见第 11 节）；Windows 上的 wintun 待 M4 实测。
 
 mihomo 的 GitHub 默认分支 `main` 是伪装项目，真正的代码在 `Alpha`（开发）和 `Meta`（稳定）分支。
 发布构建钉在 `Meta` 的 tag 上，当前为 v1.19.33（即 `Meta` 的 `3f27ef3`）。mihomo 的 go.mod 把
@@ -502,6 +503,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
     `MIHOMO_DESKTOP_TUN_TEST=1` 时运行，并且拒绝在宿主机的网络命名空间里运行。本机执行 `go test ./...`
     不会编译它。
   - CI 的 `tun` job 建两个命名空间，用 veth 相连：`md-tun` 里以 root 运行测试，`md-srv` 里起一个 HTTP 服务。
+    服务监听在 `md-srv` 回环口上的 10.201.0.1，不在 `md-tun` 的链路网段里：auto-route 让主表里比默认路由
+    更具体的路由优先（`suppress_prefixlength 0`），同网段的目的地不进 TUN。
     测试用自管模式启动 TUN，经 TUN 访问 `md-srv`，并用 mihomo 的流量统计确认流量确实经过内核；再验证
     TUN 配置不变时 Reload 不重建网卡，关闭 TUN 或 Stop 后链路、策略路由和各路由表都恢复原样。
     矩阵覆盖 `system`、`mips` 栈，以及带 `with_gvisor` 的 `gvisor`、`mixed` 栈。

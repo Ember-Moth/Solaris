@@ -95,7 +95,8 @@ tun:
 	}
 
 	// The test's own request is not mihomo's, so the routes send it into the TUN;
-	// mihomo's DIRECT dial is bound to the veth and leaves through it.
+	// mihomo's DIRECT dial is bound to the veth and leaves through it. The target must be
+	// off the namespace's link: auto-route leaves on-link destinations to the main table.
 	before := engine.Traffic()
 	if body := plainGet(t, target); !strings.Contains(body, "through-tun") {
 		t.Fatalf("body = %q", body)

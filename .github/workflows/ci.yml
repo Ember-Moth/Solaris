@@ -82,7 +82,9 @@ jobs:
 
   # The owned-TUN test creates a real TUN, so it runs only here, inside network
   # namespaces (docs/architecture.md §11). md-tun holds the engine; md-srv, on the
-  # far side of a veth pair, serves the page the test fetches through the TUN.
+  # far side of a veth pair, serves the page the test fetches through the TUN. The
+  # server listens on 10.201.0.1, off md-tun's link: auto-route leaves on-link
+  # destinations to the main table, so a server on 10.200.0.0/24 would bypass the TUN.
   tun:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -114,6 +116,7 @@ jobs:
           sudo ip link set md-veth1 netns md-srv
           sudo ip -n md-tun addr add 10.200.0.2/24 dev md-veth0
           sudo ip -n md-srv addr add 10.200.0.1/24 dev md-veth1
+          sudo ip -n md-srv addr add 10.201.0.1/32 dev lo
           for ns in md-tun md-srv; do sudo ip -n "$ns" link set lo up; done
           sudo ip -n md-tun link set md-veth0 up
           sudo ip -n md-srv link set md-veth1 up
@@ -122,13 +125,13 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/www"
           echo through-tun > "$RUNNER_TEMP/www/index.html"
-          sudo ip netns exec md-srv python3 -m http.server 8080 --bind 10.200.0.1 \
+          sudo ip netns exec md-srv python3 -m http.server 8080 --bind 10.201.0.1 \
             --directory "$RUNNER_TEMP/www" > "$RUNNER_TEMP/http.log" 2>&1 &
           for _ in $(seq 50); do
-            sudo ip netns exec md-tun curl -fsS --max-time 1 http://10.200.0.1:8080/ && break
+            sudo ip netns exec md-tun curl -fsS --max-time 1 http://10.201.0.1:8080/ && break
             sleep 0.2
           done
           sudo env MIHOMO_DESKTOP_TUN_TEST=1 \
-            MIHOMO_DESKTOP_TUN_TARGET=http://10.200.0.1:8080/ \
+            MIHOMO_DESKTOP_TUN_TARGET=http://10.201.0.1:8080/ \
             MIHOMO_DESKTOP_TUN_STACKS="${{ matrix.stacks }}" \
             ip netns exec md-tun "$RUNNER_TEMP/engine-tun.test" -test.run '^TestOwnedTUN$' -test.v -test.count=1
