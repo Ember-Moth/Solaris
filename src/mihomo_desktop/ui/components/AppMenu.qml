@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Templates as T
 
 // menu (DESIGN.md "Components → 菜单"): AppMenuItems on a white overlay with the overlay
 // shadow. openBelow() places it under its trigger, right edges aligned, as a "more" menu;
@@ -22,7 +23,7 @@ Menu {
 
     function openAt(anchor: Item, x: real) {
         trigger = anchor
-        triggerFocusReason = anchor.visualFocus ? Qt.TabFocusReason : Qt.OtherFocusReason
+        triggerFocusReason = (anchor as T.Control)?.visualFocus ? Qt.TabFocusReason : Qt.OtherFocusReason
         const bottom = anchor.mapToItem(Overlay.overlay, 0, anchor.height).y
         const room = Overlay.overlay.height - Theme.overlayMargin - bottom - Theme.overlayGap
         const y = implicitHeight <= room ? anchor.height + Theme.overlayGap : -Theme.overlayGap - implicitHeight

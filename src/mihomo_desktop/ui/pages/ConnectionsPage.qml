@@ -39,7 +39,7 @@ Item {
         table.positionViewAtIndex(table.currentIndex, ListView.Contain)
     }
 
-    function openDetail(row: Item, fromKeyboard: bool) {
+    function openDetail(row: ConnectionRow, fromKeyboard: bool) {
         detail.toggle(row.hostCell)
         detail.returnFocusReason = fromKeyboard ? Qt.TabFocusReason : Qt.MouseFocusReason
     }
@@ -131,9 +131,9 @@ Item {
                 else if (event.key === Qt.Key_End)
                     page.moveSelection(table.count - 1)
                 else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) && table.currentItem)
-                    page.openDetail(table.currentItem, true)
+                    page.openDetail(table.currentItem as ConnectionRow, true)
                 else if ((event.key === Qt.Key_Delete || event.key === Qt.Key_Backspace) && table.currentItem)
-                    page.connections.closeConnection(table.currentItem.connectionId)
+                    page.connections.closeConnection((table.currentItem as ConnectionRow).connectionId)
                 else
                     return
                 event.accepted = true
@@ -235,136 +235,7 @@ Item {
                     }
                 }
 
-                delegate: AbstractButton {
-                    id: row
-
-                    required property int index
-                    required property string connectionId
-                    required property string host
-                    required property string protocol
-                    required property string rule
-                    required property string chain
-                    required property string process
-                    required property string downRate
-                    required property string upRate
-                    required property string download
-                    required property string upload
-                    required property string duration
-                    readonly property alias hostCell: hostCell
-                    readonly property bool selected: index === table.currentIndex
-
-                    width: table.contentWidth
-                    height: Theme.rowDouble
-                    focusPolicy: Qt.NoFocus
-                    Accessible.role: Accessible.Row
-                    Accessible.name: qsTr("%1，%2").arg(host).arg(process || protocol)
-                    Accessible.selected: selected
-                    onClicked: {
-                        tableBox.forceActiveFocus(Qt.MouseFocusReason)
-                        page.connections.select(connectionId)
-                        page.openDetail(row, false)
-                    }
-
-                    background: Rectangle {
-                        color: row.selected ? Theme.surfaceSelected : row.hovered ? Theme.surfaceSubtle : Theme.surface
-
-                        Rectangle {
-                            width: parent.width
-                            height: 1
-                            color: Theme.divider
-                        }
-                    }
-
-                    contentItem: Item {
-                        Row {
-                            x: Theme.space4
-                            height: parent.height
-                            spacing: Theme.space3
-
-                            Column {
-                                id: hostCell
-
-                                width: page.hostWidth
-                                anchors.verticalCenter: parent.verticalCenter
-
-                                UiText {
-                                    width: parent.width
-                                    text: row.host
-                                    role: row.selected ? Theme.type.bodyMdStrong : Theme.type.bodyMd
-                                    elide: Text.ElideRight
-                                }
-
-                                UiText {
-                                    width: parent.width
-                                    text: row.protocol
-                                    role: Theme.type.caption
-                                    color: Theme.textMuted
-                                    elide: Text.ElideRight
-                                }
-                            }
-
-                            UiText {
-                                width: page.ruleWidth
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: row.rule
-                                role: Theme.type.dataSm
-                                color: Theme.textSecondary
-                                elide: Text.ElideRight
-                            }
-
-                            UiText {
-                                width: page.chainWidth
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: row.chain
-                                role: Theme.type.bodySm
-                                elide: Text.ElideRight
-                            }
-
-                            UiText {
-                                width: page.processWidth
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: row.process
-                                role: Theme.type.bodySm
-                                color: Theme.textSecondary
-                                elide: Text.ElideRight
-                            }
-
-                            RatePair {
-                                width: page.rateWidth
-                                anchors.verticalCenter: parent.verticalCenter
-                                down: row.downRate
-                                up: row.upRate
-                            }
-
-                            RatePair {
-                                width: page.trafficWidth
-                                anchors.verticalCenter: parent.verticalCenter
-                                down: row.download
-                                up: row.upload
-                            }
-
-                            UiText {
-                                width: page.durationWidth
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: row.duration
-                                role: Theme.type.dataSm
-                                color: Theme.textSecondary
-                                horizontalAlignment: Text.AlignRight
-                            }
-
-                            IconButton {
-                                id: closeButton
-
-                                anchors.verticalCenter: parent.verticalCenter
-                                opacity: page.inView(Theme.space4 + x, row.y + y, width, height) ? 1 : 0
-                                iconName: "close"
-                                focusPolicy: Qt.NoFocus
-                                accessibleName: qsTr("关闭 %1 的连接").arg(row.host)
-                                onClicked: page.connections.closeConnection(row.connectionId)
-                            }
-                        }
-                    }
-                }
+                delegate: ConnectionRow {}
             }
 
             UiText {
@@ -375,6 +246,139 @@ Item {
                 text: page.connections.emptyText
                 role: Theme.type.bodySm
                 color: Theme.textMuted
+            }
+        }
+    }
+
+    // One connection: host and protocol, rule, chain, process, rate, traffic, duration and
+    // the close button.
+    component ConnectionRow: AbstractButton {
+        id: row
+
+        required property int index
+        required property string connectionId
+        required property string host
+        required property string protocol
+        required property string rule
+        required property string chain
+        required property string process
+        required property string downRate
+        required property string upRate
+        required property string download
+        required property string upload
+        required property string duration
+        readonly property alias hostCell: hostCell
+        readonly property bool selected: index === table.currentIndex
+
+        width: table.contentWidth
+        height: Theme.rowDouble
+        focusPolicy: Qt.NoFocus
+        Accessible.role: Accessible.Row
+        Accessible.name: qsTr("%1，%2").arg(host).arg(process || protocol)
+        Accessible.selected: selected
+        onClicked: {
+            tableBox.forceActiveFocus(Qt.MouseFocusReason)
+            page.connections.select(connectionId)
+            page.openDetail(row, false)
+        }
+
+        background: Rectangle {
+            color: row.selected ? Theme.surfaceSelected : row.hovered ? Theme.surfaceSubtle : Theme.surface
+
+            Rectangle {
+                width: parent.width
+                height: 1
+                color: Theme.divider
+            }
+        }
+
+        contentItem: Item {
+            Row {
+                x: Theme.space4
+                height: parent.height
+                spacing: Theme.space3
+
+                Column {
+                    id: hostCell
+
+                    width: page.hostWidth
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    UiText {
+                        width: parent.width
+                        text: row.host
+                        role: row.selected ? Theme.type.bodyMdStrong : Theme.type.bodyMd
+                        elide: Text.ElideRight
+                    }
+
+                    UiText {
+                        width: parent.width
+                        text: row.protocol
+                        role: Theme.type.caption
+                        color: Theme.textMuted
+                        elide: Text.ElideRight
+                    }
+                }
+
+                UiText {
+                    width: page.ruleWidth
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: row.rule
+                    role: Theme.type.dataSm
+                    color: Theme.textSecondary
+                    elide: Text.ElideRight
+                }
+
+                UiText {
+                    width: page.chainWidth
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: row.chain
+                    role: Theme.type.bodySm
+                    elide: Text.ElideRight
+                }
+
+                UiText {
+                    width: page.processWidth
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: row.process
+                    role: Theme.type.bodySm
+                    color: Theme.textSecondary
+                    elide: Text.ElideRight
+                }
+
+                RatePair {
+                    width: page.rateWidth
+                    anchors.verticalCenter: parent.verticalCenter
+                    down: row.downRate
+                    up: row.upRate
+                }
+
+                RatePair {
+                    width: page.trafficWidth
+                    anchors.verticalCenter: parent.verticalCenter
+                    down: row.download
+                    up: row.upload
+                }
+
+                UiText {
+                    width: page.durationWidth
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: row.duration
+                    role: Theme.type.dataSm
+                    color: Theme.textSecondary
+                    horizontalAlignment: Text.AlignRight
+                }
+
+                IconButton {
+                    id: closeButton
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    opacity: page.inView(Theme.space4 + x, row.y + y, width, height) ? 1 : 0
+                    iconName: "close"
+                    focusPolicy: Qt.NoFocus
+                    accessibleName: qsTr("关闭 %1 的连接").arg(row.host)
+                    onClicked: page.connections.closeConnection(row.connectionId)
+                }
             }
         }
     }

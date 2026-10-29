@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Templates as T
 import QtQuick.Layouts
 
 // dialog (DESIGN.md "Components → 对话框"): a modal box on the scrim with a one-line title,
@@ -12,7 +13,7 @@ Dialog {
     id: dialog
 
     property bool wide
-    property Item defaultButton
+    property T.AbstractButton defaultButton
     property Item initialFocus: defaultButton
     property Item returnFocusTo
     property int returnFocusReason: Qt.OtherFocusReason
@@ -22,13 +23,14 @@ Dialog {
     // Opens the dialog; `from` gets focus back afterwards, with its focus ring if it had one.
     function show(from: Item) {
         returnFocusTo = from
-        returnFocusReason = from && from.visualFocus ? Qt.TabFocusReason : Qt.OtherFocusReason
+        returnFocusReason = (from as T.Control)?.visualFocus ? Qt.TabFocusReason : Qt.OtherFocusReason
         open()
     }
 
     function activate(focused: Item) {
-        if (focused && typeof focused.click === "function" && focused.enabled)
-            focused.click()
+        const button = focused as T.AbstractButton
+        if (button && button.enabled)
+            button.click()
         else if (defaultButton && defaultButton.enabled)
             defaultButton.click()
     }

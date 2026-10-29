@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Templates as T
 
 // popover (DESIGN.md "Components → 弹出层"): a little non-modal content in the menu's
 // container, 12px inside. openBelow() puts it under its trigger, left edges aligned, or
@@ -17,7 +18,7 @@ Popup {
 
     function openBelow(anchor: Item) {
         trigger = anchor
-        returnFocusReason = anchor.visualFocus ? Qt.TabFocusReason : Qt.OtherFocusReason
+        returnFocusReason = (anchor as T.Control)?.visualFocus ? Qt.TabFocusReason : Qt.OtherFocusReason
         const top = anchor.mapToItem(Overlay.overlay, 0, 0)
         const roomBelow = Overlay.overlay.height - Theme.overlayMargin - (top.y + anchor.height + Theme.overlayGap)
         const roomAbove = top.y - Theme.overlayGap - Theme.overlayMargin
