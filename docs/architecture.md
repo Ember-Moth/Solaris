@@ -84,42 +84,92 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
 | 自管模式 | Windows 服务；CI 与测试虚拟机里的 TUN 测试 | mihomo 负责，开启 `auto-route`、`auto-detect-interface`、`strict-route` | mihomo 自建 wintun 网卡或 utun |
 | 无 TUN 模式 | 本机开发 | 不改路由 | 不创建 TUN，只开放回环地址上的混合端口 |
 
-配置流水线按模式参数化：fd 模式强制关闭配置里的 TUN 和自动路由，由宿主提供；自管模式按设置生成 TUN 段；
-无 TUN 模式无视用户配置和覆写，强制关闭 TUN，并把监听限制在回环地址（见第 11 节）。
+模式在创建 engine 时固定（`engine.TunNone`、`TunOwned`、`TunFD`），配置流水线按模式打补丁：
+
+- **无 TUN 模式**无视用户配置和覆写：写入全部关闭的 `tun` 段（`enable`、`auto-route`、`auto-redirect`、
+  `auto-detect-interface`、`strict-route`），清零 `redir-port` 和 `tproxy-port`，并把全部入站限制在回环地址
+  （见第 11 节）。`RunOptions` 请求 TUN 时返回 `ErrUnsupported`。
+- **自管模式**按 `RunOptions.tun_enabled` 写 `tun.enable`，强制 `auto-route`、`auto-detect-interface`、
+  `strict-route` 为 true，`auto-redirect` 为 false，`file-descriptor` 为 0；保留用户的栈、设备名、MTU 和排除项。
+  TUN 打开时同时打开 mihomo DNS，因为 dns-hijack 要交给它解析。`allow_lan` 为 false 时，入站同样限制在回环地址。
+- **fd 模式**的接口已经留好，准入时返回"M5 实现"的 `ErrUnsupported`。届时宿主传入 fd，并关闭自动路由。
+- 三种模式都会从 `listeners` 里删掉 `tun`、`redir`、`tproxy` 类型的入站：TUN 只能由 `tun` 段描述。
+- "限制在回环地址"包括：`allow-lan: false`、`bind-address: 127.0.0.1`；`listeners` 的 `listen`、`tunnels` 的
+  监听地址、`dns.listen`、`tuic-server.listen`、`ss-config` 和 `vmess-config` 的地址都改为 `127.0.0.1`，端口不变。
+- `RunOptions.mixed_port` 非 0 时替换配置里的 `mixed-port`。
 
 ### 3.2 engine 的职责
 
-- **初始化**：为当前属主设置 mihomo 的 home 目录（`C.SetHomeDir`），开启 `route.SetEmbedMode(true)`。
-- **配置准入**：解析用户 YAML → 应用覆写 → 平台补丁（TUN 模式、DNS 默认值等）→ 最后一步强制安全项
-  → `config.ParseRawConfig` → `hub.ApplyConfig`。`Validate` 只走到解析为止。
-- **启停与重载**：Start 首次应用配置；Reload 原地 `ApplyConfig`，TUN 配置不变时不重建 TUN；Stop 调用
-  `executor.Shutdown`。
+- **初始化**（`engine.New`）：为属主设置 mihomo 的 home 目录（`C.SetHomeDir`），开启 `route.SetEmbedMode(true)`，
+  然后自检路径沙箱。开发服务的 home 默认在用户配置目录下的 `<Product>/dev-core`（`-home` 可改）；
+  Windows 服务暂用 `%ProgramData%\<Product>\core`，按 SID 划分的目录随 M4 的 `Claim` 实现。
+  mihomo 在进程内只打开一次 `cache.db`，所以 home 在进程生命周期内不能更换，更换属主需要新的服务进程。
+- **配置准入**：用户 YAML 解析为映射（锚点和合并键在这一步展开，补丁无法被别名绕过）→ 应用覆写
+  → 按 TUN 模式打补丁 → 最后一步强制安全项 → 重新编码后交给 `executor.ParseWithBytes`
+  → 校验解析结果，任一项不符就拒绝（fail closed）→ `hub.ApplyConfig`。`Validate` 走到校验为止。
+  - 覆写在 D4 定案前的暂行语义：一个 JSON 对象，对象逐键合并，`null` 删除键，其他值整体替换。
+  - mihomo 解析时会临时套用新配置的 general 部分（`temporaryUpdateGeneral`），所以运行中的 `Validate`
+    会短暂影响模式等全局设置；分发器用操作锁串行执行它。
+- **启停与重载**：
+  - Start 首次应用配置；Reload 原地 `hub.ApplyConfig`，mihomo 在 TUN 配置不变时不重建 TUN。
+  - 应用后核对端口和 TUN 是否真的打开（`hub.ApplyConfig` 只记日志、不返回错误），没打开就返回
+    `ErrApplyFailed`：Start 回到空闲配置并进入 FAILED；Reload 保持运行并记录 `last_error`。
+  - Stop 先调 `executor.Shutdown`（关闭 TUN、清理 iptables、保存 fake-ip 池），再应用一份空闲配置，
+    然后关闭全部连接和旧 provider。`executor.Shutdown` 本是为进程退出写的，单独调用会留下监听端口、
+    DNS 服务和 provider 的后台任务。对已停止的内核调用 Stop 不做任何事。
+  - 连续启停 50 次后 goroutine 和文件描述符数回到初始水平（`TestStartStopDoesNotLeak`）。
 - **查询与操作**：模式、代理组与节点、选择节点、测速、provider、规则、连接列表与关闭、流量与内存、
   fake-ip 与 DNS 缓存清理、日志订阅，覆盖 4.3 节的内核方法表。
-- **单实例**：mihomo 用包级全局变量保存状态，一个进程只能有一个 engine。
+  - 代理组按配置顺序（即 `GLOBAL` 的成员顺序）列出，`GLOBAL` 排最后，隐藏组不列出。
+  - 选择节点对 selector 生效，对 url-test、fallback 是固定节点；健康检查会像 mihomo 自己的组测速一样解除固定。
+  - provider 列表不含 mihomo 为组内联节点生成的 compatible provider。
+- **单实例**：mihomo 用包级全局变量保存状态，`engine.New` 在已有 engine 打开时直接失败。
+- **mihomo 自身的竞态**：`log.SetLevel` 写全局变量时没有同步，`go test -race` 下 Reload 会报出；属于上游问题。
 
 ### 3.3 以 SYSTEM 身份运行时的安全要求
 
-Windows 服务以 SYSTEM 身份运行内核，下面每一项都必须满足，并且各有回归测试（例如"用户配置里的
-`external-controller-pipe` 一定会被清除"）。这些要求源自 libclash 里在移动端由应用沙箱兜底、在桌面上
-不再成立的地方。
+Windows 服务以 SYSTEM 身份运行内核，下面每一项都必须满足，并且各有回归测试（`internal/engine/security_test.go`
+里的 `TestSecurity1` 到 `TestSecurity5`）。这些要求源自 libclash 里在移动端由应用沙箱兜底、在桌面上不再成立的地方。
 
-| # | 要求 | 原因 |
-| --- | --- | --- |
-| 1 | 任何构建都不带 `cmfa` 标签 | 该标签会让 mihomo 的 `IsSafePath` 恒为 true，路径沙箱失效 |
-| 2 | 流水线最后一步（在覆写之后）清空 `external-controller`、`-tls`、`-unix`、`-pipe`、`external-doh-server` 和 `secret` | 否则用户配置或覆写可以让 SYSTEM 开出 mihomo 控制器；其中 `-pipe` 的默认 SDDL 允许所有本地用户读写 |
-| 3 | 初始化时开启 `route.SetEmbedMode(true)` | 第二道防线：万一控制器被启动，也关闭 `/restart`、`/configs` 写入和 `/upgrade` |
-| 4 | provider 路径用 `filepath` 规范化并检查 `filepath.IsLocal`；不设置 `SKIP_SAFE_PATH_CHECK` / `SAFE_PATHS` | 只按 `/` 切分时，Windows 上的 `..\` 可以跳出 `providers/`；`IsSafePath` 作为兜底 |
-| 5 | 持久化节点选择（`profile.store-selected`） | 开机恢复后要回到用户上次选的节点 |
+| # | 要求 | 原因 | 实现与测试 |
+| --- | --- | --- | --- |
+| 1 | 任何构建都不带 `cmfa` 标签 | 该标签会让 mihomo 的 `IsSafePath` 恒为 true，路径沙箱失效 | `cmfa.go` 只在 cmfa 构建里参与编译，且无法通过类型检查；`New` 在 `features.CMFA` 为真时拒绝运行 |
+| 2 | 流水线最后一步（在覆写之后）清空 `external-controller`、`-tls`、`-unix`、`-pipe`、`external-doh-server` 和 `secret` | 否则用户配置或覆写可以让 SYSTEM 开出 mihomo 控制器；其中 `-pipe` 的默认 SDDL 允许所有本地用户读写 | 同时清空 `external-ui`、`-url`、`-name`（否则 mihomo 会往 home 下载面板）；解析后再校验一次，各模式都测 |
+| 3 | 初始化时开启 `route.SetEmbedMode(true)` | 第二道防线：万一控制器被启动，也关闭 `/restart`、`/configs` 写入和 `/upgrade` | 测试手动起一个 unix socket 控制器，确认这些接口被拒绝 |
+| 4 | provider 路径用 `filepath` 规范化并检查 `filepath.IsLocal`；不设置 `SKIP_SAFE_PATH_CHECK` / `SAFE_PATHS` | 只按 `/` 切分时，Windows 上的 `..\` 可以跳出 `providers/`；`IsSafePath` 作为兜底 | mihomo 在启动时读取这两个变量，`New` 按行为自检（home 外的路径必须被拒），不通过就拒绝运行；测试用子进程带上变量验证 |
+| 5 | 持久化节点选择（`profile.store-selected`） | 开机恢复后要回到用户上次选的节点 | 强制为 true；测试选择节点后重启内核，确认仍是该节点 |
+
+流水线还在所有模式下强制两项：`iptables.enable: false`（仅 Linux，失败时 mihomo 会直接退出进程）和
+`ntp.write-to-system: false`（修改系统时间需要用户未必拥有的权限，不能由 SYSTEM 代劳）。
 
 ### 3.4 构建标签
 
 mihomo 提供的可选标签有 `with_gvisor`、`with_low_memory`、`no_tailscale`、`no_zerotier`、
-`no_easytier`、`no_fake_tcp`。Windows 服务和 macOS NE 各用哪个组合，等 TUN 栈和体积实测后再定；
-任何情况下都不带 `cmfa`。
+`no_easytier`、`no_fake_tcp`。任何情况下都不带 `cmfa`。Windows 服务和 macOS NE 各用哪个组合属于决策 D3，
+M1 的实测数据如下（v1.19.33，Go 1.27.3，`-trimpath -ldflags "-s -w"`，`./service` 的二进制体积）：
+
+| 标签 | Windows amd64 | macOS arm64 |
+| --- | --- | --- |
+| （无） | 53.9 MiB | 49.7 MiB |
+| `with_gvisor` | 67.6 MiB | 61.6 MiB |
+| `with_gvisor,no_tailscale` | 57.7 MiB | 53.6 MiB |
+| `no_easytier` | 43.3 MiB | 39.2 MiB |
+| `no_zerotier` | 52.7 MiB | 48.7 MiB |
+| `no_tailscale`、`no_fake_tcp`、`with_low_memory`（单独） | 不变 | 不变 |
+| `no_tailscale,no_zerotier,no_easytier,no_fake_tcp` | 42.1 MiB | 38.2 MiB |
+| 上一行加 `with_gvisor`（再加 `with_low_memory` 体积不变） | 46.0 MiB | 42.0 MiB |
+
+- 体积大头是 easytier 出站（约 10.6 MiB）和 tailscale 出站（约 9.9 MiB）。tailscale 出站只在 `with_gvisor`
+  构建里编入，所以单独加 `no_tailscale` 没有效果；gVisor 栈本身约 3.8 MiB。
+- TUN 栈：`system` 和 `mips`（mihomo 的默认栈）总是可用；`gvisor` 和 `mixed` 需要 `with_gvisor`，否则要到创建
+  TUN 时才报错，所以准入流水线在缺少该标签时直接以 `invalid_config` 拒绝这两种栈。
+- macOS NE 开启 `includeAllNetworks` 时，sing-tun 拒绝 `system` 和 `mixed` 栈，只剩 `mips` 和 `gvisor`。
+- 各标签组合在两个平台上都能编译。真实 TUN 下各栈的可用性由 CI 的 `tun` job 验证（见第 11 节）。
 
 mihomo 的 GitHub 默认分支 `main` 是伪装项目，真正的代码在 `Alpha`（开发）和 `Meta`（稳定）分支。
-发布构建钉在 `Meta` 的 tag 上（撰写时为 v1.19.33）。
+发布构建钉在 `Meta` 的 tag 上，当前为 v1.19.33（即 `Meta` 的 `3f27ef3`）。mihomo 的 go.mod 把
+`google.golang.org/protobuf` 替换为 `metacubex/protobuf-go`；依赖里的 replace 不会传递，本模块用的是上游
+protobuf，编译和测试都正常。
 
 ## 4. 控制协议
 
@@ -195,6 +245,35 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 | `PollEvents` | 取走某个订阅自上次拉取以来缓存的事件 |
 | `Unsubscribe` | 结束订阅 |
 
+方法的行为约定：
+
+- `Validate`、`Start`、`Reload` 携带配置 YAML、覆写和 `RunOptions`，经过 3.2 节的准入流水线。
+  `mixed_port` 超过 65535 时返回 `invalid_request`。
+- `Stop` 对已停止的内核不做任何事。开发模式下 `Claim` 直接成功，因为开发 socket 只接受运行服务的那个用户。
+- 内核未运行时，列表类查询（代理组、provider、规则）返回空列表，改变状态的内核方法返回 `not_running`；
+  `GetStatus` 和订阅随时可用。
+- 宿主方法只在 `HostMethods` 打开时提供（Windows 服务和开发服务），其余宿主返回 `unsupported_method`；
+  `Reload` 和内核方法在两种宿主上都有。
+- 系统代理：开发服务对开启请求（`SetSystemProxy`，以及 `RunOptions.system_proxy_enabled`）返回
+  `unsupported_method`，关闭请求直接成功；Windows 服务在 M4 实现之前返回 `not_implemented`。
+
+错误码：
+
+| 码 | 含义 | retryable |
+| --- | --- | --- |
+| `invalid_request` | 请求本身不合法：缺少字段、未知枚举、不存在的组或节点、组不接受选择等 | 否 |
+| `unsupported_protocol_version` | 协议版本不一致 | 否 |
+| `unsupported_method` | 当前宿主不提供该方法或该能力（如开发服务上的 TUN 和系统代理） | 否 |
+| `not_implemented` | 方法已定义、尚未实现 | 否 |
+| `invalid_config` | 配置无法解析，或被准入流水线拒绝；`message` 是 mihomo 的原始错误文本 | 否 |
+| `not_running` | 需要运行中的内核 | 否 |
+| `already_running` | 内核已在运行时调用 `Start`（切换配置走 `Reload`） | 否 |
+| `apply_failed` | 配置已应用，但端口或 TUN 没有打开；原因在 mihomo 日志里 | 是 |
+| `unknown_subscription` | 订阅不存在、已过期，或属于其他调用者 | 否 |
+| `too_many_subscriptions` | 同时存在的订阅超过上限 | 是 |
+| `operation_failed` | 内核操作失败，如测速超时、provider 更新失败 | 是 |
+| `internal_error` | 无法编码响应 | 否 |
+
 ### 4.4 订阅
 
 协议没有服务端推送，订阅由"服务端缓存 + 客户端拉取"实现：
@@ -204,11 +283,22 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 - 缓冲区满时丢弃最旧的事件，下一次 `PollEvents` 的结果里带上丢弃数量。单个慢客户端不会阻塞内核。
 - 超过 30 秒没有被拉取的订阅自动失效。Windows 上连接断开时，该连接的订阅也立即失效。
 
-| 订阅 | 事件 | 建议拉取间隔 |
-| --- | --- | --- |
-| 日志 | 每条日志，按级别过滤 | 0.5 秒 |
-| 流量 | 每秒一条：上下行速率与累计值 | 1 秒 |
-| 连接 | 每秒一份快照 | 1 秒 |
+| 订阅 | 事件 | 建议拉取间隔 | 缓冲上限 |
+| --- | --- | --- | --- |
+| 日志 | 每条日志，按级别过滤（未指定时为 info） | 0.5 秒 | 1024 条 |
+| 流量 | 每秒一条：上下行速率与累计值 | 1 秒 | 600 条 |
+| 连接 | 每秒一份快照 | 1 秒 | 4 份（每份快照都取代前一份） |
+
+实现细节：
+
+- 订阅属于创建它的调用者（`peer.Identity.UserID`），其他调用者拉取或退订时得到 `unknown_subscription`。
+  订阅 ID 是随机的 53 位整数。
+- 同时最多 64 个订阅。单次 `PollEvents` 最多返回 `max_events` 条（0 表示不限），事件累计超过 4 MiB 时
+  剩余的留到下一次，保证响应不超过 8 MiB 的帧上限。
+- 有订阅时才运行一个采样协程：每秒采一次流量和连接（多个订阅共享同一份样本），并清理过期订阅；
+  有日志订阅时才订阅 mihomo 的日志。没有订阅时两者都不运行。
+- "连接断开即失效"靠分发器收到的 `ctx`：Windows 管道上它随连接结束而取消；macOS 的 provider message
+  没有连接，只靠 30 秒过期。
 
 两个平台用同一套拉取逻辑，UI 不需要为推送和拉取分别写代码。
 
@@ -378,22 +468,39 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 
 - **在 Mac 上调试 Windows 服务的逻辑**：服务二进制在非 Windows 平台可以作为前台进程运行，以普通用户身份
   启动；以 root 身份启动时直接拒绝运行。此时帧协议跑在一个本地 socket 上，客户端校验降级为 uid 检查，engine 使用无 TUN
-  模式。这样 `ServiceHost` 和全部方法都能在 Mac 上联调。这只是开发模式，不进入任何发布包；macOS 正式版
-  走 provider message，不使用 socket。
-- **本机开发不得改动本机网络**：开发机就是日常使用的机器，开发模式必须满足以下各条，并有测试覆盖：
+  模式，分发器标记为开发宿主（`Development`）。这样 `ServiceHost` 和全部方法都能在 Mac 上联调。这只是开发模式，
+  不进入任何发布包；macOS 正式版走 provider message，不使用 socket。
+
+  ```bash
+  go -C src/core run ./service -socket /tmp/mihomo-desktop-dev.sock
+  ```
+
+- **本机开发不得改动本机网络**：开发机就是日常使用的机器，开发模式必须满足以下各条，并有测试覆盖
+  （`internal/engine/admission_test.go` 的 `TestNoTUN*`，`service/service_unix_test.go` 用真实的开发服务接线验证）：
   - 不创建 TUN；用户配置或覆写里的 `tun`、`auto-route`、`auto-redirect`、`tproxy-port`、`redir-port` 一律被清除；
   - 混合端口和其他入站只监听 `127.0.0.1`，强制关闭 `allow-lan`；
   - 不设置系统代理，不修改路由和系统 DNS；
   - 请求开启 TUN 或系统代理的方法返回 `unsupported_method`。
 
-  验证真实流量时，用 `curl -x http://127.0.0.1:<混合端口>` 走代理。
+  验证真实流量时，用 `curl -x http://127.0.0.1:<混合端口>` 走代理，并在启动前后用只读命令
+  （`ifconfig -l`、`netstat -rn`、`scutil --dns`、`scutil --proxy`）确认本机网络没有变化。
 - **TUN 只在隔离环境里测试**：自管模式在 CI 的 Linux runner 上、独立的网络命名空间里测试；wintun 和
   strict-route 在 Windows 测试虚拟机里验证；macOS NE 在单独的测试 Mac 或虚拟机上验证，不在开发机上运行。
+  - `internal/engine/tun_linux_test.go` 有三道开关：只在 `-tags tuntest` 时编译，只在
+    `MIHOMO_DESKTOP_TUN_TEST=1` 时运行，并且拒绝在宿主机的网络命名空间里运行。本机执行 `go test ./...`
+    不会编译它。
+  - CI 的 `tun` job 建两个命名空间，用 veth 相连：`md-tun` 里以 root 运行测试，`md-srv` 里起一个 HTTP 服务。
+    测试用自管模式启动 TUN，经 TUN 访问 `md-srv`，并用 mihomo 的流量统计确认流量确实经过内核；再验证
+    TUN 配置不变时 Reload 不重建网卡，关闭 TUN 或 Stop 后链路、策略路由和各路由表都恢复原样。
+    矩阵覆盖 `system`、`mips` 栈，以及带 `with_gvisor` 的 `gvisor`、`mixed` 栈。
 - **测试覆盖**：
-  - engine：配置流水线的回归测试，对应 3.3 节各项；
-  - 控制协议：帧头校验、超限拒绝、请求 ID 匹配、订阅缓冲与过期，Go 与 Python 两端用同一组样本互测；
+  - engine：配置流水线的回归测试，对应 3.3 节各项；开发模式护栏；启停与重载；50 次启停的泄漏检查；
+  - 控制协议：帧头校验、超限拒绝、请求 ID 匹配、订阅缓冲与过期，Go 与 Python 两端用同一组样本互测
+    （样本里的响应来自一个不链接 mihomo 的假 engine，所以不随 mihomo 版本变化）；
   - Windows CI：服务的客户端校验、管道 SDDL、属主与恢复流程；
   - Python：用模拟宿主测试 models 与 ViewModel。
+- **竞态检查**：`go test -race` 会报出 mihomo 自身在 `log.SetLevel` 上的竞态（见 3.2 节），所以 CI 不带
+  `-race`；分发器的订阅代码可以单独用 `-race` 检查。
 - **需要真机验收**：真实 TUN 流量、系统代理模拟写入、安装与升级、系统扩展激活。
 
 ## 12. 待定事项
