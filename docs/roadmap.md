@@ -1,0 +1,200 @@
+# 开发方案
+
+本文规划从当前骨架到首个可发布版本的工作：分几个里程碑、按什么顺序做、每一步怎样算完成、哪些决定要在什么时候做出。
+设计细节见 [architecture.md](architecture.md)，视觉规范见 [DESIGN.md](../DESIGN.md)。每完成一个里程碑更新本文。
+
+撰写于 2026-10-29，对应提交 `bca73c0`。
+
+## 1. 当前进度
+
+| 部分 | 状态 | 说明 |
+| --- | --- | --- |
+| 架构与视觉规范 | 完成 | architecture.md、DESIGN.md；6 页原型在 Claude Design 画布上 |
+| 控制协议 | 草案 v1 | 消息、方法表、帧编解码已定，Go 与 Python 有共享样本测试 |
+| Go 控制分发器与服务入口 | 骨架 | 只实现 `GetInfo`；Windows 服务入口、命名管道、客户端校验（部分）、Mac 开发模式 socket |
+| engine（内嵌 mihomo） | 未开始 | 目前用 `Unlinked` 占位 |
+| Python 宿主层 | 部分 | 控制客户端、真实服务的请求映射、模拟宿主 |
+| 界面 | 部分 | 主题生成、组件库、概览与代理两页；其余四页是占位页 |
+| macOS 原生部分 | 未开始 | 只有 Go 侧的 C archive 导出 |
+| 打包与安装 | 未开始 | 只有 Nuitka 入口文件 |
+| CI | 完成 | Python（macOS、Windows）与 Go（macOS、Windows、Linux）检查、测试和生成文件校验 |
+
+## 2. 总体顺序
+
+工作分两条线并行推进，最后在发布准备汇合：
+
+- **内核线**：M1 engine 跑通 → M4 Windows 服务产品化、M5 macOS NetworkExtension（两者互相独立）。
+- **界面线**：M2 配置管理 → M3 其余页面与日常功能。界面线全程对着模拟宿主开发，不必等内核线。
+- **汇合**：M6 发布准备，依赖 M3、M4、M5。
+
+M1 是关键路径：真实流量、配置校验、订阅数据都依赖它。
+
+| 里程碑 | 依赖 | 前置条件 | 规模 |
+| --- | --- | --- | --- |
+| M1 内核跑通（Mac 开发模式，不建 TUN） | — | — | 大 |
+| M2 配置管理 | M1 的 `Validate` / `Reload`（存储和界面可先做） | — | 中 |
+| M3 其余页面与日常功能 | M1 的订阅接口（可先对着模拟宿主做） | — | 中 |
+| M4 Windows 服务产品化 | M1 | Windows 测试机或虚拟机 | 大 |
+| M5 macOS NetworkExtension | M1 | Apple Developer 账号与 NE entitlement；单独的测试 Mac 或虚拟机 | 大 |
+| M6 发布准备 | M3、M4、M5 | 代码签名证书 | 中 |
+
+## 3. 里程碑
+
+### M1 内核跑通（Mac 开发模式，不建 TUN）
+
+目标：在 Mac 上以开发模式运行服务，经回环地址上的混合端口跑通真实代理流量；界面连上开发服务后，概览和
+代理两页显示真实数据。开发机上不创建 TUN、不改系统代理、路由和 DNS（architecture.md §11）；自管 TUN
+模式在 CI 里测试。
+
+范围：
+
+- **engine**（`src/core/internal/engine`，architecture.md §3）：
+  - 初始化：按属主设置 home 目录，开启 embed mode；
+  - 配置准入流水线：先实现无 TUN 模式和自管 TUN 模式；
+  - Start / Reload / Stop；状态与模式；代理组、选择节点、测速；provider 与规则。
+- **开发模式护栏**：开发服务强制使用无 TUN 模式；用户配置里的 TUN、自动路由等项被清除，入站只监听回环
+  地址；请求开启 TUN 或系统代理时返回 `unsupported_method`。每一条都有测试。
+- **TUN 测试**：在 CI 的 Linux runner 上，于独立的网络命名空间内用自管模式启动 TUN，验证配置流水线和
+  启停流程。
+- **订阅缓冲**：流量、连接、日志三种订阅，按 §4.4 做有界缓冲和 30 秒过期，实现 `PollEvents`。
+- **分发器**：实现全部内核方法，以及 Start / Stop / Reload / Validate（开发模式下也提供宿主方法）。
+- **安全要求**：§3.3 的五条要求，每条一个回归测试。
+- **协议**：Start 携带配置；Python 侧 `TunnelHost.start` 改为接收配置，模拟宿主同步修改。
+- **实测**：构建标签组合与二进制体积（决策 D3）。
+
+验收：
+
+- 用一份真实的 mihomo 配置（即使配置里开启了 `tun`），以普通用户身份运行的开发服务能启动内核；
+  `curl -x http://127.0.0.1:<混合端口>` 经代理访问成功；本机的网络接口、路由表、系统代理和 DNS 均无变化。
+- 设置 `MIHOMO_DESKTOP_DEV_SOCKET` 后启动界面，概览和代理两页显示真实数据，能切换模式和节点；
+  TUN 和系统代理开关给出"开发模式不支持"的提示。
+- CI 的网络命名空间里，自管 TUN 模式能启动并经 TUN 转发流量。
+- 连续启停 50 次后，goroutine 数和文件描述符数回到初始水平。
+
+### M2 配置管理
+
+目标：用户能导入订阅或本地配置，校验后使用，并在订阅更新后原地重载。
+
+范围：
+
+- **存储**：`ProfileStore` 存放在用户数据目录（`%LOCALAPPDATA%\<Product>\`、`~/Library/Application Support/<Product>/`）。
+- **订阅**：订阅下载与定时自动更新；解析 `Subscription-Userinfo` 响应头，得到用量和到期时间；支持导入本地文件。
+- **覆写**：持久覆写与会话覆写，能力范围按决策 D4 确定。
+- **与服务的交互**：导入前用服务的 `Validate` 校验；切换配置或订阅更新时走 `Reload`。
+- **界面**：按原型实现配置页；概览页的配置分组和侧栏的配置名称接入真实数据。
+
+验收：导入订阅链接 → 校验 → 使用 → 连接 → 订阅更新后原地重载，全程不断开 TUN。
+
+### M3 其余页面与日常功能
+
+目标：六个页面全部可用，具备桌面客户端的日常行为。
+
+范围：
+
+- **页面**（按原型）：
+  - 连接页：连接订阅、搜索、按 TCP/UDP 筛选、关闭连接；
+  - 日志页：日志订阅、级别过滤、暂停、导出；
+  - 设置页：设置项映射到 `RunOptions` 和覆写，并持久化。
+- **托盘**：显示状态，可连接/断开、切换模式、打开窗口。
+- **桌面行为**：单实例；关闭窗口时的行为；登录时启动（Windows 用计划任务，macOS 用登录项）。
+- **打磨**：打包 Inter 与 JetBrains Mono；qmllint 加入 CI；无障碍检查（键盘遍历、读屏名称）。
+
+验收：六页与原型和 DESIGN.md 一致；只用键盘能完成全部操作；关闭窗口后可从托盘恢复。
+
+### M4 Windows 服务产品化
+
+目标：在全新的 Windows 上完成安装、连接、开机恢复、升级和卸载的完整流程。
+
+范围：
+
+- **属主管理**：`Claim` / `TakeOver`；按 SID 划分 home 目录并设置 ACL；`owner.json`；会话注销时的策略（D5）。
+- **持久化与开机恢复**：`was_running` 和节点选择（`store-selected`）。
+- **系统代理**：模拟属主会话的 token 写入用户的 HKCU，停止时还原（§5.5）。
+- **客户端校验补全**：锁定文件身份；发布构建校验 Authenticode 签名者（§5.3）。
+- **实测**：wintun、strict-route、DNS 泄漏；确定 TUN 栈（D3）。
+- **打包**：Nuitka standalone 构建脚本；NSIS 安装器负责安装、升级、卸载，参考 hypervpn 的 `packaging/windows/`。
+
+验收：在全新的 Windows 虚拟机上依次完成：
+
+1. 安装后连接；
+2. 关闭界面，隧道仍在运行；
+3. 重启系统，隧道自动恢复；
+4. 升级；
+5. 卸载后不留服务和运行文件。
+
+DNS 泄漏测试通过。
+
+### M5 macOS NetworkExtension
+
+目标：发布形态的 .app 在全新的 Mac 上通过系统扩展提供隧道。
+
+范围：
+
+- **前置条件**：Apple Developer 账号、Team ID、NE entitlement；一台单独的测试 Mac 或 macOS 虚拟机。
+  系统扩展会创建 utun，不在开发机上运行。
+- **Xcode 工程**：管理库（C ABI）和 PacketTunnel 系统扩展；xcframework 由 `src/core/apple` 编出，包含 engine 的 fd 模式和控制分发器。
+- **扩展内部**：获取 utun fd、设置隧道网络和 DNS；provider message 通道。决策 D7 和 D8 先用原型验证。
+- **Python 侧**：实现 `MacExtensionHost`，通过 ctypes 调用管理库。
+- **打包**：把 Nuitka 产物、管理库和系统扩展组装成 .app，签名并公证。
+
+验收：在全新的 Mac 上安装公证后的 .app → 批准系统扩展 → 连接 → 退出 App 后隧道仍在 → 重新打开 App 能读到状态。
+
+### M6 发布准备
+
+范围：
+
+- **命名**：确定产品名（D1），替换代码里的工作名标识。
+- **签名与发布**：准备 Windows Authenticode 和 Apple Developer ID 证书；建立发布 CI，负责构建、签名和生成校验和。
+- **界面**：深色主题，先扩展 DESIGN.md 再实现（D9）。
+- **诊断**：诊断信息导出、崩溃日志。
+- **按决策实施**：自动更新（D11）、英文界面（D12）。
+- **许可合规**：发布包附带 LICENSE 和第三方许可证清单（Qt、字体等），并给出对应源代码的获取方式。
+
+## 4. 协作方式
+
+- **本机开发不改动本机网络**：开发机上不创建 TUN，不设置系统代理，不修改路由和 DNS。界面用模拟宿主
+  或无 TUN 的开发服务调试；凡是需要 TUN 的测试，放到 CI 的网络命名空间或测试虚拟机里做。
+- **协议变更**：先改 `control.proto`，运行 `scripts/gen_protocol.py` 重新生成；在同一个提交里同步修改 Go 分发器、Python `ServiceHost` 和模拟宿主，并用共享样本测试守住两端一致。
+- **视觉变更**：先改 DESIGN.md，再运行 `scripts/gen_theme.py`；原型画布同步修改。
+- **mihomo 升级**：钉在 `Meta` 分支的 tag 上；升级前跑完整测试，并按 §3.3 逐条复核安全要求。
+
+## 5. 待决策事项
+
+按"最晚需要决定的时间"排列。越早决定，返工越少。
+
+| # | 事项 | 最晚何时 | 影响 |
+| --- | --- | --- | --- |
+| D4 | 配置覆写能力范围（是否支持 Merge / Script） | M2 开始前 | 配置管理的复杂度 |
+| D6 | 订阅一键导入的 URL scheme（如 `clash://install-config`） | M2 | 深链接处理、安装器注册 |
+| D3 | TUN 栈与构建标签 | M1 实测后 | 兼容性、体积 |
+| D9 | 深色主题放在 M3 还是 M6 | M3 开始前 | DESIGN.md 的范围 |
+| D1 | 产品名 | M4 安装器和 M5 bundle id 之前 | 服务名、管道名、协议 magic、bundle id、目录 |
+| D2 | 支持的架构（Windows x64 / arm64，macOS arm64 / x86_64） | M4、M5 构建前 | 构建矩阵、xcframework 切片 |
+| D5 | 属主注销时是否停止隧道；管理员能否接管 | M4 | 服务的属主逻辑 |
+| D7 | macOS 配置传递方式 | M5 开始 | 扩展的启动流程 |
+| D8 | provider message 单条大小上限 | M5 原型 | `Reload` 能否直接携带大配置 |
+| D11 | 是否内置自动更新 | M6 | 发布基础设施 |
+| D12 | 是否提供英文界面 | M6 | 文案抽取 |
+
+已决定：D10 许可证——GPL-3.0-only（2026-10-29），见仓库根目录的 LICENSE。
+
+## 6. 风险
+
+| 风险 | 应对 |
+| --- | --- |
+| mihomo 以全局状态运行，反复启停可能泄漏资源 | M1 的启停压力测试；Stop 后核对 goroutine 和文件描述符 |
+| mihomo 内部接口（`hub`、`executor`、`tunnel`）随版本变化 | 钉住 tag；engine 只通过少量入口调用 mihomo，升级时集中修改 |
+| Windows 上 wintun、strict-route 的行为差异和 DNS 泄漏 | M4 专项实测，形成检查清单 |
+| 开发机不跑 TUN，TUN 相关问题发现得晚 | M1 起在 CI 的网络命名空间里跑自管 TUN 测试；M4、M5 尽早准备测试虚拟机 |
+| 系统扩展的审批、签名和公证流程复杂 | M5 先做最小可用的扩展，再补全功能 |
+| asyncio 与 Qt 的线程交互 | 界面回调一律经 `AsyncRunner` 回到 Qt 线程；ViewModel 测试覆盖 |
+| 只在 macOS 上看过界面渲染 | M3 起在 Windows 上做界面验收 |
+
+## 7. 下一步
+
+1. **M1 最小闭环**：engine 用一份真实配置完成 Start → GetStatus → Stop；在 Mac 开发模式（无 TUN）下，
+   经回环混合端口跑通真实代理流量，同时落实开发模式护栏及其测试。
+2. **协议**：Start 携带配置，`TunnelHost.start` 随之修改。
+3. **界面线（可并行）**：对着模拟宿主实现配置页，确定 `ProfileStore` 的存储格式。
+4. **维护**：升级 CI 里的 GitHub Actions 版本，消除 Node 20 弃用提示。
+5. **决策**：D4 覆写范围。

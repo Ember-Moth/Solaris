@@ -320,7 +320,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 
 ## 7. Python UI
 
-- 分层参考 hypervpn：视图 → ViewModel → models → 宿主客户端。UI 用 QML 还是 Widgets 待定。
+- 分层参考 hypervpn：视图 → ViewModel → models → 宿主客户端。界面用 QML，控件基于 Qt Quick Controls 的
+  Basic 样式按 DESIGN.md 定制；主题由 `scripts/gen_theme.py` 从 DESIGN.md 生成。
 - asyncio 事件循环运行在后台线程，结果通过排队信号回到 Qt 线程。
 - **控制客户端**：负责构造 Request、校验 Response 的版本和 ID，并按间隔调用 `PollEvents` 拉取订阅。
   传输有两种实现：
@@ -397,9 +398,10 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 
 ## 12. 待定事项
 
+各事项需要决定的时间见 [roadmap.md](roadmap.md) 第 5 节。
+
 - 产品名。它决定服务名、管道名、协议 magic、bundle id、安装目录和 URL scheme。
 - 支持的架构：Windows x64 / arm64，macOS arm64 / x86_64。
-- UI 技术：QML 还是 Widgets。
 - 配置覆写能力的范围：是否支持类似 Clash Verge 的 Merge / Script。
 - Windows 上属主注销时是否停止隧道；管理员能否接管其他用户的隧道。
 - Windows 上的 TUN 栈选择（system / gvisor / mixed），以及是否需要 `with_gvisor`。

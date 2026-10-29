@@ -1,7 +1,8 @@
 # mihomo-desktop
 
 mihomo 的 Windows / macOS 桌面客户端（PySide6 + Nuitka）。内核以 Go 库的形式内嵌：Windows 上运行在
-LocalSystem 服务里，macOS 上运行在 NetworkExtension 系统扩展里。设计见 [docs/architecture.md](docs/architecture.md)。
+LocalSystem 服务里，macOS 上运行在 NetworkExtension 系统扩展里。设计见 [docs/architecture.md](docs/architecture.md)，
+开发计划见 [docs/roadmap.md](docs/roadmap.md)。
 
 项目处于骨架阶段：控制协议、帧编解码、方法分发和服务入口已经就位，界面已实现概览和代理两页（配合模拟宿主）。
 内核层 engine（直接内嵌 mihomo）尚未实现，服务端除 `GetInfo` 外的方法都返回 `not_implemented`。
