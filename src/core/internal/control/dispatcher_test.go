@@ -7,10 +7,17 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/controlpb"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/engine"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/peer"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/product"
 )
+
+// unlinked answers like a service whose core has never started, which keeps the shared
+// protocol vectors independent of mihomo.
+type unlinked struct{}
+
+func (unlinked) CoreVersion() string { return "unlinked" }
+
+func (unlinked) State() controlpb.RunState { return controlpb.RunState_RUN_STATE_STOPPED }
 
 func call(t *testing.T, dispatcher *Dispatcher, request *controlpb.Request) *controlpb.Response {
 	t.Helper()
@@ -55,7 +62,7 @@ func expectError(t *testing.T, response *controlpb.Response, id uint64, code str
 
 func TestGetInfo(t *testing.T) {
 	for _, host := range []bool{true, false} {
-		dispatcher := New(Options{Engine: engine.Unlinked{}, HostMethods: host})
+		dispatcher := New(Options{Engine: unlinked{}, HostMethods: host})
 		response := call(t, dispatcher, request(7, getInfo))
 		if response.GetId() != 7 {
 			t.Fatalf("response id = %d, want 7", response.GetId())
@@ -74,7 +81,7 @@ func TestGetInfo(t *testing.T) {
 }
 
 func TestRejectsInvalidRequests(t *testing.T) {
-	dispatcher := New(Options{Engine: engine.Unlinked{}, HostMethods: true})
+	dispatcher := New(Options{Engine: unlinked{}, HostMethods: true})
 
 	wrongVersion := request(3, getInfo)
 	wrongVersion.ProtocolVersion = product.ProtocolVersion + 1
@@ -91,8 +98,8 @@ func TestHostMethodsDependOnHost(t *testing.T) {
 	stop := func(r *controlpb.Request) {
 		r.Method = &controlpb.Request_Stop{Stop: &controlpb.StopRequest{}}
 	}
-	service := New(Options{Engine: engine.Unlinked{}, HostMethods: true})
-	extension := New(Options{Engine: engine.Unlinked{}})
+	service := New(Options{Engine: unlinked{}, HostMethods: true})
+	extension := New(Options{Engine: unlinked{}})
 	expectError(t, call(t, service, request(1, stop)), 1, CodeNotImplemented)
 	expectError(t, call(t, extension, request(1, stop)), 1, CodeUnsupportedMethod)
 

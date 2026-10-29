@@ -5,6 +5,9 @@
 package product
 
 const (
+	// DisplayName also names the data directories (docs/architecture.md §5.1).
+	DisplayName = "Mihomo Desktop"
+
 	ServiceName = "MihomoDesktopService"
 
 	// UIExecutable is the only client the Windows service accepts, from its own directory.

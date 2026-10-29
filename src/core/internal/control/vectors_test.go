@@ -8,7 +8,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/engine"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/frame"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/peer"
 )
@@ -40,7 +39,7 @@ func TestSharedVectors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dispatcher := New(Options{Engine: engine.Unlinked{}, HostMethods: true})
+	dispatcher := New(Options{Engine: unlinked{}, HostMethods: true})
 	var got bytes.Buffer
 	if err := frame.Write(&got, frame.KindResponse, dispatcher.Handle(context.Background(), peer.Identity{}, payload)); err != nil {
 		t.Fatal(err)

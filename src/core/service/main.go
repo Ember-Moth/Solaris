@@ -7,14 +7,7 @@ package main
 import (
 	"fmt"
 	"os"
-
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/control"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/engine"
 )
-
-func newDispatcher() *control.Dispatcher {
-	return control.New(control.Options{Engine: engine.Unlinked{}, HostMethods: true})
-}
 
 func main() {
 	if err := run(); err != nil {

@@ -10,7 +10,6 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/controlpb"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/engine"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/frame"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/peer"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/product"
@@ -24,15 +23,21 @@ const (
 	codeInternal           = "internal_error"
 )
 
+// Engine is what the dispatcher needs from internal/engine.
+type Engine interface {
+	CoreVersion() string
+	State() controlpb.RunState
+}
+
 type Options struct {
-	Engine engine.Engine
+	Engine Engine
 	// HostMethods enables the Windows-service lifecycle methods. The macOS extension
 	// leaves it off because NETunnelProviderManager starts and stops the tunnel.
 	HostMethods bool
 }
 
 type Dispatcher struct {
-	engine      engine.Engine
+	engine      Engine
 	hostMethods bool
 }
 

@@ -13,12 +13,13 @@ import (
 	"unsafe"
 
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/control"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/engine"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/frame"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/peer"
 )
 
-var dispatcher = control.New(control.Options{Engine: engine.Unlinked{}})
+// dispatcher stays nil until the extension starts the engine in fd mode (M5), and
+// mihomo_desktop_handle_message answers not_implemented meanwhile.
+var dispatcher *control.Dispatcher
 
 // mihomo_desktop_handle_message answers one Request. The returned buffer belongs to the
 // caller, who releases it with mihomo_desktop_free.
@@ -26,9 +27,12 @@ var dispatcher = control.New(control.Options{Engine: engine.Unlinked{}})
 //export mihomo_desktop_handle_message
 func mihomo_desktop_handle_message(request unsafe.Pointer, requestLength C.size_t, responseLength *C.size_t) unsafe.Pointer {
 	var response []byte
-	if requestLength > frame.MaxRequestBytes {
+	switch {
+	case requestLength > frame.MaxRequestBytes:
 		response = control.EncodeFailure(0, control.CodeInvalidRequest, "request exceeds the size limit")
-	} else {
+	case dispatcher == nil:
+		response = control.EncodeFailure(0, control.CodeNotImplemented, "the extension does not start the engine yet")
+	default:
 		// The system restricts provider messages to this app, so there is no peer identity.
 		response = dispatcher.Handle(context.Background(), peer.Identity{}, C.GoBytes(request, C.int(requestLength)))
 	}
