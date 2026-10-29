@@ -45,6 +45,7 @@ jobs:
         run: |
           uv run python scripts/gen_protocol.py --check
           uv run python scripts/gen_theme.py --check
+          uv run python scripts/gen_i18n.py --check
       - name: Tests
         env:
           QT_QPA_PLATFORM: offscreen

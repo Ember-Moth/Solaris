@@ -330,7 +330,7 @@ C:\ProgramData\<Product>\              仅 SYSTEM 与 Administrators 可访问
 ├── owner.json                         当前属主 SID、会话
 └── users\<SID>\                       该用户的 mihomo home 目录（IsSafePath 根）
     ├── config.yaml                    UI 提交的配置
-    ├── override.json                  持久覆写
+    ├── overrides.json                 UI 提交的覆写（按应用顺序的 YAML 原文，7.4 节）
     ├── options.json                   运行选项与 was_running
     ├── providers\ …                   provider 与规则集缓存
     └── cache.db                       mihomo profile 缓存
@@ -664,9 +664,8 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 
 - 产品名。它决定服务名、管道名、协议 magic、bundle id、安装目录和 URL scheme。
 - 支持的架构：Windows x64 / arm64，macOS arm64 / x86_64。
-- 配置覆写能力的范围：是否支持类似 Clash Verge 的 Merge / Script。
 - Windows 上属主注销时是否停止隧道；管理员能否接管其他用户的隧道。
-- Windows 上的 TUN 栈选择（system / gvisor / mixed），以及是否需要 `with_gvisor`。
+- Windows 上的 TUN 栈选择（system / gvisor / mixed），以及是否需要 `with_gvisor`；M1 的实测数据见 3.4 节。
 - macOS 上配置怎么传给扩展（`startVPNTunnel(options:)`，或者启动后用 `Reload` 传入）；
   隧道未运行时怎么校验配置。
 - provider message 的单条大小上限，它决定 `Reload` 能否直接携带大配置。
