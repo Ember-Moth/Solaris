@@ -143,7 +143,8 @@ def test_a_port_the_core_cannot_open_is_not_kept(qtbot: QtBot, view_models: View
     host.busy_ports.add(1080)
     settings.setMixedPort("1080")
     qtbot.waitUntil(lambda: prop(settings, "portError") != "")
-    assert "address already in use" in prop(settings, "portError")
+    message = "配置未能生效：listen tcp 127.0.0.1:1080: bind: address already in use"  # noqa: RUF001
+    assert prop(settings, "portError") == message
     assert prop(settings, "mixedPort") == 7890
     assert view_models.settings_store.current.mixed_port == 7890
 

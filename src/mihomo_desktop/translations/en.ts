@@ -205,6 +205,10 @@
         <translation>Tunnel already running</translation>
     </message>
     <message>
+        <source>配置未能生效</source>
+        <translation>The configuration did not take effect</translation>
+    </message>
+    <message>
         <source>链接无效</source>
         <translation>Invalid URL</translation>
     </message>

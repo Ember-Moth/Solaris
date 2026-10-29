@@ -18,6 +18,8 @@ _MESSAGES = {
     "invalid_config": QT_TRANSLATE_NOOP("Feedback", "配置无效"),
     "not_running": QT_TRANSLATE_NOOP("Feedback", "隧道未运行"),
     "already_running": QT_TRANSLATE_NOOP("Feedback", "隧道已在运行"),
+    # A port or the TUN did not open, e.g. a mixed port another program holds.
+    "apply_failed": QT_TRANSLATE_NOOP("Feedback", "配置未能生效"),
     "invalid_url": QT_TRANSLATE_NOOP("Feedback", "链接无效"),
     "download_failed": QT_TRANSLATE_NOOP("Feedback", "下载失败"),
     "http_error": QT_TRANSLATE_NOOP("Feedback", "下载失败"),
@@ -42,6 +44,7 @@ _MESSAGES = {
 # Codes whose message (a parse error, an HTTP status) helps the user fix the problem.
 _WITH_DETAIL = {
     "invalid_config",
+    "apply_failed",
     "download_failed",
     "http_error",
     "file_unreadable",

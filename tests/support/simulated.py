@@ -419,6 +419,7 @@ class SimulatedHost:
         self._development = development
         self.busy_ports: set[int] = set()  # mixed ports that another program listens on
         self._running = True
+        self._failed = False  # the last start could not open its port
         self.config: TunnelConfig | None = None  # the last config started or reloaded
         self.effective: dict[str, Any] | None = None  # that config after the pipeline
         self.reloads = 0
@@ -495,8 +496,15 @@ class SimulatedHost:
     async def start(self, config: TunnelConfig) -> None:
         if self._running:
             raise HostError("already_running", "the core is already running")
-        self._apply(config)
+        try:
+            self._apply(config)
+        except HostError as error:
+            # Like the core: a port that did not open fails the start; a refused config
+            # leaves it stopped.
+            self._failed = error.code == "apply_failed"
+            raise
         self._running = True
+        self._failed = False
         self._started_at = self._clock()
         self._last_poll = self._last_advance = self._clock()
         self._log_lines(STARTUP_LOG)
@@ -510,6 +518,7 @@ class SimulatedHost:
 
     async def stop(self) -> None:
         self._running = False
+        self._failed = False
         self._connections.clear()
 
     async def set_mode(self, mode: str) -> None:
@@ -714,14 +723,17 @@ class SimulatedHost:
             raise HostError("unsupported_method", "this host never creates a TUN")
         self.effective = check_config(config)
         if config.options.mixed_port in self.busy_ports:
-            message = f"listen tcp 127.0.0.1:{config.options.mixed_port}: address already in use"
+            address = f"127.0.0.1:{config.options.mixed_port}"
+            message = f"listen tcp {address}: bind: address already in use"
             raise HostError("apply_failed", message, retryable=True)
         self.config = config
         self._tun = config.options.tun_enabled
         self._system_proxy = config.options.system_proxy_enabled
 
     def _state(self) -> str:
-        return "running" if self._running else "stopped"
+        if self._running:
+            return "running"
+        return "failed" if self._failed else "stopped"
 
     def _proxy(self, name: str) -> Proxy:
         if name == "DIRECT":
