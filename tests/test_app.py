@@ -77,31 +77,42 @@ def test_main_window_loads_without_qml_warnings(qtbot: QtBot, loaded: Loaded, la
     assert loaded.warnings == []
 
 
-def test_removal_dialog_keeps_the_profile_by_default(qtbot: QtBot, loaded: Loaded) -> None:
+# The dialog's buttons and the profile count, in each language.
+DIALOG_TEXT = [
+    ("zh", {"cancel": "取消", "delete": "删除", "3": "3 个配置", "2": "2 个配置"}),
+    ("en", {"cancel": "Cancel", "delete": "Delete", "3": "3 profiles", "2": "2 profiles"}),
+]
+
+
+@pytest.mark.parametrize(("loaded", "text"), DIALOG_TEXT, indirect=["loaded"], ids=["zh", "en"])
+def test_removal_dialog_keeps_the_profile_by_default(
+    qtbot: QtBot, loaded: Loaded, text: dict[str, str]
+) -> None:
     profiles = loaded.view_models.profiles
     loaded.view_models.shell.setPage("profiles")
 
     def ask() -> None:
         profiles.requestRemove("sample-b")
-        qtbot.waitUntil(lambda: loaded.focused_text() == "取消")  # the safe default
+        qtbot.waitUntil(lambda: loaded.focused_text() == text["cancel"])  # the safe default
 
     ask()
     loaded.key(qtbot, Qt.Key.Key_Escape)
     ask()
     loaded.key(qtbot, Qt.Key.Key_Return)
-    assert profiles.property("summary") == "3 个配置"
+    assert profiles.property("summary") == text["3"]
 
     ask()
     loaded.key(qtbot, Qt.Key.Key_Tab)
-    assert loaded.focused_text() == "删除"
+    assert loaded.focused_text() == text["delete"]
     loaded.key(qtbot, Qt.Key.Key_Tab)  # focus stays in the dialog
-    assert loaded.focused_text() == "取消"
+    assert loaded.focused_text() == text["cancel"]
     loaded.key(qtbot, Qt.Key.Key_Tab)
     loaded.key(qtbot, Qt.Key.Key_Return)
-    qtbot.waitUntil(lambda: profiles.property("summary") == "2 个配置")
+    qtbot.waitUntil(lambda: profiles.property("summary") == text["2"])
     assert loaded.warnings == []
 
 
+@pytest.mark.parametrize("loaded", ["zh", "en"], indirect=True)
 def test_override_editor_saves_with_ctrl_enter(qtbot: QtBot, loaded: Loaded) -> None:
     profiles = loaded.view_models.profiles
     loaded.view_models.shell.setPage("profiles")

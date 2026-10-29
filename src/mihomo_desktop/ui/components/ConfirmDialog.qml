@@ -26,7 +26,7 @@ AppDialog {
         AppButton {
             id: cancelButton
 
-            text: "取消"
+            text: qsTr("取消")
             variant: dialog.destructive ? "primary" : "secondary"
             onClicked: dialog.reject()
         },

@@ -70,19 +70,19 @@ ScrollView {
             Layout.topMargin: Theme.pageTop
             Layout.leftMargin: Theme.pageX
             Layout.rightMargin: Theme.pageX
-            title: "配置"
+            title: qsTr("配置")
             detail: page.profiles.summary
             detailColor: page.profiles.hasError ? Theme.danger : Theme.textMuted
 
             AppButton {
-                text: "导入文件"
+                text: qsTr("导入文件")
                 enabled: !page.profiles.importing
                 onClicked: fileDialog.open()
             }
 
             // The page's one primary action; the form's own button takes over while it is open.
             AppButton {
-                text: "从链接导入"
+                text: qsTr("从链接导入")
                 variant: page.importOpen ? "secondary" : "primary"
                 enabled: !page.importOpen
                 onClicked: page.openImport()
@@ -97,7 +97,7 @@ ScrollView {
             spacing: Theme.space2
 
             SectionLabel {
-                text: "从链接导入"
+                text: qsTr("从链接导入")
             }
 
             Group {
@@ -121,7 +121,7 @@ ScrollView {
                             spacing: 6
 
                             UiText {
-                                text: "订阅链接"
+                                text: qsTr("订阅链接")
                                 role: Theme.type.caption
                                 color: Theme.textTertiary
                             }
@@ -133,7 +133,7 @@ ScrollView {
                                 placeholderText: "https://sub.example.com/…"
                                 inputMethodHints: Qt.ImhUrlCharactersOnly | Qt.ImhNoAutoUppercase
                                 enabled: !page.profiles.importing
-                                Accessible.name: "订阅链接"
+                                Accessible.name: qsTr("订阅链接")
                                 onAccepted: page.submitImport()
                                 Keys.onEscapePressed: page.closeImport()
                             }
@@ -146,7 +146,7 @@ ScrollView {
                             spacing: 6
 
                             UiText {
-                                text: "名称"
+                                text: qsTr("名称")
                                 role: Theme.type.caption
                                 color: Theme.textTertiary
                             }
@@ -155,9 +155,9 @@ ScrollView {
                                 id: nameField
 
                                 Layout.fillWidth: true
-                                placeholderText: "可选"
+                                placeholderText: qsTr("可选")
                                 enabled: !page.profiles.importing
-                                Accessible.name: "名称"
+                                Accessible.name: qsTr("名称")
                                 onAccepted: page.submitImport()
                                 Keys.onEscapePressed: page.closeImport()
                             }
@@ -165,13 +165,13 @@ ScrollView {
 
                         AppButton {
                             Layout.alignment: Qt.AlignBottom
-                            text: "取消"
+                            text: qsTr("取消")
                             onClicked: page.closeImport()
                         }
 
                         AppButton {
                             Layout.alignment: Qt.AlignBottom
-                            text: page.profiles.importing ? "正在导入…" : "导入"
+                            text: page.profiles.importing ? qsTr("正在导入…") : qsTr("导入")
                             variant: "primary"
                             enabled: urlField.text.trim() !== "" && !page.profiles.importing
                             onClicked: page.submitImport()
@@ -205,7 +205,7 @@ ScrollView {
             spacing: Theme.space2
 
             SectionLabel {
-                text: "全部配置"
+                text: qsTr("全部配置")
             }
 
             Group {
@@ -223,7 +223,7 @@ ScrollView {
                     boundsBehavior: Flickable.StopAtBounds
                     clip: true
                     Accessible.role: Accessible.List
-                    Accessible.name: "全部配置"
+                    Accessible.name: qsTr("全部配置")
 
                     ScrollBar.horizontal: ScrollBar {
                         id: horizontalBar
@@ -257,28 +257,28 @@ ScrollView {
 
                                 UiText {
                                     Layout.fillWidth: true
-                                    text: "名称"
+                                    text: qsTr("名称")
                                     role: Theme.type.caption
                                     color: Theme.textMuted
                                 }
 
                                 UiText {
                                     Layout.preferredWidth: page.usageWidth
-                                    text: "用量"
+                                    text: qsTr("用量")
                                     role: Theme.type.caption
                                     color: Theme.textMuted
                                 }
 
                                 UiText {
                                     Layout.preferredWidth: page.expiryWidth
-                                    text: "到期"
+                                    text: qsTr("到期")
                                     role: Theme.type.caption
                                     color: Theme.textMuted
                                 }
 
                                 UiText {
                                     Layout.preferredWidth: page.updatedWidth
-                                    text: "更新"
+                                    text: qsTr("更新")
                                     role: Theme.type.caption
                                     color: Theme.textMuted
                                 }
@@ -305,7 +305,7 @@ ScrollView {
                                 leftPadding: Theme.space4
                                 rightPadding: Theme.space4
                                 Accessible.role: Accessible.RadioButton
-                                Accessible.name: "使用 " + modelData.name
+                                Accessible.name: qsTr("使用 %1").arg(modelData.name)
                                 Accessible.checked: modelData.active
                                 onClicked: page.profiles.use(modelData.id)
 
@@ -384,7 +384,7 @@ ScrollView {
 
                                         AppButton {
                                             variant: "compact"
-                                            text: profileRow.modelData.updating ? "更新中…" : profileRow.modelData.refreshLabel
+                                            text: profileRow.modelData.updating ? qsTr("更新中…") : profileRow.modelData.refreshLabel
                                             enabled: !profileRow.modelData.updating
                                             Accessible.name: text + " " + profileRow.modelData.name
                                             onClicked: page.profiles.updateProfile(profileRow.modelData.id)
@@ -394,7 +394,7 @@ ScrollView {
                                             id: moreButton
 
                                             iconName: "more"
-                                            accessibleName: profileRow.modelData.name + " 的更多操作"
+                                            accessibleName: qsTr("%1 的更多操作").arg(profileRow.modelData.name)
                                             onClicked: profileMenu.openFor(profileRow.modelData, moreButton)
                                         }
                                     }
@@ -426,7 +426,7 @@ ScrollView {
 
                             UiText {
                                 Layout.fillWidth: true
-                                text: "尚未导入配置"
+                                text: qsTr("尚未导入配置")
                                 role: Theme.type.bodySm
                                 color: Theme.textMuted
                             }
@@ -444,7 +444,7 @@ ScrollView {
             spacing: Theme.space2
 
             SectionLabel {
-                text: "覆写"
+                text: qsTr("覆写")
             }
 
             Group {
@@ -459,7 +459,7 @@ ScrollView {
 
                         UiText {
                             Layout.fillWidth: true
-                            text: "全局覆写"
+                            text: qsTr("全局覆写")
                             role: Theme.type.labelMd
                         }
 
@@ -478,9 +478,9 @@ ScrollView {
                         id: globalOverrideButton
 
                         variant: "compact"
-                        text: "编辑"
+                        text: qsTr("编辑")
                         enabled: page.profiles.hasActive
-                        Accessible.name: "编辑全局覆写"
+                        Accessible.name: qsTr("编辑全局覆写")
                         onClicked: {
                             page.overrideTrigger = globalOverrideButton
                             page.profiles.editGlobalOverride()
@@ -513,13 +513,13 @@ ScrollView {
         }
 
         AppMenuItem {
-            text: "复制订阅链接"
+            text: qsTr("复制订阅链接")
             enabled: profileMenu.profile.isSubscription ?? false
             onTriggered: page.profiles.copyLink(profileMenu.profile.id)
         }
 
         AppMenuItem {
-            text: "编辑覆写…"
+            text: qsTr("编辑覆写…")
             onTriggered: {
                 page.overrideTrigger = profileMenu.trigger
                 page.profiles.editOverride(profileMenu.profile.id)
@@ -529,7 +529,7 @@ ScrollView {
         AppMenuSeparator {}
 
         AppMenuItem {
-            text: "删除"
+            text: qsTr("删除")
             destructive: true
             onTriggered: page.profiles.requestRemove(profileMenu.profile.id)
         }
@@ -540,7 +540,7 @@ ScrollView {
 
         title: page.profiles.removalTitle
         message: page.profiles.removalText
-        confirmText: "删除"
+        confirmText: qsTr("删除")
         destructive: true
         onAccepted: page.profiles.confirmRemove()
         onRejected: page.profiles.cancelRemove()
@@ -555,8 +555,8 @@ ScrollView {
     FileDialog {
         id: fileDialog
 
-        title: "导入配置文件"
-        nameFilters: ["YAML 配置 (*.yaml *.yml)", "所有文件 (*)"]
+        title: qsTr("导入配置文件")
+        nameFilters: [qsTr("YAML 配置 (*.yaml *.yml)"), qsTr("所有文件 (*)")]
         onAccepted: page.profiles.importFile(selectedFile.toString())
     }
 }

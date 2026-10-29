@@ -2,6 +2,13 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="en" sourcelanguage="zh_CN">
 <context>
+    <name>ConfirmDialog</name>
+    <message>
+        <source>取消</source>
+        <translation>Cancel</translation>
+    </message>
+</context>
+<context>
     <name>Feedback</name>
     <message>
         <source>该功能尚未实现</source>
@@ -147,6 +154,29 @@
     <message>
         <source>设置</source>
         <translation>Settings</translation>
+    </message>
+</context>
+<context>
+    <name>OverrideDialog</name>
+    <message>
+        <source># 例：在规则最前面加一条直连规则
+prepend-rules:
+  - DOMAIN-SUFFIX,example.com,DIRECT</source>
+        <translation># Example: add a direct rule before all others
+prepend-rules:
+  - DOMAIN-SUFFIX,example.com,DIRECT</translation>
+    </message>
+    <message>
+        <source>取消</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>正在保存…</source>
+        <translation>Saving…</translation>
+    </message>
+    <message>
+        <source>保存</source>
+        <translation>Save</translation>
     </message>
 </context>
 <context>
@@ -302,6 +332,117 @@
     <message>
         <source>尚未实现</source>
         <translation>Not implemented yet</translation>
+    </message>
+</context>
+<context>
+    <name>ProfilesPage</name>
+    <message>
+        <source>配置</source>
+        <translation>Profiles</translation>
+    </message>
+    <message>
+        <source>导入文件</source>
+        <translation>Import file</translation>
+    </message>
+    <message>
+        <source>从链接导入</source>
+        <translation>Import from URL</translation>
+    </message>
+    <message>
+        <source>订阅链接</source>
+        <translation>Subscription URL</translation>
+    </message>
+    <message>
+        <source>名称</source>
+        <translation>Name</translation>
+    </message>
+    <message>
+        <source>可选</source>
+        <translation>Optional</translation>
+    </message>
+    <message>
+        <source>取消</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>正在导入…</source>
+        <translation>Importing…</translation>
+    </message>
+    <message>
+        <source>导入</source>
+        <translation>Import</translation>
+    </message>
+    <message>
+        <source>全部配置</source>
+        <translation>All profiles</translation>
+    </message>
+    <message>
+        <source>用量</source>
+        <translation>Usage</translation>
+    </message>
+    <message>
+        <source>到期</source>
+        <translation>Expires</translation>
+    </message>
+    <message>
+        <source>更新</source>
+        <translation>Updated</translation>
+    </message>
+    <message>
+        <source>使用 %1</source>
+        <translation>Use %1</translation>
+    </message>
+    <message>
+        <source>更新中…</source>
+        <translation>Updating…</translation>
+    </message>
+    <message>
+        <source>%1 的更多操作</source>
+        <translation>More actions for %1</translation>
+    </message>
+    <message>
+        <source>尚未导入配置</source>
+        <translation>No profiles imported</translation>
+    </message>
+    <message>
+        <source>覆写</source>
+        <translation>Overrides</translation>
+    </message>
+    <message>
+        <source>全局覆写</source>
+        <translation>Global override</translation>
+    </message>
+    <message>
+        <source>编辑</source>
+        <translation>Edit</translation>
+    </message>
+    <message>
+        <source>编辑全局覆写</source>
+        <translation>Edit global override</translation>
+    </message>
+    <message>
+        <source>复制订阅链接</source>
+        <translation>Copy subscription URL</translation>
+    </message>
+    <message>
+        <source>编辑覆写…</source>
+        <translation>Edit override…</translation>
+    </message>
+    <message>
+        <source>删除</source>
+        <translation>Delete</translation>
+    </message>
+    <message>
+        <source>导入配置文件</source>
+        <translation>Import profile</translation>
+    </message>
+    <message>
+        <source>YAML 配置 (*.yaml *.yml)</source>
+        <translation>YAML profiles (*.yaml *.yml)</translation>
+    </message>
+    <message>
+        <source>所有文件 (*)</source>
+        <translation>All files (*)</translation>
     </message>
 </context>
 <context>

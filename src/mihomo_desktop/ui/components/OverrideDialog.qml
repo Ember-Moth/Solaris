@@ -31,7 +31,7 @@ AppDialog {
         Layout.preferredHeight: Theme.editorMinHeight
         error: dialog.profiles.overrideError !== ""
         readOnly: dialog.profiles.overrideSaving
-        placeholderText: "# 例：在规则最前面加一条直连规则\nprepend-rules:\n  - DOMAIN-SUFFIX,example.com,DIRECT"
+        placeholderText: qsTr("# 例：在规则最前面加一条直连规则\nprepend-rules:\n  - DOMAIN-SUFFIX,example.com,DIRECT")
         Accessible.name: dialog.title
         onSubmitted: dialog.save()
     }
@@ -47,13 +47,13 @@ AppDialog {
 
     buttons: [
         AppButton {
-            text: "取消"
+            text: qsTr("取消")
             onClicked: dialog.reject()
         },
         AppButton {
             id: saveButton
 
-            text: dialog.profiles.overrideSaving ? "正在保存…" : "保存"
+            text: dialog.profiles.overrideSaving ? qsTr("正在保存…") : qsTr("保存")
             variant: "primary"
             enabled: !dialog.profiles.overrideSaving
             onClicked: dialog.save()
