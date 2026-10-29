@@ -67,6 +67,7 @@ func serve(ctx context.Context) error {
 	}
 	defer core.Close()
 	dispatcher := control.New(control.Options{Engine: core, HostMethods: true})
+	defer dispatcher.Close()
 	listener, err := winio.ListenPipe(product.PipeName, &winio.PipeConfig{
 		SecurityDescriptor: product.PipeSDDL,
 		InputBufferSize:    pipeBufferSize,

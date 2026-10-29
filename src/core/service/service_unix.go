@@ -49,6 +49,7 @@ func run() error {
 	}
 	defer core.Close()
 	dispatcher := newDevelopmentDispatcher(core)
+	defer dispatcher.Close()
 
 	uid := uint32(os.Getuid())
 	if err := removeStaleSocket(*socket); err != nil {
