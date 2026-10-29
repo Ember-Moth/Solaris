@@ -200,6 +200,18 @@ func TestReloadToATakenPortKeepsTheOldOne(t *testing.T) {
 	}
 }
 
+// Rule types read as profiles write them; a type added upstream needs its keyword.
+func TestEveryRuleTypeHasItsKeyword(t *testing.T) {
+	for ruleType := C.RuleType(0); ruleType.String() != "Unknown"; ruleType++ {
+		if ruleKeywords[ruleType] == "" {
+			t.Errorf("%s has no keyword", ruleType)
+		}
+	}
+	if got := ruleKeyword("DstPort"); got != "DST-PORT" {
+		t.Errorf("DstPort reads as %q", got)
+	}
+}
+
 func isListenError(err error) bool {
 	var opError *net.OpError
 	return errors.As(err, &opError) && opError.Op == "listen"
@@ -272,7 +284,7 @@ func TestQueriesAndOperations(t *testing.T) {
 	}
 
 	rules := engine.ListRules()
-	if len(rules) != 1 || rules[0].GetType() != "Match" || rules[0].GetProxy() != "PROXY" {
+	if len(rules) != 1 || rules[0].GetType() != "MATCH" || rules[0].GetProxy() != "PROXY" {
 		t.Errorf("rules = %v", rules)
 	}
 	if providers := engine.ListProviders(); len(providers) != 0 {
@@ -298,7 +310,7 @@ func TestQueriesAndOperations(t *testing.T) {
 	var id string
 	for deadline := time.Now().Add(5 * time.Second); id == "" && time.Now().Before(deadline); {
 		for _, c := range engine.Connections().GetConnections() {
-			if c.GetDestination() == host && c.GetRule() == "Match" {
+			if c.GetDestination() == host && c.GetRule() == "MATCH" {
 				id = c.GetId()
 			}
 		}

@@ -365,6 +365,61 @@ func (e *Engine) UpdateProvider(kind controlpb.ProviderKind, name string) error 
 	return nil
 }
 
+// ruleKeywords names mihomo's rule types as profiles write them; the core names them in
+// CamelCase ("DstPort" for DST-PORT).
+var ruleKeywords = map[C.RuleType]string{
+	C.Domain:              "DOMAIN",
+	C.DomainSuffix:        "DOMAIN-SUFFIX",
+	C.DomainKeyword:       "DOMAIN-KEYWORD",
+	C.DomainRegex:         "DOMAIN-REGEX",
+	C.DomainWildcard:      "DOMAIN-WILDCARD",
+	C.GEOSITE:             "GEOSITE",
+	C.GEOIP:               "GEOIP",
+	C.SrcGEOIP:            "SRC-GEOIP",
+	C.IPASN:               "IP-ASN",
+	C.SrcIPASN:            "SRC-IP-ASN",
+	C.IPCIDR:              "IP-CIDR",
+	C.SrcIPCIDR:           "SRC-IP-CIDR",
+	C.IPSuffix:            "IP-SUFFIX",
+	C.SrcIPSuffix:         "SRC-IP-SUFFIX",
+	C.SrcPort:             "SRC-PORT",
+	C.DstPort:             "DST-PORT",
+	C.InPort:              "IN-PORT",
+	C.InUser:              "IN-USER",
+	C.InName:              "IN-NAME",
+	C.InType:              "IN-TYPE",
+	C.ProcessName:         "PROCESS-NAME",
+	C.ProcessPath:         "PROCESS-PATH",
+	C.ProcessNameRegex:    "PROCESS-NAME-REGEX",
+	C.ProcessPathRegex:    "PROCESS-PATH-REGEX",
+	C.ProcessNameWildcard: "PROCESS-NAME-WILDCARD",
+	C.ProcessPathWildcard: "PROCESS-PATH-WILDCARD",
+	C.RematchName:         "REMATCH-NAME",
+	C.MATCH:               "MATCH",
+	C.RuleSet:             "RULE-SET",
+	C.Network:             "NETWORK",
+	C.DSCP:                "DSCP",
+	C.Uid:                 "UID",
+	C.SubRules:            "SUB-RULE",
+	C.AND:                 "AND",
+	C.OR:                  "OR",
+	C.NOT:                 "NOT",
+}
+
+// ruleKeywordsByName finds the keyword from the name a connection records.
+var ruleKeywordsByName = func() map[string]string {
+	byName := make(map[string]string, len(ruleKeywords))
+	for ruleType, keyword := range ruleKeywords {
+		byName[ruleType.String()] = keyword
+	}
+	return byName
+}()
+
+// ruleKeyword is the profile's spelling of a rule type; an unknown one stays as it is.
+func ruleKeyword(name string) string {
+	return cmp.Or(ruleKeywordsByName[name], name)
+}
+
 func (e *Engine) ListRules() []*controlpb.Rule {
 	if !e.running() {
 		return nil
@@ -373,7 +428,7 @@ func (e *Engine) ListRules() []*controlpb.Rule {
 	out := make([]*controlpb.Rule, 0, len(rules))
 	for _, rule := range rules {
 		out = append(out, &controlpb.Rule{
-			Type:    rule.RuleType().String(),
+			Type:    ruleKeyword(rule.RuleType().String()),
 			Payload: rule.Payload(),
 			Proxy:   rule.Adapter(),
 		})
@@ -453,7 +508,7 @@ func connectionToProto(info *statistic.TrackerInfo) *controlpb.Connection {
 		UploadBytes:     nonNegative(info.UploadTotal.Load()),
 		DownloadBytes:   nonNegative(info.DownloadTotal.Load()),
 		StartedAtUnixMs: uint64(info.Start.UnixMilli()),
-		Rule:            info.Rule,
+		Rule:            ruleKeyword(info.Rule),
 		RulePayload:     info.RulePayload,
 		Chains:          slices.Clone([]string(info.Chain)),
 	}
