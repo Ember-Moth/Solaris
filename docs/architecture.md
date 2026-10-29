@@ -407,6 +407,43 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   下载和校验不持有锁，写入存储和重载在同一把锁下串行执行。
 - UI 只把最终的 YAML 和覆写交给宿主。provider 和规则集的后续更新仍由 mihomo 自己完成。
 
+### 7.4 多语言
+
+界面提供简体中文和英文（决策 D12），用 Qt Linguist 工具链；英文文案的风格以 DESIGN.md 为准。
+
+- **源语言是简体中文**：源码里的文案就是中文界面，`src/mihomo_desktop/translations/en.ts` 是唯一的译文。
+  中文界面不加载翻译，测试里的中文断言就是界面上的文字。
+- **标记文案**：
+  - QML 用 `qsTr()`，参数写 `%1` 再 `.arg()`；
+  - ViewModel 用 `self.tr()`，上下文是类名；其他模块用 `QCoreApplication.translate("<上下文>", …)`；
+  - 模块级常量（导航项、出站模式、排序方式）用 `i18n.QT_TRANSLATE_NOOP` 标记，在属性里再翻译；
+  - Python 文案的参数用 `str.format` 的命名字段，如 `已运行 {uptime}`；
+  - 带数量的文案写 `%n` 并传入数量，英文给单复数两种形式（`%n 个代理组` → `1 proxy group` /
+    `3 proxy groups`）。中文没有复数形式，`%n` 直接换成数字。
+- **日期与数字**：`models/format.py` 的日期格式本身是可翻译的 QDate 模式（中文 `M 月 d 日`，英文 `MMM d`），
+  月份名由 `QLocale` 的默认值给出，所以英文显示为 Oct 20、Dec 31, 2026。相对时间（`刚刚`、`5 分钟前`）是带
+  `%n` 的文案。数字、单位和速率两种语言写法相同。
+- **语言选择**（`i18n.resolve_language`）按顺序取第一个有效值：
+  1. 设置页的选择（M3 接入，经 `app.main(language=…)` 传入；空值或 `system` 表示跟随系统）；
+  2. 环境变量 `MIHOMO_DESKTOP_LANG=zh|en`，用于预览和测试，`scripts/preview.py --lang en` 等价；
+  3. 系统的首选界面语言（`QLocale.system().uiLanguages()` 的第一项）：`zh` 开头用中文，其他一律用英文。
+
+  格式化日期的 locale：系统 locale 与界面同一语言时用系统的（保留 en_GB 等地区习惯），否则用该语言的默认
+  locale（zh_CN、en_US）。
+- **安装**：`app.py` 在创建 ViewModel 和加载 QML 之前调用 `i18n.Translations.apply()`，安装 `QTranslator` 并
+  设置 `QLocale.setDefault`。`apply()` 可以再次调用来切换语言；界面运行中切换时还要调用
+  `QQmlEngine.retranslate()`，并让 ViewModel 重新发出文本属性的通知（`pages`、`modeOptions`、`sortOptions`
+  目前是 constant 属性，届时要加通知信号）。
+- **流程**：改动文案后运行 `scripts/gen_i18n.py`。`pyside6-lupdate` 扫描 `src/mihomo_desktop` 下的 QML 和
+  Python 并更新 `.ts`（不记录行号，移动代码不会改动目录），`pyside6-lrelease` 再编译出 `.qm`。新条目在 `.ts`
+  里翻译（手改或用 `pyside6-linguist`），然后再运行一次。`--check` 和 `tests/test_i18n.py` 检查：`.ts`
+  覆盖当前源码；英文没有未完成的条目，占位符与源文一致；`.qm` 与 `.ts` 一致。
+- **`.qm` 提交进仓库**（与 Theme.qml 一样），从源码运行和预览不需要额外步骤。Nuitka 打包时，
+  `package/entry.py` 里的 `nuitka-project` 选项把 `translations/*.qm` 复制到 `mihomo_desktop/translations/`，
+  `i18n.py` 按包内路径加载；找不到 `.qm` 时启动报错，而不是静默显示中文。
+- Qt 控件自带的文案（如输入框右键菜单的 Cut / Copy / Paste）不在本项目的目录里。Qt 自带的 zh_CN 目录尚未
+  收录这些新文案，中文界面下它们仍显示英文。
+
 ## 8. 安全模型
 
 | 威胁 | 措施 |
