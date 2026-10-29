@@ -3,7 +3,7 @@
 本文描述界面侧用户数据的持久化方式（SQLite），以及如何把这些数据备份到 Google Drive 和 iCloud。
 相关决策是 [roadmap.md](roadmap.md) 中的 D13 和 D14，实施计划见 roadmap 的 M7。
 
-状态：设计已定，尚未实现。目前的实现仍是 [architecture.md](ui.md) §2 的文件存储。
+状态：存储层已实现（B1），云备份未实现。存储层的实现细节（线程、迁移、从文件存储导入）见 [ui.md](ui.md) §2。
 
 ## 1. 范围
 
@@ -19,22 +19,28 @@
 - **位置**：用户数据目录下的 `mihomo-desktop.db`。macOS 为 `~/Library/Application Support/<Product>/`，Windows 为 `%LOCALAPPDATA%\<Product>\`。
 - **实现**：使用标准库 `sqlite3`，开启 WAL 模式。schema 版本记在 `PRAGMA user_version` 里，启动时按版本依次迁移。
 - **写入**：每次写入都在一个事务里完成。界面是单实例，所以同一时间只有一个进程打开数据库。
-- **主键**：所有记录都用 UUID 作主键，并记 `updated_at`；删除采用软删除，记 `deleted_at`。备份恢复时靠这几项按记录合并；将来如果改成多设备双向同步，也不需要改表结构。
+- **主键**：配置、方案、规则条目和备份目标用 UUID 作主键；覆写、设置和本机状态以 `scope`、`key` 这样的自然键为主键，
+  这样两台设备上的"全局覆写"或同一个设置项是同一条记录；策略组的 `id` 只在所属方案内唯一（地区组的 `id` 由地区代码派生，
+  routing.md 第 9 节）。每行都记 `updated_at`；可以删除的记录采用软删除，记 `deleted_at`。备份恢复时靠这几项按记录合并；
+  将来如果改成多设备双向同步，也不需要改表结构。
 
-表结构（草案）：
+表结构：
 
 | 表 | 内容 |
 | --- | --- |
-| `profiles` | `id`、`name`、`kind`（`subscription` / `file`）、`in_pool`（是否加入节点池）、`url`、`auto_update_hours`、`position`、`created_at`、`updated_at`、`deleted_at` |
-| `profile_contents` | `profile_id`、配置 YAML 原文、`fetched_at`、用量（upload / download / total / expire）、`proxy_count`。这是本机缓存，订阅下载的内容不进入备份 |
+| `profiles` | `id`、`name`、`kind`（`subscription` / `file`）、`in_pool`（是否加入节点池）、`url`、`path`（本地文件配置的原路径）、`auto_update_hours`、`position`、`created_at`、`updated_at`、`deleted_at` |
+| `profile_contents` | `profile_id`、配置 YAML 原文、`fetched_at`、用量（upload / download / total / expire）、`proxy_count`、`updated_at`。这是本机缓存，订阅下载的内容不进入备份 |
 | `overrides` | `scope`（`global` 或某个 `profile_id`）、YAML 原文、`updated_at`、`deleted_at` |
-| `routing_state`、`plans`、`plan_groups`、`plan_rules` | 分流方式、节点池设置、分流方案及其策略组和规则条目，字段见 routing.md 第 9 节 |
+| `routing_state`、`plans`、`plan_groups`、`plan_rules` | 分流方式、当前使用的配置、节点池设置、分流方案及其策略组和规则条目，字段见 routing.md 第 9 节 |
 | `settings` | `key`、`value`（JSON）、`scope`（`synced` / `local`）、`updated_at`。每个设置项属于哪个 scope，由设置页的定义决定 |
-| `state` | 只属于本机的状态，例如当前配置 |
-| `backup_targets` | 已开启的备份目标：提供方、显示用的账户名、上次成功备份的时间、上次的错误。不存令牌（见 4 节） |
+| `state` | 只属于本机的状态（`key`、`value`（JSON）、`updated_at`），例如文件存储的导入记录 |
+| `backup_targets` | 已开启的备份目标：`id`、提供方、显示用的账户名、上次成功备份的时间、上次的错误、`created_at`、`updated_at`、`deleted_at`。不存令牌（见 4 节） |
+
+当前使用的配置存在 `routing_state` 里，作为"订阅自带"时用的配置（routing.md 第 9 节），不在 `state` 里。
 
 **迁移**：首次启动新版本时，如果发现 M2 的文件存储（`profiles.json`、`profiles/*.yaml`、`override.yaml`、
-`overrides/*.yaml`）或临时的设置文件，就把它们导入数据库。导入后，旧文件改名加上 `.migrated` 后缀保留，不删除。
+`overrides/*.yaml`）或临时的设置文件 `settings.json`，就在一个事务里把它们导入数据库，失败时下次启动重试。导入后，
+旧文件改名加上 `.migrated` 后缀保留，不删除。细节见 ui.md 2.4 节。
 
 ## 3. 备份快照
 
