@@ -11,6 +11,9 @@ _MESSAGES = {
     "connection_closed": "与服务的连接已断开",
     "timeout": "服务没有响应",
     "owned_by_other_user": "隧道正由其他用户使用",
+    "invalid_config": "配置无效",
+    "not_running": "隧道未运行",
+    "already_running": "隧道已在运行",
 }
 
 

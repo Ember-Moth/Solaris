@@ -20,6 +20,23 @@ class HostError(Exception):
 
 
 @dataclass(frozen=True)
+class RunOptions:
+    tun_enabled: bool = False
+    system_proxy_enabled: bool = False
+    mixed_port: int = 0  # 0 keeps the profile's own port
+    allow_lan: bool = False
+
+
+@dataclass(frozen=True)
+class TunnelConfig:
+    """What Validate, Start and Reload carry. Validate ignores ``options``."""
+
+    config_yaml: str
+    override_json: str = ""  # persistent overrides; empty until decision D4
+    options: RunOptions = RunOptions()
+
+
+@dataclass(frozen=True)
 class HostInfo:
     protocol_version: int
     service_version: str
@@ -84,7 +101,16 @@ class TunnelHost(Protocol):
 
     async def get_status(self) -> HostStatus: ...
 
-    async def start(self) -> None: ...
+    async def validate(self, config: TunnelConfig) -> None:
+        """Run the config through the core's pipeline without applying it; raises
+        HostError("invalid_config") when the core rejects it."""
+        ...
+
+    async def start(self, config: TunnelConfig) -> None: ...
+
+    async def reload(self, config: TunnelConfig) -> None:
+        """Replace the running config in place; raises HostError("not_running") when stopped."""
+        ...
 
     async def stop(self) -> None: ...
 

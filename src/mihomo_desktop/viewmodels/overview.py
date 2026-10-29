@@ -9,7 +9,7 @@ from typing import Any
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
-from mihomo_desktop.host.base import ProxyGroup, TunnelHost
+from mihomo_desktop.host.base import HostError, ProxyGroup, TunnelHost
 from mihomo_desktop.models import format as fmt
 from mihomo_desktop.models.profiles import ProfileSource
 from mihomo_desktop.models.proxies import main_group, resolve
@@ -123,7 +123,11 @@ class OverviewViewModel(QObject):
     # -- actions -----------------------------------------------------------------------------
     @Slot()
     def toggleConnection(self) -> None:
-        self._act(self._host.stop() if self._connected() else self._host.start())
+        self._act(self._host.stop() if self._connected() else self._start())
+
+    async def _start(self) -> None:
+        # Start carries the profile's config, which the UI does not manage yet.
+        raise HostError("not_implemented", "starting needs profile management")
 
     @Slot(str)
     def setMode(self, mode: str) -> None:

@@ -12,6 +12,8 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
+import yaml
+
 from mihomo_desktop.host.base import (
     Connection,
     HostError,
@@ -20,6 +22,7 @@ from mihomo_desktop.host.base import (
     Proxy,
     ProxyGroup,
     TrafficSample,
+    TunnelConfig,
 )
 from mihomo_desktop.models.profiles import ProfileSummary
 
@@ -37,6 +40,23 @@ NODES: dict[str, tuple[str, int | None]] = {
     "美国 01": ("Hysteria2", 198),
     "美国 02": ("Shadowsocks", 412),
 }
+
+
+def check_config(config: TunnelConfig) -> None:
+    """The simulated pipeline: the YAML must parse to a mapping that defines a proxy,
+    either inline or through a provider. Failures use the service's error code."""
+    try:
+        document = yaml.safe_load(config.config_yaml)
+    except yaml.YAMLError as error:
+        raise HostError("invalid_config", str(error).replace("\n", " ")) from error
+    if not isinstance(document, dict):
+        raise HostError("invalid_config", "the config is not a YAML mapping")
+    proxies = document.get("proxies")
+    providers = document.get("proxy-providers")
+    if not (isinstance(proxies, list) and proxies) and not (
+        isinstance(providers, dict) and providers
+    ):
+        raise HostError("invalid_config", "the config defines no proxies")
 
 
 @dataclass
@@ -72,6 +92,8 @@ class SimulatedHost:
         self._clock = clock
         self._health_check_s = health_check_s
         self._running = True
+        self.config: TunnelConfig | None = None  # the last config started or reloaded
+        self.reloads = 0
         self._mode = "rule"
         self._tun = True
         self._system_proxy = False
@@ -162,11 +184,24 @@ class SimulatedHost:
             system_proxy_enabled=self._system_proxy,
         )
 
-    async def start(self) -> None:
+    async def validate(self, config: TunnelConfig) -> None:
+        check_config(config)
+
+    async def start(self, config: TunnelConfig) -> None:
+        if self._running:
+            raise HostError("already_running", "the core is already running")
+        check_config(config)
+        self._apply(config)
+        self._running = True
+        self._started_at = self._clock()
+        self._last_poll = self._last_connections = self._clock()
+
+    async def reload(self, config: TunnelConfig) -> None:
         if not self._running:
-            self._running = True
-            self._started_at = self._clock()
-            self._last_poll = self._last_connections = self._clock()
+            raise HostError("not_running", "the core is not running")
+        check_config(config)
+        self._apply(config)
+        self.reloads += 1
 
     async def stop(self) -> None:
         self._running = False
@@ -253,6 +288,11 @@ class SimulatedHost:
         pass
 
     # -- helpers -----------------------------------------------------------------------------
+    def _apply(self, config: TunnelConfig) -> None:
+        self.config = config
+        self._tun = config.options.tun_enabled
+        self._system_proxy = config.options.system_proxy_enabled
+
     def _state(self) -> str:
         return "running" if self._running else "stopped"
 

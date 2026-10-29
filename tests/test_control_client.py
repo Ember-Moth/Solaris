@@ -3,7 +3,7 @@ from collections.abc import Awaitable, Callable
 
 import pytest
 
-from mihomo_desktop.host.base import HostError, HostInfo
+from mihomo_desktop.host.base import HostError, HostInfo, RunOptions, TunnelConfig
 from mihomo_desktop.host.client import ControlClient
 from mihomo_desktop.host.service import ServiceHost
 from mihomo_desktop.host.transport import Opener, Streams
@@ -187,10 +187,45 @@ def test_service_host_maps_status_groups_and_traffic() -> None:
                 (sample,) = await host.poll_traffic()
                 assert sample.down_bytes_per_second == 2
                 assert subscribed == [1, 2]
-                with pytest.raises(HostError) as raised:
-                    await host.start()
-                assert raised.value.code == "not_implemented"
             finally:
                 await host.close()
 
     asyncio.run(scenario())
+
+
+def test_service_host_sends_the_config_with_validate_start_and_reload() -> None:
+    pb = control_pb2
+    received: list[control_pb2.Request] = []
+
+    async def answer(request: control_pb2.Request) -> control_pb2.Response:
+        received.append(request)
+        if request.WhichOneof("method") == "reload":
+            return pb.Response(error=pb.Error(code="not_running", message="core is stopped"))
+        return pb.Response(empty=pb.Empty())
+
+    options = RunOptions(tun_enabled=True, system_proxy_enabled=False, mixed_port=7890)
+    config = TunnelConfig("proxies: []\n", '{"mode": "rule"}', options)
+
+    async def scenario() -> None:
+        server, opener = await serve(answer)
+        async with server:
+            host = ServiceHost(opener)
+            try:
+                await host.validate(config)
+                await host.start(config)
+                with pytest.raises(HostError) as raised:
+                    await host.reload(config)
+                assert raised.value.code == "not_running"
+            finally:
+                await host.close()
+
+    asyncio.run(scenario())
+    validate, start, reload = received
+    assert validate.validate == pb.ValidateRequest(
+        config_yaml="proxies: []\n", override_json='{"mode": "rule"}'
+    )
+    expected_options = pb.RunOptions(tun_enabled=True, mixed_port=7890)
+    assert start.start.config_yaml == "proxies: []\n"
+    assert start.start.options == expected_options
+    assert reload.reload.override_json == '{"mode": "rule"}'
+    assert reload.reload.options == expected_options

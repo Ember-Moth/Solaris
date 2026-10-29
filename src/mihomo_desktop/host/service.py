@@ -12,7 +12,9 @@ from mihomo_desktop.host.base import (
     HostStatus,
     Proxy,
     ProxyGroup,
+    RunOptions,
     TrafficSample,
+    TunnelConfig,
 )
 from mihomo_desktop.host.client import ControlClient
 from mihomo_desktop.host.transport import Opener
@@ -25,6 +27,15 @@ MODES = {"rule": pb.MODE_RULE, "global": pb.MODE_GLOBAL, "direct": pb.MODE_DIREC
 
 def _enum_name(enum: type, prefix: str, value: int) -> str:
     return enum.Name(value).removeprefix(prefix).lower()
+
+
+def _options(options: RunOptions) -> pb.RunOptions:
+    return pb.RunOptions(
+        tun_enabled=options.tun_enabled,
+        system_proxy_enabled=options.system_proxy_enabled,
+        mixed_port=options.mixed_port,
+        allow_lan=options.allow_lan,
+    )
 
 
 def _group(group: pb.ProxyGroup) -> ProxyGroup:
@@ -78,9 +89,27 @@ class ServiceHost:
             system_proxy_enabled=status.system_proxy_enabled,
         )
 
-    async def start(self) -> None:
-        # Start carries the profile YAML, which the UI does not manage yet.
-        raise HostError("not_implemented", "starting needs profile management")
+    async def validate(self, config: TunnelConfig) -> None:
+        request = pb.ValidateRequest(
+            config_yaml=config.config_yaml, override_json=config.override_json
+        )
+        await self._call(pb.Request(validate=request))
+
+    async def start(self, config: TunnelConfig) -> None:
+        request = pb.StartRequest(
+            config_yaml=config.config_yaml,
+            override_json=config.override_json,
+            options=_options(config.options),
+        )
+        await self._call(pb.Request(start=request))
+
+    async def reload(self, config: TunnelConfig) -> None:
+        request = pb.ReloadRequest(
+            config_yaml=config.config_yaml,
+            override_json=config.override_json,
+            options=_options(config.options),
+        )
+        await self._call(pb.Request(reload=request))
 
     async def stop(self) -> None:
         await self._call(pb.Request(stop=pb.StopRequest()))
@@ -89,8 +118,9 @@ class ServiceHost:
         await self._call(pb.Request(set_mode=pb.SetModeRequest(mode=MODES[mode])))
 
     async def set_tun(self, enabled: bool) -> None:
-        # Toggling TUN is a Reload with new RunOptions, which also carries the profile.
-        raise HostError("not_implemented", "changing TUN needs profile management")
+        # Toggling TUN is a Reload with new RunOptions; the settings page (roadmap M3)
+        # owns RunOptions and will send that Reload.
+        raise HostError("not_implemented", "changing TUN goes through the settings page")
 
     async def set_system_proxy(self, enabled: bool) -> None:
         request = pb.Request(set_system_proxy=pb.SetSystemProxyRequest(enabled=enabled))
