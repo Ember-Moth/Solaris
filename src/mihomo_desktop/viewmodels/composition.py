@@ -10,6 +10,7 @@ from mihomo_desktop.host.base import TunnelHost
 from mihomo_desktop.models.library import ProfileLibrary
 from mihomo_desktop.models.store import ProfileStore
 from mihomo_desktop.models.subscription import Fetcher
+from mihomo_desktop.viewmodels.appearance import Appearance
 from mihomo_desktop.viewmodels.common.async_runner import AsyncRunner
 from mihomo_desktop.viewmodels.overview import OverviewViewModel
 from mihomo_desktop.viewmodels.profiles import ProfilesViewModel
@@ -26,6 +27,7 @@ class ViewModels:
     overview: OverviewViewModel
     proxies: ProxiesViewModel
     profiles: ProfilesViewModel
+    appearance: Appearance
 
     def initial_properties(self) -> dict[str, object]:
         """Main.qml's required properties."""
@@ -34,6 +36,7 @@ class ViewModels:
             "overviewViewModel": self.overview,
             "proxiesViewModel": self.proxies,
             "profilesViewModel": self.profiles,
+            "appearance": self.appearance,
         }
 
     def start(self) -> None:
@@ -55,8 +58,10 @@ def compose(
     store: ProfileStore,
     fetcher: Fetcher,
     clock: Callable[[], float] = time.time,
+    appearance: Appearance | None = None,
 ) -> ViewModels:
-    """``clock`` dates profile updates and subscription expiry."""
+    """``clock`` dates profile updates and subscription expiry; ``appearance`` defaults to
+    following the system."""
     runner = AsyncRunner()
     library = ProfileLibrary(store, host, fetcher, clock)
     shell = ShellViewModel(host, runner)
@@ -72,4 +77,6 @@ def compose(
     proxies.selectionApplied.connect(overview.refreshGroups)
     profiles.applied.connect(overview.refreshGroups)
     profiles.applied.connect(proxies.refresh)
-    return ViewModels(runner, host, library, shell, overview, proxies, profiles)
+    return ViewModels(
+        runner, host, library, shell, overview, proxies, profiles, appearance or Appearance()
+    )

@@ -18,6 +18,7 @@ from mihomo_desktop.i18n import Translations, resolve_language
 from mihomo_desktop.models.store import ProfileStore, default_data_dir
 from mihomo_desktop.models.subscription import Fetcher, UrlFetcher
 from mihomo_desktop.product import DISPLAY_NAME, PIPE_NAME
+from mihomo_desktop.viewmodels.appearance import Appearance, resolve_mode
 from mihomo_desktop.viewmodels.composition import ViewModels, compose
 
 MAIN_QML = Path(__file__).resolve().parent / "ui" / "Main.qml"
@@ -55,8 +56,11 @@ def main(
     store: ProfileStore | None = None,
     fetcher: Fetcher | None = None,
     language: str = "",
+    appearance: str = "",
 ) -> int:
-    """``language`` is ``zh`` or ``en``; empty follows MIHOMO_DESKTOP_LANG, then the system."""
+    """``language`` is ``zh`` or ``en``; empty follows MIHOMO_DESKTOP_LANG, then the system.
+    ``appearance`` is ``system``, ``light`` or ``dark``; empty follows MIHOMO_DESKTOP_APPEARANCE,
+    then the system."""
     app = QGuiApplication(sys.argv)
     app.setApplicationName(DISPLAY_NAME)
     app.setApplicationVersion(__version__)
@@ -66,6 +70,7 @@ def main(
         host or ServiceHost(default_opener()),
         store or ProfileStore(default_data_dir()),
         fetcher or UrlFetcher(),
+        appearance=Appearance(resolve_mode(appearance)),
     )
     engine = QQmlApplicationEngine()
     if not load_ui(engine, view_models):

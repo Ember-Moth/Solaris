@@ -2,6 +2,8 @@
 
     uv run python scripts/preview.py             # the system's language
     uv run python scripts/preview.py --lang en   # or zh; MIHOMO_DESKTOP_LANG works too
+    uv run python scripts/preview.py --appearance dark  # or light, system;
+                                                        # MIHOMO_DESKTOP_APPEARANCE works too
 
 Profiles live in a temporary directory and links resolve to sample data, so the preview
 touches neither the real profiles nor the network. Source-tree only: the preview's test
@@ -18,16 +20,24 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from mihomo_desktop.app import main
 from mihomo_desktop.models.store import ProfileStore
+from mihomo_desktop.viewmodels.appearance import MODES
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the UI against the simulated host")
     parser.add_argument("--lang", choices=("zh", "en"), default="")
+    parser.add_argument("--appearance", choices=MODES, default="")
     args, qt_args = parser.parse_known_args()
     sys.argv[1:] = qt_args
     with tempfile.TemporaryDirectory(prefix="mihomo-desktop-preview-") as directory:
         store = ProfileStore(Path(directory))
         seed_profiles(store, time.time())
         host = SimulatedHost(health_check_s=0.8)
-        code = main(host, store, SimulatedFetcher(delay_s=0.8), language=args.lang)
+        code = main(
+            host,
+            store,
+            SimulatedFetcher(delay_s=0.8),
+            language=args.lang,
+            appearance=args.appearance,
+        )
     raise SystemExit(code)

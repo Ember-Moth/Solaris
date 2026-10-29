@@ -13,6 +13,7 @@ ApplicationWindow {
     required property OverviewViewModel overviewViewModel
     required property ProxiesViewModel proxiesViewModel
     required property ProfilesViewModel profilesViewModel
+    required property Appearance appearance
 
     width: Theme.windowDefaultWidth
     height: Theme.windowDefaultHeight
