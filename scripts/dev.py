@@ -7,7 +7,8 @@ of their own instead of the user data directory.
 
 The script builds the service (go build), starts it as a child process on a socket in a
 short temporary directory, keeps mihomo's home under ``<data>/dev-core`` and stops the service
-when the UI quits. The service never creates a TUN or changes the system proxy,
+when the UI quits. The home gets the GEO data the installers ship (scripts/fetch_geodata.py)
+unless it has some. The service never creates a TUN or changes the system proxy,
 routes or DNS (docs/architecture.md §11); "open at login" stays unavailable, as in every run
 from source. tests/e2e uses the same DevService.
 """
@@ -102,6 +103,7 @@ def main() -> int:
     from mihomo_desktop.host.transport import unix_opener
     from mihomo_desktop.models.store import ProfileStore
     from mihomo_desktop.viewmodels.appearance import MODES
+    from scripts.fetch_geodata import seed
 
     parser = argparse.ArgumentParser(description="Run the UI against the development service")
     parser.add_argument("--data", type=Path, help="profiles and settings (default: temporary)")
@@ -115,6 +117,11 @@ def main() -> int:
         run = stack.enter_context(short_directory())
         binary = build_service(run / "service")
         service = DevService(binary, run / "control.sock", data / "dev-core", data / "service.log")
+        if not (service.home / "GeoSite.dat").exists():
+            try:
+                seed(service.home)
+            except (OSError, RuntimeError) as error:
+                print(f"no GEO data, mihomo downloads it when needed: {error}", file=sys.stderr)
         stack.enter_context(service)
         print(f"data: {data}\nsocket: {service.socket}\nservice log: {service.log}", flush=True)
         host = ServiceHost(unix_opener(str(service.socket)))
