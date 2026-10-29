@@ -6,16 +6,27 @@ from __future__ import annotations
 import asyncio
 
 from mihomo_desktop.host.base import (
+    ComposedGroup,
+    Composition,
+    CompositionReport,
+    CompositionWarning,
     Connection,
+    GeoCategories,
+    GeoDataset,
     HostError,
     HostInfo,
     HostStatus,
     LogEntry,
+    PoolNode,
     Proxy,
     ProxyGroup,
+    Rule,
     RunOptions,
+    SourceInspection,
+    SourceNode,
     TrafficSample,
     TunnelConfig,
+    bundled_geo_categories,
 )
 from mihomo_desktop.host.client import ControlClient
 from mihomo_desktop.host.transport import Opener
@@ -45,6 +56,59 @@ def _options(options: RunOptions) -> pb.RunOptions:
     )
 
 
+def _composition(composition: Composition) -> pb.Composition:
+    return pb.Composition(
+        sources=[
+            pb.CompositionSource(id=source.id, name=source.name, yaml=source.yaml)
+            for source in composition.sources
+        ],
+        info_filter=composition.info_filter,
+        plan_json=composition.plan_json,
+    )
+
+
+def _with_source[R: (pb.ValidateRequest, pb.StartRequest, pb.ReloadRequest)](
+    request: R, config: TunnelConfig
+) -> R:
+    """Fill the request's oneof source: the composition, or else the YAML."""
+    if config.composition is not None:
+        request.composition.CopyFrom(_composition(config.composition))
+    else:
+        request.config_yaml = config.config_yaml
+    return request
+
+
+def _report(response: pb.Response) -> CompositionReport | None:
+    if response.WhichOneof("result") != "composition":
+        return None
+    report = response.composition
+    return CompositionReport(
+        warnings=tuple(CompositionWarning(w.entry_id, w.reason, w.target) for w in report.warnings),
+        groups=tuple(
+            ComposedGroup(
+                g.id,
+                g.name,
+                _enum_name(pb.GroupKind, "GROUP_KIND_", g.kind),
+                g.region,
+                g.node_count,
+            )
+            for g in report.groups
+        ),
+        rules=tuple(Rule(r.type, r.payload, r.proxy, r.entry_id) for r in report.rules),
+        nodes=tuple(
+            PoolNode(n.name, n.original_name, n.source_id, n.type, n.region) for n in report.nodes
+        ),
+    )
+
+
+def _dataset(categories: pb.GeoCategories, bundled: GeoDataset) -> GeoDataset:
+    if not categories.names:
+        return bundled
+    return GeoDataset(
+        tuple(categories.names), categories.sha256, categories.updated_at_unix_ms, False
+    )
+
+
 def _group(group: pb.ProxyGroup) -> ProxyGroup:
     return ProxyGroup(
         name=group.name,
@@ -71,6 +135,7 @@ def _connection(c: pb.Connection) -> Connection:
         started_at_unix_ms=c.started_at_unix_ms,
         source=c.source,
         destination=c.destination,
+        rule_entry_id=c.rule_entry_id,
     )
 
 
@@ -116,27 +181,42 @@ class ServiceHost:
             system_proxy_enabled=status.system_proxy_enabled,
         )
 
-    async def validate(self, config: TunnelConfig) -> None:
-        request = pb.ValidateRequest(
-            config_yaml=config.config_yaml, overrides=list(config.overrides)
-        )
-        await self._call(pb.Request(validate=request))
+    async def validate(self, config: TunnelConfig) -> CompositionReport | None:
+        request = _with_source(pb.ValidateRequest(overrides=list(config.overrides)), config)
+        return _report(await self._call(pb.Request(validate=request)))
 
-    async def start(self, config: TunnelConfig) -> None:
-        request = pb.StartRequest(
-            config_yaml=config.config_yaml,
-            overrides=list(config.overrides),
-            options=_options(config.options),
+    async def start(self, config: TunnelConfig) -> CompositionReport | None:
+        request = _with_source(
+            pb.StartRequest(overrides=list(config.overrides), options=_options(config.options)),
+            config,
         )
-        await self._call(pb.Request(start=request))
+        return _report(await self._call(pb.Request(start=request)))
 
-    async def reload(self, config: TunnelConfig) -> None:
-        request = pb.ReloadRequest(
-            config_yaml=config.config_yaml,
-            overrides=list(config.overrides),
-            options=_options(config.options),
+    async def reload(self, config: TunnelConfig) -> CompositionReport | None:
+        request = _with_source(
+            pb.ReloadRequest(overrides=list(config.overrides), options=_options(config.options)),
+            config,
         )
-        await self._call(pb.Request(reload=request))
+        return _report(await self._call(pb.Request(reload=request)))
+
+    async def inspect_source(self, yaml: str, info_filter: str = "") -> SourceInspection:
+        request = pb.InspectSourceRequest(yaml=yaml, info_filter=info_filter)
+        inspected = (await self._call(pb.Request(inspect_source=request))).inspect_source
+        return SourceInspection(
+            nodes=tuple(SourceNode(n.name, n.type, n.region, n.info) for n in inspected.nodes),
+            has_rules=inspected.has_rules,
+            group_count=inspected.group_count,
+            rule_count=inspected.rule_count,
+        )
+
+    async def list_geo_categories(self) -> GeoCategories:
+        request = pb.Request(list_geo_categories=pb.ListGeoCategoriesRequest())
+        listed = (await self._call(request)).list_geo_categories
+        bundled = bundled_geo_categories()
+        return GeoCategories(
+            geosite=_dataset(listed.geosite, bundled.geosite),
+            geoip=_dataset(listed.geoip, bundled.geoip),
+        )
 
     async def stop(self) -> None:
         await self._call(pb.Request(stop=pb.StopRequest()))

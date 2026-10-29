@@ -10,28 +10,44 @@ clock are repeatable.
 from __future__ import annotations
 
 import asyncio
+import base64
+import binascii
+import contextlib
+import json
 import random
+import re
 import time
 import uuid
 from collections import deque
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Any
+from urllib.parse import unquote, urlsplit
 
 import yaml
 
 from mihomo_desktop.host.base import (
     LOG_LEVELS,
+    ComposedGroup,
+    Composition,
+    CompositionReport,
+    CompositionWarning,
     Connection,
+    GeoCategories,
     HostError,
     HostInfo,
     HostStatus,
     LogEntry,
+    PoolNode,
     Proxy,
     ProxyGroup,
+    Rule,
+    SourceInspection,
+    SourceNode,
     TrafficSample,
     TunnelConfig,
+    bundled_geo_categories,
 )
 from mihomo_desktop.models.profiles import (
     KIND_FILE,
@@ -115,11 +131,14 @@ def apply_override(
 
 
 def check_config(config: TunnelConfig) -> dict[str, Any]:
-    """The simulated pipeline (architecture §3.2, ui §4): parse the config, apply the
-    overrides in order, then clear the controller keys. As in mihomo, every proxy a group
-    or a rule names must exist; a config without proxies routes everything DIRECT and is
-    fine. Failures use the service's error code and mihomo's wording."""
-    document = _load(config.config_yaml, "")
+    """The simulated pipeline (architecture §3.2, ui §4): parse the config, or compose one,
+    apply the overrides in order, then clear the controller keys. As in mihomo, every proxy
+    a group or a rule names must exist; a config without proxies routes everything DIRECT
+    and is fine. Failures use the service's error code and mihomo's wording."""
+    if config.composition is not None:
+        document, _ = compose(config.composition)
+    else:
+        document = _load(config.config_yaml, "")
     if not isinstance(document, dict):
         raise HostError("invalid_config", "the config is not a YAML mapping")
     for number, text in enumerate(config.overrides, 1):
@@ -166,6 +185,163 @@ def _check_references(document: dict[str, Any]) -> None:
         if target not in known:
             message = f"rules[{index}] [{rule}] error: proxy [{target}] not found"
             raise HostError("invalid_config", message)
+
+
+# A few rows of the core's region table (src/core/internal/compose/regions.go), enough for
+# the samples; the core's own table is longer and decides for real.
+SIMULATED_REGIONS = (
+    ("HK", "🇭🇰", "香港", r"🇭🇰|香港|(?i:hong ?kong)|(?<![A-Za-z])HK(?![A-Za-z])"),
+    ("TW", "🇹🇼", "台湾", r"🇹🇼|台湾|臺灣|(?i:taiwan)|(?<![A-Za-z])TW(?![A-Za-z])"),
+    ("JP", "🇯🇵", "日本", r"🇯🇵|日本|东京|大阪|(?i:japan|tokyo)|(?<![A-Za-z])JP(?![A-Za-z])"),
+    ("SG", "🇸🇬", "新加坡", r"🇸🇬|新加坡|(?i:singapore)|(?<![A-Za-z])SG(?![A-Za-z])"),
+    ("US", "🇺🇸", "美国", r"🇺🇸|美国|(?i:united ?states)|(?<![A-Za-z])US(?![A-Za-z])"),
+)
+OTHER_REGION = "ZZ"
+# Proxy types as mihomo's adapters name them (Proxy.type).
+ADAPTER_TYPES = {
+    "ss": "Shadowsocks",
+    "vmess": "Vmess",
+    "vless": "Vless",
+    "trojan": "Trojan",
+    "hysteria2": "Hysteria2",
+    "http": "Http",
+    "socks5": "Socks5",
+    "direct": "Direct",
+}
+# Share link schemes as proxy types.
+LINK_SCHEMES = {
+    "ss": "ss",
+    "vmess": "vmess",
+    "vless": "vless",
+    "trojan": "trojan",
+    "hy2": "hysteria2",
+}
+
+
+def region_of(name: str) -> str:
+    for code, _, _, pattern in SIMULATED_REGIONS:
+        if re.search(pattern, name):
+            return code
+    return OTHER_REGION
+
+
+def _share_links(text: str) -> list[dict[str, Any]]:
+    with contextlib.suppress(binascii.Error, UnicodeDecodeError):
+        text = base64.b64decode(text.strip() + "=" * (-len(text.strip()) % 4)).decode()
+    proxies = []
+    for line in text.splitlines():
+        link = urlsplit(line.strip())
+        if link.scheme in LINK_SCHEMES and link.fragment:
+            proxies.append({"name": unquote(link.fragment), "type": LINK_SCHEMES[link.scheme]})
+    return proxies
+
+
+def _subscription(text: str, label: str) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """The named proxies of a subscription, each name once, and the profile itself."""
+    document = _load(text, label)
+    if isinstance(document, dict):
+        proxies = document.get("proxies") or []
+        if not isinstance(proxies, list):
+            raise HostError("invalid_config", label + "proxies must be a list")
+    else:
+        document, proxies = {}, _share_links(text)
+        if not proxies:
+            raise HostError("invalid_config", label + "neither a mihomo profile nor share links")
+    named: dict[str, dict[str, Any]] = {}
+    for proxy in proxies:
+        if isinstance(proxy, dict) and isinstance(proxy.get("name"), str) and proxy["name"]:
+            named.setdefault(proxy["name"], proxy)
+    return list(named.values()), document
+
+
+def inspect(text: str, info_filter: str = "") -> SourceInspection:
+    proxies, document = _subscription(text, "")
+    rules = document.get("rules") or []
+    return SourceInspection(
+        nodes=tuple(
+            SourceNode(
+                p["name"],
+                ADAPTER_TYPES.get(str(p.get("type")), str(p.get("type"))),
+                region_of(p["name"]),
+                bool(info_filter) and re.search(info_filter, p["name"]) is not None,
+            )
+            for p in proxies
+        ),
+        has_rules=bool(rules),
+        group_count=len(document.get("proxy-groups") or []),
+        rule_count=len(rules),
+    )
+
+
+def compose(composition: Composition) -> tuple[dict[str, Any], CompositionReport]:
+    """A small stand-in for the core's composition (docs/routing.md §8): the pool, the
+    built-in and region groups, and the rules with their entry ids. Custom groups only
+    take their other members."""
+    try:
+        plan = json.loads(composition.plan_json)
+    except json.JSONDecodeError as error:
+        raise HostError("invalid_config", f"plan: {error}") from error
+    if not isinstance(plan, dict) or plan.get("version") != 1:
+        version = plan.get("version") if isinstance(plan, dict) else None
+        message = f"plan: plan version {version} is not supported; this core reads version 1"
+        raise HostError("invalid_config", message)
+    nodes: list[PoolNode] = []
+    proxies: list[dict[str, Any]] = []
+    taken = set(BUILT_IN_PROXIES)
+    for source in composition.sources:
+        for proxy in _subscription(source.yaml, f"subscription {source.name!r}: ")[0]:
+            original = proxy["name"]
+            if composition.info_filter and re.search(composition.info_filter, original):
+                continue
+            name = f"{original} · {source.name}" if original in taken else original
+            taken.add(name)
+            kind = ADAPTER_TYPES.get(str(proxy.get("type")), str(proxy.get("type")))
+            nodes.append(PoolNode(name, original, source.id, kind, region_of(original)))
+            proxies.append({**proxy, "name": name})
+    proxy_name, auto_name = "节点选择", "自动选择"
+    groups = [ComposedGroup("proxy", proxy_name, "builtin", "", 0)]
+    groups.append(ComposedGroup("auto", auto_name, "builtin", "", len(nodes)))
+    for code, flag, name, _ in (*SIMULATED_REGIONS, (OTHER_REGION, "🌐", "其他地区", "")):
+        count = sum(node.region == code for node in nodes)
+        if count:
+            groups.append(ComposedGroup(f"region:{code}", f"{flag} {name}", "region", code, count))
+    for group in plan.get("groups") or []:
+        if group.get("kind") == "custom":
+            groups.append(ComposedGroup(group["id"], group["name"], "custom", "", 0))
+    names = {group.id: group.name for group in groups}
+    warnings: list[CompositionWarning] = []
+
+    def target(entry_id: str, wanted: str) -> str:
+        if wanted in BUILT_IN_PROXIES:
+            return wanted
+        if wanted in names:
+            return names[wanted]
+        reason = "region_empty" if wanted.startswith("region:") else "group_empty"
+        warnings.append(CompositionWarning(entry_id, reason, wanted))
+        return proxy_name
+
+    rules: list[Rule] = []
+    for entry in plan.get("rules") or []:
+        if entry.get("enabled", True):
+            to = target(entry["id"], entry["target"])
+            rules.extend(
+                Rule(i["type"].upper(), i["value"], to, entry["id"]) for i in entry["items"]
+            )
+    rules.append(Rule("MATCH", "", target("fallback", plan.get("fallback") or "proxy"), "fallback"))
+    document = {
+        "proxies": proxies,
+        "proxy-groups": [
+            {
+                "name": g.name,
+                "type": "select",
+                "proxies": [p["name"] for p in proxies] or ["DIRECT"],
+            }
+            for g in groups
+        ],
+        "rules": [",".join(part for part in (r.type, r.payload, r.proxy) if part) for r in rules],
+    }
+    report = CompositionReport(tuple(warnings), tuple(groups), tuple(rules), tuple(nodes))
+    return document, report
 
 
 # Each type with the fields mihomo requires of it, so the real core accepts the sample too
@@ -453,10 +629,13 @@ class SimulatedHost:
         self._health_check_s = health_check_s
         self._development = development
         self.busy_ports: set[int] = set()  # mixed ports that another program listens on
+        # Whether the core has GEO data to list; without it the installer's list stands in.
+        self.has_geodata = True
         self._running = True
         self._failed = False  # the last start could not open its port
         self.config: TunnelConfig | None = None  # the last config started or reloaded
         self.effective: dict[str, Any] | None = None  # that config after the pipeline
+        self.report: CompositionReport | None = None  # its report, for a composition
         self.reloads = 0
         self._mode = "rule"
         self._tun = not development
@@ -525,10 +704,11 @@ class SimulatedHost:
             system_proxy_enabled=self._system_proxy,
         )
 
-    async def validate(self, config: TunnelConfig) -> None:
+    async def validate(self, config: TunnelConfig) -> CompositionReport | None:
         check_config(config)
+        return compose(config.composition)[1] if config.composition is not None else None
 
-    async def start(self, config: TunnelConfig) -> None:
+    async def start(self, config: TunnelConfig) -> CompositionReport | None:
         if self._running:
             raise HostError("already_running", "the core is already running")
         try:
@@ -543,13 +723,28 @@ class SimulatedHost:
         self._started_at = self._clock()
         self._last_poll = self._last_advance = self._clock()
         self._log_lines(STARTUP_LOG)
+        return self.report
 
-    async def reload(self, config: TunnelConfig) -> None:
+    async def reload(self, config: TunnelConfig) -> CompositionReport | None:
         if not self._running:
             raise HostError("not_running", "the core is not running")
         self._apply(config)
         self.reloads += 1
         self._log_lines(STARTUP_LOG[:2])
+        return self.report
+
+    async def inspect_source(self, yaml: str, info_filter: str = "") -> SourceInspection:
+        return inspect(yaml, info_filter)
+
+    async def list_geo_categories(self) -> GeoCategories:
+        bundled = bundled_geo_categories()
+        if not self.has_geodata:
+            return bundled
+        at = int(self._clock() * 1000)
+        return GeoCategories(
+            replace(bundled.geosite, updated_at_unix_ms=at, bundled=False),
+            replace(bundled.geoip, updated_at_unix_ms=at, bundled=False),
+        )
 
     async def stop(self) -> None:
         self._running = False
@@ -757,11 +952,13 @@ class SimulatedHost:
         if self._development and config.options.tun_enabled:
             raise HostError("unsupported_method", "this host never creates a TUN")
         self.effective = check_config(config)
+        report = compose(config.composition)[1] if config.composition is not None else None
         if config.options.mixed_port in self.busy_ports:
             address = f"127.0.0.1:{config.options.mixed_port}"
             message = f"listen tcp {address}: bind: address already in use"
             raise HostError("apply_failed", message, retryable=True)
         self.config = config
+        self.report = report
         self._tun = config.options.tun_enabled
         self._system_proxy = config.options.system_proxy_enabled
 

@@ -10,6 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from mihomo_desktop.host import geo_categories
+
 
 class HostError(Exception):
     def __init__(self, code: str, message: str, *, retryable: bool = False) -> None:
@@ -28,13 +30,122 @@ class RunOptions:
 
 
 @dataclass(frozen=True)
-class TunnelConfig:
-    """What Validate, Start and Reload carry. Validate ignores ``options``."""
+class CompositionSource:
+    id: str
+    name: str
+    yaml: str  # the subscription as downloaded: a mihomo profile or share links
 
-    config_yaml: str
+
+@dataclass(frozen=True)
+class Composition:
+    """The node pool and a plan, for "my plan" routing: the core assembles the configuration
+    (docs/routing.md §8). ``sources`` are the subscriptions in the pool in the order they were
+    imported; ``plan_json`` follows routing.md §8.5."""
+
+    sources: tuple[CompositionSource, ...]
+    plan_json: str
+    # Names of information nodes ("剩余流量"), in mihomo's regular expressions; "" keeps all.
+    info_filter: str = ""
+
+
+@dataclass(frozen=True)
+class TunnelConfig:
+    """What Validate, Start and Reload carry: a subscription's own YAML, or a composition in
+    its place. Validate ignores ``options``."""
+
+    config_yaml: str = ""
     # Override YAML texts in the order they apply: the global one, then the profile's own.
     overrides: tuple[str, ...] = ()
     options: RunOptions = RunOptions()
+    composition: Composition | None = None
+
+    def __post_init__(self) -> None:
+        if self.composition is not None and self.config_yaml:
+            raise ValueError("a TunnelConfig carries config_yaml or a composition, not both")
+
+
+@dataclass(frozen=True)
+class CompositionWarning:
+    entry_id: str  # a rule entry, or "fallback"
+    # "region_empty": the target region has no nodes; "group_empty": the target group has no
+    # members. Either way the entry goes to the built-in "proxy" group meanwhile.
+    reason: str
+    target: str  # the target the plan names
+
+
+@dataclass(frozen=True)
+class ComposedGroup:
+    id: str  # "proxy", "auto", "region:HK" or the plan's own id
+    name: str  # in the generated configuration, as list_groups reports it
+    kind: str  # "builtin", "region" or "custom"
+    region: str  # region groups only: the region code
+    node_count: int
+
+
+@dataclass(frozen=True)
+class Rule:
+    type: str  # "GEOSITE", "MATCH", ...
+    payload: str
+    proxy: str  # the group or outbound the rule sends traffic to
+    entry_id: str  # the plan's rule entry, "fallback", or "" when not from a plan
+
+
+@dataclass(frozen=True)
+class PoolNode:
+    name: str  # in the generated configuration
+    original_name: str  # in the subscription
+    source_id: str
+    type: str
+    region: str  # region code; "ZZ" when none matched
+
+
+@dataclass(frozen=True)
+class CompositionReport:
+    """What the core made of a composition."""
+
+    warnings: tuple[CompositionWarning, ...]
+    groups: tuple[ComposedGroup, ...]  # in configuration order
+    rules: tuple[Rule, ...]  # every generated rule, in order
+    nodes: tuple[PoolNode, ...]  # the pool after exclusions
+
+
+@dataclass(frozen=True)
+class SourceNode:
+    name: str
+    type: str  # mihomo adapter type, as in Proxy.type
+    region: str  # region code; "ZZ" when none matched
+    info: bool  # matches the info filter, so the pool leaves it out
+
+
+@dataclass(frozen=True)
+class SourceInspection:
+    nodes: tuple[SourceNode, ...]
+    has_rules: bool
+    group_count: int
+    rule_count: int
+
+
+@dataclass(frozen=True)
+class GeoDataset:
+    names: tuple[str, ...]  # lower-cased and sorted, as rules write them
+    sha256: str  # of the data file
+    updated_at_unix_ms: int  # 0 when unknown
+    bundled: bool  # the installer's list, because the core had no data to read
+
+
+@dataclass(frozen=True)
+class GeoCategories:
+    geosite: GeoDataset
+    geoip: GeoDataset
+
+
+def bundled_geo_categories() -> GeoCategories:
+    """The categories of the GEO data the installer ships, for when the core has none to list
+    or cannot be reached (docs/routing.md §8.4)."""
+    return GeoCategories(
+        GeoDataset(geo_categories.GEOSITE, geo_categories.GEOSITE_SHA256, 0, True),
+        GeoDataset(geo_categories.GEOIP, geo_categories.GEOIP_SHA256, 0, True),
+    )
 
 
 @dataclass(frozen=True)
@@ -97,6 +208,7 @@ class Connection:
     started_at_unix_ms: int
     source: str = ""  # "198.18.0.1:52344"
     destination: str = ""  # "140.82.112.3:443"; brackets around an IPv6 address
+    rule_entry_id: str = ""  # the plan's rule entry the rule came from, as Rule.entry_id
 
 
 LOG_LEVELS = ("debug", "info", "warning", "error")  # lowest first
@@ -114,15 +226,27 @@ class TunnelHost(Protocol):
 
     async def get_status(self) -> HostStatus: ...
 
-    async def validate(self, config: TunnelConfig) -> None:
+    async def validate(self, config: TunnelConfig) -> CompositionReport | None:
         """Run the config through the core's pipeline without applying it; raises
-        HostError("invalid_config") when the core rejects it."""
+        HostError("invalid_config") when the core rejects it. A composition comes back with
+        the core's report, a profile's own YAML with None; so for start and reload."""
         ...
 
-    async def start(self, config: TunnelConfig) -> None: ...
+    async def start(self, config: TunnelConfig) -> CompositionReport | None: ...
 
-    async def reload(self, config: TunnelConfig) -> None:
+    async def reload(self, config: TunnelConfig) -> CompositionReport | None:
         """Replace the running config in place; raises HostError("not_running") when stopped."""
+        ...
+
+    async def inspect_source(self, yaml: str, info_filter: str = "") -> SourceInspection:
+        """Read a subscription as the core does: its nodes with their regions, and whether it
+        brings rules. Needs no running core; raises HostError("invalid_config") when the core
+        cannot read it."""
+        ...
+
+    async def list_geo_categories(self) -> GeoCategories:
+        """The GEOSITE and GEOIP categories of the core's GEO data; the installer's list for
+        a kind the core has no data of."""
         ...
 
     async def stop(self) -> None: ...
