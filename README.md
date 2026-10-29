@@ -73,3 +73,8 @@ uv run python scripts/preview.py
 ```bash
 uv run mihomo-desktop
 ```
+
+## 许可证
+
+本项目以 [GNU General Public License v3.0](LICENSE)（GPL-3.0-only）发布。Windows 服务和 macOS 系统扩展
+链接了同为 GPL-3.0 的 [mihomo](https://github.com/MetaCubeX/mihomo)，分发二进制时须同时提供对应的源代码。

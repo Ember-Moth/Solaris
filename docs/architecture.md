@@ -370,7 +370,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 | macOS 包 | `.app` 签名与公证 |
 
 - 需要的证书：Windows Authenticode（发布构建）、Apple Developer ID。
-- 许可：mihomo 为 GPL-3.0，链接它的服务和扩展须以 GPL-3.0 开源。
+- 许可：本项目以 GPL-3.0-only 发布（[LICENSE](../LICENSE)）；服务和扩展链接的 mihomo 同为 GPL-3.0。
+  发布二进制时须同时提供对应的源代码；新增依赖须与 GPL-3.0 兼容。
 
 ## 11. 开发与测试
 

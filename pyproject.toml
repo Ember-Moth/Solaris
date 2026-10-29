@@ -3,6 +3,8 @@ name = "mihomo-desktop"
 version = "0.1.0"
 description = "mihomo desktop client for Windows and macOS (PySide6 / QML)"
 readme = "README.md"
+license = "GPL-3.0-only"
+license-files = ["LICENSE"]
 authors = [
     { name = "Ember Moth", email = "ember_moth@proton.me" }
 ]
