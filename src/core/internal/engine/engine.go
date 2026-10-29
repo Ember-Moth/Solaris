@@ -8,9 +8,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -235,6 +237,10 @@ func (e *Engine) Start(profile Profile) error {
 	if err != nil {
 		return err
 	}
+	if err := probePorts(cfg); err != nil {
+		e.setState(controlpb.RunState_RUN_STATE_FAILED, err)
+		return fmt.Errorf("%w: %w", ErrApplyFailed, err)
+	}
 	e.setState(controlpb.RunState_RUN_STATE_STARTING, nil)
 	hub.ApplyConfig(cfg)
 	if err := checkApplied(cfg); err != nil {
@@ -259,6 +265,10 @@ func (e *Engine) Reload(profile Profile) error {
 	cfg, err := e.admit(profile)
 	if err != nil {
 		return err
+	}
+	// The core keeps the profile it runs, and its ports, when a new port is taken.
+	if err := probePorts(cfg); err != nil {
+		return fmt.Errorf("%w: %w", ErrApplyFailed, err)
 	}
 	hub.ApplyConfig(cfg)
 	if err := checkApplied(cfg); err != nil {
@@ -292,22 +302,74 @@ func (e *Engine) Stop() error {
 	return nil
 }
 
+type inboundPort struct {
+	name       string
+	want, have int
+	udp        bool // the inbound also listens for UDP on the port
+}
+
+// inboundPorts pairs the ports cfg asks for with the ones open now.
+func inboundPorts(cfg *config.Config) []inboundPort {
+	general := cfg.General
+	ports := listener.GetPorts()
+	return []inboundPort{
+		{"port", general.Port, ports.Port, false},
+		{"socks-port", general.SocksPort, ports.SocksPort, true},
+		{"mixed-port", general.MixedPort, ports.MixedPort, true},
+		{"redir-port", general.RedirPort, ports.RedirPort, false},
+		{"tproxy-port", general.TProxyPort, ports.TProxyPort, false},
+	}
+}
+
+// probePorts opens and closes each inbound port that cfg adds, so that a port another
+// program holds fails the request with the reason before anything changes.
+// hub.ApplyConfig closes the old port before it opens the new one and only logs why
+// that failed, which would leave a running core without its port.
+func probePorts(cfg *config.Config) error {
+	general := cfg.General
+	ports := inboundPorts(cfg)
+	open := make(map[int]bool, len(ports))
+	for _, port := range ports {
+		open[port.have] = true
+	}
+	for _, port := range ports {
+		if port.want == 0 || open[port.want] {
+			continue
+		}
+		address := inboundAddress(general.BindAddress, port.want, general.AllowLan)
+		tcp, err := net.Listen("tcp", address)
+		if err != nil {
+			return err
+		}
+		tcp.Close()
+		if port.udp {
+			udp, err := net.ListenPacket("udp", address)
+			if err != nil {
+				return err
+			}
+			udp.Close()
+		}
+	}
+	return nil
+}
+
+// inboundAddress is where mihomo's listener package opens an inbound (its genAddr).
+func inboundAddress(bindAddress string, port int, allowLAN bool) string {
+	switch {
+	case !allowLAN:
+		bindAddress = "127.0.0.1"
+	case bindAddress == "*":
+		bindAddress = ""
+	}
+	return net.JoinHostPort(bindAddress, strconv.Itoa(port))
+}
+
 // checkApplied reports what hub.ApplyConfig only logged: an inbound port or the TUN
 // that could not open.
 func checkApplied(cfg *config.Config) error {
 	general := cfg.General
-	ports := listener.GetPorts()
 	var missing []string
-	for _, port := range []struct {
-		name       string
-		want, have int
-	}{
-		{"port", general.Port, ports.Port},
-		{"socks-port", general.SocksPort, ports.SocksPort},
-		{"mixed-port", general.MixedPort, ports.MixedPort},
-		{"redir-port", general.RedirPort, ports.RedirPort},
-		{"tproxy-port", general.TProxyPort, ports.TProxyPort},
-	} {
+	for _, port := range inboundPorts(cfg) {
 		if port.want != 0 && port.want != port.have {
 			missing = append(missing, fmt.Sprintf("%s %d", port.name, port.want))
 		}

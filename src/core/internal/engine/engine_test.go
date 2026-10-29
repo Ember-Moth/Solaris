@@ -160,8 +160,9 @@ func TestStartFailsWhenThePortIsTaken(t *testing.T) {
 	}
 	defer taken.Close()
 	port := taken.Addr().(*net.TCPAddr).Port
-	if err := engine.Start(directProfile(port, "http://127.0.0.1:1/")); !errors.Is(err, ErrApplyFailed) {
-		t.Fatalf("Start on a taken port = %v, want ErrApplyFailed", err)
+	err = engine.Start(directProfile(port, "http://127.0.0.1:1/"))
+	if !errors.Is(err, ErrApplyFailed) || !isListenError(err) {
+		t.Fatalf("Start on a taken port = %v, want ErrApplyFailed with the listen error", err)
 	}
 	status := engine.Status()
 	if status.GetState() != controlpb.RunState_RUN_STATE_FAILED || status.GetLastError() == nil {
@@ -170,6 +171,38 @@ func TestStartFailsWhenThePortIsTaken(t *testing.T) {
 	if err := engine.Stop(); err != nil || engine.State() != controlpb.RunState_RUN_STATE_STOPPED {
 		t.Fatalf("Stop after a failed start = %v, state %v", err, engine.State())
 	}
+}
+
+// A Reload to a taken port fails with the reason and leaves the core on its old port;
+// mihomo alone would close the old port first.
+func TestReloadToATakenPortKeepsTheOldOne(t *testing.T) {
+	engine := openEngine(t, TunNone)
+	server := target(t)
+	port := freePort(t)
+	if err := engine.Start(directProfile(port, server.URL)); err != nil {
+		t.Fatal(err)
+	}
+	defer engine.Stop()
+	taken, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer taken.Close()
+	err = engine.Reload(directProfile(taken.Addr().(*net.TCPAddr).Port, server.URL))
+	if !errors.Is(err, ErrApplyFailed) || !isListenError(err) {
+		t.Fatalf("Reload to a taken port = %v, want ErrApplyFailed with the listen error", err)
+	}
+	if got := proxiedGet(t, port, server.URL); got != "hello through mihomo" {
+		t.Fatalf("through the old port: %q", got)
+	}
+	if status := engine.Status(); status.GetState() != controlpb.RunState_RUN_STATE_RUNNING || status.GetLastError() != nil {
+		t.Fatalf("status = %v", status)
+	}
+}
+
+func isListenError(err error) bool {
+	var opError *net.OpError
+	return errors.As(err, &opError) && opError.Op == "listen"
 }
 
 func TestQueriesAndOperations(t *testing.T) {
