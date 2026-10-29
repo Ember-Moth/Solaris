@@ -507,7 +507,7 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
 
 ## Typography
 
-拉丁字符用 **Inter**，数据用 **JetBrains Mono**，两者都是 OFL 许可，随应用打包（QML `FontLoader`），许可证文件一并分发。中文由系统字体回退：macOS 为 PingFang SC，Windows 为 Microsoft YaHei UI。Inter 不可用时回退到系统界面字体（SF Pro / Segoe UI Variable），JetBrains Mono 回退到 SF Mono / Consolas。
+拉丁字符用 **Inter**，数据用 **JetBrains Mono**，两者都是 OFL 许可，随应用打包在 `src/mihomo_desktop/ui/fonts/`（QML `FontLoader`），各自的 `OFL.txt` 一并分发。只打包用到的字重：Inter 4.1 的 400、500、600，JetBrains Mono 2.304 的 400。中文由系统字体回退：macOS 为 PingFang SC，Windows 为 Microsoft YaHei UI。Inter 不可用时回退到系统界面字体（SF Pro / Segoe UI Variable），JetBrains Mono 回退到 SF Mono / Consolas。
 
 | 角色 | token | 用途 |
 | --- | --- | --- |

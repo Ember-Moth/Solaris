@@ -4,13 +4,13 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QFont
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickItem, QQuickWindow
 from PySide6.QtTest import QTest
 from pytestqt.qtbot import QtBot
 
-from mihomo_desktop.app import load_ui
+from mihomo_desktop.app import MAIN_QML, load_ui
 from mihomo_desktop.models.store import ProfileStore
 from mihomo_desktop.viewmodels.appearance import Appearance
 from mihomo_desktop.viewmodels.composition import ViewModels, compose
@@ -175,3 +175,12 @@ def test_the_window_repaints_when_the_system_turns_dark(
     loaded.view_models.appearance.setMode("light")
     assert background() == "#F3F4F6"
     assert loaded.warnings == []
+
+
+def test_the_bundled_fonts_are_used(loaded: Loaded) -> None:
+    font = loaded.window.property("font")
+    assert isinstance(font, QFont)
+    assert font.family() == "Inter"
+    fonts = MAIN_QML.parent / "fonts"
+    for family in ("inter", "jetbrains-mono"):
+        assert (fonts / family / "OFL.txt").is_file()  # the license travels with the fonts

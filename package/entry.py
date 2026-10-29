@@ -7,6 +7,8 @@ install directory (docs/architecture.md §5.1).
 
 # Compiled translations; i18n.py looks for them beside the package (docs/architecture.md §7.5).
 # nuitka-project: --include-data-files={MAIN_DIRECTORY}/../src/mihomo_desktop/translations/*.qm=mihomo_desktop/translations/
+# Bundled Inter and JetBrains Mono with their OFL.txt; Fonts.qml loads them from ui/fonts/.
+# nuitka-project: --include-data-dir={MAIN_DIRECTORY}/../src/mihomo_desktop/ui/fonts=mihomo_desktop/ui/fonts
 
 from mihomo_desktop.app import main
 
