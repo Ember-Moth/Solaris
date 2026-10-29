@@ -1378,7 +1378,7 @@ func (x *RunOptions) GetAllowLan() bool {
 type ValidateRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ConfigYaml    string                 `protobuf:"bytes,1,opt,name=config_yaml,json=configYaml,proto3" json:"config_yaml,omitempty"`
-	OverrideJson  string                 `protobuf:"bytes,2,opt,name=override_json,json=overrideJson,proto3" json:"override_json,omitempty"`
+	Overrides     []string               `protobuf:"bytes,2,rep,name=overrides,proto3" json:"overrides,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1420,17 +1420,17 @@ func (x *ValidateRequest) GetConfigYaml() string {
 	return ""
 }
 
-func (x *ValidateRequest) GetOverrideJson() string {
+func (x *ValidateRequest) GetOverrides() []string {
 	if x != nil {
-		return x.OverrideJson
+		return x.Overrides
 	}
-	return ""
+	return nil
 }
 
 type StartRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ConfigYaml    string                 `protobuf:"bytes,1,opt,name=config_yaml,json=configYaml,proto3" json:"config_yaml,omitempty"`
-	OverrideJson  string                 `protobuf:"bytes,2,opt,name=override_json,json=overrideJson,proto3" json:"override_json,omitempty"`
+	Overrides     []string               `protobuf:"bytes,2,rep,name=overrides,proto3" json:"overrides,omitempty"`
 	Options       *RunOptions            `protobuf:"bytes,3,opt,name=options,proto3" json:"options,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1473,11 +1473,11 @@ func (x *StartRequest) GetConfigYaml() string {
 	return ""
 }
 
-func (x *StartRequest) GetOverrideJson() string {
+func (x *StartRequest) GetOverrides() []string {
 	if x != nil {
-		return x.OverrideJson
+		return x.Overrides
 	}
-	return ""
+	return nil
 }
 
 func (x *StartRequest) GetOptions() *RunOptions {
@@ -1490,7 +1490,7 @@ func (x *StartRequest) GetOptions() *RunOptions {
 type ReloadRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ConfigYaml    string                 `protobuf:"bytes,1,opt,name=config_yaml,json=configYaml,proto3" json:"config_yaml,omitempty"`
-	OverrideJson  string                 `protobuf:"bytes,2,opt,name=override_json,json=overrideJson,proto3" json:"override_json,omitempty"`
+	Overrides     []string               `protobuf:"bytes,2,rep,name=overrides,proto3" json:"overrides,omitempty"`
 	Options       *RunOptions            `protobuf:"bytes,3,opt,name=options,proto3" json:"options,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1533,11 +1533,11 @@ func (x *ReloadRequest) GetConfigYaml() string {
 	return ""
 }
 
-func (x *ReloadRequest) GetOverrideJson() string {
+func (x *ReloadRequest) GetOverrides() []string {
 	if x != nil {
-		return x.OverrideJson
+		return x.Overrides
 	}
-	return ""
+	return nil
 }
 
 func (x *ReloadRequest) GetOptions() *RunOptions {
@@ -3619,20 +3619,20 @@ const file_mihomo_desktop_protocol_control_proto_rawDesc = "" +
 	"\x14system_proxy_enabled\x18\x02 \x01(\bR\x12systemProxyEnabled\x12\x1d\n" +
 	"\n" +
 	"mixed_port\x18\x03 \x01(\rR\tmixedPort\x12\x1b\n" +
-	"\tallow_lan\x18\x04 \x01(\bR\ballowLan\"W\n" +
+	"\tallow_lan\x18\x04 \x01(\bR\ballowLan\"P\n" +
 	"\x0fValidateRequest\x12\x1f\n" +
 	"\vconfig_yaml\x18\x01 \x01(\tR\n" +
-	"configYaml\x12#\n" +
-	"\roverride_json\x18\x02 \x01(\tR\foverrideJson\"\x95\x01\n" +
+	"configYaml\x12\x1c\n" +
+	"\toverrides\x18\x02 \x03(\tR\toverrides\"\x8e\x01\n" +
 	"\fStartRequest\x12\x1f\n" +
 	"\vconfig_yaml\x18\x01 \x01(\tR\n" +
-	"configYaml\x12#\n" +
-	"\roverride_json\x18\x02 \x01(\tR\foverrideJson\x12?\n" +
-	"\aoptions\x18\x03 \x01(\v2%.mihomo_desktop.control.v1.RunOptionsR\aoptions\"\x96\x01\n" +
+	"configYaml\x12\x1c\n" +
+	"\toverrides\x18\x02 \x03(\tR\toverrides\x12?\n" +
+	"\aoptions\x18\x03 \x01(\v2%.mihomo_desktop.control.v1.RunOptionsR\aoptions\"\x8f\x01\n" +
 	"\rReloadRequest\x12\x1f\n" +
 	"\vconfig_yaml\x18\x01 \x01(\tR\n" +
-	"configYaml\x12#\n" +
-	"\roverride_json\x18\x02 \x01(\tR\foverrideJson\x12?\n" +
+	"configYaml\x12\x1c\n" +
+	"\toverrides\x18\x02 \x03(\tR\toverrides\x12?\n" +
 	"\aoptions\x18\x03 \x01(\v2%.mihomo_desktop.control.v1.RunOptionsR\aoptions\"\r\n" +
 	"\vStopRequest\"1\n" +
 	"\x15SetSystemProxyRequest\x12\x18\n" +

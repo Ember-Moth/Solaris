@@ -149,13 +149,13 @@ func (d *Dispatcher) hostMethod(request *controlpb.Request) *controlpb.Response 
 		return empty()
 	case *controlpb.Request_Validate:
 		profile := engine.Profile{
-			Config:   []byte(method.Validate.GetConfigYaml()),
-			Override: []byte(method.Validate.GetOverrideJson()),
+			Config:    []byte(method.Validate.GetConfigYaml()),
+			Overrides: overrides(method.Validate.GetOverrides()),
 		}
 		return d.result(d.engine.Validate(profile))
 	case *controlpb.Request_Start:
 		start := method.Start
-		profile, response := d.profile(start.GetConfigYaml(), start.GetOverrideJson(), start.GetOptions())
+		profile, response := d.profile(start.GetConfigYaml(), start.GetOverrides(), start.GetOptions())
 		if response != nil {
 			return response
 		}
@@ -169,14 +169,23 @@ func (d *Dispatcher) hostMethod(request *controlpb.Request) *controlpb.Response 
 }
 
 func (d *Dispatcher) reload(reload *controlpb.ReloadRequest) *controlpb.Response {
-	profile, response := d.profile(reload.GetConfigYaml(), reload.GetOverrideJson(), reload.GetOptions())
+	profile, response := d.profile(reload.GetConfigYaml(), reload.GetOverrides(), reload.GetOptions())
 	if response != nil {
 		return response
 	}
 	return d.result(d.engine.Reload(profile))
 }
 
-func (d *Dispatcher) profile(configYAML, overrideJSON string, options *controlpb.RunOptions) (engine.Profile, *controlpb.Response) {
+// overrides keeps the order the UI sends: the global override, then the profile's own.
+func overrides(sources []string) [][]byte {
+	out := make([][]byte, len(sources))
+	for i, source := range sources {
+		out[i] = []byte(source)
+	}
+	return out
+}
+
+func (d *Dispatcher) profile(configYAML string, overrideYAML []string, options *controlpb.RunOptions) (engine.Profile, *controlpb.Response) {
 	if options.GetMixedPort() > 0xffff {
 		return engine.Profile{}, failure(CodeInvalidRequest, "mixed_port must be a TCP port")
 	}
@@ -186,8 +195,8 @@ func (d *Dispatcher) profile(configYAML, overrideJSON string, options *controlpb
 		}
 	}
 	return engine.Profile{
-		Config:   []byte(configYAML),
-		Override: []byte(overrideJSON),
+		Config:    []byte(configYAML),
+		Overrides: overrides(overrideYAML),
 		Options: engine.RunOptions{
 			TUN:       options.GetTunEnabled(),
 			MixedPort: uint16(options.GetMixedPort()),

@@ -2,6 +2,7 @@ package engine
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -64,7 +65,7 @@ listeners:
 
 func TestNoTUNForcesAllowLANOff(t *testing.T) {
 	profile := profileOf(minimal + "allow-lan: true\nbind-address: '*'\n")
-	profile.Override = []byte(`{"allow-lan": true}`)
+	profile.Overrides = [][]byte{[]byte("allow-lan: true\nbind-address: 0.0.0.0\n")}
 	profile.Options.AllowLAN = true
 	cfg := admitted(t, TunNone, profile)
 	if cfg.General.AllowLan || cfg.General.BindAddress != loopback {
@@ -109,11 +110,30 @@ func TestNoTUNRejectsTheTUNOption(t *testing.T) {
 
 func TestOverrideCannotReopenWhatNoTUNCloses(t *testing.T) {
 	profile := profileOf(minimal)
-	profile.Override = []byte(`{"tun": {"enable": true, "auto-route": true}, "tproxy-port": 7893,
-		"listeners": [{"name": "tun-in", "type": "tun"}]}`)
+	profile.Overrides = [][]byte{
+		[]byte("tun: {enable: true, auto-route: true, auto-redirect: true}\ntproxy-port: 7893\n"),
+		[]byte("redir-port: 7892\nlisteners: [{name: tun-in, type: tun}, {name: socks-in, type: socks, port: 7896, listen: 0.0.0.0}]\n"),
+	}
 	cfg := admitted(t, TunNone, profile)
-	if cfg.General.Tun.Enable || cfg.General.Tun.AutoRoute || cfg.General.TProxyPort != 0 || len(cfg.Listeners) != 0 {
-		t.Fatalf("override reopened: tun=%+v tproxy=%d listeners=%v", cfg.General.Tun, cfg.General.TProxyPort, cfg.Listeners)
+	general := cfg.General
+	if general.Tun.Enable || general.Tun.AutoRoute || general.Tun.AutoRedirect ||
+		general.TProxyPort != 0 || general.RedirPort != 0 || cfg.Listeners["tun-in"] != nil {
+		t.Fatalf("an override reopened: tun=%+v tproxy=%d redir=%d listeners=%v",
+			general.Tun, general.TProxyPort, general.RedirPort, cfg.Listeners)
+	}
+	if err := requireLoopback(cfg.Listeners["socks-in"].RawAddress()); err != nil {
+		t.Fatalf("an override moved a listener off loopback: %v", err)
+	}
+}
+
+func TestOverrideCannotLoosenOwnedTUN(t *testing.T) {
+	profile := profileOf(minimal)
+	profile.Options.TUN = true
+	profile.Overrides = [][]byte{[]byte("tun: {enable: false, auto-route: false, strict-route: false, file-descriptor: 7}\nallow-lan: true\n")}
+	cfg := admitted(t, TunOwned, profile)
+	tun := cfg.General.Tun
+	if !tun.Enable || !tun.AutoRoute || !tun.StrictRoute || tun.FileDescriptor != 0 || cfg.General.AllowLan {
+		t.Fatalf("tun = %+v, allow-lan = %v", tun, cfg.General.AllowLan)
 	}
 }
 
@@ -174,14 +194,98 @@ func TestRunOptionsReplaceTheMixedPort(t *testing.T) {
 	}
 }
 
-func TestOverrideMergesAndRemoves(t *testing.T) {
-	profile := profileOf(minimal + "mode: global\nlog-level: debug\nsniffer: {enable: true, sniff: {HTTP: {ports: [80]}}}\n")
-	profile.Override = []byte(`{"mode": "direct", "log-level": null, "sniffer": {"enable": false}, "socks-port": 7891}`)
+func TestOverridesMergeInOrder(t *testing.T) {
+	profile := profileOf(minimal + `mode: global
+log-level: debug
+sniffer: {enable: false, force-domain: [a.example], sniff: {HTTP: {ports: [80]}}}
+dns: {enable: true, ipv6: true, nameserver: [1.1.1.1, 8.8.8.8]}
+`)
+	profile.Overrides = [][]byte{
+		// The global override comes first ...
+		[]byte("mode: direct\nsniffer: {enable: true}\ndns: {nameserver: [9.9.9.9]}\nsocks-port: 7891\n"),
+		// ... and the profile's own override wins over it.
+		[]byte("mode: rule\nsniffer: {force-domain: [b.example]}\n"),
+		[]byte("# only a comment\n"),
+		nil,
+	}
 	cfg := admitted(t, TunNone, profile)
-	if cfg.General.Mode.String() != "direct" || cfg.General.LogLevel.String() != "info" ||
-		cfg.Sniffer.Enable || cfg.General.SocksPort != 7891 {
-		t.Fatalf("mode=%s log-level=%s sniffer=%v socks-port=%d",
-			cfg.General.Mode, cfg.General.LogLevel, cfg.Sniffer.Enable, cfg.General.SocksPort)
+	if cfg.General.Mode.String() != "rule" || cfg.General.LogLevel.String() != "debug" || cfg.General.SocksPort != 7891 {
+		t.Errorf("mode=%s log-level=%s socks-port=%d", cfg.General.Mode, cfg.General.LogLevel, cfg.General.SocksPort)
+	}
+	// Mappings merge key by key; lists replace whole.
+	if !cfg.Sniffer.Enable || len(cfg.Sniffer.Sniffers) == 0 {
+		t.Errorf("sniffer = %+v; the mappings did not merge", cfg.Sniffer)
+	}
+	if !cfg.DNS.IPv6 || len(cfg.DNS.NameServer) != 1 || cfg.DNS.NameServer[0].Addr != "9.9.9.9:53" {
+		t.Errorf("dns ipv6=%v nameservers=%v", cfg.DNS.IPv6, cfg.DNS.NameServer)
+	}
+}
+
+func TestOverridesExtendLists(t *testing.T) {
+	doc, err := decodeDocument([]byte(`proxies: [{name: a, type: direct}]
+proxy-groups: [{name: G, type: select, proxies: [a]}]
+rules: ['DOMAIN,a.example,G', 'MATCH,G']
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = applyOverrides(doc, [][]byte{
+		[]byte(`prepend-rules: ['DOMAIN,first.example,DIRECT']
+append-rules: ['MATCH,DIRECT']
+prepend-proxies: [{name: p0, type: direct}]
+append-proxies: [{name: p9, type: direct}]
+prepend-proxy-groups: [{name: G0, type: select, proxies: [p0]}]
+append-proxy-groups: [{name: G9, type: select, proxies: [p9]}]
+`),
+		// A later override replaces the list and extends the replacement.
+		[]byte("rules: ['MATCH,G']\nprepend-rules: ['DOMAIN,second.example,DIRECT']\n"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := func(key string) []string {
+		var out []string
+		for _, item := range doc[key].([]any) {
+			out = append(out, item.(map[string]any)["name"].(string))
+		}
+		return out
+	}
+	if got := fmt.Sprint(names("proxies")); got != "[p0 a p9]" {
+		t.Errorf("proxies = %s", got)
+	}
+	if got := fmt.Sprint(names("proxy-groups")); got != "[G0 G G9]" {
+		t.Errorf("proxy-groups = %s", got)
+	}
+	if got := fmt.Sprint(doc["rules"]); got != "[DOMAIN,second.example,DIRECT MATCH,G]" {
+		t.Errorf("rules = %s", got)
+	}
+	for _, key := range []string{"prepend-rules", "append-proxies"} {
+		if _, ok := doc[key]; ok {
+			t.Errorf("%s reached the configuration", key)
+		}
+	}
+
+	profile := profileOf(minimal)
+	profile.Overrides = [][]byte{[]byte("prepend-rules: ['DOMAIN,first.example,REJECT']\n")}
+	cfg := admitted(t, TunNone, profile)
+	if len(cfg.Rules) != 2 || cfg.Rules[0].Payload() != "first.example" {
+		t.Fatalf("rules = %v", cfg.Rules)
+	}
+}
+
+func TestBrokenOverrideNamesItsPosition(t *testing.T) {
+	for name, override := range map[string]string{
+		"bad yaml":       "mode: [\n",
+		"not a mapping":  "- a\n",
+		"insert no list": "append-rules: MATCH,DIRECT\n",
+		"target no list": "proxies: {a: b}\nappend-proxies: [{name: x, type: direct}]\n",
+	} {
+		profile := profileOf(minimal)
+		profile.Overrides = [][]byte{[]byte("mode: global\n"), []byte(override)}
+		_, err := admit(profile, TunNone)
+		if !errors.Is(err, ErrInvalidConfig) || !strings.Contains(err.Error(), "override 2 of 2") {
+			t.Errorf("%s: admit = %v", name, err)
+		}
 	}
 }
 
@@ -191,7 +295,6 @@ func TestAdmissionRejectsBrokenInput(t *testing.T) {
 		"not a mapping": profileOf("- a\n- b\n"),
 		"bad yaml":      profileOf("proxies: [\n"),
 		"unknown rule":  profileOf("rules: ['MATCH,NOWHERE']\n"),
-		"bad override":  {Config: []byte(minimal), Override: []byte(`["not", "an", "object"]`)},
 		"bad listeners": profileOf(minimal + "listeners: {a: b}\n"),
 	} {
 		if _, err := admit(profile, TunNone); !errors.Is(err, ErrInvalidConfig) {

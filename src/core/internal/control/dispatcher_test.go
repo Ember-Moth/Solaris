@@ -346,3 +346,57 @@ func TestLogSubscriptionCarriesMihomoLines(t *testing.T) {
 	}
 	t.Fatalf("no parse line from mihomo; got %q", seen)
 }
+
+// Validate, Start and Reload all run the overrides, global first, in the order sent.
+func TestOverridesReachEveryAdmission(t *testing.T) {
+	dispatcher := development(t)
+	profile := profileYAML(freePort(t))
+	mode := func(id uint64) controlpb.Mode {
+		return call(t, dispatcher, request(id, func(r *controlpb.Request) {
+			r.Method = &controlpb.Request_GetStatus{GetStatus: &controlpb.GetStatusRequest{}}
+		})).GetGetStatus().GetMode()
+	}
+
+	broken := call(t, dispatcher, request(1, func(r *controlpb.Request) {
+		r.Method = &controlpb.Request_Validate{Validate: &controlpb.ValidateRequest{
+			ConfigYaml: profile,
+			Overrides:  []string{"mode: global\n", "- not a mapping\n"},
+		}}
+	}))
+	expectError(t, broken, 1, CodeInvalidConfig)
+	if !strings.Contains(broken.GetError().GetMessage(), "override 2 of 2") {
+		t.Errorf("message = %q; it should name the override", broken.GetError().GetMessage())
+	}
+
+	expectOK(t, call(t, dispatcher, request(2, func(r *controlpb.Request) {
+		r.Method = &controlpb.Request_Start{Start: &controlpb.StartRequest{
+			ConfigYaml: profile,
+			Overrides:  []string{"mode: direct\n", "mode: global\n"},
+		}}
+	})))
+	if got := mode(3); got != controlpb.Mode_MODE_GLOBAL {
+		t.Fatalf("mode after Start = %v, want the profile override's global", got)
+	}
+	expectOK(t, call(t, dispatcher, request(4, func(r *controlpb.Request) {
+		r.Method = &controlpb.Request_Reload{Reload: &controlpb.ReloadRequest{
+			ConfigYaml: profile,
+			Overrides:  []string{"mode: direct\n"},
+		}}
+	})))
+	if got := mode(5); got != controlpb.Mode_MODE_DIRECT {
+		t.Fatalf("mode after Reload = %v, want direct", got)
+	}
+	// An override cannot turn on what the development server refuses.
+	expectOK(t, call(t, dispatcher, request(6, func(r *controlpb.Request) {
+		r.Method = &controlpb.Request_Reload{Reload: &controlpb.ReloadRequest{
+			ConfigYaml: profile,
+			Overrides:  []string{"tun: {enable: true}\nallow-lan: true\n"},
+		}}
+	})))
+	status := call(t, dispatcher, request(7, func(r *controlpb.Request) {
+		r.Method = &controlpb.Request_GetStatus{GetStatus: &controlpb.GetStatusRequest{}}
+	})).GetGetStatus()
+	if status.GetTunEnabled() || status.GetState() != controlpb.RunState_RUN_STATE_RUNNING {
+		t.Fatalf("status = %v", status)
+	}
+}

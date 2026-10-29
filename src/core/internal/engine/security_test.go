@@ -52,7 +52,7 @@ func TestSecurity1NoCMFABuild(t *testing.T) {
 	}
 }
 
-// #2: the controller fields are cleared last, after the override, in every mode.
+// #2: the controller fields are cleared last, after the overrides, in every mode.
 func TestSecurity2ControllerIsAlwaysCleared(t *testing.T) {
 	const controller = `
 external-controller: 0.0.0.0:9090
@@ -65,10 +65,12 @@ external-ui-name: zashboard
 external-ui-url: https://example.invalid/ui.zip
 secret: hunter2
 `
-	override := `{"external-controller": "0.0.0.0:9091", "external-controller-pipe": "\\\\.\\pipe\\override",
-		"secret": "again", "external-doh-server": "/again"}`
+	overrides := [][]byte{
+		[]byte("external-controller: 0.0.0.0:9091\nexternal-controller-pipe: '\\\\.\\pipe\\override'\n"),
+		[]byte("secret: again\nexternal-doh-server: /again\nexternal-ui: ui\n"),
+	}
 	for _, mode := range []TunMode{TunNone, TunOwned} {
-		cfg := admitted(t, mode, Profile{Config: []byte(minimal + controller), Override: []byte(override)})
+		cfg := admitted(t, mode, Profile{Config: []byte(minimal + controller), Overrides: overrides})
 		c := cfg.Controller
 		if c.ExternalController != "" || c.ExternalControllerTLS != "" || c.ExternalControllerUnix != "" ||
 			c.ExternalControllerPipe != "" || c.ExternalDohServer != "" || c.Secret != "" ||
@@ -176,14 +178,15 @@ func TestSecurity4ProviderPathsStayInHome(t *testing.T) {
 
 // #5: node selections are stored, so a restart (and the next boot) returns to them.
 func TestSecurity5SelectionSurvivesRestart(t *testing.T) {
-	cfg := admitted(t, TunNone, profileOf(minimal+"profile: {store-selected: false}\n"))
-	if !cfg.Profile.StoreSelected {
+	profile := profileOf(minimal + "profile: {store-selected: false}\n")
+	profile.Overrides = [][]byte{[]byte("profile: {store-selected: false}\n")}
+	if cfg := admitted(t, TunNone, profile); !cfg.Profile.StoreSelected {
 		t.Fatal("store-selected is off")
 	}
 
 	engine := openEngine(t, TunNone)
 	server := target(t)
-	profile := directProfile(freePort(t), server.URL+"/generate_204", "profile: {store-selected: false}")
+	profile = directProfile(freePort(t), server.URL+"/generate_204", "profile: {store-selected: false}")
 	if err := engine.Start(profile); err != nil {
 		t.Fatal(err)
 	}

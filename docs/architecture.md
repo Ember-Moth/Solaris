@@ -104,10 +104,21 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
   然后自检路径沙箱。开发服务的 home 默认在用户配置目录下的 `<Product>/dev-core`（`-home` 可改）；
   Windows 服务暂用 `%ProgramData%\<Product>\core`，按 SID 划分的目录随 M4 的 `Claim` 实现。
   mihomo 在进程内只打开一次 `cache.db`，所以 home 在进程生命周期内不能更换，更换属主需要新的服务进程。
-- **配置准入**：用户 YAML 解析为映射（锚点和合并键在这一步展开，补丁无法被别名绕过）→ 应用覆写
+- **配置准入**：用户 YAML 解析为映射（锚点和合并键在这一步展开，补丁无法被别名绕过）→ 依次应用覆写
   → 按 TUN 模式打补丁 → 最后一步强制安全项 → 重新编码后交给 `executor.ParseWithBytes`
-  → 校验解析结果，任一项不符就拒绝（fail closed）→ `hub.ApplyConfig`。`Validate` 走到校验为止。
-  - 覆写在 D4 定案前的暂行语义：一个 JSON 对象，对象逐键合并，`null` 删除键，其他值整体替换。
+  → 校验解析结果，任一项不符就拒绝（fail closed）→ `hub.ApplyConfig`。`Validate`、`Start`、`Reload`
+  都走同一条流水线，`Validate` 走到校验为止。
+- **覆写**（决策 D4：只做 Merge，不做 Script）：
+  - 来源是一份全局覆写加上每个配置各一份。请求里的 `overrides` 是一组 YAML 映射原文，按顺序应用：
+    先全局覆写，再当前配置的覆写，后面的覆盖前面的。空串或只有注释的覆写不做任何事。
+  - 位置在"解析用户 YAML"之后、平台补丁和 3.3 节安全项之前，所以覆写改不动开发模式护栏、自管模式的
+    TUN 段和安全项（有测试覆盖）。
+  - `prepend-rules` / `append-rules`、`prepend-proxies` / `append-proxies`、`prepend-proxy-groups` /
+    `append-proxy-groups` 把列表插到 `rules`、`proxies`、`proxy-groups` 的前面或后面；插入发生在同一段覆写的
+    其他键合并之后，所以同一段里替换整个列表再追加也成立。这六个键不进入最终配置。
+  - 其余键做深度合并：映射递归合并，标量和列表整体替换。
+  - 某段覆写解析失败（不是 YAML 映射，或插入键的值、目标不是列表）时返回 `invalid_config`，信息形如
+    `override 2 of 3: …`，指出第几段出错。
   - mihomo 解析时会临时套用新配置的 general 部分（`temporaryUpdateGeneral`），所以运行中的 `Validate`
     会短暂影响模式等全局设置；分发器用操作锁串行执行它。
 - **启停与重载**：
@@ -247,7 +258,8 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 
 方法的行为约定：
 
-- `Validate`、`Start`、`Reload` 携带配置 YAML、覆写和 `RunOptions`，经过 3.2 节的准入流水线。
+- `Validate`、`Start`、`Reload` 携带配置 YAML、覆写列表 `overrides`（先全局、后当前配置，见 3.2 节）和
+  `RunOptions`（`Validate` 没有），经过 3.2 节的准入流水线。
   `mixed_port` 超过 65535 时返回 `invalid_request`。
 - `Stop` 对已停止的内核不做任何事。开发模式下 `Claim` 直接成功，因为开发 socket 只接受运行服务的那个用户。
 - 内核未运行时，列表类查询（代理组、provider、规则）返回空列表，改变状态的内核方法返回 `not_running`；

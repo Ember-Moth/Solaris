@@ -2,13 +2,13 @@ package engine
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"net/netip"
 	"net/url"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/metacubex/mihomo/common/yaml"
@@ -58,20 +58,19 @@ type RunOptions struct {
 	AllowLAN bool
 }
 
-// Profile is one submission from the UI: the final YAML, the override and the options.
+// Profile is one submission from the UI: the final YAML, the overrides and the options.
 type Profile struct {
 	Config []byte
-	// Override is a JSON object merged into the configuration before the platform
-	// patches: objects merge key by key, null removes a key, anything else replaces.
-	// The full override scope is still open (decision D4).
-	Override []byte
-	Options  RunOptions
+	// Overrides are YAML mappings merged in order, the global override first and then
+	// the profile's own (decision D4, Merge only); see applyOverrides.
+	Overrides [][]byte
+	Options   RunOptions
 }
 
 const loopback = "127.0.0.1"
 
 // controllerKeys open mihomo's own controller or files it serves. The pipeline clears
-// them last, after the override (§3.3 #2); the external UI keys go too because the
+// them last, after the overrides (§3.3 #2); the external UI keys go too because the
 // updater would download a dashboard into the home directory for a controller that never runs.
 var controllerKeys = []string{
 	"external-controller",
@@ -101,7 +100,7 @@ func takesOverSystem(listener C.InboundListener) bool {
 var errFDModePending = errors.New("fd mode arrives with the macOS extension (M5)")
 
 // admit runs the configuration admission pipeline (docs/architecture.md §3.2): user
-// YAML → override → platform patches for the TUN mode → security items, which always
+// YAML → overrides → platform patches for the TUN mode → security items, which always
 // come last → executor.ParseWithBytes → a check of the parsed result.
 func admit(profile Profile, mode TunMode) (*config.Config, error) {
 	if profile.Options.TUN && mode == TunNone {
@@ -111,7 +110,7 @@ func admit(profile Profile, mode TunMode) (*config.Config, error) {
 	if err != nil {
 		return nil, invalidConfig(err)
 	}
-	if err := applyOverride(doc, profile.Override); err != nil {
+	if err := applyOverrides(doc, profile.Overrides); err != nil {
 		return nil, invalidConfig(err)
 	}
 	options := profile.Options
@@ -169,79 +168,88 @@ func decodeDocument(source []byte) (map[string]any, error) {
 	return doc, nil
 }
 
-func applyOverride(doc map[string]any, override []byte) error {
-	if len(bytes.TrimSpace(override)) == 0 {
-		return nil
-	}
-	decoder := json.NewDecoder(bytes.NewReader(override))
-	decoder.UseNumber()
-	var patch map[string]any
-	if err := decoder.Decode(&patch); err != nil {
-		return fmt.Errorf("override: %w", err)
-	}
-	if decoder.More() {
-		return errors.New("override: trailing data after the JSON object")
-	}
-	if patch == nil {
-		return errors.New("override: not a JSON object")
-	}
-	return mergeInto(doc, patch)
+// listInsert is an override key that adds to a list instead of replacing it.
+type listInsert struct {
+	key, target string
+	prepend     bool
 }
 
-func mergeInto(target map[string]any, patch map[string]any) error {
-	for key, value := range patch {
-		if value == nil {
-			delete(target, key)
-			continue
+var listInserts = []listInsert{
+	{"prepend-rules", "rules", true},
+	{"append-rules", "rules", false},
+	{"prepend-proxies", "proxies", true},
+	{"append-proxies", "proxies", false},
+	{"prepend-proxy-groups", "proxy-groups", true},
+	{"append-proxy-groups", "proxy-groups", false},
+}
+
+// applyOverrides merges each override into the configuration in order. Mappings merge
+// key by key; scalars and lists replace what was there; the prepend-* and append-* keys
+// put their lists before or after rules, proxies and proxy-groups. They run before the
+// platform patches and the security items, so they cannot undo either.
+func applyOverrides(doc map[string]any, overrides [][]byte) error {
+	for i, override := range overrides {
+		if err := applyOverride(doc, override); err != nil {
+			return fmt.Errorf("override %d of %d: %w", i+1, len(overrides), err)
 		}
-		value, err := fromJSON(value)
-		if err != nil {
-			return fmt.Errorf("override %s: %w", key, err)
-		}
-		if nested, ok := value.(map[string]any); ok {
-			if existing, ok := target[key].(map[string]any); ok {
-				if err := mergeInto(existing, nested); err != nil {
-					return err
-				}
-				continue
-			}
-		}
-		target[key] = value
 	}
 	return nil
 }
 
-// fromJSON turns json.Number into the integer or float YAML expects.
-func fromJSON(value any) (any, error) {
-	switch v := value.(type) {
-	case json.Number:
-		if n, err := v.Int64(); err == nil {
-			return n, nil
-		}
-		return v.Float64()
-	case []any:
-		out := make([]any, len(v))
-		for i, item := range v {
-			converted, err := fromJSON(item)
-			if err != nil {
-				return nil, err
-			}
-			out[i] = converted
-		}
-		return out, nil
-	case map[string]any:
-		out := make(map[string]any, len(v))
-		for key, item := range v {
-			converted, err := fromJSON(item)
-			if err != nil {
-				return nil, err
-			}
-			out[key] = converted
-		}
-		return out, nil
-	default:
-		return v, nil
+func applyOverride(doc map[string]any, source []byte) error {
+	var patch map[string]any
+	if err := yaml.Unmarshal(source, &patch); err != nil {
+		return err
 	}
+	inserts := map[string][]any{}
+	for key, value := range patch {
+		if !isListInsert(key) {
+			mergeValue(doc, key, value)
+			continue
+		}
+		items, ok := value.([]any)
+		if !ok {
+			return fmt.Errorf("%s must be a list", key)
+		}
+		inserts[key] = items
+	}
+	// Inserts land after this override's own replacements of the same list.
+	for _, insert := range listInserts {
+		items, ok := inserts[insert.key]
+		if !ok {
+			continue
+		}
+		var existing []any
+		switch current := doc[insert.target].(type) {
+		case nil:
+		case []any:
+			existing = current
+		default:
+			return fmt.Errorf("%s cannot extend %s, which is not a list", insert.key, insert.target)
+		}
+		if insert.prepend {
+			doc[insert.target] = append(slices.Clone(items), existing...)
+		} else {
+			doc[insert.target] = append(slices.Clone(existing), items...)
+		}
+	}
+	return nil
+}
+
+func isListInsert(key string) bool {
+	return slices.ContainsFunc(listInserts, func(insert listInsert) bool { return insert.key == key })
+}
+
+func mergeValue(target map[string]any, key string, value any) {
+	if nested, ok := value.(map[string]any); ok {
+		if existing, ok := target[key].(map[string]any); ok {
+			for nestedKey, nestedValue := range nested {
+				mergeValue(existing, nestedKey, nestedValue)
+			}
+			return
+		}
+	}
+	target[key] = value
 }
 
 // section returns doc[key] as a mapping, replacing anything else; the pipeline owns the
@@ -455,8 +463,8 @@ func withLoopbackHost(address string) (string, error) {
 	return net.JoinHostPort(loopback, port), nil
 }
 
-// enforceSecurity is the last step before parsing, after the override, so neither the
-// profile nor the override can undo it (docs/architecture.md §3.3).
+// enforceSecurity is the last step before parsing, after the overrides, so neither the
+// profile nor an override can undo it (docs/architecture.md §3.3).
 func enforceSecurity(doc map[string]any) error {
 	// Empty, not absent: a missing external-ui-url falls back to mihomo's download URL.
 	for _, key := range controllerKeys {
