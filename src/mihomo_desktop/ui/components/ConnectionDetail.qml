@@ -131,12 +131,8 @@ AppPopover {
         }
     }
 
-    // Lines as tall as the role's line height times its font size; Qt's proportional line
-    // height would scale the font's own, taller line instead.
     component DetailText: AccessibleText {
         Layout.alignment: Qt.AlignTop
         wrapMode: Text.WrapAnywhere
-        lineHeightMode: Text.FixedHeight
-        lineHeight: Math.round(role.fontSize * role.lineHeight)
     }
 }

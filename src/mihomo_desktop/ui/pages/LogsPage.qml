@@ -246,8 +246,8 @@ Item {
         }
     }
 
-    // data-sm at DESIGN.md's log line height: 1.6 times the font size. Qt's proportional
-    // line height would scale the font's own, taller line instead.
+    // data-sm at DESIGN.md's log line height, 1.6 times the font size, in all three columns:
+    // the time and level do not wrap, but their first line lines up with the message's.
     component LogText: UiText {
         Layout.alignment: Qt.AlignTop
         role: Theme.type.dataSm

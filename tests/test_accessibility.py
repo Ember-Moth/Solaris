@@ -289,8 +289,18 @@ def test_saving_an_override_returns_to_the_rows_more_button(qtbot: QtBot, loaded
     profiles = loaded.view_models.profiles
     show_page(qtbot, loaded, "profiles")
     more = more_button(loaded, "示例订阅 B")
-    open_menu_item(qtbot, loaded, more, 3)  # 编辑覆写…
-    qtbot.waitUntil(lambda: kind(loaded.focused()).startswith("TextArea"))
+
+    def edit() -> None:
+        open_menu_item(qtbot, loaded, more, 3)  # 编辑覆写…
+        qtbot.waitUntil(lambda: kind(loaded.focused()).startswith("TextArea"))
+
+    # Esc cancels from inside the editor.
+    edit()
+    loaded.key(qtbot, Qt.Key.Key_Escape)
+    assert loaded.focused() is more
+    assert more.property("visualFocus")
+
+    edit()
     loaded.type(qtbot, "mode: direct\n")
     with qtbot.waitSignal(profiles.overrideSaved):
         loaded.key(qtbot, Qt.Key.Key_Return, Qt.KeyboardModifier.ControlModifier, wait=0)
