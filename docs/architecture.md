@@ -582,6 +582,61 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 - Qt 控件自带的文案（如输入框右键菜单的 Cut / Copy / Paste）不在本项目的目录里。Qt 自带的 zh_CN 目录尚未
   收录这些新文案，中文界面下它们仍显示英文。
 
+### 7.6 外观
+
+界面有浅色和深色两套外观（决策 D9），取值和规则见 DESIGN.md「Colors → 深色」。
+
+- **主题**：DESIGN.md 的 `colors` 是浅色值，`colors.dark` 是同名角色的深色值。`scripts/gen_theme.py` 把每个
+  角色生成为一个绑定，如 `primary: dark ? "#6495FF" : "#1F5EFF"`；`Theme.dark` 取自注入的外观对象。外观变化时
+  所有绑定随之重算，界面立即重绘，不需要重启或重新加载 QML。
+- **外观对象** `viewmodels/appearance.py` 的 `Appearance`，在 QML 里是 `MihomoDesktop` 模块的类型：
+
+  | 成员 | 说明 |
+  | --- | --- |
+  | `mode`（属性，`modeChanged`） | `"system"`、`"light"` 或 `"dark"` |
+  | `dark`（属性，`darkChanged`） | 界面实际使用的外观，只读 |
+  | `setMode(mode)`（槽） | 改变 `mode`；其他值抛出 `ValueError` |
+
+  `system` 模式下 `dark` 跟随 `QGuiApplication.styleHints().colorScheme()`，并监听 `colorSchemeChanged`，系统在
+  运行中切换外观时立即更新；系统没有报告配色方案时（如 offscreen 平台）按浅色处理。固定为浅色或深色时，
+  `Appearance` 同时调用 `QStyleHints.setColorScheme()` 让原生标题栏一致；回到 `system` 时调用
+  `unsetColorScheme()`。这只影响本应用，不改系统设置。
+- **注入**：`viewmodels/composition.compose(…, appearance=…)` 创建或接收外观对象，放进 `ViewModels.appearance`，
+  作为 Main.qml 的必需属性 `appearance` 注入；Main.qml 用 `Binding` 把它交给 `Theme.appearance`。
+  设置页（M3）拿到同一个对象，调用 `setMode()` 并自行持久化选择；启动时把存下的值传给
+  `app.main(appearance=…)`。
+- **启动时的模式**（`resolve_mode`）按顺序取第一个有效值：
+  1. 设置页存下的选择，经 `app.main(appearance=…)` 传入；
+  2. 环境变量 `MIHOMO_DESKTOP_APPEARANCE=system|light|dark`，用于预览和测试，
+     `scripts/preview.py --appearance dark` 等价；
+  3. `system`。
+- **Qt 控件的调色板**：Basic 样式里本项目没有重绘的部分（滚动条、Qt 自带的右键菜单和工具提示、文字选区的
+  默认值）读窗口的 `palette`，Main.qml 把它映射到 token，浮层继承窗口的调色板：
+
+  | palette | token |
+  | --- | --- |
+  | `window` | `background` |
+  | `windowText`、`text`、`buttonText`、`toolTipText` | `text` |
+  | `base`、`button`、`toolTipBase` | `surface` |
+  | `alternateBase` | `surface-subtle` |
+  | `light`（菜单项高亮） | `surface-selected` |
+  | `midlight` | `border` |
+  | `mid`（滚动条滑块、Qt 自带菜单的分隔线） | `border-control` |
+  | `dark`（按下的滑块、Qt 自带菜单的外框） | `text-muted` |
+  | `placeholderText` | `text-muted` |
+  | `highlight`、`accent` | `primary` |
+  | `highlightedText`、`brightText` | `on-primary` |
+  | `link`、`linkVisited` | `link` |
+  | `shadow` | `scrim` |
+
+- **字体**：Inter（400、500、600）和 JetBrains Mono（400）放在 `ui/fonts/`，各带 `OFL.txt`，由 `Fonts.qml` 的
+  `FontLoader` 加载；Nuitka 打包时 `package/entry.py` 把整个目录复制到 `mihomo_desktop/ui/fonts/`。中日韩文字
+  由 Qt 从系统字体回退。SIL OFL 1.1 允许字体与任何软件捆绑分发，只要求随附版权声明和许可证、不单独出售
+  字体、修改版不用保留字体名；字体不受 GPL 约束，也不改变本项目的 GPL-3.0 许可。
+- **测试**：`tests/test_theme.py` 检查 Theme.qml 与 DESIGN.md 一致、两组颜色角色相同，并按 DESIGN.md 的用法
+  核对两种外观的对比度；`tests/test_appearance.py` 用 `tests/support/appearance.py` 模拟系统切换外观；
+  `tests/test_app.py` 在浅色和深色下加载界面，并检查系统切换后窗口立即重绘。
+
 ## 8. 安全模型
 
 | 威胁 | 措施 |
