@@ -204,7 +204,8 @@ def test_service_host_sends_the_config_with_validate_start_and_reload() -> None:
         return pb.Response(empty=pb.Empty())
 
     options = RunOptions(tun_enabled=True, system_proxy_enabled=False, mixed_port=7890)
-    config = TunnelConfig("proxies: []\n", '{"mode": "rule"}', options)
+    overrides = ("mode: global\n", "prepend-rules: [MATCH,DIRECT]\n")
+    config = TunnelConfig("proxies: []\n", overrides, options)
 
     async def scenario() -> None:
         server, opener = await serve(answer)
@@ -222,10 +223,11 @@ def test_service_host_sends_the_config_with_validate_start_and_reload() -> None:
     asyncio.run(scenario())
     validate, start, reload = received
     assert validate.validate == pb.ValidateRequest(
-        config_yaml="proxies: []\n", override_json='{"mode": "rule"}'
+        config_yaml="proxies: []\n", overrides=list(overrides)
     )
     expected_options = pb.RunOptions(tun_enabled=True, mixed_port=7890)
     assert start.start.config_yaml == "proxies: []\n"
     assert start.start.options == expected_options
-    assert reload.reload.override_json == '{"mode": "rule"}'
+    assert list(start.start.overrides) == list(overrides)
+    assert list(reload.reload.overrides) == list(overrides)
     assert reload.reload.options == expected_options

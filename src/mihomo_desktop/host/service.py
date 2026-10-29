@@ -91,14 +91,14 @@ class ServiceHost:
 
     async def validate(self, config: TunnelConfig) -> None:
         request = pb.ValidateRequest(
-            config_yaml=config.config_yaml, override_json=config.override_json
+            config_yaml=config.config_yaml, overrides=list(config.overrides)
         )
         await self._call(pb.Request(validate=request))
 
     async def start(self, config: TunnelConfig) -> None:
         request = pb.StartRequest(
             config_yaml=config.config_yaml,
-            override_json=config.override_json,
+            overrides=list(config.overrides),
             options=_options(config.options),
         )
         await self._call(pb.Request(start=request))
@@ -106,7 +106,7 @@ class ServiceHost:
     async def reload(self, config: TunnelConfig) -> None:
         request = pb.ReloadRequest(
             config_yaml=config.config_yaml,
-            override_json=config.override_json,
+            overrides=list(config.overrides),
             options=_options(config.options),
         )
         await self._call(pb.Request(reload=request))

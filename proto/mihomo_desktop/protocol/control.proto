@@ -106,16 +106,16 @@ message RunOptions {
 
 message ValidateRequest {
   string config_yaml = 1;
-  string override_json = 2;
+  repeated string overrides = 2;
 }
 message StartRequest {
   string config_yaml = 1;
-  string override_json = 2;
+  repeated string overrides = 2;
   RunOptions options = 3;
 }
 message ReloadRequest {
   string config_yaml = 1;
-  string override_json = 2;
+  repeated string overrides = 2;
   RunOptions options = 3;
 }
 message StopRequest {}

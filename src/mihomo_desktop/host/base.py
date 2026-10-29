@@ -32,7 +32,8 @@ class TunnelConfig:
     """What Validate, Start and Reload carry. Validate ignores ``options``."""
 
     config_yaml: str
-    override_json: str = ""  # persistent overrides; empty until decision D4
+    # Override YAML texts in the order they apply: the global one, then the profile's own.
+    overrides: tuple[str, ...] = ()
     options: RunOptions = RunOptions()
 
 

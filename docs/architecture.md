@@ -343,7 +343,7 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 | 字段 | 内容 |
 | --- | --- |
 | `config_yaml` | 配置原文，即 `ProfileStore` 里存的 YAML |
-| `override_json` | 持久覆写；决策 D4 之前恒为空字符串 |
+| `overrides` | 覆写的 YAML 原文，按应用顺序排列：先全局覆写，再这份配置自己的覆写；没有设置的不放进来。语义见 7.4 节 |
 | `options` | `RunOptions`：`tun_enabled`、`system_proxy_enabled`、`mixed_port`（0 表示沿用配置）、`allow_lan`。`validate` 不使用 |
 
 - **Start** 用概览页开关当前显示的 TUN 和系统代理状态；端口和局域网连接等设置页（M3）接入后再持久化。
@@ -406,6 +406,29 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   隧道在运行就先 `reload`，成功后才记下新的当前配置，核心拒绝时保留原来的配置；隧道未运行只记下选择。
   下载和校验不持有锁，写入存储和重载在同一把锁下串行执行。
 - UI 只把最终的 YAML 和覆写交给宿主。provider 和规则集的后续更新仍由 mihomo 自己完成。
+
+### 7.4 覆写
+
+决策 D4：覆写只做 Merge，不做 Script。一份全局覆写作用于所有配置，每份配置还可以有自己的一份。
+UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿主按同一规则实现，供预览和测试。
+
+- 一段覆写是一个 YAML 映射；空文档等于没有覆写。`overrides` 里的各段依次应用到配置上，每段作用于上一段的结果。
+- 六个插入键把列表插到目标列表的前面或后面，目标不存在时视为空列表：
+
+  | 键 | 目标 |
+  | --- | --- |
+  | `prepend-rules` / `append-rules` | `rules` |
+  | `prepend-proxies` / `append-proxies` | `proxies` |
+  | `prepend-proxy-groups` / `append-proxy-groups` | `proxy-groups` |
+
+- 其余键做深度合并：两边都是映射时逐键递归合并，否则用覆写的值整体替换（标量、列表和 `null` 都是如此）。
+- 同一段覆写里先做深度合并，再插入列表。所以一段覆写同时写了 `rules` 和 `prepend-rules` 时，规则插在替换后的
+  `rules` 前面。
+- 配置准入的顺序（3.2 节）是：解析配置 → 依次应用覆写 → 平台补丁（TUN 模式、开发模式护栏）→ 安全项（3.3 节）。
+  覆写在平台补丁之前，所以改不动开发模式护栏，也改不动 3.3 节的安全项；例如覆写里的 `external-controller`
+  照样会被清除。
+- 某段覆写解析失败、不是映射，或插入键的值不是列表时，Validate、Start、Reload 都返回 `invalid_config`，
+  `message` 是解析错误原文，界面原样显示。
 
 ## 8. 安全模型
 

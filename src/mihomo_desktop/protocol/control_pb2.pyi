@@ -214,32 +214,32 @@ class RunOptions(_message.Message):
     def __init__(self, tun_enabled: _Optional[bool] = ..., system_proxy_enabled: _Optional[bool] = ..., mixed_port: _Optional[int] = ..., allow_lan: _Optional[bool] = ...) -> None: ...
 
 class ValidateRequest(_message.Message):
-    __slots__ = ("config_yaml", "override_json")
+    __slots__ = ("config_yaml", "overrides")
     CONFIG_YAML_FIELD_NUMBER: _ClassVar[int]
-    OVERRIDE_JSON_FIELD_NUMBER: _ClassVar[int]
+    OVERRIDES_FIELD_NUMBER: _ClassVar[int]
     config_yaml: str
-    override_json: str
-    def __init__(self, config_yaml: _Optional[str] = ..., override_json: _Optional[str] = ...) -> None: ...
+    overrides: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, config_yaml: _Optional[str] = ..., overrides: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class StartRequest(_message.Message):
-    __slots__ = ("config_yaml", "override_json", "options")
+    __slots__ = ("config_yaml", "overrides", "options")
     CONFIG_YAML_FIELD_NUMBER: _ClassVar[int]
-    OVERRIDE_JSON_FIELD_NUMBER: _ClassVar[int]
+    OVERRIDES_FIELD_NUMBER: _ClassVar[int]
     OPTIONS_FIELD_NUMBER: _ClassVar[int]
     config_yaml: str
-    override_json: str
+    overrides: _containers.RepeatedScalarFieldContainer[str]
     options: RunOptions
-    def __init__(self, config_yaml: _Optional[str] = ..., override_json: _Optional[str] = ..., options: _Optional[_Union[RunOptions, _Mapping]] = ...) -> None: ...
+    def __init__(self, config_yaml: _Optional[str] = ..., overrides: _Optional[_Iterable[str]] = ..., options: _Optional[_Union[RunOptions, _Mapping]] = ...) -> None: ...
 
 class ReloadRequest(_message.Message):
-    __slots__ = ("config_yaml", "override_json", "options")
+    __slots__ = ("config_yaml", "overrides", "options")
     CONFIG_YAML_FIELD_NUMBER: _ClassVar[int]
-    OVERRIDE_JSON_FIELD_NUMBER: _ClassVar[int]
+    OVERRIDES_FIELD_NUMBER: _ClassVar[int]
     OPTIONS_FIELD_NUMBER: _ClassVar[int]
     config_yaml: str
-    override_json: str
+    overrides: _containers.RepeatedScalarFieldContainer[str]
     options: RunOptions
-    def __init__(self, config_yaml: _Optional[str] = ..., override_json: _Optional[str] = ..., options: _Optional[_Union[RunOptions, _Mapping]] = ...) -> None: ...
+    def __init__(self, config_yaml: _Optional[str] = ..., overrides: _Optional[_Iterable[str]] = ..., options: _Optional[_Union[RunOptions, _Mapping]] = ...) -> None: ...
 
 class StopRequest(_message.Message):
     __slots__ = ()
