@@ -76,6 +76,9 @@ func ownedTUN(t *testing.T, stack, target string) {
 	}()
 
 	baseline := networkState(t)
+	// dns-mode disabled: otherwise sing-tun hands the TUN's DNS to systemd-resolved with
+	// resolvectl, which the namespace does not isolate. resolvectl turns mdtun0 into an
+	// index here, and resolved applies it to the host's interface with that index.
 	profile := Profile{Config: []byte(fmt.Sprintf(`mode: rule
 log-level: debug
 proxies: []
@@ -83,6 +86,7 @@ rules: ['MATCH,DIRECT']
 tun:
   stack: %s
   device: %s
+  dns-mode: disabled
 `, stack, tunDevice)), Options: RunOptions{TUN: true}}
 
 	if err := engine.Start(profile); err != nil {
