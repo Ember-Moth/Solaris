@@ -10,6 +10,7 @@ from mihomo_desktop.host.base import (
     HostError,
     HostInfo,
     HostStatus,
+    LogEntry,
     Proxy,
     ProxyGroup,
     RunOptions,
@@ -23,6 +24,12 @@ from mihomo_desktop.protocol import control_pb2
 pb = control_pb2
 
 MODES = {"rule": pb.MODE_RULE, "global": pb.MODE_GLOBAL, "direct": pb.MODE_DIRECT}
+LOG_LEVELS = {
+    "debug": pb.LOG_LEVEL_DEBUG,
+    "info": pb.LOG_LEVEL_INFO,
+    "warning": pb.LOG_LEVEL_WARNING,
+    "error": pb.LOG_LEVEL_ERROR,
+}
 
 
 def _enum_name(enum: type, prefix: str, value: int) -> str:
@@ -50,18 +57,38 @@ def _group(group: pb.ProxyGroup) -> ProxyGroup:
     )
 
 
+def _connection(c: pb.Connection) -> Connection:
+    return Connection(
+        id=c.id,
+        host=c.host,
+        network=c.network,
+        rule=c.rule if not c.rule_payload else f"{c.rule},{c.rule_payload}",
+        # mihomo records the chain from the final proxy outwards.
+        chains=tuple(reversed(c.chains)),
+        process=c.process,
+        upload_bytes=c.upload_bytes,
+        download_bytes=c.download_bytes,
+        started_at_unix_ms=c.started_at_unix_ms,
+        source=c.source,
+        destination=c.destination,
+    )
+
+
 class ServiceHost:
     def __init__(self, opener: Opener) -> None:
         self._opener = opener
         self._client: ControlClient | None = None
         self._connect_lock = asyncio.Lock()
         self._subscriptions: dict[str, int] = {}
+        self._connections: list[Connection] = []  # the latest snapshot, shared by every poll
+        self._log_level = ""  # the level of the logs subscription
 
     async def _connected(self) -> ControlClient:
         async with self._connect_lock:
             if self._client is None or self._client.closed:
                 self._client = await ControlClient.connect(self._opener)
                 self._subscriptions.clear()
+                self._connections = []
             return self._client
 
     async def _call(self, request: pb.Request) -> pb.Response:
@@ -174,22 +201,47 @@ class ServiceHost:
             "connections", pb.Request(subscribe_connections=pb.SubscribeConnectionsRequest())
         )
         snapshots = [e.connections for e in events if e.HasField("connections")]
-        if not snapshots:
-            return []
+        if snapshots:
+            self._connections = [_connection(c) for c in snapshots[-1].connections]
+        return list(self._connections)
+
+    async def close_connection(self, connection_id: str) -> None:
+        request = pb.Request(close_connection=pb.CloseConnectionRequest(id=connection_id))
+        try:
+            await self._call(request)
+        except HostError as error:
+            # The core answers invalid_request for an id it no longer tracks.
+            if error.code != "invalid_request":
+                raise
+
+    async def close_all_connections(self) -> None:
+        await self._call(pb.Request(close_all_connections=pb.CloseAllConnectionsRequest()))
+
+    async def poll_logs(self, level: str) -> list[LogEntry]:
+        if level != self._log_level and "logs" in self._subscriptions:
+            await self._unsubscribe("logs")
+        self._log_level = level
+        subscribe = pb.SubscribeLogsRequest(level=LOG_LEVELS[level])
+        events = await self._poll("logs", pb.Request(subscribe_logs=subscribe))
         return [
-            Connection(
-                id=c.id,
-                host=c.host,
-                network=c.network,
-                rule=c.rule if not c.rule_payload else f"{c.rule},{c.rule_payload}",
-                chains=tuple(c.chains),
-                process=c.process,
-                upload_bytes=c.upload_bytes,
-                download_bytes=c.download_bytes,
-                started_at_unix_ms=c.started_at_unix_ms,
+            LogEntry(
+                level=_enum_name(pb.LogLevel, "LOG_LEVEL_", e.log.level),
+                message=e.log.message,
+                time_unix_ms=e.log.time_unix_ms,
             )
-            for c in snapshots[-1].connections
+            for e in events
+            if e.HasField("log")
         ]
+
+    async def _unsubscribe(self, topic: str) -> None:
+        """End a subscription now rather than leave it to expire; one that already expired
+        is fine."""
+        request = pb.UnsubscribeRequest(subscription_id=self._subscriptions.pop(topic))
+        try:
+            await self._call(pb.Request(unsubscribe=request))
+        except HostError as error:
+            if error.code != "unknown_subscription":
+                raise
 
     async def close(self) -> None:
         if self._client is not None:

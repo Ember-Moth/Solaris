@@ -1,9 +1,9 @@
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QFont
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickItem, QQuickWindow
@@ -17,6 +17,16 @@ from mihomo_desktop.viewmodels.composition import ViewModels, compose
 from tests.support.appearance import SystemColorScheme
 from tests.support.i18n import ui_language
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
+
+
+def find(item: QQuickItem, test: Callable[[QQuickItem], bool]) -> QQuickItem | None:
+    """The first visible item under ``item`` that passes ``test``."""
+    if item.isVisible() and test(item):
+        return item
+    for child in item.childItems():
+        if (found := find(child, test)) is not None:
+            return found
+    return None
 
 
 def texts(item: QQuickItem) -> set[str]:
@@ -40,6 +50,18 @@ class Loaded:
     def key(self, qtbot: QtBot, key: Qt.Key) -> None:
         QTest.keyClick(self.window, key)
         qtbot.wait(250)  # longer than any overlay transition
+
+    def click(self, qtbot: QtBot, item: QQuickItem, x: float | None = None) -> None:
+        middle = QPointF(item.width() / 2 if x is None else x, item.height() / 2)
+        point = item.mapToScene(middle).toPoint()
+        button, modifier = Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier
+        QTest.mouseClick(self.window, button, modifier, point)
+        qtbot.wait(250)
+
+    def item(self, test: Callable[[QQuickItem], bool]) -> QQuickItem:
+        found = find(self.window.contentItem(), test)
+        assert found is not None
+        return found
 
 
 @pytest.fixture
@@ -92,6 +114,12 @@ def test_main_window_loads_without_qml_warnings(qtbot: QtBot, loaded: Loaded, la
     view_models.shell.setPage("profiles")
     view_models.profiles.use("sample-b")
     qtbot.waitUntil(lambda: view_models.profiles.property("activeName") == "示例订阅 B")
+    view_models.shell.setPage("connections")
+    qtbot.waitUntil(lambda: view_models.connections.property("total") > 0)
+    view_models.connections.sortBy("rate")
+    view_models.shell.setPage("logs")
+    qtbot.waitUntil(lambda: view_models.logs.property("count") > 0)
+    view_models.logs.setLevel("debug")
     assert loaded.warnings == []
 
 
@@ -184,3 +212,67 @@ def test_the_bundled_fonts_are_used(loaded: Loaded) -> None:
     fonts = MAIN_QML.parent / "fonts"
     for family in ("inter", "jetbrains-mono"):
         assert (fonts / family / "OFL.txt").is_file()  # the license travels with the fonts
+
+
+CLOSE_ALL_TEXT = [
+    ("zh", {"button": "全部关闭", "cancel": "取消"}),
+    ("en", {"button": "Close all", "cancel": "Cancel"}),
+]
+
+
+def connection_ids(view_models: ViewModels) -> set[str]:
+    return {row.connectionId for row in view_models.connections.property("model").rows}
+
+
+@pytest.mark.parametrize(("loaded", "text"), CLOSE_ALL_TEXT, indirect=["loaded"], ids=["zh", "en"])
+def test_close_all_asks_first_and_keeps_connections_by_default(
+    qtbot: QtBot, loaded: Loaded, text: dict[str, str]
+) -> None:
+    connections = loaded.view_models.connections
+    loaded.view_models.shell.setPage("connections")
+    qtbot.waitUntil(lambda: connections.property("total") > 0)
+    button = loaded.item(lambda i: i.property("text") == text["button"])
+
+    before = connection_ids(loaded.view_models)
+
+    loaded.click(qtbot, button)
+    assert loaded.focused_text() == text["cancel"]  # the safe default
+    loaded.key(qtbot, Qt.Key.Key_Return)
+    qtbot.wait(1200)
+    assert before <= connection_ids(loaded.view_models)
+
+    loaded.click(qtbot, button)
+    loaded.key(qtbot, Qt.Key.Key_Tab)
+    assert loaded.focused_text() == text["button"]  # the dialog's own button now
+    loaded.key(qtbot, Qt.Key.Key_Return)
+    # New visits may open meanwhile; every connection that was open has gone.
+    qtbot.waitUntil(lambda: not before & connection_ids(loaded.view_models))
+    assert loaded.warnings == []
+
+
+def test_connections_table_works_from_the_keyboard(qtbot: QtBot, loaded: Loaded) -> None:
+    connections = loaded.view_models.connections
+    loaded.view_models.shell.setPage("connections")
+    qtbot.waitUntil(lambda: connections.property("total") >= 3)
+    rows = connections.property("model").rows
+    first, second = rows[0].connectionId, rows[1].connectionId
+
+    # Clicking a row selects it and shows its detail; Esc closes the detail and leaves the
+    # table focused for the arrow keys.
+    row = loaded.item(lambda i: i.property("connectionId") == first)
+    loaded.click(qtbot, row, 40)
+    detail = loaded.item(lambda i: i.property("text") in ("关闭连接",))
+    assert detail.isVisible()
+    loaded.key(qtbot, Qt.Key.Key_Escape)
+    assert not detail.isVisible()
+    loaded.key(qtbot, Qt.Key.Key_Down)
+    assert connections.property("detail")["id"] == second
+
+    # Enter opens the detail again; Delete closes the selected connection.
+    loaded.key(qtbot, Qt.Key.Key_Return)
+    assert detail.isVisible()
+    loaded.key(qtbot, Qt.Key.Key_Escape)
+    loaded.key(qtbot, Qt.Key.Key_Delete)
+    qtbot.waitUntil(lambda: connections.property("detailClosed"))
+    assert second not in connection_ids(loaded.view_models)
+    assert loaded.warnings == []

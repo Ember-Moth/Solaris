@@ -14,6 +14,8 @@ ApplicationWindow {
     required property ProxiesViewModel proxiesViewModel
     required property ProfilesViewModel profilesViewModel
     required property Appearance appearance
+    required property ConnectionsViewModel connectionsViewModel
+    required property LogsViewModel logsViewModel
 
     width: Theme.windowDefaultWidth
     height: Theme.windowDefaultHeight
@@ -85,12 +87,12 @@ ApplicationWindow {
                 profiles: window.profilesViewModel
             }
 
-            PlaceholderPage {
-                title: qsTr("连接")
+            ConnectionsPage {
+                connections: window.connectionsViewModel
             }
 
-            PlaceholderPage {
-                title: qsTr("日志")
+            LogsPage {
+                logs: window.logsViewModel
             }
 
             PlaceholderPage {

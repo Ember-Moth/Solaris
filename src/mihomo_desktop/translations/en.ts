@@ -9,6 +9,160 @@
     </message>
 </context>
 <context>
+    <name>ConnectionDetail</name>
+    <message>
+        <source>已关闭</source>
+        <translation>Closed</translation>
+    </message>
+    <message>
+        <source>网络</source>
+        <translation>Network</translation>
+    </message>
+    <message>
+        <source>来源</source>
+        <translation>Source</translation>
+    </message>
+    <message>
+        <source>目标</source>
+        <translation>Destination</translation>
+    </message>
+    <message>
+        <source>进程</source>
+        <translation>Process</translation>
+    </message>
+    <message>
+        <source>规则</source>
+        <translation>Rule</translation>
+    </message>
+    <message>
+        <source>链路</source>
+        <translation>Chain</translation>
+    </message>
+    <message>
+        <source>下载</source>
+        <translation>Download</translation>
+    </message>
+    <message>
+        <source>开始时间</source>
+        <translation>Started</translation>
+    </message>
+    <message>
+        <source>时长</source>
+        <translation>Duration</translation>
+    </message>
+    <message>
+        <source>上传</source>
+        <translation>Upload</translation>
+    </message>
+    <message>
+        <source>关闭连接</source>
+        <translation>Close connection</translation>
+    </message>
+</context>
+<context>
+    <name>ConnectionsPage</name>
+    <message>
+        <source>连接</source>
+        <translation>Connections</translation>
+    </message>
+    <message>
+        <source>全部关闭</source>
+        <translation>Close all</translation>
+    </message>
+    <message>
+        <source>搜索主机、进程或规则</source>
+        <translation>Search hosts, processes or rules</translation>
+    </message>
+    <message>
+        <source>网络类型</source>
+        <translation>Network</translation>
+    </message>
+    <message>
+        <source>活动连接</source>
+        <translation>Active connections</translation>
+    </message>
+    <message>
+        <source>主机</source>
+        <translation>Host</translation>
+    </message>
+    <message>
+        <source>规则</source>
+        <translation>Rule</translation>
+    </message>
+    <message>
+        <source>链路</source>
+        <translation>Chain</translation>
+    </message>
+    <message>
+        <source>进程</source>
+        <translation>Process</translation>
+    </message>
+    <message>
+        <source>速率</source>
+        <translation>Rate</translation>
+    </message>
+    <message>
+        <source>流量</source>
+        <translation>Traffic</translation>
+    </message>
+    <message>
+        <source>时长</source>
+        <translation>Duration</translation>
+    </message>
+    <message>
+        <source>%1，%2</source>
+        <translation>%1, %2</translation>
+    </message>
+    <message>
+        <source>关闭 %1 的连接</source>
+        <translation>Close the connection to %1</translation>
+    </message>
+    <message>
+        <source>关闭全部连接？</source>
+        <translation>Close all connections?</translation>
+    </message>
+    <message numerus="yes">
+        <source>将断开 %n 个连接，进行中的传输会中断。</source>
+        <translation>
+            <numerusform>This closes %n connection. Transfers in progress will stop.</numerusform>
+            <numerusform>This closes %n connections. Transfers in progress will stop.</numerusform>
+        </translation>
+    </message>
+</context>
+<context>
+    <name>ConnectionsViewModel</name>
+    <message>
+        <source>全部</source>
+        <translation>All</translation>
+    </message>
+    <message>
+        <source>未连接</source>
+        <translation>Not connected</translation>
+    </message>
+    <message numerus="yes">
+        <source>{shown} / %n 个</source>
+        <translation>
+            <numerusform>{shown} of %n connection</numerusform>
+            <numerusform>{shown} of %n connections</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 个</source>
+        <translation>
+            <numerusform>%n connection</numerusform>
+            <numerusform>%n connections</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>没有连接</source>
+        <translation>No connections</translation>
+    </message>
+    <message>
+        <source>没有匹配的连接</source>
+        <translation>No matching connections</translation>
+    </message>
+</context>
+<context>
     <name>Feedback</name>
     <message>
         <source>该功能尚未实现</source>
@@ -142,15 +296,110 @@
     </message>
 </context>
 <context>
-    <name>Main</name>
-    <message>
-        <source>连接</source>
-        <translation>Connections</translation>
-    </message>
+    <name>LogsPage</name>
     <message>
         <source>日志</source>
         <translation>Logs</translation>
     </message>
+    <message>
+        <source>继续</source>
+        <translation>Resume</translation>
+    </message>
+    <message>
+        <source>暂停</source>
+        <translation>Pause</translation>
+    </message>
+    <message>
+        <source>清空</source>
+        <translation>Clear</translation>
+    </message>
+    <message>
+        <source>导出</source>
+        <translation>Export</translation>
+    </message>
+    <message>
+        <source>搜索日志</source>
+        <translation>Search logs</translation>
+    </message>
+    <message>
+        <source>最低日志级别</source>
+        <translation>Lowest log level</translation>
+    </message>
+    <message>
+        <source>日志内容</source>
+        <translation>Log lines</translation>
+    </message>
+    <message>
+        <source>导出日志</source>
+        <translation>Export logs</translation>
+    </message>
+    <message>
+        <source>日志文件 (*.log)</source>
+        <translation>Log files (*.log)</translation>
+    </message>
+    <message>
+        <source>文本文件 (*.txt)</source>
+        <translation>Text files (*.txt)</translation>
+    </message>
+</context>
+<context>
+    <name>LogsViewModel</name>
+    <message>
+        <source>调试</source>
+        <translation>Debug</translation>
+    </message>
+    <message>
+        <source>信息</source>
+        <translation>Info</translation>
+    </message>
+    <message>
+        <source>警告</source>
+        <translation>Warning</translation>
+    </message>
+    <message>
+        <source>错误</source>
+        <translation>Error</translation>
+    </message>
+    <message>
+        <source>导出失败：{detail}</source>
+        <translation>Export failed: {detail}</translation>
+    </message>
+    <message numerus="yes">
+        <source>已导出 %n 条</source>
+        <translation>
+            <numerusform>Exported %n line</numerusform>
+            <numerusform>Exported %n lines</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>已暂停 · %n 条新日志</source>
+        <translation>
+            <numerusform>Paused · %n new line</numerusform>
+            <numerusform>Paused · %n new lines</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>已暂停</source>
+        <translation>Paused</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 条</source>
+        <translation>
+            <numerusform>%n line</numerusform>
+            <numerusform>%n lines</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>没有匹配的日志</source>
+        <translation>No matching lines</translation>
+    </message>
+    <message>
+        <source>没有日志</source>
+        <translation>No logs</translation>
+    </message>
+</context>
+<context>
+    <name>Main</name>
     <message>
         <source>设置</source>
         <translation>Settings</translation>
@@ -671,6 +920,17 @@ Protocol v{protocol}</translation>
     <message>
         <source>未导入配置</source>
         <translation>No profile</translation>
+    </message>
+</context>
+<context>
+    <name>SortHeader</name>
+    <message>
+        <source>%1，从大到小</source>
+        <translation>%1, largest first</translation>
+    </message>
+    <message>
+        <source>%1，从小到大</source>
+        <translation>%1, smallest first</translation>
     </message>
 </context>
 <context>

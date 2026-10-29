@@ -87,14 +87,26 @@ class TrafficSample:
 @dataclass(frozen=True)
 class Connection:
     id: str
-    host: str
-    network: str
-    rule: str
+    host: str  # the requested domain without its port; empty for a connection to an IP
+    network: str  # "tcp" or "udp", as mihomo writes it
+    rule: str  # "DOMAIN-SUFFIX,github.com", or the type alone for "MATCH"
     chains: tuple[str, ...]  # outermost group first, final proxy last
-    process: str
+    process: str  # the process name, or its path when the name is unknown; may be empty
     upload_bytes: int
     download_bytes: int
     started_at_unix_ms: int
+    source: str = ""  # "198.18.0.1:52344"
+    destination: str = ""  # "140.82.112.3:443"; brackets around an IPv6 address
+
+
+LOG_LEVELS = ("debug", "info", "warning", "error")  # lowest first
+
+
+@dataclass(frozen=True)
+class LogEntry:
+    level: str  # one of LOG_LEVELS
+    message: str  # mihomo's text, untranslated
+    time_unix_ms: int
 
 
 class TunnelHost(Protocol):
@@ -132,7 +144,22 @@ class TunnelHost(Protocol):
         ...
 
     async def poll_connections(self) -> list[Connection]:
-        """The latest connection snapshot."""
+        """The latest connection snapshot, oldest connection first. Polling again before the
+        core takes a new one returns the same snapshot, so several screens can share it."""
+        ...
+
+    async def close_connection(self, connection_id: str) -> None:
+        """Close one connection; one that has already ended is not an error. Raises
+        HostError("not_running") when the core is stopped."""
+        ...
+
+    async def close_all_connections(self) -> None: ...
+
+    async def poll_logs(self, level: str) -> list[LogEntry]:
+        """mihomo's log lines at ``level`` (one of LOG_LEVELS) or above that arrived since the
+        previous poll, oldest first. Lines arrive whether or not the core runs. The first
+        poll starts collecting; a poll with another level starts again at that level, so
+        lines below the previous level are not recovered."""
         ...
 
     async def close(self) -> None: ...
