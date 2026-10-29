@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtCore import QCoreApplication
+from PySide6.QtGui import QAccessible
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickWindow
 from pytestqt.qtbot import QtBot
@@ -64,3 +65,14 @@ def loaded(
             for root in engine.rootObjects():
                 root.deleteLater()
             del engine
+
+
+@pytest.fixture
+def screen_reader(qapp: QCoreApplication) -> Iterator[None]:
+    """Accessibility on, as when a screen reader runs: Qt Quick Controls fill in their roles
+    and names only then. Request it before ``loaded``."""
+    QAccessible.setActive(True)
+    try:
+        yield
+    finally:
+        QAccessible.setActive(False)

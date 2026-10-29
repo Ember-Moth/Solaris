@@ -13,7 +13,7 @@ AppDialog {
 
     defaultButton: destructive ? cancelButton : confirmButton
 
-    UiText {
+    AccessibleText {
         Layout.fillWidth: true
         text: dialog.message
         role: Theme.type.bodySm

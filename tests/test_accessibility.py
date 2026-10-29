@@ -1,4 +1,4 @@
-"""Keyboard access (DESIGN.md "Components → 焦点", "浮层的键盘行为").
+"""Keyboard and screen reader access (DESIGN.md "Components → 焦点", "浮层的键盘行为").
 
 The offscreen platform tabs to every control, as Windows does and macOS does with keyboard
 navigation turned on in the system settings.
@@ -6,10 +6,11 @@ navigation turned on in the system settings.
 
 import pytest
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QAccessible
 from PySide6.QtQuick import QQuickItem
 from pytestqt.qtbot import QtBot
 
-from tests.support.window import Loaded, find, find_all, kind
+from tests.support.window import Loaded, accessible, find, find_all, kind
 
 PAGES = ["overview", "proxies", "profiles", "connections", "logs", "settings"]
 PAGE_TYPES = {
@@ -20,6 +21,7 @@ PAGE_TYPES = {
     "logs": "LogsPage",
     "settings": "SettingsPage",
 }
+Role = QAccessible.Role
 
 
 def show_page(qtbot: QtBot, loaded: Loaded, page: str) -> QQuickItem:
@@ -62,8 +64,12 @@ def describe(item: QQuickItem) -> str:
     return f"{kind(item)} {item.property('text')!r}"
 
 
+@pytest.mark.usefixtures("screen_reader")
+@pytest.mark.parametrize("loaded", ["zh", "en"], indirect=True)
 @pytest.mark.parametrize("page", PAGES)
-def test_tab_reaches_every_control_with_a_ring(qtbot: QtBot, loaded: Loaded, page: str) -> None:
+def test_tab_reaches_every_control_with_a_name_and_a_ring(
+    qtbot: QtBot, loaded: Loaded, page: str
+) -> None:
     content = show_page(qtbot, loaded, page)
     stops = tab_cycle(qtbot, loaded, nav_item(loaded, page))
 
@@ -75,8 +81,87 @@ def test_tab_reaches_every_control_with_a_ring(qtbot: QtBot, loaded: Loaded, pag
     for stop in stops:
         stop.forceActiveFocus(Qt.FocusReason.TabFocusReason)
         qtbot.wait(10)
+        info = accessible(stop)
+        assert info.name.strip(), f"{describe(stop)} has no accessible name"
+        assert info.role not in (Role.NoRole, Role.Client, Role.Pane), describe(stop)
         assert loaded.focus_ring(stop) is not None, f"{describe(stop)} shows no focus ring"
         assert loaded.on_screen(stop), f"{describe(stop)} is scrolled out of view"
+    assert loaded.warnings == []
+
+
+@pytest.mark.usefixtures("screen_reader")
+def test_custom_controls_tell_their_role_and_state(qtbot: QtBot, loaded: Loaded) -> None:
+    content = show_page(qtbot, loaded, "overview")
+
+    segments = find_all(content, lambda i: accessible(i).role == Role.RadioButton)
+    assert [(accessible(s).name, accessible(s).checked) for s in segments] == [
+        ("规则", True),
+        ("全局", False),
+        ("直连", False),
+    ]
+    group = loaded.item(lambda i: kind(i) == "SegmentedControl")
+    assert (accessible(group).role, accessible(group).name) == (Role.Grouping, "模式")
+
+    tun = loaded.item(lambda i: kind(i) == "AppSwitch")
+    assert (accessible(tun).role, accessible(tun).name) == (Role.CheckBox, "TUN 模式")
+    assert accessible(tun).checked == loaded.view_models.overview.property("tunEnabled")
+
+    chart = loaded.item(lambda i: kind(i) == "TrafficChart")
+    assert accessible(chart).role == Role.Graphic
+    assert accessible(chart).description.startswith("下载 ")  # the current rates
+
+    usage = loaded.item(lambda i: kind(i) == "UsageBar")
+    assert accessible(usage).role == Role.ProgressBar
+
+    title = loaded.item(lambda i: kind(i) == "PageHeader")
+    heading = find(title, lambda i: accessible(i).role == Role.Heading)
+    assert heading is not None
+    status = find(title, lambda i: accessible(i).role == Role.StaticText and i is not heading)
+    assert status is not None
+    assert accessible(status).name == loaded.view_models.overview.property("statusDetail")
+
+    nav = nav_item(loaded, "overview")
+    assert (accessible(nav).role, accessible(nav).selected) == (Role.PageTab, True)
+
+    content = show_page(qtbot, loaded, "settings")
+    select = loaded.item(lambda i: kind(i) == "AppSelect")
+    assert (accessible(select).role, accessible(select).name) == (Role.ComboBox, "语言")
+    assert accessible(select).description == "跟随系统"
+    assert loaded.warnings == []
+
+
+@pytest.mark.usefixtures("screen_reader")
+def test_rows_and_menus_are_read_out(qtbot: QtBot, loaded: Loaded) -> None:
+    content = show_page(qtbot, loaded, "profiles")
+    rows = find_all(content, lambda i: kind(i) == "ProfileRow")
+    first = accessible(rows[0])
+    assert (first.role, first.name, first.checked) == (Role.RadioButton, "示例订阅 A", True)
+    assert first.description.startswith("订阅 · sub.example.com")
+    assert "2026-12-31" in first.description
+
+    more = find(rows[1], lambda i: kind(i) == "IconButton")
+    assert more is not None
+    more.forceActiveFocus(Qt.FocusReason.TabFocusReason)
+    loaded.key(qtbot, Qt.Key.Key_Space)
+    items = loaded.overlay_items(lambda i: kind(i) == "AppMenuItem")
+    names = [(accessible(i).role, accessible(i).name) for i in items]
+    assert names == [
+        (Role.MenuItem, "每 12 小时自动更新"),
+        (Role.MenuItem, "复制订阅链接"),
+        (Role.MenuItem, "编辑覆写…"),
+        (Role.MenuItem, "删除"),
+    ]
+    assert not accessible(items[0]).checked  # 示例订阅 B is updated by hand
+    loaded.key(qtbot, Qt.Key.Key_Escape)
+
+    content = show_page(qtbot, loaded, "connections")
+    table = loaded.item(lambda i: kind(i) == "ConnectionsPage")
+    box = find(table, lambda i: accessible(i).role == Role.Table)
+    assert box is not None
+    row = find(table, lambda i: kind(i) == "ConnectionRow")
+    assert row is not None
+    assert accessible(row).role == Role.Row
+    assert accessible(row).description  # rule, chain and rates
     assert loaded.warnings == []
 
 

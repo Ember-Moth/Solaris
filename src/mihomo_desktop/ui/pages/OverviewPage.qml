@@ -190,6 +190,7 @@ ScrollView {
                                 text: "↓"
                                 role: Theme.type.dataMd
                                 color: Theme.primary
+                                Accessible.ignored: true
                             }
 
                             UiText {
@@ -203,6 +204,7 @@ ScrollView {
                                 text: "↑"
                                 role: Theme.type.dataMd
                                 color: Theme.chartUpload
+                                Accessible.ignored: true
                             }
 
                             UiText {
@@ -218,6 +220,7 @@ ScrollView {
 
                             UiText {
                                 text: qsTr("本次 ↓ %1 ↑ %2").arg(page.overview.downTotal).arg(page.overview.upTotal)
+                                Accessible.name: qsTr("本次下载 %1，上传 %2").arg(page.overview.downTotal).arg(page.overview.upTotal)
                                 role: Theme.type.dataSm
                                 color: Theme.textMuted
                             }
@@ -227,6 +230,7 @@ ScrollView {
                             Layout.fillWidth: true
                             down: page.overview.downPoints
                             up: page.overview.upPoints
+                            Accessible.description: qsTr("下载 %1，上传 %2").arg(page.overview.downRate).arg(page.overview.upRate)
                         }
 
                         RowLayout {
@@ -279,14 +283,14 @@ ScrollView {
                             Layout.fillWidth: true
                             spacing: 0
 
-                            UiText {
+                            AccessibleText {
                                 Layout.fillWidth: true
                                 text: page.profiles.activeName
                                 role: Theme.type.labelMd
                                 elide: Text.ElideRight
                             }
 
-                            UiText {
+                            AccessibleText {
                                 Layout.fillWidth: true
                                 text: page.profiles.activeDetail
                                 role: Theme.type.caption
@@ -315,14 +319,14 @@ ScrollView {
                             RowLayout {
                                 Layout.fillWidth: true
 
-                                UiText {
+                                AccessibleText {
                                     Layout.fillWidth: true
                                     text: page.profiles.activeUsage
                                     role: Theme.type.dataSm
                                     color: Theme.textTertiary
                                 }
 
-                                UiText {
+                                AccessibleText {
                                     text: page.profiles.activeExpiry
                                     role: Theme.type.caption
                                     color: Theme.textTertiary
@@ -340,7 +344,7 @@ ScrollView {
                         visible: !page.profiles.hasActive
                         divider: false
 
-                        UiText {
+                        AccessibleText {
                             Layout.fillWidth: true
                             text: qsTr("尚未导入配置")
                             color: Theme.textMuted
@@ -393,14 +397,14 @@ ScrollView {
                                 Layout.fillWidth: true
                                 spacing: 0
 
-                                UiText {
+                                AccessibleText {
                                     Layout.fillWidth: true
                                     text: recentRow.modelData.host
                                     role: Theme.type.bodySm
                                     elide: Text.ElideRight
                                 }
 
-                                UiText {
+                                AccessibleText {
                                     Layout.fillWidth: true
                                     text: recentRow.modelData.route
                                     role: Theme.type.caption
@@ -409,7 +413,7 @@ ScrollView {
                                 }
                             }
 
-                            UiText {
+                            AccessibleText {
                                 text: recentRow.modelData.rate
                                 role: Theme.type.dataSm
                                 color: Theme.textTertiary
@@ -422,7 +426,7 @@ ScrollView {
                         divider: false
                         rowHeight: Theme.rowSingle
 
-                        UiText {
+                        AccessibleText {
                             Layout.fillWidth: true
                             text: page.overview.connected ? qsTr("没有活动连接") : qsTr("未连接")
                             role: Theme.type.bodySm

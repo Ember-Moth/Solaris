@@ -63,8 +63,6 @@ Item {
                     // As wide as its longer label, so pausing does not move the others.
                     Layout.preferredWidth: Math.max(implicitWidth, resumeMetrics.width + leftPadding + rightPadding)
                     text: page.logs.paused ? qsTr("继续") : qsTr("暂停")
-                    Accessible.checkable: true
-                    Accessible.checked: page.logs.paused
                     onClicked: page.logs.togglePause()
 
                     TextMetrics {
@@ -204,6 +202,8 @@ Item {
 
                     width: list.width
                     implicitHeight: columns.implicitHeight + 6
+                    Accessible.role: Accessible.ListItem
+                    Accessible.name: line.time + " " + line.label + " " + line.message
 
                     RowLayout {
                         id: columns
@@ -234,7 +234,7 @@ Item {
                 }
             }
 
-            UiText {
+            AccessibleText {
                 parent: panel
                 x: panel.leftPadding + Theme.space4
                 y: panel.topPadding + Theme.space6

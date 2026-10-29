@@ -9,6 +9,7 @@ Rectangle {
     color: Theme.divider
     Accessible.role: Accessible.ProgressBar
     Accessible.name: qsTr("已用流量")
+    Accessible.description: qsTr("已用 %1%").arg(Math.round(Math.max(0, Math.min(1, fraction)) * 100))
 
     Rectangle {
         width: parent.width * Math.max(0, Math.min(1, parent.fraction))

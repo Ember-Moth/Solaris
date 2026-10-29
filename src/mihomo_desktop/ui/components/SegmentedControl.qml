@@ -35,9 +35,9 @@ Rectangle {
                 implicitHeight: Theme.controlSm
                 leftPadding: Theme.space3
                 rightPadding: Theme.space3
+                checked: selected  // what screen readers hear; clicking does not toggle it
                 Accessible.role: Accessible.RadioButton
                 Accessible.name: modelData.label
-                Accessible.checked: selected
                 onClicked: {
                     if (!selected)
                         root.picked(modelData.value)

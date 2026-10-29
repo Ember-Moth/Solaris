@@ -244,7 +244,7 @@ Item {
                 delegate: ConnectionRow {}
             }
 
-            UiText {
+            AccessibleText {
                 parent: tableBox
                 x: tableBox.leftPadding + Theme.space4
                 y: tableBox.topPadding + Theme.rowHeader + Theme.space8
@@ -281,6 +281,7 @@ Item {
         focusPolicy: Qt.NoFocus
         Accessible.role: Accessible.Row
         Accessible.name: qsTr("%1，%2").arg(host).arg(process || protocol)
+        Accessible.description: qsTr("规则 %1，链路 %2，下载 %3，上传 %4，时长 %5").arg(rule).arg(chain).arg(downRate).arg(upRate).arg(duration)
         Accessible.selected: selected
         onClicked: {
             tableBox.forceActiveFocus(Qt.MouseFocusReason)
@@ -429,6 +430,7 @@ Item {
                     text: parent.modelData.glyph
                     role: Theme.type.dataSm
                     color: parent.modelData.color
+                    Accessible.ignored: true
                 }
 
                 UiText {

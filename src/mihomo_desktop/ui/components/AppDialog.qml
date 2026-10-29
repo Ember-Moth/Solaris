@@ -94,6 +94,7 @@ Dialog {
             role: Theme.type.bodyMdStrong
             elide: Text.ElideRight
             Accessible.role: Accessible.Heading
+            Accessible.name: text
         }
 
         ColumnLayout {

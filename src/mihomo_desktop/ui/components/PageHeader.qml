@@ -21,9 +21,10 @@ ColumnLayout {
             text: header.title
             role: Theme.type.title
             Accessible.role: Accessible.Heading
+            Accessible.name: text
         }
 
-        UiText {
+        AccessibleText {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
             text: header.detail

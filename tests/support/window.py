@@ -1,12 +1,13 @@
-"""The main window under test, and ways to look into it: its items, their texts and what the
-keyboard reaches."""
+"""The main window under test, and ways to look into it: its items, their texts, what the
+keyboard reaches and what a screen reader is told."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from PySide6.QtCore import QEvent, QPointF, QRectF, Qt
-from PySide6.QtGui import QGuiApplication, QKeyEvent
+from PySide6.QtGui import QAccessible, QGuiApplication, QKeyEvent
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickItem, QQuickWindow
 from PySide6.QtTest import QTest
@@ -46,6 +47,34 @@ def texts(item: QQuickItem) -> set[str]:
 def kind(item: QQuickItem) -> str:
     """The QML type an item was declared as, such as ``AppButton``."""
     return item.metaObject().className().split("_QML")[0]
+
+
+@dataclass(frozen=True)
+class Accessible:
+    """What a screen reader is told about an item."""
+
+    role: QAccessible.Role
+    name: str
+    description: str
+    checked: bool
+    selected: bool
+
+
+def accessible(item: QQuickItem) -> Accessible:
+    """Qt Quick fills in the controls' names only while accessibility is active. Items that
+    screen readers skip have the role NoRole."""
+    assert QAccessible.isActive(), "needs the screen_reader fixture"
+    interface = QAccessible.queryAccessibleInterface(item)
+    if interface is None:
+        return Accessible(QAccessible.Role.NoRole, "", "", checked=False, selected=False)
+    state = interface.state()
+    return Accessible(
+        role=interface.role(),
+        name=interface.text(QAccessible.Text.Name),
+        description=interface.text(QAccessible.Text.Description),
+        checked=bool(state.checked),
+        selected=bool(state.selected),
+    )
 
 
 class Loaded:

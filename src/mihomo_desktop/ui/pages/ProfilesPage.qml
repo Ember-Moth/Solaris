@@ -224,7 +224,7 @@ ScrollView {
                         enabled: !page.profiles.importing
                     }
 
-                    UiText {
+                    AccessibleText {
                         Layout.fillWidth: true
                         visible: text !== ""
                         text: page.profiles.importError
@@ -339,7 +339,7 @@ ScrollView {
                             visible: profileRepeater.count === 0
                             rowHeight: Theme.rowSingle
 
-                            UiText {
+                            AccessibleText {
                                 Layout.fillWidth: true
                                 text: qsTr("尚未导入配置")
                                 role: Theme.type.bodySm
@@ -378,7 +378,7 @@ ScrollView {
                             role: Theme.type.labelMd
                         }
 
-                        UiText {
+                        AccessibleText {
                             Layout.fillWidth: true
                             text: page.profiles.globalOverrideDetail
                             role: Theme.type.caption
@@ -432,9 +432,10 @@ ScrollView {
         implicitHeight: Theme.rowDouble
         leftPadding: Theme.space4
         rightPadding: Theme.space4
+        checked: active  // what screen readers hear; clicking does not toggle it
         Accessible.role: Accessible.RadioButton
-        Accessible.name: qsTr("使用 %1").arg(name)
-        Accessible.checked: active
+        Accessible.name: name
+        Accessible.description: qsTr("%1。用量 %2，到期 %3，更新 %4").arg(source).arg(usage).arg(expiry).arg(updated)
         onClicked: page.profiles.use(profileId)
         // The arrows move between the rows; Space uses the focused one.
         Keys.onUpPressed: page.rowAt(index - 1).forceActiveFocus(Qt.TabFocusReason)

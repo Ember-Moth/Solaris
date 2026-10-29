@@ -95,9 +95,10 @@ ScrollView {
                             rightPadding: 14
                             topPadding: Theme.space2
                             bottomPadding: Theme.space2
+                            checked: selected  // what screen readers hear; clicking does not toggle it
                             Accessible.role: Accessible.RadioButton
-                            Accessible.name: qsTr("%1，当前 %2").arg(name).arg(now)
-                            Accessible.checked: selected
+                            Accessible.name: name
+                            Accessible.description: qsTr("%1，当前 %2").arg(kind).arg(now)
                             onClicked: page.proxies.selectGroup(name)
                             Keys.onUpPressed: page.focusRow(groupRepeater, index - 1)
                             Keys.onDownPressed: page.focusRow(groupRepeater, index + 1)
@@ -169,7 +170,7 @@ ScrollView {
                         text: page.proxies.currentGroup
                     }
 
-                    UiText {
+                    AccessibleText {
                         text: page.proxies.currentHint
                         role: Theme.type.caption
                         color: Theme.textMuted
@@ -243,9 +244,11 @@ ScrollView {
                             rightPadding: 14
                             hoverEnabled: selectable
                             focusPolicy: selectable ? Qt.StrongFocus : Qt.NoFocus
-                            Accessible.role: selectable ? Accessible.RadioButton : Accessible.StaticText
-                            Accessible.name: name + " " + type + " " + delay
-                            Accessible.checked: selected
+                            checked: selected  // what screen readers hear; clicking does not toggle it
+                            Accessible.role: selectable ? Accessible.RadioButton : Accessible.ListItem
+                            Accessible.name: name
+                            Accessible.description: qsTr("%1，延迟 %2").arg(type).arg(delay)
+                            Accessible.selected: selected
                             onClicked: {
                                 if (selectable)
                                     page.proxies.selectProxy(name)
