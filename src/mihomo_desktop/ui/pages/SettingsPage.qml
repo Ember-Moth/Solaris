@@ -15,6 +15,10 @@ ScrollView {
     contentWidth: availableWidth
     clip: true
 
+    ScrollToFocus {
+        flickable: page.contentItem as Flickable
+    }
+
     ColumnLayout {
         width: page.availableWidth
         spacing: Theme.space5

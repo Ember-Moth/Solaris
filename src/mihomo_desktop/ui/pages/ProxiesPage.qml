@@ -10,8 +10,17 @@ ScrollView {
 
     required property ProxiesViewModel proxies
 
+    // The arrows move the focus between the rows of a list; Space selects the focused one.
+    function focusRow(rows: Repeater, index: int) {
+        rows.itemAt(Math.max(0, Math.min(index, rows.count - 1))).forceActiveFocus(Qt.TabFocusReason)
+    }
+
     contentWidth: availableWidth
     clip: true
+
+    ScrollToFocus {
+        flickable: page.contentItem as Flickable
+    }
 
     ColumnLayout {
         width: page.availableWidth
@@ -73,9 +82,11 @@ ScrollView {
                         AbstractButton {
                             id: groupButton
 
-                            required property var modelData
                             required property int index
-                            readonly property bool selected: modelData.selected
+                            required property string name
+                            required property string kind
+                            required property string now
+                            required property bool selected
                             readonly property bool last: index === groupRepeater.count - 1
 
                             Layout.fillWidth: true
@@ -85,9 +96,11 @@ ScrollView {
                             topPadding: Theme.space2
                             bottomPadding: Theme.space2
                             Accessible.role: Accessible.RadioButton
-                            Accessible.name: qsTr("%1，当前 %2").arg(modelData.name).arg(modelData.now)
+                            Accessible.name: qsTr("%1，当前 %2").arg(name).arg(now)
                             Accessible.checked: selected
-                            onClicked: page.proxies.selectGroup(modelData.name)
+                            onClicked: page.proxies.selectGroup(name)
+                            Keys.onUpPressed: page.focusRow(groupRepeater, index - 1)
+                            Keys.onDownPressed: page.focusRow(groupRepeater, index + 1)
 
                             contentItem: ColumnLayout {
                                 spacing: 0
@@ -97,13 +110,13 @@ ScrollView {
 
                                     UiText {
                                         Layout.fillWidth: true
-                                        text: groupButton.modelData.name
+                                        text: groupButton.name
                                         role: groupButton.selected ? Theme.type.bodyMdStrong : Theme.type.labelMd
                                         elide: Text.ElideRight
                                     }
 
                                     UiText {
-                                        text: groupButton.modelData.kind
+                                        text: groupButton.kind
                                         role: Theme.type.caption
                                         color: Theme.textMuted
                                     }
@@ -111,7 +124,7 @@ ScrollView {
 
                                 UiText {
                                     Layout.fillWidth: true
-                                    text: groupButton.modelData.now
+                                    text: groupButton.now
                                     role: Theme.type.caption
                                     color: Theme.textTertiary
                                     elide: Text.ElideRight
@@ -216,8 +229,12 @@ ScrollView {
                         AbstractButton {
                             id: nodeRow
 
-                            required property var modelData
                             required property int index
+                            required property string name
+                            required property string type
+                            required property string delay
+                            required property string level
+                            required property bool selected
                             readonly property bool selectable: page.proxies.currentSelectable
 
                             Layout.fillWidth: true
@@ -227,12 +244,14 @@ ScrollView {
                             hoverEnabled: selectable
                             focusPolicy: selectable ? Qt.StrongFocus : Qt.NoFocus
                             Accessible.role: selectable ? Accessible.RadioButton : Accessible.StaticText
-                            Accessible.name: modelData.name + " " + modelData.type + " " + modelData.delay
-                            Accessible.checked: modelData.selected
+                            Accessible.name: name + " " + type + " " + delay
+                            Accessible.checked: selected
                             onClicked: {
                                 if (selectable)
-                                    page.proxies.selectProxy(modelData.name)
+                                    page.proxies.selectProxy(name)
                             }
+                            Keys.onUpPressed: page.focusRow(nodeRepeater, index - 1)
+                            Keys.onDownPressed: page.focusRow(nodeRepeater, index + 1)
 
                             contentItem: RowLayout {
                                 spacing: Theme.space3
@@ -242,7 +261,7 @@ ScrollView {
                                     implicitHeight: 16
 
                                     Icon {
-                                        visible: nodeRow.modelData.selected
+                                        visible: nodeRow.selected
                                         name: "check"
                                         size: 16
                                         color: Theme.primary
@@ -251,14 +270,14 @@ ScrollView {
 
                                 UiText {
                                     Layout.fillWidth: true
-                                    text: nodeRow.modelData.name
-                                    role: nodeRow.modelData.selected ? Theme.type.bodyMdStrong : Theme.type.bodyMd
+                                    text: nodeRow.name
+                                    role: nodeRow.selected ? Theme.type.bodyMdStrong : Theme.type.bodyMd
                                     elide: Text.ElideRight
                                 }
 
                                 UiText {
                                     Layout.preferredWidth: 120
-                                    text: nodeRow.modelData.type
+                                    text: nodeRow.type
                                     role: Theme.type.bodySm
                                     color: Theme.textMuted
                                 }
@@ -266,16 +285,16 @@ ScrollView {
                                 UiText {
                                     Layout.preferredWidth: 72
                                     horizontalAlignment: Text.AlignRight
-                                    text: nodeRow.modelData.delay
+                                    text: nodeRow.delay
                                     role: Theme.type.dataSm
-                                    color: Status.latencyColor(nodeRow.modelData.level)
+                                    color: Status.latencyColor(nodeRow.level)
                                 }
                             }
 
                             background: Rectangle {
                                 bottomLeftRadius: nodeRow.index === nodeRepeater.count - 1 ? Theme.radiusMd - 1 : 0
                                 bottomRightRadius: bottomLeftRadius
-                                color: nodeRow.modelData.selected ? Theme.surfaceSelected : nodeRow.hovered ? Theme.surfaceSubtle : "transparent"
+                                color: nodeRow.selected ? Theme.surfaceSelected : nodeRow.hovered ? Theme.surfaceSubtle : "transparent"
 
                                 Rectangle {
                                     width: parent.width

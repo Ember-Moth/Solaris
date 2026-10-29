@@ -86,6 +86,10 @@ def prop(view_model: QObject, name: str) -> Any:
     return view_model.property(name)
 
 
+def rows(view_model: QObject, name: str = "model") -> list[Any]:
+    return list(prop(view_model, name).rows)
+
+
 @pytest.fixture
 def view_models(english: None, qtbot: QtBot, tmp_path: Path) -> Iterator[ViewModels]:
     store = ProfileStore(tmp_path)
@@ -123,15 +127,15 @@ def test_english_view_models(qtbot: QtBot, view_models: ViewModels) -> None:
 def test_english_profiles(qtbot: QtBot, view_models: ViewModels) -> None:
     profiles, overview = view_models.profiles, view_models.overview
     assert prop(profiles, "summary") == "3 profiles"
-    a, b, c = prop(profiles, "profiles")
-    assert a["source"] == "Subscription · sub.example.com · 9 proxies"
-    assert (a["expiry"], a["updated"], a["refreshLabel"]) == (
+    a, b, c = rows(profiles)
+    assert a.source == "Subscription · sub.example.com · 9 proxies"
+    assert (a.expiry, a.updated, a.refreshLabel) == (
         "Dec 31, 2026",
         "2 hours ago",
         "Update",
     )
-    assert b["updated"] == "3 days ago"
-    assert (c["source"], c["refreshLabel"]) == ("Local file · config.yaml · 9 proxies", "Reload")
+    assert b.updated == "3 days ago"
+    assert (c.source, c.refreshLabel) == ("Local file · config.yaml · 9 proxies", "Reload")
     assert prop(profiles, "activeDetail") == "sub.example.com · Updated 2 hours ago"
     assert prop(profiles, "activeExpiry") == "Expires Dec 31, 2026"
     assert prop(profiles, "autoUpdateLabel") == "Update every 12 hours"

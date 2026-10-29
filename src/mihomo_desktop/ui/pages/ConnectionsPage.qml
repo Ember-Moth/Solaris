@@ -44,6 +44,12 @@ Item {
         detail.returnFocusReason = fromKeyboard ? Qt.TabFocusReason : Qt.MouseFocusReason
     }
 
+    // The header's sort buttons scroll sideways with the table.
+    ScrollToFocus {
+        flickable: table
+        vertical: false
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.topMargin: Theme.pageTop

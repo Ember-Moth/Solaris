@@ -1,115 +1,20 @@
-import time
-from collections.abc import Callable, Iterator
 from functools import partial
-from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QCoreApplication, QPointF, Qt, QUrl
+from PySide6.QtCore import QCoreApplication, Qt, QUrl
 from PySide6.QtGui import QColor, QFont
 from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent
-from PySide6.QtQuick import QQuickItem, QQuickWindow
+from PySide6.QtQuick import QQuickItem
 from PySide6.QtTest import QTest
 from pytestqt.qtbot import QtBot
 
-from mihomo_desktop.app import MAIN_QML, load_ui, switch_language
+from mihomo_desktop.app import MAIN_QML, switch_language
 from mihomo_desktop.i18n import Translations
-from mihomo_desktop.models.store import ProfileStore
-from mihomo_desktop.viewmodels.appearance import Appearance
-from mihomo_desktop.viewmodels.composition import ViewModels, compose
+from mihomo_desktop.viewmodels.composition import ViewModels
 from tests.support.appearance import SystemColorScheme
-from tests.support.i18n import ui_language
-from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
+from tests.support.window import Loaded, texts
 
 TRAY_QML = MAIN_QML.parent / "components" / "TrayIcon.qml"
-
-
-def find(item: QQuickItem, test: Callable[[QQuickItem], bool]) -> QQuickItem | None:
-    """The first visible item under ``item`` that passes ``test``."""
-    if item.isVisible() and test(item):
-        return item
-    for child in item.childItems():
-        if (found := find(child, test)) is not None:
-            return found
-    return None
-
-
-def texts(item: QQuickItem) -> set[str]:
-    """Every ``text`` shown under ``item``."""
-    found = {text} if isinstance(text := item.property("text"), str) and text else set()
-    for child in item.childItems():
-        found |= texts(child)
-    return found
-
-
-class Loaded:
-    def __init__(
-        self,
-        view_models: ViewModels,
-        engine: QQmlApplicationEngine,
-        window: QQuickWindow,
-        warnings: list[str],
-    ) -> None:
-        self.view_models = view_models
-        self.engine = engine
-        self.window = window
-        self.warnings = warnings
-
-    def focused_text(self) -> str | None:
-        item = self.window.activeFocusItem()
-        return None if item is None else item.property("text")
-
-    def key(self, qtbot: QtBot, key: Qt.Key) -> None:
-        QTest.keyClick(self.window, key)
-        qtbot.wait(250)  # longer than any overlay transition
-
-    def click(self, qtbot: QtBot, item: QQuickItem, x: float | None = None) -> None:
-        middle = QPointF(item.width() / 2 if x is None else x, item.height() / 2)
-        point = item.mapToScene(middle).toPoint()
-        button, modifier = Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier
-        QTest.mouseClick(self.window, button, modifier, point)
-        qtbot.wait(250)
-
-    def item(self, test: Callable[[QQuickItem], bool]) -> QQuickItem:
-        found = find(self.window.contentItem(), test)
-        assert found is not None
-        return found
-
-
-@pytest.fixture
-def system() -> SystemColorScheme:
-    """The system's appearance, light unless a test switches it."""
-    return SystemColorScheme()
-
-
-@pytest.fixture
-def appearance(request: pytest.FixtureRequest, system: SystemColorScheme) -> Appearance:
-    """Following the system, or the mode given by indirect parametrization."""
-    return Appearance(getattr(request, "param", "system"), hints=system)
-
-
-@pytest.fixture
-def loaded(
-    request: pytest.FixtureRequest, qtbot: QtBot, tmp_path: Path, appearance: Appearance
-) -> Iterator[Loaded]:
-    """The main window in Chinese, or in the language given by indirect parametrization."""
-    store = ProfileStore(tmp_path)
-    seed_profiles(store, time.time())
-    with ui_language(getattr(request, "param", "zh")):
-        view_models = compose(SimulatedHost(), store, SimulatedFetcher(), appearance=appearance)
-        engine = QQmlApplicationEngine()
-        warnings: list[str] = []
-        engine.warnings.connect(lambda errors: warnings.extend(e.toString() for e in errors))
-        try:
-            assert load_ui(engine, view_models)
-            (window,) = engine.rootObjects()
-            assert isinstance(window, QQuickWindow)
-            view_models.start()
-            yield Loaded(view_models, engine, window, warnings)
-        finally:
-            view_models.shutdown()
-            for root in engine.rootObjects():
-                root.deleteLater()
-            del engine
 
 
 @pytest.mark.parametrize("appearance", ["light", "dark"], indirect=True)
@@ -196,7 +101,7 @@ def test_override_editor_saves_with_ctrl_enter(qtbot: QtBot, loaded: Loaded) -> 
     with qtbot.waitSignal(profiles.overrideSaved):
         QTest.keyClick(loaded.window, Qt.Key.Key_Return, Qt.KeyboardModifier.ControlModifier)
     qtbot.waitUntil(lambda: loaded.window.activeFocusItem() is not editor)
-    assert profiles.property("profiles")[1]["hasOverride"]
+    assert profiles.property("model").rows[1].hasOverride
     assert loaded.warnings == []
 
 

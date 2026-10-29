@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls.Basic
-import QtQuick.Templates as T
 
 // menu (DESIGN.md "Components → 菜单"): AppMenuItems on a white overlay with the overlay
 // shadow. openBelow() places it under its trigger, right edges aligned, as a "more" menu;
@@ -21,11 +20,14 @@ Menu {
         openAt(anchor, 0)
     }
 
+    // popup() makes the trigger the menu's parent, so the menu's own window goes with a
+    // trigger that is destroyed, such as a removed row's button; the new trigger's counts.
     function openAt(anchor: Item, x: real) {
         trigger = anchor
-        triggerFocusReason = (anchor as T.Control)?.visualFocus ? Qt.TabFocusReason : Qt.OtherFocusReason
-        const bottom = anchor.mapToItem(Overlay.overlay, 0, anchor.height).y
-        const room = Overlay.overlay.height - Theme.overlayMargin - bottom - Theme.overlayGap
+        triggerFocusReason = Focus.reasonAfter(anchor)
+        const overlay = anchor.Overlay.overlay
+        const bottom = anchor.mapToItem(overlay, 0, anchor.height).y
+        const room = overlay.height - Theme.overlayMargin - bottom - Theme.overlayGap
         const y = implicitHeight <= room ? anchor.height + Theme.overlayGap : -Theme.overlayGap - implicitHeight
         popup(anchor, x, y)
     }
