@@ -12,7 +12,8 @@
 
 - 面向 Windows 与 macOS 的 mihomo 图形客户端，界面使用 PySide6，并以 Nuitka standalone 模式打包。
 - **内核以 Go 库形式内嵌，不作为 CLI 子进程运行。** Windows 上内核位于自有的 LocalSystem 服务内，
-  macOS 上位于 NetworkExtension 系统扩展内。两端共用 Go 内核层 [libclash](https://github.com/Herta-Network/libclash)。
+  macOS 上位于 NetworkExtension 系统扩展内。两端共用本仓库自己实现的 Go 内核层 engine，直接依赖 mihomo；
+  [libclash](https://github.com/Herta-Network/libclash) 只作参考，不作为依赖（见第 3 节）。
 - **UI 始终以普通用户权限运行。** Windows 只在安装器处请求一次 UAC；macOS 只在首次激活系统扩展时需要用户批准。
 - **关闭 UI 后隧道继续运行。** Windows 服务按属主持久化配置，并在开机后恢复；macOS 的 NE 本身就独立于 App 运行。
 - **控制面是自定义的方法调用协议，不使用 HTTP。** Windows 上走命名管道；macOS 上走 Network Extension
@@ -36,7 +37,7 @@
 secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接口要逐个审查，还得靠 embed mode 关掉
 `/restart`、`/upgrade` 这类危险接口。
 
-改为自有的方法协议后，对外只有方法表里列出的方法，每个方法直接调用 libclash engine。接口面完全由
+改为自有的方法协议后，对外只有方法表里列出的方法，每个方法直接调用 engine。接口面完全由
 本项目控制，参数和返回值都有类型。
 
 ## 2. 组件与进程边界
@@ -50,72 +51,73 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
    <product>-service.exe  (LocalSystem, Go)               |   sendProviderMessage(Request)
      \\.\pipe\ProtectedPrefix\Administrators\<product>    v
      peer check, host + core methods             <product>.systemextension  (Swift)
-     libclash engine, owned-TUN mode               handleAppMessage -> Go dispatcher
-     no mihomo HTTP controller                     libclash engine, fd mode
+     engine (mihomo), owned-TUN mode               handleAppMessage -> Go dispatcher
+     no mihomo HTTP controller                     engine (mihomo), fd mode
                                                    no socket, no HTTP controller
 ```
 
 | 组件 | 语言 | 权限 | 职责 |
 | --- | --- | --- | --- |
 | UI | Python / PySide6 | 用户 | 界面、配置与订阅管理、调用平台宿主 |
-| libclash | Go | 随宿主 | mihomo 封装：配置流水线、生命周期、查询 |
+| engine | Go | 随宿主 | 直接内嵌 mihomo：配置准入、生命周期、查询 |
 | 控制分发器 | Go | 随宿主 | 解码 Request、调用方法、编码 Response、维护订阅缓冲；Windows 服务与 macOS 扩展共用 |
 | Windows 服务 | Go | LocalSystem | 管道、帧编解码与身份校验、属主、持久化与恢复、系统代理 |
 | NE 管理库 | Swift（C ABI） | 用户 | 系统扩展激活、隧道配置与启停、转发控制消息 |
 | NE 系统扩展 | Swift + Go | root（系统扩展） | 隧道网络设置、utun fd、运行内核、把 app message 交给分发器 |
 
-本仓库的 Go 模块（`src/core/`）import libclash engine，包含控制分发器和 Windows 服务；
-macOS 用的 xcframework 也由这个模块编出，其中同时包含 libclash 和控制分发器。
+本仓库的 Go 模块（`src/core/`）包含 engine、控制分发器和 Windows 服务；macOS 用的 xcframework
+也由这个模块编出，其中包含 engine 和控制分发器。
 
-## 3. Go 内核层：libclash
+## 3. Go 内核层：engine
 
-libclash 原本面向移动端，提供 gomobile AAR、Android/OHOS c-shared 和 iOS c-archive 四种产物，
-Aureline（Avalonia Android）也在使用。本项目把它作为所有平台共用的内核层。
+内核层由本仓库自己实现，位于 `src/core/internal/engine`，直接依赖 mihomo（`github.com/metacubex/mihomo`）。
+
+[libclash](https://github.com/Herta-Network/libclash) 是此前为移动端写的 CMFA 风格封装，**只作参考，不作为依赖**。
+可以借鉴的有：配置补丁流水线的组织方式、fd 模式下启动 TUN 的写法、代理组与 provider 查询的实现。
+它面向移动端的一些假设在桌面上不成立，对应的要求列在 3.3 节。
 
 ### 3.1 两种 TUN 模式
 
-| 模式 | 平台 | 路由 | TUN 来源 |
+| 模式 | 使用场景 | 路由 | TUN 来源 |
 | --- | --- | --- | --- |
-| fd 模式（现有） | Android、iOS、macOS NE | 宿主负责，`auto-route: false` | 宿主传入 fd（`tun.file-descriptor`） |
-| 自管模式（新增） | Windows 服务 | mihomo 负责，开启 `auto-route`、`auto-detect-interface`、`strict-route` | mihomo 自建 wintun 网卡 |
+| fd 模式 | macOS NE | 宿主负责，`auto-route: false` | 宿主传入 fd（`tun.file-descriptor`） |
+| 自管模式 | Windows 服务；Mac 上的开发模式 | mihomo 负责，开启 `auto-route`、`auto-detect-interface`、`strict-route` | mihomo 自建 wintun 网卡或 utun |
 
-配置流水线（`internal/config/process.go`）按模式参数化。现有的 `patchTun`（强制关闭 TUN）和
-`patchGeneral`（清空 `interface-name`）只适用于 fd 模式。
+配置流水线按模式参数化：fd 模式强制关闭配置里的 TUN 和自动路由，由宿主提供；自管模式按设置生成 TUN 段。
 
-### 3.2 对外接口
+### 3.2 engine 的职责
 
-新增一个公开的强类型 Go 包（暂称 `engine`），承载配置流水线、启停和各类查询。现有的 `libclash.go`
-（gomobile）和 `cmd/main.go`（C 导出）改成它的薄包装。本仓库的控制分发器直接 import 这个 Go 包，不经过 C ABI。
+- **初始化**：为当前属主设置 mihomo 的 home 目录（`C.SetHomeDir`），开启 `route.SetEmbedMode(true)`。
+- **配置准入**：解析用户 YAML → 应用覆写 → 平台补丁（TUN 模式、DNS 默认值等）→ 最后一步强制安全项
+  → `config.ParseRawConfig` → `hub.ApplyConfig`。`Validate` 只走到解析为止。
+- **启停与重载**：Start 首次应用配置；Reload 原地 `ApplyConfig`，TUN 配置不变时不重建 TUN；Stop 调用
+  `executor.Shutdown`。
+- **查询与操作**：模式、代理组与节点、选择节点、测速、provider、规则、连接列表与关闭、流量与内存、
+  fake-ip 与 DNS 缓存清理、日志订阅，覆盖 4.3 节的内核方法表。
+- **单实例**：mihomo 用包级全局变量保存状态，一个进程只能有一个 engine。
 
-### 3.3 进入 SYSTEM 环境前的前置改动
+### 3.3 以 SYSTEM 身份运行时的安全要求
 
-在 Android 上，下面这些问题有应用沙箱兜底；但 Windows 服务以 SYSTEM 身份运行内核，必须先改：
+Windows 服务以 SYSTEM 身份运行内核，下面每一项都必须满足，并且各有回归测试（例如"用户配置里的
+`external-controller-pipe` 一定会被清除"）。这些要求源自 libclash 里在移动端由应用沙箱兜底、在桌面上
+不再成立的地方。
 
-| # | 问题 | 改动 |
+| # | 要求 | 原因 |
 | --- | --- | --- |
-| 1 | `cmfa` 构建标签会让 mihomo 的 `IsSafePath` 恒为 true，路径沙箱失效 | Windows 与 macOS 构建都不带 `cmfa` |
-| 2 | `patchExternalController` 只设置 `external-controller`、清空 `-tls`，并且排在覆写之前 | 桌面模式下，在流水线最后一步清空 `external-controller`、`-tls`、`-unix`、`-pipe`、`external-doh-server` 和 `secret`，保证 mihomo 控制器不会启动 |
-| 3 | 没有调用 `route.SetEmbedMode(true)` | `Init` 时开启。控制器本不该启动，这是第二道防线 |
-| 4 | `ResolveAsRoot` 只按 `/` 切分，Windows 上的 `..\` 可以跳出 `providers/` | 改用 `filepath` 规范化并检查 `filepath.IsLocal`，`IsSafePath` 作为兜底 |
-| 5 | `patchProfile` 强制 `store-selected: false` | 按宿主选择：桌面端持久化节点选择 |
-| 6 | 缺少自管 TUN 模式 | 见 3.1 |
-| 7 | 只验证过移动端目标 | 确认 engine 能以 `GOOS=windows` 和 `GOOS=darwin` 构建 |
-| 8 | 查询能力是按移动端 UI 设计的：没有连接列表、关闭单个连接、规则列表、内存用量、fake-ip 与 DNS 缓存清理 | engine 补齐这些查询，供方法表使用（原本这些要靠 Clash API） |
-| 9 | `go.mod` 模块路径仍是 `github.com/Ember-Moth/libclash` | 改为 `github.com/Herta-Network/libclash` |
-
-上表每一项都要有回归测试，例如"用户配置中的 `external-controller-pipe` 一定会被清除"。
+| 1 | 任何构建都不带 `cmfa` 标签 | 该标签会让 mihomo 的 `IsSafePath` 恒为 true，路径沙箱失效 |
+| 2 | 流水线最后一步（在覆写之后）清空 `external-controller`、`-tls`、`-unix`、`-pipe`、`external-doh-server` 和 `secret` | 否则用户配置或覆写可以让 SYSTEM 开出 mihomo 控制器；其中 `-pipe` 的默认 SDDL 允许所有本地用户读写 |
+| 3 | 初始化时开启 `route.SetEmbedMode(true)` | 第二道防线：万一控制器被启动，也关闭 `/restart`、`/configs` 写入和 `/upgrade` |
+| 4 | provider 路径用 `filepath` 规范化并检查 `filepath.IsLocal`；不设置 `SKIP_SAFE_PATH_CHECK` / `SAFE_PATHS` | 只按 `/` 切分时，Windows 上的 `..\` 可以跳出 `providers/`；`IsSafePath` 作为兜底 |
+| 5 | 持久化节点选择（`profile.store-selected`） | 开机恢复后要回到用户上次选的节点 |
 
 ### 3.4 构建标签
 
-| 目标 | 标签 |
-| --- | --- |
-| Android（现有） | `foss,cmfa,with_low_memory,no_tailscale,no_fake_tcp` |
-| iOS（现有） | `foss,with_low_memory,no_tailscale,no_fake_tcp` |
-| macOS NE | `foss,no_tailscale,no_fake_tcp`；是否保留 `with_low_memory` 待定 |
-| Windows 服务 | 不带 `cmfa`；是否加入 `with_gvisor` 取决于 TUN 栈的实测结果 |
+mihomo 提供的可选标签有 `with_gvisor`、`with_low_memory`、`no_tailscale`、`no_zerotier`、
+`no_easytier`、`no_fake_tcp`。Windows 服务和 macOS NE 各用哪个组合，等 TUN 栈和体积实测后再定；
+任何情况下都不带 `cmfa`。
 
 mihomo 的 GitHub 默认分支 `main` 是伪装项目，真正的代码在 `Alpha`（开发）和 `Meta`（稳定）分支。
-发布构建钉在 `Meta` 的 tag 上（撰写时为 v1.19.33）；libclash 目前依赖 v1.19.30 的 Alpha 伪版本。
+发布构建钉在 `Meta` 的 tag 上（撰写时为 v1.19.33）。
 
 ## 4. 控制协议
 
@@ -174,7 +176,7 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 | `Stop` | Windows | 停止内核并清除 `was_running` |
 | `SetSystemProxy` | Windows | 开启或关闭属主的系统代理 |
 
-内核方法两个平台都有，直接调用 libclash engine：
+内核方法两个平台都有，直接调用 engine：
 
 | 方法 | 说明 |
 | --- | --- |
@@ -291,7 +293,7 @@ WinINet；内核停止时还原。开机恢复时，如果属主尚未登录，�
 ### 6.2 扩展内的运行流程
 
 1. 用 `setTunnelNetworkSettings` 设置路由、地址和 DNS，DNS 指向 mihomo 的 dns-hijack 地址；
-2. 找到 utun 的 fd，以 fd 模式启动 libclash engine；
+2. 找到 utun 的 fd，以 fd 模式启动 engine；
 3. 加载配置，初始化 Go 分发器。不监听任何 socket，mihomo 的 HTTP 控制器也不启动。
 
 扩展自身发出的流量本来就不进入隧道，因此不用设置 socket 保护回调。
@@ -359,14 +361,14 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 | 产物 | 构建方式 |
 | --- | --- |
 | Windows 服务 | `go build`，按 3.4 节的标签，用 `-ldflags -X` 注入版本 |
-| macOS xcframework | 本仓库 Go 模块的 c-archive 构建，包含 libclash 与控制分发器，导出供 `handleAppMessage` 调用的 C 函数 |
+| macOS xcframework | 本仓库 Go 模块的 c-archive 构建，包含 engine 与控制分发器，导出供 `handleAppMessage` 调用的 C 函数 |
 | 协议绑定 | 由 `control.proto` 生成 Go 与 Python 代码 |
 | UI | Nuitka standalone |
 | Windows 安装包 | NSIS |
 | macOS 包 | `.app` 签名与公证 |
 
 - 需要的证书：Windows Authenticode（发布构建）、Apple Developer ID。
-- 许可：mihomo 与 libclash 均为 GPL-3.0，链接它们的服务和扩展须以 GPL-3.0 开源。
+- 许可：mihomo 为 GPL-3.0，链接它的服务和扩展须以 GPL-3.0 开源。
 
 ## 11. 开发与测试
 
@@ -375,7 +377,7 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   `WindowsServiceHost` 和全部方法都能在 Mac 上联调。这只是开发模式，不进入任何发布包；macOS 正式版
   走 provider message，不使用 socket。
 - **测试覆盖**：
-  - libclash：配置流水线的回归测试，对应 3.3 节各项；
+  - engine：配置流水线的回归测试，对应 3.3 节各项；
   - 控制协议：帧头校验、超限拒绝、请求 ID 匹配、订阅缓冲与过期，Go 与 Python 两端用同一组样本互测；
   - Windows CI：服务的客户端校验、管道 SDDL、属主与恢复流程；
   - Python：用模拟宿主测试 models 与 ViewModel。
@@ -404,4 +406,4 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 | sing-box `experimental/boxdd`（testing 分支 `e5d91fa`） | `ProtectedPrefix` 管道、`peer_windows.go` 客户端校验、`platform_windows.go` 系统代理模拟 |
 | clash-verge-service-ipc | 子进程模式的对照实现 |
 | mihomo（`Alpha` 分支 `ca8d7c4`） | `hub`、`hub/executor`、`hub/route`（embed mode）、`constant/path.go`（IsSafePath） |
-| libclash `02c0ab7` | 现有接口与 3.3 节的问题来源 |
+| libclash `02c0ab7`（仅参考） | 配置补丁流水线、fd 模式启动 TUN、代理组与 provider 查询的写法；3.3 节各项要求的来源 |

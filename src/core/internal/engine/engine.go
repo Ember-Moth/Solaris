@@ -1,7 +1,7 @@
-// Package engine is the libclash surface the control dispatcher drives.
+// Package engine embeds mihomo for the control dispatcher (docs/architecture.md §3).
 //
-// The libclash engine package does not exist yet (docs/architecture.md §3.2 and §3.3);
-// until it does, hosts run Unlinked, which reports a stopped core.
+// The mihomo-backed implementation does not exist yet; until it does, hosts run
+// Unlinked, which reports a stopped core.
 package engine
 
 import "github.com/Ember-Moth/mihomo-desktop/src/core/internal/controlpb"
