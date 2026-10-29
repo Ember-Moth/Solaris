@@ -30,6 +30,14 @@ _MESSAGES = {
     "no_profile": QT_TRANSLATE_NOOP("Feedback", "尚未导入配置"),
     "profile_in_use": QT_TRANSLATE_NOOP("Feedback", "正在使用的配置需要先断开才能删除"),
     "override_unreadable": QT_TRANSLATE_NOOP("Feedback", "无法读取覆写文件"),
+    # The development service refuses both (docs/architecture.md §11).
+    "tun_unsupported": QT_TRANSLATE_NOOP("Feedback", "开发模式不支持 TUN 模式"),
+    "system_proxy_unsupported": QT_TRANSLATE_NOOP("Feedback", "开发模式不支持系统代理"),
+    "tun_and_system_proxy_unsupported": QT_TRANSLATE_NOOP(
+        "Feedback", "开发模式不支持 TUN 模式和系统代理"
+    ),
+    "settings_unwritable": QT_TRANSLATE_NOOP("Feedback", "无法保存设置"),
+    "login_item_failed": QT_TRANSLATE_NOOP("Feedback", "无法更改登录时打开"),
 }
 # Codes whose message (a parse error, an HTTP status) helps the user fix the problem.
 _WITH_DETAIL = {
@@ -38,6 +46,8 @@ _WITH_DETAIL = {
     "http_error",
     "file_unreadable",
     "override_unreadable",
+    "settings_unwritable",
+    "login_item_failed",
 }
 
 

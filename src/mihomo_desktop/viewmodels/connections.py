@@ -88,6 +88,7 @@ class ConnectionsViewModel(QObject):
     changed = Signal()
     filtersChanged = Signal()
     selectionChanged = Signal()
+    optionsChanged = Signal()  # the UI language changed
 
     def __init__(
         self,
@@ -177,6 +178,12 @@ class ConnectionsViewModel(QObject):
     def closeAll(self) -> None:
         self._act(self._host.close_all_connections())
 
+    def retranslate(self) -> None:
+        """Re-read the text properties in the language just installed."""
+        self.optionsChanged.emit()
+        self.changed.emit()
+        self.selectionChanged.emit()
+
     # -- filters -----------------------------------------------------------------------------
     @Property(QObject, constant=True)
     def model(self) -> KeyedListModel:
@@ -193,7 +200,7 @@ class ConnectionsViewModel(QObject):
             self.filtersChanged.emit()
             self._rebuild()
 
-    @Property("QVariantList", constant=True)  # pyright: ignore[reportArgumentType]
+    @Property("QVariantList", notify=optionsChanged)  # pyright: ignore[reportArgumentType]
     def networkOptions(self) -> list[dict[str, str]]:
         return [{"value": n, "label": self.tr(NETWORK_LABELS[n])} for n in NETWORKS]
 

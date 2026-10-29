@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from mihomo_desktop.host.base import HostError, RunOptions, TunnelConfig
+from mihomo_desktop.host.base import HostError, TunnelConfig
 from mihomo_desktop.models.profiles import ProfileError
 from tests.support.simulated import SAMPLE_CONFIG, check_config
 from tests.test_library import OTHER_CONFIG, Scene, run
@@ -111,7 +111,7 @@ def test_every_request_carries_the_overrides(tmp_path: Path) -> None:
         await scene.library.update("sample-b")
         await scene.library.activate("sample-b")
         await scene.host.stop()
-        await scene.library.start_tunnel(RunOptions())
+        await scene.library.start_tunnel()
 
     run(scenario)
     # A new profile has only the global override; a stored one has its own as well.

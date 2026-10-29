@@ -2,27 +2,37 @@ import QtQuick
 import QtQuick.Controls.Basic
 
 // menu (DESIGN.md "Components → 菜单"): AppMenuItems on a white overlay with the overlay
-// shadow. openBelow() places it under its trigger, right edges aligned, or above the
-// trigger when the window has no room below.
+// shadow. openBelow() places it under its trigger, right edges aligned, as a "more" menu;
+// openDropdown() left-aligns it, as a dropdown's list. Either goes above the trigger when
+// the window has no room below.
 Menu {
     id: menu
 
     property Item trigger
     property int triggerFocusReason: Qt.OtherFocusReason
+    property real minimumWidth: 0  // a dropdown's list is at least as wide as the dropdown
 
     function openBelow(anchor: Item) {
+        openAt(anchor, anchor.width - width)
+    }
+
+    function openDropdown(anchor: Item) {
+        openAt(anchor, 0)
+    }
+
+    function openAt(anchor: Item, x: real) {
         trigger = anchor
         triggerFocusReason = anchor.visualFocus ? Qt.TabFocusReason : Qt.OtherFocusReason
         const bottom = anchor.mapToItem(Overlay.overlay, 0, anchor.height).y
         const room = Overlay.overlay.height - Theme.overlayMargin - bottom - Theme.overlayGap
         const y = implicitHeight <= room ? anchor.height + Theme.overlayGap : -Theme.overlayGap - implicitHeight
-        popup(anchor, anchor.width - width, y)
+        popup(anchor, x, y)
     }
 
     // At least menu-min-width, and as wide as the longest item: the ListView that holds the
     // items reports no width of its own.
     implicitWidth: {
-        let widest = implicitBackgroundWidth + leftInset + rightInset
+        let widest = Math.max(implicitBackgroundWidth + leftInset + rightInset, minimumWidth)
         for (let i = 0; i < count; i++) {
             const item = itemAt(i)
             if (item)

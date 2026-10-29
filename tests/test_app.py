@@ -1,22 +1,26 @@
 import time
 from collections.abc import Callable, Iterator
+from functools import partial
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QPointF, Qt
+from PySide6.QtCore import QCoreApplication, QPointF, Qt, QUrl
 from PySide6.QtGui import QColor, QFont
-from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent
 from PySide6.QtQuick import QQuickItem, QQuickWindow
 from PySide6.QtTest import QTest
 from pytestqt.qtbot import QtBot
 
-from mihomo_desktop.app import MAIN_QML, load_ui
+from mihomo_desktop.app import MAIN_QML, load_ui, switch_language
+from mihomo_desktop.i18n import Translations
 from mihomo_desktop.models.store import ProfileStore
 from mihomo_desktop.viewmodels.appearance import Appearance
 from mihomo_desktop.viewmodels.composition import ViewModels, compose
 from tests.support.appearance import SystemColorScheme
 from tests.support.i18n import ui_language
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
+
+TRAY_QML = MAIN_QML.parent / "components" / "TrayIcon.qml"
 
 
 def find(item: QQuickItem, test: Callable[[QQuickItem], bool]) -> QQuickItem | None:
@@ -38,8 +42,15 @@ def texts(item: QQuickItem) -> set[str]:
 
 
 class Loaded:
-    def __init__(self, view_models: ViewModels, window: QQuickWindow, warnings: list[str]) -> None:
+    def __init__(
+        self,
+        view_models: ViewModels,
+        engine: QQmlApplicationEngine,
+        window: QQuickWindow,
+        warnings: list[str],
+    ) -> None:
         self.view_models = view_models
+        self.engine = engine
         self.window = window
         self.warnings = warnings
 
@@ -93,7 +104,7 @@ def loaded(
             (window,) = engine.rootObjects()
             assert isinstance(window, QQuickWindow)
             view_models.start()
-            yield Loaded(view_models, window, warnings)
+            yield Loaded(view_models, engine, window, warnings)
         finally:
             view_models.shutdown()
             for root in engine.rootObjects():
@@ -276,3 +287,110 @@ def test_connections_table_works_from_the_keyboard(qtbot: QtBot, loaded: Loaded)
     qtbot.waitUntil(lambda: connections.property("detailClosed"))
     assert second not in connection_ids(loaded.view_models)
     assert loaded.warnings == []
+
+
+@pytest.mark.parametrize(
+    ("loaded", "labels"),
+    [("zh", ("接管方式", "关于", "GPL-3.0-only")), ("en", ("Inbound", "About", "GPL-3.0-only"))],
+    indirect=["loaded"],
+)
+def test_settings_page_loads_without_qml_warnings(
+    qtbot: QtBot, loaded: Loaded, labels: tuple[str, ...]
+) -> None:
+    settings = loaded.view_models.settings
+    loaded.view_models.shell.setPage("settings")
+    qtbot.waitUntil(lambda: settings.property("coreVersion") == "mihomo v1.19.33")
+    shown = texts(loaded.window.contentItem())
+    assert set(labels) <= shown
+    assert "mihomo v1.19.33" in shown
+    assert loaded.warnings == []
+
+
+def cramped(item: QQuickItem) -> list[set[str]]:
+    """The texts of the rows under ``item`` that need more width than they have, so that
+    something in them is elided, wraps or runs under its neighbour."""
+    found: list[set[str]] = []
+    if item.metaObject().className().startswith("GroupRow"):
+        content = item.childItems()[-1]  # the RowLayout after the divider
+        if content.implicitWidth() > content.width() + 1:
+            found.append(texts(item))
+    for child in item.childItems():
+        if child.isVisible():
+            found += cramped(child)
+    return found
+
+
+@pytest.mark.parametrize("loaded", ["zh", "en"], indirect=True)
+def test_settings_page_fits_the_smallest_window(qtbot: QtBot, loaded: Loaded) -> None:
+    window = loaded.window
+    window.setWidth(window.minimumWidth())
+    window.setHeight(window.minimumHeight())
+    settings = loaded.view_models.settings
+    settings.setMixedPort("80")  # the longest hints, in every group
+    settings.setAllowLan(True)
+    loaded.view_models.shell.setPage("settings")
+    qtbot.waitUntil(lambda: settings.property("allowLan"))
+    qtbot.wait(100)
+    assert cramped(window.contentItem()) == []
+
+    window.setMinimumWidth(480)  # the check finds rows that do not fit
+    window.setWidth(480)
+    qtbot.wait(100)
+    assert cramped(window.contentItem()) != []
+
+
+def test_language_switches_while_running(qtbot: QtBot, loaded: Loaded) -> None:
+    view_models = loaded.view_models
+    content = loaded.window.contentItem()
+    qtbot.waitUntil(lambda: view_models.overview.property("connected"))
+    translations = Translations(QCoreApplication.instance())  # pyright: ignore[reportArgumentType]
+    switch = partial(switch_language, translations, loaded.engine, view_models)
+    view_models.settings.languageChanged.connect(switch)
+    try:
+        view_models.settings.setLanguage("en")
+        qtbot.waitUntil(lambda: "Outbound" in texts(content))
+        shown = texts(content)
+        assert {"Overview", "Settings", "Connected", "Disconnect"} <= shown  # QML and Python
+        assert "出站" not in shown
+        assert view_models.shell.property("pages")[0]["label"] == "Overview"
+        assert view_models.shell.property("serviceText") == "Service running"
+        assert [m["label"] for m in view_models.overview.property("modeOptions")] == [
+            "Rule",
+            "Global",
+            "Direct",
+        ]
+        assert view_models.proxies.property("sortOptions")[0]["label"] == "Default"
+        assert view_models.profiles.property("summary") == "3 profiles"
+        assert view_models.profiles.property("autoUpdateLabel") == "Update every 12 hours"
+        assert view_models.settings.property("languageOptions")[0]["label"] == "System"
+
+        view_models.settings.setLanguage("zh")
+        qtbot.waitUntil(lambda: "出站" in texts(content))
+        assert "Outbound" not in texts(content)
+        assert view_models.profiles.property("summary") == "3 个配置"
+    finally:
+        view_models.settings.languageChanged.disconnect(switch)
+        translations.apply("zh")
+    assert loaded.warnings == []
+
+
+def test_closing_the_window_quits_without_a_tray(qtbot: QtBot, loaded: Loaded) -> None:
+    desktop = loaded.view_models.desktop
+    assert not desktop.property("trayAvailable")  # the offscreen platform has none
+    with qtbot.waitSignal(desktop.quitRequested):
+        loaded.window.close()
+
+
+def test_a_second_launch_shows_the_window(qtbot: QtBot, loaded: Loaded) -> None:
+    window = loaded.window
+    window.hide()
+    assert not window.isVisible()
+    loaded.view_models.desktop.showWindow()
+    qtbot.waitUntil(window.isVisible)
+
+
+def test_tray_icon_compiles(qtbot: QtBot) -> None:
+    """The offscreen platform has no tray to create it on; compile it at least."""
+    engine = QQmlApplicationEngine()
+    component = QQmlComponent(engine, QUrl.fromLocalFile(str(TRAY_QML)))
+    assert component.isReady(), component.errorString()

@@ -4,17 +4,22 @@ from __future__ import annotations
 
 import os
 import sys
+from functools import partial
 from pathlib import Path
 
-from PySide6.QtCore import QUrl
+from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
 from mihomo_desktop import __version__
+from mihomo_desktop.desktop.instance import SingleInstance
+from mihomo_desktop.desktop.login import BACKGROUND_ARG, LoginItem, default_login_item
+from mihomo_desktop.desktop.tray import tray_supported
 from mihomo_desktop.host.base import HostError, TunnelHost
 from mihomo_desktop.host.service import ServiceHost
 from mihomo_desktop.host.transport import Opener, Streams
 from mihomo_desktop.i18n import Translations, resolve_language
+from mihomo_desktop.models.settings import JsonSettingsStore, SettingsStore
 from mihomo_desktop.models.store import ProfileStore, default_data_dir
 from mihomo_desktop.models.subscription import Fetcher, UrlFetcher
 from mihomo_desktop.product import DISPLAY_NAME, PIPE_NAME
@@ -51,32 +56,69 @@ def load_ui(engine: QQmlApplicationEngine, view_models: ViewModels) -> bool:
     return bool(engine.rootObjects())
 
 
+def switch_language(
+    translations: Translations, engine: QQmlApplicationEngine, view_models: ViewModels
+) -> None:
+    """Show the running UI in the language the settings name (docs/architecture.md §7.5)."""
+    translations.apply(resolve_language(view_models.settings_store.current.language))
+    engine.retranslate()
+    view_models.retranslate()
+
+
+def stored_appearance(settings: SettingsStore) -> str:
+    """The saved appearance; empty for ``system``, so MIHOMO_DESKTOP_APPEARANCE still applies."""
+    mode = settings.current.appearance
+    return "" if mode == "system" else mode
+
+
 def main(
     host: TunnelHost | None = None,
     store: ProfileStore | None = None,
     fetcher: Fetcher | None = None,
     language: str = "",
     appearance: str = "",
+    login_item: LoginItem | None = None,
 ) -> int:
-    """``language`` is ``zh`` or ``en``; empty follows MIHOMO_DESKTOP_LANG, then the system.
-    ``appearance`` is ``system``, ``light`` or ``dark``; empty follows MIHOMO_DESKTOP_APPEARANCE,
-    then the system."""
+    """``language`` is ``zh`` or ``en`` and wins over the settings at startup; empty follows
+    the settings, then MIHOMO_DESKTOP_LANG, then the system. ``appearance`` is ``system``,
+    ``light`` or ``dark`` and likewise wins over the settings; empty follows the settings,
+    then MIHOMO_DESKTOP_APPEARANCE, then the system. The settings and the lock that keeps
+    one UI per user live beside the profiles."""
     app = QGuiApplication(sys.argv)
     app.setApplicationName(DISPLAY_NAME)
     app.setApplicationVersion(__version__)
+    # Closing the window hides it in the tray or quits explicitly (DesktopViewModel).
+    app.setQuitOnLastWindowClosed(False)
+    store = store or ProfileStore(default_data_dir())
+    instance = SingleInstance(store.directory)
+    if not instance.claim():
+        return 0  # the UI already running shows its window
+    settings = JsonSettingsStore(store.directory)
     translations = Translations(app)
-    translations.apply(resolve_language(language))
+    translations.apply(resolve_language(language or settings.current.language))
     view_models = compose(
         host or ServiceHost(default_opener()),
-        store or ProfileStore(default_data_dir()),
+        store,
         fetcher or UrlFetcher(),
-        appearance=Appearance(resolve_mode(appearance)),
+        appearance=Appearance(resolve_mode(appearance or stored_appearance(settings))),
+        settings=settings,
+        login_item=login_item or default_login_item(),
+        tray_available=tray_supported(app.platformName()),
+        start_hidden=BACKGROUND_ARG in sys.argv[1:],
     )
     engine = QQmlApplicationEngine()
     if not load_ui(engine, view_models):
+        instance.release()
         return 1
+    # Queued: the switch happens once the control that asked for it has handled its click.
+    switch = partial(switch_language, translations, engine, view_models)
+    view_models.settings.languageChanged.connect(switch, Qt.ConnectionType.QueuedConnection)
+    view_models.desktop.quitRequested.connect(app.quit)
+    instance.activated.connect(view_models.desktop.showWindow)
     view_models.start()
     app.aboutToQuit.connect(view_models.shutdown)
     code = app.exec()
-    del engine  # tear down QML before the ViewModels it binds to
+    instance.release()
+    view_models.settings.languageChanged.disconnect(switch)
+    del switch, engine  # tear down QML before the ViewModels it binds to
     return code

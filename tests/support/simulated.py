@@ -406,19 +406,24 @@ class SimulatedHost:
         clock: Callable[[], float] = time.time,
         health_check_s: float = 0.0,
         crowd: int = 0,
+        development: bool = False,
     ) -> None:
-        """``crowd`` adds that many quiet connections, to try the UI with a busy core."""
+        """``crowd`` adds that many quiet connections, to try the UI with a busy core.
+        ``development`` refuses TUN and the system proxy as the development service
+        does (docs/architecture.md §11)."""
         self._random = random.Random(seed)
         # Connections and logs draw from their own generator, so traffic stays the same.
         self._churn = random.Random(seed + 1)
         self._clock = clock
         self._health_check_s = health_check_s
+        self._development = development
+        self.busy_ports: set[int] = set()  # mixed ports that another program listens on
         self._running = True
         self.config: TunnelConfig | None = None  # the last config started or reloaded
         self.effective: dict[str, Any] | None = None  # that config after the pipeline
         self.reloads = 0
         self._mode = "rule"
-        self._tun = True
+        self._tun = not development
         self._system_proxy = False
         self._started_at = clock() - 8076
         self._delays = {name: delay for name, (_, delay) in NODES.items()}
@@ -516,6 +521,10 @@ class SimulatedHost:
         self._tun = enabled
 
     async def set_system_proxy(self, enabled: bool) -> None:
+        if enabled and self._development:
+            raise HostError(
+                "unsupported_method", "the development server never sets the system proxy"
+            )
         self._system_proxy = enabled
 
     async def list_groups(self) -> list[ProxyGroup]:
@@ -697,7 +706,16 @@ class SimulatedHost:
             self._log(level, text)
 
     def _apply(self, config: TunnelConfig) -> None:
+        if self._development and config.options.system_proxy_enabled:
+            raise HostError(
+                "unsupported_method", "the development server never sets the system proxy"
+            )
+        if self._development and config.options.tun_enabled:
+            raise HostError("unsupported_method", "this host never creates a TUN")
         self.effective = check_config(config)
+        if config.options.mixed_port in self.busy_ports:
+            message = f"listen tcp 127.0.0.1:{config.options.mixed_port}: address already in use"
+            raise HostError("apply_failed", message, retryable=True)
         self.config = config
         self._tun = config.options.tun_enabled
         self._system_proxy = config.options.system_proxy_enabled

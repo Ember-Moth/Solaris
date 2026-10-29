@@ -449,8 +449,9 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 | `overrides` | 覆写的 YAML 原文，按应用顺序排列：先全局覆写，再这份配置自己的覆写；没有设置的不放进来。语义见 7.4 节 |
 | `options` | `RunOptions`：`tun_enabled`、`system_proxy_enabled`、`mixed_port`（0 表示沿用配置）、`allow_lan`。`validate` 不使用 |
 
-- **Start** 用概览页开关当前显示的 TUN 和系统代理状态；端口和局域网连接等设置页（M3）接入后再持久化。
-- **Reload** 用 `GetStatus` 报告的 TUN 和系统代理状态，所以切换配置或订阅更新都不会改变隧道的这两项。
+- **Start** 的四项都取自设置（7.8 节）：TUN 和系统代理是用户在开关上的选择，端口和局域网连接是设置页的值。
+- **Reload** 用 `GetStatus` 报告的 TUN 和系统代理状态，所以切换配置或订阅更新都不会改变隧道的这两项；端口和
+  局域网连接取自设置。
 - 错误码：配置被拒绝时为 `invalid_config`（`message` 是 mihomo 的原始错误，界面显示在「配置无效：」之后）；
   未运行时 Reload 返回 `not_running`；运行中 Start 返回 `already_running`。中文提示在
   `viewmodels/feedback.py`。
@@ -564,16 +565,19 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   月份名由 `QLocale` 的默认值给出，所以英文显示为 Oct 20、Dec 31, 2026。相对时间（`刚刚`、`5 分钟前`）是带
   `%n` 的文案。数字、单位和速率两种语言写法相同。
 - **语言选择**（`i18n.resolve_language`）按顺序取第一个有效值：
-  1. 设置页的选择（M3 接入，经 `app.main(language=…)` 传入；空值或 `system` 表示跟随系统）；
+  1. 设置页的选择（设置项 `language`，见 7.8 节；`system` 表示跟随系统）。`app.main(language=…)`
+     和 `scripts/preview.py --lang` 在启动时优先于它；
   2. 环境变量 `MIHOMO_DESKTOP_LANG=zh|en`，用于预览和测试，`scripts/preview.py --lang en` 等价；
   3. 系统的首选界面语言（`QLocale.system().uiLanguages()` 的第一项）：`zh` 开头用中文，其他一律用英文。
 
   格式化日期的 locale：系统 locale 与界面同一语言时用系统的（保留 en_GB 等地区习惯），否则用该语言的默认
   locale（zh_CN、en_US）。
 - **安装**：`app.py` 在创建 ViewModel 和加载 QML 之前调用 `i18n.Translations.apply()`，安装 `QTranslator` 并
-  设置 `QLocale.setDefault`。`apply()` 可以再次调用来切换语言；界面运行中切换时还要调用
-  `QQmlEngine.retranslate()`，并让 ViewModel 重新发出文本属性的通知（`pages`、`modeOptions`、`sortOptions`
-  目前是 constant 属性，届时要加通知信号）。
+  设置 `QLocale.setDefault`。
+- **运行中切换**：设置页改了语言后，`app.switch_language` 再调用一次 `apply()`，然后
+  `QQmlEngine.retranslate()` 重算 QML 里的 `qsTr`，`ViewModels.retranslate()` 让每个 ViewModel 重新发出文本
+  属性的通知。`pages`、`modeOptions`、`sortOptions` 和设置页的选项各有自己的通知信号，而不挂在每秒触发的
+  `changed` 上，否则分段控件和菜单会每秒重建。已经显示出来的错误提示保持切换前的语言，直到下一次刷新或操作。
 - **流程**：改动文案后运行 `scripts/gen_i18n.py`。`pyside6-lupdate` 扫描 `src/mihomo_desktop` 下的 QML 和
   Python 并更新 `.ts`（不记录行号，移动代码不会改动目录），`pyside6-lrelease` 再编译出 `.qm`。新条目在 `.ts`
   里翻译（手改或用 `pyside6-linguist`），然后再运行一次。`--check` 和 `tests/test_i18n.py` 检查：`.ts`
@@ -605,10 +609,10 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   `unsetColorScheme()`。这只影响本应用，不改系统设置。
 - **注入**：`viewmodels/composition.compose(…, appearance=…)` 创建或接收外观对象，放进 `ViewModels.appearance`，
   作为 Main.qml 的必需属性 `appearance` 注入；Main.qml 用 `Binding` 把它交给 `Theme.appearance`。
-  设置页（M3）拿到同一个对象，调用 `setMode()` 并自行持久化选择；启动时把存下的值传给
-  `app.main(appearance=…)`。
+  设置页只改设置项 `appearance`（7.8 节）；`compose()` 订阅设置存储，值变化时调用外观对象的 `setMode()`，
+  所以无论改动来自设置页还是将来的备份恢复，外观都立即跟上。
 - **启动时的模式**（`resolve_mode`）按顺序取第一个有效值：
-  1. 设置页存下的选择，经 `app.main(appearance=…)` 传入；
+  1. `app.main(appearance=…)` 的参数，然后是设置项 `appearance`（`system` 视为未指定）；
   2. 环境变量 `MIHOMO_DESKTOP_APPEARANCE=system|light|dark`，用于预览和测试，
      `scripts/preview.py --appearance dark` 等价；
   3. `system`。
@@ -685,6 +689,75 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   缓冲区。
 - 搜索不区分大小写，匹配消息原文。导出写出当前显示的行（即经过级别和搜索过滤后的），UTF-8，每行带日期和
   毫秒：`2026-10-29 12:04:01.123 INFO  [TCP] …`。
+
+### 7.8 设置与桌面行为
+
+用户的设置由 `models/settings.py` 的 `SettingsStore` 接口提供，只有三件事：读取 `current`、写入
+`update(**changes)`、订阅变更 `subscribe(listener)`（回调收到改动前后的 `Settings`，在写入的线程上调用，
+返回取消订阅的函数）。设置页（`viewmodels/settings.py`）、概览页的 TUN 与系统代理开关、托盘和关闭窗口的行为
+都只依赖这个接口，并且通过订阅跟上变化，不论改动来自哪一页，还是以后从备份恢复。不接受的值抛
+`ValueError`，写不进去抛 `SettingsError`（`settings_unwritable`），这两种情况都不通知，设置页标题栏显示
+「无法保存设置：…」。
+
+**临时实现，待迁移到 SQLite**：本地数据（配置、订阅、覆写、设置）之后统一存进一个 SQLite 数据库，并支持备份到
+iCloud / Google Drive，数据库结构和迁移另行设计。在那之前，`JsonSettingsStore` 把设置存成用户数据目录里的
+`settings.json`：一个 JSON 对象，原子替换，缺少或不接受的值取默认，读不了的文件改名为
+`settings.json.<时间戳>.bad`。这个文件格式不打算保留，也没有版本号。
+
+每个设置项在字段元数据里标明范围（`settings.scope(name)`），供设计备份范围：`synced` 随账户同步，换一台设备
+恢复后照样适用；`local` 只在本机生效，恢复到别的设备上没有意义或有风险。
+
+| 设置项 | 取值 | 默认 | 范围 | 含义 |
+| --- | --- | --- | --- | --- |
+| `language` | `system`、`zh`、`en` | `system` | 同步 | 界面语言（7.5 节） |
+| `appearance` | `system`、`light`、`dark` | `system` | 同步 | 外观；主题按它取色 |
+| `close_action` | `tray`、`quit` | `tray` | 本机 | 关闭主窗口时留在托盘，还是退出界面；隧道都不受影响 |
+| `launch_at_login` | 布尔 | `false` | 本机 | 登录时打开界面。以系统里的登录项为准，界面每次读到系统的状态就写回这里 |
+| `tun` | 布尔 | `false` | 本机 | 概览页的 TUN 开关：下一次连接是否开启 TUN |
+| `system_proxy` | 布尔 | `false` | 本机 | 概览页的系统代理开关：下一次连接是否设置系统代理 |
+| `mixed_port` | 1024–65535 | 7890 | 本机 | 混合端口，总是覆盖配置里的 `mixed-port` |
+| `allow_lan` | 布尔 | `false` | 本机 | 允许局域网连接（8 节"局域网暴露"） |
+
+- **映射到 `RunOptions`**（7.1 节）：Start 用 `Settings.run_options()` 的四项；Reload 的 TUN 和系统代理取自
+  `GetStatus`，端口和局域网连接取自设置。
+  - **TUN 与系统代理**：开关在概览页，设置页显示同一个 ViewModel 的同一对开关，所以两页总是一致。隧道运行时，
+    显示内核报告的状态，拨动开关先改变隧道（TUN 是带新 `RunOptions` 的 Reload，系统代理是
+    `SetSystemProxy`），宿主接受后才记入设置；隧道停止时，显示设置里的选择，拨动只改设置，下一次连接生效。
+  - **端口与局域网连接**：隧道运行时先带新值 Reload，成功后才写入设置；内核拒绝（如端口被占用，
+    `apply_failed`）时保留原值，错误写在对应的行下。隧道停止时直接写入。
+  - **开发模式**：开发服务对开启 TUN 或系统代理返回 `unsupported_method`（11 节）。`ProfileLibrary` 把它换成
+    `tun_unsupported`、`system_proxy_unsupported` 或两者都有的 `tun_and_system_proxy_unsupported`，界面在概览页
+    标题栏和设置页开关下方显示「开发模式不支持 TUN 模式」等提示，设置不改。
+- **外观**：设置页只负责选择和保存。`SettingsViewModel` 的 `appearance` 属性（`system` / `light` / `dark`）和
+  `appearanceChanged` 信号供主题使用，`setAppearance(mode)` 修改它。
+- **托盘**用 `Qt.labs.platform` 的 `SystemTrayIcon`（`ui/components/TrayIcon.qml`）。它在 macOS 和 Windows 上
+  有 Qt 平台插件的原生实现，`QGuiApplication` 就够，不必为 `QSystemTrayIcon` 引入 Qt Widgets 和
+  `QApplication`。没有原生托盘的平台（Linux、测试用的 offscreen）上 Labs Platform 会要求 Qt Widgets，所以
+  只在 `cocoa` 和 `windows` 上创建托盘，其余平台关闭窗口即退出界面。
+  - 菜单：连接状态（不可点）、连接或断开、出站模式子菜单、打开主窗口、「退出界面（隧道保持运行）」。
+    这是系统原生菜单，外观跟随平台，不按 DESIGN.md 的窗口内菜单绘制。
+  - 图标在 `ui/tray/`，是侧栏标记的线条图形，未连接时调成 45% 不透明度。macOS 用模板图（只看 alpha，由菜单栏
+    着色）；Windows 按任务栏主题（注册表 `SystemUsesLightTheme`，Qt 报告的是应用主题，不是任务栏的）选深色或
+    白色图形，每 10 秒和系统配色变化时重读。
+- **关闭窗口**：`tray`（默认）时隐藏窗口，界面留在托盘；Windows 上点托盘图标、macOS 上点 Dock 图标（Qt 把每次
+  点击报告为应用激活）恢复窗口。`quit` 时退出界面进程。两种情况下隧道都继续运行（1 节）。
+- **单实例**：第一个界面在用户数据目录持有 `ui.lock`（`QLockFile`，进程不在了的锁视为过期），并以
+  `mihomo-desktop-<用户名和数据目录的哈希>` 为名监听 `QLocalServer`（只允许同一用户连接）。后来的界面拿不到
+  锁，就连上这个名字发一行 `activate`，然后退出；第一个界面收到后显示并激活窗口。Windows 上后来的界面先调用
+  `AllowSetForegroundWindow`，让第一个界面能把窗口带到前台。由锁而不是由服务端名字来判断，是因为 macOS 上
+  崩溃的界面会留下 socket 文件，而且两个同时启动的界面拿锁时只有一个能成功。
+- **登录时打开**（`desktop/login.py`，平台接口 `LoginItem`）：
+  - Windows：为当前用户注册一个计划任务（`schtasks /Create /XML`）：登录触发器只针对该用户，以该用户身份、
+    交互式令牌、不提权运行，普通优先级，没有运行时限，动作是 `<界面>.exe --background`（界面只进托盘）。
+    任务名 `Mihomo Desktop (<域>_<用户名>)`。用计划任务而不是注册表的 `Run` 键，是沿用开发方案的选择：登录后
+    立即启动，不受 Windows 对启动项的延迟，安装器（M4）也能用同一个任务名创建和清理。读状态用
+    `schtasks /Query /XML`，用户在任务计划程序里禁用的任务视为关闭。
+  - macOS：`SMAppService.mainAppService` 的 `register` / `unregister`（macOS 13 起），经 ctypes 调用
+    Objective-C 运行时，不依赖 PyObjC。状态为 `requiresApproval` 时设置页提示到系统设置的登录项里允许，并给出
+    「打开系统设置」链接。登录项启动的界面目前会显示窗口。
+  - 只有打包后的程序（Nuitka 编译，macOS 上还要在 `.app` 里）才注册；从源码运行时是 `UnavailableLoginItem`，
+    开关不可用并注明「仅安装版可用」，避免在开发机上把 Python 解释器注册成登录项。测试只用替身，真实注册在
+    M4、M5 的测试机上验证。
 
 ## 8. 安全模型
 

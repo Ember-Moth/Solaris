@@ -120,6 +120,7 @@ class LogListModel(QAbstractListModel):
 class LogsViewModel(QObject):
     changed = Signal()
     filtersChanged = Signal()
+    optionsChanged = Signal()  # the UI language changed
 
     def __init__(
         self,
@@ -192,11 +193,16 @@ class LogsViewModel(QObject):
         self.changed.emit()
 
     # -- filters -----------------------------------------------------------------------------
+    def retranslate(self) -> None:
+        """Re-read the text properties in the language just installed."""
+        self.optionsChanged.emit()
+        self.changed.emit()
+
     @Property(QObject, constant=True)
     def model(self) -> LogListModel:
         return self._model
 
-    @Property("QVariantList", constant=True)  # pyright: ignore[reportArgumentType]
+    @Property("QVariantList", notify=optionsChanged)  # pyright: ignore[reportArgumentType]
     def levelOptions(self) -> list[dict[str, str]]:
         return [{"value": level, "label": self.tr(LEVEL_OPTIONS[level])} for level in LOG_LEVELS]
 

@@ -1,9 +1,15 @@
+from pathlib import Path
+
 import pytest
 from PySide6.QtCore import QCoreApplication, Qt
 from pytestqt.qtbot import QtBot
 
+from mihomo_desktop.models.settings import JsonSettingsStore
+from mihomo_desktop.models.store import ProfileStore
 from mihomo_desktop.viewmodels.appearance import APPEARANCE_ENV, Appearance, resolve_mode
+from mihomo_desktop.viewmodels.composition import compose
 from tests.support.appearance import SystemColorScheme
+from tests.support.simulated import SimulatedFetcher, SimulatedHost
 
 LIGHT, DARK = Qt.ColorScheme.Light, Qt.ColorScheme.Dark
 
@@ -75,3 +81,18 @@ def test_unknown_modes_are_rejected(qapp: QCoreApplication) -> None:
     with pytest.raises(ValueError, match="auto"):
         appearance.setMode("auto")
     assert appearance.property("mode") == "system"
+
+
+def test_the_stored_appearance_drives_the_theme(qapp: QCoreApplication, tmp_path: Path) -> None:
+    settings = JsonSettingsStore(tmp_path)
+    settings.update(appearance="dark")
+    view_models = compose(
+        SimulatedHost(), ProfileStore(tmp_path), SimulatedFetcher(), settings=settings
+    )
+    appearance = view_models.appearance
+    assert appearance.property("mode") == "dark"  # the stored choice at startup
+    view_models.settings.setAppearance("light")  # the settings page
+    assert appearance.property("mode") == "light"
+    settings.update(appearance="system")  # any other writer, such as a restored backup
+    assert appearance.property("mode") == "system"
+    view_models.retranslate()  # every ViewModel re-reads its text, the new pages included

@@ -6,17 +6,21 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from mihomo_desktop.desktop.login import LoginItem, UnavailableLoginItem
 from mihomo_desktop.host.base import TunnelHost
 from mihomo_desktop.models.library import ProfileLibrary
+from mihomo_desktop.models.settings import JsonSettingsStore, Settings, SettingsStore
 from mihomo_desktop.models.store import ProfileStore
 from mihomo_desktop.models.subscription import Fetcher
 from mihomo_desktop.viewmodels.appearance import Appearance
 from mihomo_desktop.viewmodels.common.async_runner import AsyncRunner
 from mihomo_desktop.viewmodels.connections import ConnectionsViewModel
+from mihomo_desktop.viewmodels.desktop import DesktopViewModel
 from mihomo_desktop.viewmodels.logs import LogsViewModel
 from mihomo_desktop.viewmodels.overview import OverviewViewModel
 from mihomo_desktop.viewmodels.profiles import ProfilesViewModel
 from mihomo_desktop.viewmodels.proxies import ProxiesViewModel
+from mihomo_desktop.viewmodels.settings import SettingsViewModel
 from mihomo_desktop.viewmodels.shell import ShellViewModel
 
 
@@ -25,12 +29,15 @@ class ViewModels:
     runner: AsyncRunner
     host: TunnelHost
     library: ProfileLibrary
+    settings_store: SettingsStore
     shell: ShellViewModel
     overview: OverviewViewModel
     proxies: ProxiesViewModel
     profiles: ProfilesViewModel
     connections: ConnectionsViewModel
     logs: LogsViewModel
+    settings: SettingsViewModel
+    desktop: DesktopViewModel
     appearance: Appearance
 
     def initial_properties(self) -> dict[str, object]:
@@ -43,6 +50,8 @@ class ViewModels:
             "connectionsViewModel": self.connections,
             "logsViewModel": self.logs,
             "appearance": self.appearance,
+            "settingsViewModel": self.settings,
+            "desktopViewModel": self.desktop,
         }
 
     def start(self) -> None:
@@ -52,6 +61,18 @@ class ViewModels:
         self.proxies.refresh()
         self.profiles.start()
         self.logs.start()
+        self.settings.start()
+        self.desktop.start()
+
+    def retranslate(self) -> None:
+        """Re-read every text the ViewModels make, after the UI language changed."""
+        self.shell.retranslate()
+        self.overview.retranslate()
+        self.proxies.retranslate()
+        self.profiles.retranslate()
+        self.connections.retranslate()
+        self.logs.retranslate()
+        self.settings.retranslate()
 
     def shutdown(self) -> None:
         self.shell.stop()
@@ -59,6 +80,7 @@ class ViewModels:
         self.profiles.stop()
         self.connections.stop()
         self.logs.stop()
+        self.desktop.stop()
         self.runner.shutdown(finalize=self.host.close)
 
 
@@ -67,37 +89,63 @@ def compose(
     store: ProfileStore,
     fetcher: Fetcher,
     clock: Callable[[], float] = time.time,
+    *,
+    settings: SettingsStore | None = None,
+    login_item: LoginItem | None = None,
+    tray_available: bool = False,
+    start_hidden: bool = False,
     appearance: Appearance | None = None,
 ) -> ViewModels:
-    """``clock`` dates profile updates and subscription expiry; ``appearance`` defaults to
-    following the system."""
+    """``clock`` dates profile updates and subscription expiry. The settings live beside the
+    profiles unless given. ``tray_available`` and ``start_hidden``: see DesktopViewModel.
+    ``appearance`` defaults to the stored choice; the settings page changes it from then on."""
     runner = AsyncRunner()
-    library = ProfileLibrary(store, host, fetcher, clock)
+    settings_store = settings or JsonSettingsStore(store.directory)
+    library = ProfileLibrary(store, host, fetcher, clock, settings=lambda: settings_store.current)
     shell = ShellViewModel(host, runner)
-    overview = OverviewViewModel(host, library, runner)
+    overview = OverviewViewModel(host, library, runner, settings_store)
     proxies = ProxiesViewModel(host, runner)
     profiles = ProfilesViewModel(library, runner, clock)
     connections = ConnectionsViewModel(host, runner)
     logs = LogsViewModel(host, runner)
+    settings_page = SettingsViewModel(
+        settings_store, library, host, runner, login_item or UnavailableLoginItem()
+    )
+    desktop = DesktopViewModel(
+        settings_store, tray_available=tray_available, start_hidden=start_hidden
+    )
 
     def page_shown() -> None:
         if shell.currentPage == "proxies":
             proxies.refresh()
+        elif shell.currentPage == "settings":
+            settings_page.refreshInfo()
+            settings_page.refreshLoginItem()
         connections.setActive(shell.currentPage == "connections")
 
     shell.currentPageChanged.connect(page_shown)
     proxies.selectionApplied.connect(overview.refreshGroups)
     profiles.applied.connect(overview.refreshGroups)
     profiles.applied.connect(proxies.refresh)
+    appearance = appearance or Appearance(settings_store.current.appearance)
+
+    def appearance_stored(before: Settings, after: Settings) -> None:
+        if after.appearance != before.appearance:
+            appearance.setMode(after.appearance)
+
+    settings_store.subscribe(appearance_stored)
     return ViewModels(
         runner,
         host,
         library,
+        settings_store,
         shell,
         overview,
         proxies,
         profiles,
         connections,
         logs,
-        appearance or Appearance(),
+        settings_page,
+        desktop,
+        appearance,
     )
