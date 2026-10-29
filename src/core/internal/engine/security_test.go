@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"errors"
+	"fmt"
 	"go/ast"
 	"go/build"
 	"go/parser"
@@ -78,6 +79,30 @@ secret: hunter2
 			t.Fatalf("%v: controller survived admission: %+v", mode, c)
 		}
 	}
+
+	// And through Start, which hands the admitted configuration to hub.ApplyConfig: that
+	// starts whatever controller the configuration names (#3 starts one the same way).
+	engine := openEngine(t, TunNone)
+	dir, err := os.MkdirTemp("", "md-ctl-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+	socket := filepath.Join(dir, "c.sock")
+	api := freePort(t)
+	profile := directProfile(freePort(t), "http://127.0.0.1:1/",
+		fmt.Sprintf("external-controller: 127.0.0.1:%d\nexternal-controller-unix: '%s'", api, socket))
+	if err := engine.Start(profile); err != nil {
+		t.Fatal(err)
+	}
+	defer engine.Stop()
+	// Controllers start in the background, a requested one within milliseconds.
+	for deadline := time.Now().Add(300 * time.Millisecond); time.Now().Before(deadline); {
+		if listening(api) || unixListening(socket) {
+			t.Fatal("the started core opened the controller its profile asked for")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 }
 
 // #3: embed mode is on, so even a controller started by mistake cannot restart the
@@ -90,8 +115,10 @@ func TestSecurity3EmbedModeGuardsAStrayController(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 	socket := filepath.Join(dir, "c.sock")
+	// The one controller these tests start, on purpose and through route, not the pipeline.
+	// Closing it makes mihomo log "External controller unix serve error: http: Server closed".
 	route.ReCreateServer(&route.Config{UnixAddr: socket})
-	defer route.ReCreateServer(&route.Config{})
+	defer stopStrayController(t, socket)
 
 	client := &http.Client{Timeout: 5 * time.Second, Transport: &http.Transport{
 		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
@@ -138,6 +165,28 @@ func TestSecurity3EmbedModeGuardsAStrayController(t *testing.T) {
 			t.Errorf("%s %s = %d, want it refused", call.method, call.path, got)
 		}
 	}
+}
+
+// stopStrayController closes the controller and waits until the socket is gone:
+// ReCreateServer works in the background, and no later test may find it still listening.
+func stopStrayController(t *testing.T, socket string) {
+	route.ReCreateServer(&route.Config{})
+	for deadline := time.Now().Add(5 * time.Second); unixListening(socket); {
+		if time.Now().After(deadline) {
+			t.Error("the stray controller still listens")
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+func unixListening(socket string) bool {
+	conn, err := net.Dial("unix", socket)
+	if err != nil {
+		return false
+	}
+	conn.Close()
+	return true
 }
 
 // #4: provider paths stay local by the platform's own rules, and IsSafePath stays on

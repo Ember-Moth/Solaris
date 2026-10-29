@@ -2,6 +2,8 @@ module github.com/Ember-Moth/mihomo-desktop/src/core
 
 go 1.26.0
 
+toolchain go1.27.3
+
 tool google.golang.org/protobuf/cmd/protoc-gen-go
 
 require (

@@ -9,12 +9,15 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"runtime"
 	"runtime/pprof"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	C "github.com/metacubex/mihomo/constant"
 
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/controlpb"
 )
@@ -53,6 +56,37 @@ func TestOnlyOneEnginePerProcess(t *testing.T) {
 	}
 }
 
+// The core version comes from the binary's build info. Test binaries record their
+// dependencies only from Go 1.27 on, which go.mod's toolchain line asks for; an older
+// toolchain leaves mihomo's placeholder, 1.10.0.
+func TestCoreVersionIsTheMihomoInGoMod(t *testing.T) {
+	engine := openEngine(t, TunNone)
+	want := requiredVersion(t, mihomoModule)
+	if got := engine.CoreVersion(); got != want || C.Version != want {
+		t.Fatalf("core version %q, mihomo's own %q; go.mod requires %s", got, C.Version, want)
+	}
+}
+
+// requiredVersion reads the version of a required module from the module's go.mod.
+func requiredVersion(t *testing.T, module string) string {
+	t.Helper()
+	source, err := os.ReadFile(filepath.Join("..", "..", "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for line := range strings.Lines(string(source)) {
+		fields := strings.Fields(line)
+		if len(fields) > 0 && fields[0] == "require" {
+			fields = fields[1:]
+		}
+		if len(fields) >= 2 && fields[0] == module {
+			return fields[1]
+		}
+	}
+	t.Fatalf("go.mod does not require %s", module)
+	return ""
+}
+
 func TestStartProxiesTrafficAndStopClosesThePort(t *testing.T) {
 	engine := openEngine(t, TunNone)
 	server := target(t)
@@ -62,9 +96,6 @@ func TestStartProxiesTrafficAndStopClosesThePort(t *testing.T) {
 	}
 	if engine.State() != controlpb.RunState_RUN_STATE_RUNNING {
 		t.Fatalf("state = %v", engine.State())
-	}
-	if !strings.HasPrefix(engine.CoreVersion(), "v1.") {
-		t.Errorf("core version = %q", engine.CoreVersion())
 	}
 	before := engine.Traffic()
 	if body := proxiedGet(t, port, server.URL); body != "hello through mihomo" {

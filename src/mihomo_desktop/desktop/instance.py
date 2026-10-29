@@ -25,6 +25,10 @@ ACTIVATE = b"activate\n"
 CONNECT_TIMEOUT_MS = 500
 # The first UI takes the lock before it listens; give it this long to start listening.
 CONNECT_ATTEMPTS = 6
+# Qt's Windows pipes have no buffer: the write completes only when the first UI reads it,
+# and closing the socket before then drops the message. The first UI may still be loading
+# its window, so wait well past a connection attempt.
+DELIVER_TIMEOUT_MS = 5000
 
 
 def server_name(directory: Path, user: str | None = None) -> str:
@@ -103,6 +107,6 @@ class SingleInstance(QObject):
             socket.connectToServer(self.name)
             if socket.waitForConnected(CONNECT_TIMEOUT_MS):
                 socket.write(ACTIVATE)
-                socket.waitForBytesWritten(CONNECT_TIMEOUT_MS)
+                socket.waitForBytesWritten(DELIVER_TIMEOUT_MS)
                 socket.disconnectFromServer()
                 return

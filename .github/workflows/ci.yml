@@ -124,6 +124,8 @@ jobs:
           sudo ip -n md-tun route add default via 10.200.0.1
       - name: Owned TUN in md-tun
         run: |
+          resolvectl dns > "$RUNNER_TEMP/dns-before"
+          resolvectl domain >> "$RUNNER_TEMP/dns-before"
           mkdir -p "$RUNNER_TEMP/www"
           echo through-tun > "$RUNNER_TEMP/www/index.html"
           sudo ip netns exec md-srv python3 -m http.server 8080 --bind 10.201.0.1 \
@@ -136,3 +138,13 @@ jobs:
             MIHOMO_DESKTOP_TUN_TARGET=http://10.201.0.1:8080/ \
             MIHOMO_DESKTOP_TUN_STACKS="${{ matrix.stacks }}" \
             ip netns exec md-tun "$RUNNER_TEMP/engine-tun.test" -test.run '^TestOwnedTUN$' -test.v -test.count=1
+      # systemd-resolved serves the runner, outside the namespaces, yet takes interface
+      # indexes from inside them over D-Bus: sing-tun's resolvectl calls for mdtun0 land on
+      # whichever runner interface has the same index. Left there, they cut the runner off
+      # its DNS and the job hangs after its last step, so fail here instead.
+      - name: Runner DNS untouched
+        run: |
+          sleep 1
+          resolvectl dns > "$RUNNER_TEMP/dns-after"
+          resolvectl domain >> "$RUNNER_TEMP/dns-after"
+          diff "$RUNNER_TEMP/dns-before" "$RUNNER_TEMP/dns-after"

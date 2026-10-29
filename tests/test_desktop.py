@@ -1,5 +1,8 @@
 """Desktop integration with doubles only: nothing here registers a login item or a task."""
 
+import subprocess
+import sys
+import time
 import xml.etree.ElementTree as ET
 from collections.abc import Sequence
 from pathlib import Path
@@ -8,7 +11,7 @@ import pytest
 from PySide6.QtCore import QCoreApplication
 from pytestqt.qtbot import QtBot
 
-from mihomo_desktop.desktop.instance import SingleInstance, server_name
+from mihomo_desktop.desktop.instance import CONNECT_TIMEOUT_MS, SingleInstance, server_name
 from mihomo_desktop.desktop.login import (
     ENABLED,
     NOT_FOUND,
@@ -142,14 +145,36 @@ def test_source_runs_have_no_login_item() -> None:
         item.set_enabled(True)
 
 
+# The second UI runs in a process of its own, as it does for real: on Windows the first
+# reads the message only in its event loop, which a second UI in this thread would block.
+SECOND_UI = """
+import sys
+from pathlib import Path
+from PySide6.QtCore import QCoreApplication
+from mihomo_desktop.desktop.instance import SingleInstance
+app = QCoreApplication(sys.argv)
+print("claiming", flush=True)
+sys.exit(1 if SingleInstance(Path(sys.argv[1])).claim() else 0)
+"""
+
+
 def test_second_instance_shows_the_first(qtbot: QtBot, tmp_path: Path) -> None:
     first = SingleInstance(tmp_path)
-    second = SingleInstance(tmp_path)
+    assert first.claim()
+    second = subprocess.Popen(
+        [sys.executable, "-c", SECOND_UI, str(tmp_path)], stdout=subprocess.PIPE, text=True
+    )
     try:
-        assert first.claim()
-        with qtbot.waitSignal(first.activated, timeout=3000):
-            assert not second.claim()
+        with qtbot.waitSignal(first.activated, timeout=5000):
+            assert second.stdout is not None
+            assert second.stdout.readline() == "claiming\n"
+            # The first UI is busy, loading its window say, for longer than a connection
+            # attempt waits; the message must still arrive.
+            time.sleep(2 * CONNECT_TIMEOUT_MS / 1000)
+        assert second.wait(timeout=10) == 0  # it found the first and did not take the lock
     finally:
+        second.kill()
+        second.wait()
         first.release()
 
     # Once the first has gone, the next one takes over.
