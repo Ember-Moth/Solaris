@@ -32,6 +32,8 @@ QtObject {
     readonly property color danger: "#B42318"  // danger
     readonly property color info: "#1846C7"  // info
     readonly property color chartUpload: "#C2410C"  // chart-upload
+    readonly property color scrim: "#3315171C"  // scrim
+    readonly property color shadowOverlay: "#1F15171C"  // shadow-overlay
 
     // ---- typography (fontSize px, fontWeight 100-900, lineHeight multiplier) ----
     component TypeRole: QtObject {
@@ -140,4 +142,14 @@ QtObject {
     readonly property int rowSingle: 44  // spacing.row-single
     readonly property int rowDouble: 52  // spacing.row-double
     readonly property int rowHeader: 32  // spacing.row-header
+    readonly property int overlayGap: 4  // spacing.overlay-gap
+    readonly property int overlayMargin: 8  // spacing.overlay-margin
+    readonly property int overlayShadowY: 4  // spacing.overlay-shadow-y
+    readonly property int overlayShadowBlur: 16  // spacing.overlay-shadow-blur
+    readonly property int menuMinWidth: 180  // spacing.menu-min-width
+    readonly property int popoverMinWidth: 240  // spacing.popover-min-width
+    readonly property int popoverMaxWidth: 360  // spacing.popover-max-width
+    readonly property int dialogWidth: 400  // spacing.dialog-width
+    readonly property int dialogWidthWide: 640  // spacing.dialog-width-wide
+    readonly property int editorMinHeight: 240  // spacing.editor-min-height
 }

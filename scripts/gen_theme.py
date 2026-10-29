@@ -40,6 +40,13 @@ def camel(name: str) -> str:
     return result
 
 
+def qt_color(value: str) -> str:
+    """DESIGN.md writes translucent colours as CSS #RRGGBBAA; QML reads #AARRGGBB."""
+    if re.fullmatch(r"#[0-9A-Fa-f]{8}", value):
+        return f"#{value[7:9]}{value[1:7]}"
+    return value
+
+
 def px(value: str | int | float) -> str:
     text = str(value).strip()
     m = re.fullmatch(r"([\d.]+)px", text)
@@ -55,7 +62,7 @@ def render(tokens: dict[str, Any]) -> str:
 
     out.append("    // ---- colors ----")
     for name, value in tokens["colors"].items():
-        out.append(f'    readonly property color {camel(name)}: "{value}"  // {name}')
+        out.append(f'    readonly property color {camel(name)}: "{qt_color(value)}"  // {name}')
 
     out.append("")
     out.append(
