@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import os
 import sys
+from functools import partial
 from pathlib import Path
 
-from PySide6.QtCore import QUrl
+from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
@@ -54,6 +55,15 @@ def load_ui(engine: QQmlApplicationEngine, view_models: ViewModels) -> bool:
     return bool(engine.rootObjects())
 
 
+def switch_language(
+    translations: Translations, engine: QQmlApplicationEngine, view_models: ViewModels
+) -> None:
+    """Show the running UI in the language the settings name (docs/architecture.md §7.5)."""
+    translations.apply(resolve_language(view_models.settings_store.current.language))
+    engine.retranslate()
+    view_models.retranslate()
+
+
 def main(
     host: TunnelHost | None = None,
     store: ProfileStore | None = None,
@@ -89,11 +99,15 @@ def main(
     if not load_ui(engine, view_models):
         instance.release()
         return 1
+    # Queued: the switch happens once the control that asked for it has handled its click.
+    switch = partial(switch_language, translations, engine, view_models)
+    view_models.settings.languageChanged.connect(switch, Qt.ConnectionType.QueuedConnection)
     view_models.desktop.quitRequested.connect(app.quit)
     instance.activated.connect(view_models.desktop.showWindow)
     view_models.start()
     app.aboutToQuit.connect(view_models.shutdown)
     code = app.exec()
     instance.release()
-    del engine  # tear down QML before the ViewModels it binds to
+    view_models.settings.languageChanged.disconnect(switch)
+    del switch, engine  # tear down QML before the ViewModels it binds to
     return code

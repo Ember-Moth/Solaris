@@ -1,15 +1,17 @@
 import time
 from collections.abc import Iterator
+from functools import partial
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import QCoreApplication, Qt, QUrl
 from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent
 from PySide6.QtQuick import QQuickItem, QQuickWindow
 from PySide6.QtTest import QTest
 from pytestqt.qtbot import QtBot
 
-from mihomo_desktop.app import MAIN_QML, load_ui
+from mihomo_desktop.app import MAIN_QML, load_ui, switch_language
+from mihomo_desktop.i18n import Translations
 from mihomo_desktop.models.store import ProfileStore
 from mihomo_desktop.viewmodels.composition import ViewModels, compose
 from tests.support.i18n import ui_language
@@ -200,6 +202,41 @@ def test_settings_page_fits_the_smallest_window(qtbot: QtBot, loaded: Loaded) ->
     window.setWidth(480)
     qtbot.wait(100)
     assert cramped(window.contentItem()) != []
+
+
+def test_language_switches_while_running(qtbot: QtBot, loaded: Loaded) -> None:
+    view_models = loaded.view_models
+    content = loaded.window.contentItem()
+    qtbot.waitUntil(lambda: view_models.overview.property("connected"))
+    translations = Translations(QCoreApplication.instance())  # pyright: ignore[reportArgumentType]
+    switch = partial(switch_language, translations, loaded.engine, view_models)
+    view_models.settings.languageChanged.connect(switch)
+    try:
+        view_models.settings.setLanguage("en")
+        qtbot.waitUntil(lambda: "Outbound" in texts(content))
+        shown = texts(content)
+        assert {"Overview", "Settings", "Connected", "Disconnect"} <= shown  # QML and Python
+        assert "出站" not in shown
+        assert view_models.shell.property("pages")[0]["label"] == "Overview"
+        assert view_models.shell.property("serviceText") == "Service running"
+        assert [m["label"] for m in view_models.overview.property("modeOptions")] == [
+            "Rule",
+            "Global",
+            "Direct",
+        ]
+        assert view_models.proxies.property("sortOptions")[0]["label"] == "Default"
+        assert view_models.profiles.property("summary") == "3 profiles"
+        assert view_models.profiles.property("autoUpdateLabel") == "Update every 12 hours"
+        assert view_models.settings.property("languageOptions")[0]["label"] == "System"
+
+        view_models.settings.setLanguage("zh")
+        qtbot.waitUntil(lambda: "出站" in texts(content))
+        assert "Outbound" not in texts(content)
+        assert view_models.profiles.property("summary") == "3 个配置"
+    finally:
+        view_models.settings.languageChanged.disconnect(switch)
+        translations.apply("zh")
+    assert loaded.warnings == []
 
 
 def test_closing_the_window_quits_without_a_tray(qtbot: QtBot, loaded: Loaded) -> None:

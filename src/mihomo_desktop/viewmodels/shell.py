@@ -34,6 +34,7 @@ SERVICE_POLL_MS = 10_000
 class ShellViewModel(QObject):
     currentPageChanged = Signal()
     serviceChanged = Signal()
+    pagesChanged = Signal()  # the UI language changed
 
     def __init__(
         self,
@@ -46,7 +47,7 @@ class ShellViewModel(QObject):
         self._runner = runner
         self._current_page = "overview"
         self._info: HostInfo | None = None
-        self._service_error = ""
+        self._service_failed = False
         self._timer = QTimer(self)
         self._timer.setInterval(SERVICE_POLL_MS)
         self._timer.timeout.connect(self.refreshService)
@@ -58,7 +59,12 @@ class ShellViewModel(QObject):
     def stop(self) -> None:
         self._timer.stop()
 
-    @Property("QVariantList", constant=True)  # pyright: ignore[reportArgumentType]
+    def retranslate(self) -> None:
+        """Re-read the text properties in the language just installed."""
+        self.pagesChanged.emit()
+        self.serviceChanged.emit()
+
+    @Property("QVariantList", notify=pagesChanged)  # pyright: ignore[reportArgumentType]
     def pages(self) -> list[dict[str, str]]:
         return [{**page, "label": self.tr(page["label"])} for page in PAGES]
 
@@ -87,7 +93,7 @@ class ShellViewModel(QObject):
     @Property(str, notify=serviceChanged)
     def serviceDetail(self) -> str:
         if self._info is None:
-            return self._service_error
+            return self.tr("未能连接到服务") if self._service_failed else ""
         return self.tr("{core} · 协议 v{protocol}").format(
             core=self._info.core_version, protocol=self._info.protocol_version
         )
@@ -98,10 +104,10 @@ class ShellViewModel(QObject):
 
     def _apply_info(self, info: HostInfo) -> None:
         self._info = info
-        self._service_error = ""
+        self._service_failed = False
         self.serviceChanged.emit()
 
     def _info_failed(self, error: BaseException) -> None:
         self._info = None
-        self._service_error = self.tr("未能连接到服务")
+        self._service_failed = True
         self.serviceChanged.emit()

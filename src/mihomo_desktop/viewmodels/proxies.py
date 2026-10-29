@@ -27,6 +27,7 @@ NO_DELAY_TYPES = ("Direct", "Reject")
 @QmlUncreatable("ProxiesViewModel is created in Python and injected into the view.")  # pyright: ignore[reportCallIssue]
 class ProxiesViewModel(QObject):
     changed = Signal()
+    sortOptionsChanged = Signal()  # the UI language changed
     selectionApplied = Signal()  # a selection reached the core; the overview re-reads its node
 
     def __init__(
@@ -44,6 +45,11 @@ class ProxiesViewModel(QObject):
     @Slot()
     def refresh(self) -> None:
         self._runner.submit(self._host.list_groups(), self._loaded, self._failed)
+
+    def retranslate(self) -> None:
+        """Re-read the text properties in the language just installed."""
+        self.sortOptionsChanged.emit()
+        self.changed.emit()
 
     def _loaded(self, groups: list[ProxyGroup]) -> None:
         self._groups = groups
@@ -95,7 +101,7 @@ class ProxiesViewModel(QObject):
         return self.tr("点击切换") if group.selectable else self.tr("由内核按测速结果选择")
 
     # -- nodes -------------------------------------------------------------------------------
-    @Property("QVariantList", constant=True)  # pyright: ignore[reportArgumentType]
+    @Property("QVariantList", notify=sortOptionsChanged)  # pyright: ignore[reportArgumentType]
     def sortOptions(self) -> list[dict[str, str]]:
         return [{"value": s, "label": self.tr(SORT_LABELS[s])} for s in SORTS]
 

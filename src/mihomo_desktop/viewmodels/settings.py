@@ -65,7 +65,7 @@ CLOSE_ACTION_LABELS = {
 class SettingsViewModel(QObject):
     changed = Signal()
     optionsChanged = Signal()  # the UI language changed; the choices' labels follow
-    languageChanged = Signal()
+    languageChanged = Signal()  # the app installs the new language (app.switch_language)
     appearanceChanged = Signal()  # the theme's appearance follows ``appearance``
     # Not ``changed``: that fires while the user types a port, which would undo the typing.
     mixedPortChanged = Signal()
@@ -97,6 +97,11 @@ class SettingsViewModel(QObject):
     def start(self) -> None:
         self.refreshInfo()
         self.refreshLoginItem()
+
+    def retranslate(self) -> None:
+        """Re-read the text properties in the language just installed."""
+        self.optionsChanged.emit()
+        self.changed.emit()
 
     def _current(self) -> Settings:
         return self._settings.current

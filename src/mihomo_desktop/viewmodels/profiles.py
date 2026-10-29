@@ -136,6 +136,10 @@ class ProfilesViewModel(QObject):
     def stop(self) -> None:
         self._timer.stop()
 
+    def retranslate(self) -> None:
+        """Re-read the text properties in the language just installed."""
+        self.changed.emit()
+
     def _loaded(self, profiles: ProfileList) -> None:
         self._list = profiles
         self.changed.emit()
@@ -214,7 +218,7 @@ class ProfilesViewModel(QObject):
             )
         return rows
 
-    @Property(str, constant=True)
+    @Property(str, notify=changed)
     def autoUpdateLabel(self) -> str:
         return self.tr("每 %n 小时自动更新", "", DEFAULT_AUTO_UPDATE_HOURS)
 

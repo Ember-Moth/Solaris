@@ -45,6 +45,7 @@ def _normalized(history: tuple[int, ...], scale: float) -> list[float]:
 @QmlUncreatable("OverviewViewModel is created in Python and injected into the view.")  # pyright: ignore[reportCallIssue]
 class OverviewViewModel(QObject):
     changed = Signal()
+    modeOptionsChanged = Signal()  # the UI language changed; ``changed`` fires every second
 
     def __init__(
         self,
@@ -80,6 +81,11 @@ class OverviewViewModel(QObject):
 
     def stop(self) -> None:
         self._timer.stop()
+
+    def retranslate(self) -> None:
+        """Re-read the text properties in the language just installed."""
+        self.modeOptionsChanged.emit()
+        self.changed.emit()
 
     # -- refresh -----------------------------------------------------------------------------
     @Slot()
@@ -205,7 +211,7 @@ class OverviewViewModel(QObject):
         return self.tr("断开") if self._connected() else self.tr("连接")
 
     # -- outbound ----------------------------------------------------------------------------
-    @Property("QVariantList", constant=True)  # pyright: ignore[reportArgumentType]
+    @Property("QVariantList", notify=modeOptionsChanged)  # pyright: ignore[reportArgumentType]
     def modeOptions(self) -> list[dict[str, str]]:
         return [{**mode, "label": self.tr(mode["label"])} for mode in MODES]
 

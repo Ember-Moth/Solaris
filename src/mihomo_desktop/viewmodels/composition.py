@@ -54,6 +54,14 @@ class ViewModels:
         self.settings.start()
         self.desktop.start()
 
+    def retranslate(self) -> None:
+        """Re-read every text the ViewModels make, after the UI language changed."""
+        self.shell.retranslate()
+        self.overview.retranslate()
+        self.proxies.retranslate()
+        self.profiles.retranslate()
+        self.settings.retranslate()
+
     def shutdown(self) -> None:
         self.shell.stop()
         self.overview.stop()
