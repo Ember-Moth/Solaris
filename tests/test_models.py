@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 
 import pytest
 
@@ -27,6 +28,30 @@ def test_rate_and_uptime() -> None:
     assert fmt.rate(int(8.6 * MB)) == "8.6 MB/s"
     assert fmt.uptime(8076) == "2:14:36"
     assert fmt.uptime(59) == "0:59"
+
+
+@pytest.mark.parametrize(
+    ("used", "total", "text"),
+    [
+        (int(38.2 * GB), 200 * GB, "38.2 / 200 GB"),
+        (512 * MB, 200 * GB, "512 MB / 200 GB"),
+        (0, 100 * GB, "0 B / 100 GB"),
+    ],
+)
+def test_usage(used: int, total: int, text: str) -> None:
+    assert fmt.usage(used, total) == text
+
+
+def test_dates_and_ago() -> None:
+    now = datetime(2026, 10, 29, 12).timestamp()
+    assert fmt.date(datetime(2026, 12, 31).timestamp()) == "2026-12-31"
+    assert fmt.ago(now - 30, now) == "刚刚"
+    assert fmt.ago(now + 30, now) == "刚刚"  # a clock that went back
+    assert fmt.ago(now - 5 * 60, now) == "5 分钟前"
+    assert fmt.ago(now - 2 * 3600, now) == "2 小时前"
+    assert fmt.ago(now - 3 * 86400, now) == "3 天前"
+    assert fmt.ago(datetime(2026, 10, 20, 9).timestamp(), now) == "10 月 20 日"
+    assert fmt.ago(datetime(2025, 10, 20, 9).timestamp(), now) == "2025-10-20"
 
 
 @pytest.mark.parametrize(

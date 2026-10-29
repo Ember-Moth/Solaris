@@ -4,7 +4,8 @@
 src/core/internal/product/product.go mirrors these values.
 """
 
-DISPLAY_NAME = "Mihomo Desktop"
+DISPLAY_NAME = "Mihomo Desktop"  # also names the user data directory
+PRODUCT_ID = "mihomo-desktop"  # the subscription download's User-Agent
 
 PIPE_NAME = r"\\.\pipe\ProtectedPrefix\Administrators\mihomo-desktop"
 

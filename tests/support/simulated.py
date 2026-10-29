@@ -1,7 +1,8 @@
-"""An in-process TunnelHost and profile source with the prototype's sample data.
+"""An in-process TunnelHost, subscription fetcher and profiles with the prototype's
+sample data.
 
-Used by the tests and scripts/preview.py so the UI runs without the service or the
-system extension. Traffic follows a seeded random walk, so runs are repeatable.
+Used by the tests and scripts/preview.py so the UI runs without the service, the system
+extension or the network. Traffic follows a seeded random walk, so runs are repeatable.
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ import random
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 
 import yaml
 
@@ -24,7 +26,18 @@ from mihomo_desktop.host.base import (
     TrafficSample,
     TunnelConfig,
 )
-from mihomo_desktop.models.profiles import ProfileSummary
+from mihomo_desktop.models.profiles import (
+    KIND_FILE,
+    KIND_SUBSCRIPTION,
+    Profile,
+    ProfileError,
+    ProfileList,
+    ProfileSummary,
+    Usage,
+    count_proxies,
+)
+from mihomo_desktop.models.store import ProfileStore
+from mihomo_desktop.models.subscription import Download
 
 GB = 1024**3
 MB = 1024**2
@@ -57,6 +70,25 @@ def check_config(config: TunnelConfig) -> None:
         isinstance(providers, dict) and providers
     ):
         raise HostError("invalid_config", "the config defines no proxies")
+
+
+_CORE_TYPES = {"VLESS": "vless", "Hysteria2": "hysteria2", "Trojan": "trojan", "Shadowsocks": "ss"}
+SAMPLE_CONFIG = (
+    "mixed-port: 7890\nmode: rule\nproxies:\n"
+    + "".join(
+        f"  - {{name: {name}, type: {_CORE_TYPES[kind]}, server: node{i}.example.net, port: 443}}\n"
+        for i, (name, (kind, _)) in enumerate(NODES.items())
+    )
+    + "proxy-groups:\n  - name: 节点选择\n    type: select\n    proxies:\n"
+    + "".join(f"      - {name}\n" for name in NODES)
+    + "rules:\n  - MATCH,节点选择\n"
+)
+SAMPLE_USAGE = Usage(
+    upload=int(1.2 * GB),
+    download=int(37.0 * GB),
+    total=200 * GB,
+    expire=int(datetime(2026, 12, 31).timestamp()),
+)
 
 
 @dataclass
@@ -313,6 +345,68 @@ class SimulatedHost:
         if target not in self._groups:
             return (target,)
         return (target, self._final(target))
+
+
+class SimulatedFetcher:
+    """Serves SAMPLE_CONFIG for every link; set ``error`` to make downloads fail."""
+
+    def __init__(self, *, delay_s: float = 0.0) -> None:
+        self._delay_s = delay_s
+        self.body = SAMPLE_CONFIG.encode()
+        self.usage: Usage | None = SAMPLE_USAGE
+        self.filename: str | None = None
+        self.error: ProfileError | None = None
+        self.requests: list[str] = []
+
+    async def fetch(self, url: str) -> Download:
+        self.requests.append(url)
+        await asyncio.sleep(self._delay_s)
+        if self.error is not None:
+            raise self.error
+        return Download(self.body, self.usage, self.filename)
+
+
+def seed_profiles(store: ProfileStore, now: float) -> ProfileList:
+    """The prototype's three profiles, with "示例订阅 A" in use."""
+    local = store.directory / "config.yaml"
+    local.parent.mkdir(parents=True, exist_ok=True)
+    local.write_text(SAMPLE_CONFIG, encoding="utf-8")
+    count = count_proxies(SAMPLE_CONFIG)
+    profiles = (
+        Profile(
+            id="sample-a",
+            name="示例订阅 A",
+            kind=KIND_SUBSCRIPTION,
+            url="https://sub.example.com/api/v1/client/subscribe?token=sample",
+            auto_update_hours=12,
+            updated_at=now - 2 * 3600,
+            usage=SAMPLE_USAGE,
+            proxy_count=count,
+        ),
+        Profile(
+            id="sample-b",
+            name="示例订阅 B",
+            kind=KIND_SUBSCRIPTION,
+            url="https://nodes.example.org/clash.yaml",
+            auto_update_hours=0,  # updated by hand
+            updated_at=now - 3 * 86400,
+            usage=Usage(int(3 * GB), 60 * GB, 100 * GB, int(datetime(2027, 3, 1).timestamp())),
+            proxy_count=count,
+        ),
+        Profile(
+            id="sample-c",
+            name="本地配置",
+            kind=KIND_FILE,
+            path=str(local),
+            updated_at=now - 9 * 86400,
+            proxy_count=count,
+        ),
+    )
+    for profile in profiles:
+        store.write_config(profile.id, SAMPLE_CONFIG)
+    seeded = ProfileList(profiles, "sample-a")
+    store.save(seeded)
+    return seeded
 
 
 class SampleProfiles:

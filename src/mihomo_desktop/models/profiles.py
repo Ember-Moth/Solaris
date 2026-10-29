@@ -1,12 +1,119 @@
-"""Profiles the UI manages. Subscription download and storage are not implemented yet;
-the overview only reads a summary of the active profile."""
+"""Profiles: configs the user imported from a subscription link or a local file."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Protocol
 
+KIND_SUBSCRIPTION = "subscription"
+KIND_FILE = "file"
 
+
+class ProfileError(Exception):
+    """A profile could not be downloaded, read or stored. Codes share the HostError
+    namespace so the UI turns both into text the same way."""
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(f"{code}: {message}")
+        self.code = code
+        self.message = message
+
+
+@dataclass(frozen=True)
+class Usage:
+    """The ``Subscription-Userinfo`` response header."""
+
+    upload: int
+    download: int
+    total: int  # 0 when the subscription has no quota
+    expire: int  # unix seconds; 0 when it does not expire
+
+    @property
+    def used(self) -> int:
+        return self.upload + self.download
+
+
+@dataclass(frozen=True)
+class Profile:
+    id: str
+    name: str
+    kind: str  # KIND_SUBSCRIPTION or KIND_FILE
+    url: str = ""  # the subscription link
+    path: str = ""  # the file a KIND_FILE profile was imported from
+    auto_update_hours: int = 0  # subscriptions only; 0 turns automatic updates off
+    updated_at: float = 0.0  # unix seconds of the last download or import
+    usage: Usage | None = None
+    proxy_count: int | None = None  # inline proxies; None when not countable
+
+    @property
+    def is_subscription(self) -> bool:
+        return self.kind == KIND_SUBSCRIPTION
+
+
+@dataclass(frozen=True)
+class ProfileList:
+    profiles: tuple[Profile, ...] = ()
+    active: str | None = None  # the id of the profile the tunnel uses
+    update_failed: frozenset[str] = frozenset()  # ids whose last update failed; not stored
+
+    def get(self, profile_id: str) -> Profile:
+        for profile in self.profiles:
+            if profile.id == profile_id:
+                return profile
+        raise ProfileError("unknown_profile", f"no profile {profile_id}")
+
+    def active_profile(self) -> Profile | None:
+        return next((p for p in self.profiles if p.id == self.active), None)
+
+    def put(self, profile: Profile) -> ProfileList:
+        """Replace the profile with the same id, or append it."""
+        if any(p.id == profile.id for p in self.profiles):
+            profiles = tuple(profile if p.id == profile.id else p for p in self.profiles)
+        else:
+            profiles = (*self.profiles, profile)
+        return replace(self, profiles=profiles)
+
+    def without(self, profile_id: str) -> ProfileList:
+        profiles = tuple(p for p in self.profiles if p.id != profile_id)
+        active = self.active
+        if active == profile_id:
+            active = profiles[0].id if profiles else None
+        return ProfileList(profiles, active, self.update_failed - {profile_id})
+
+
+def count_proxies(text: str) -> int | None:
+    """Count the items of the top-level ``proxies:`` block sequence, for display only.
+
+    A line scan instead of a YAML parser: the service validates the config, the UI only
+    shows how many nodes it holds. Returns None for other styles (flow sequences, anchors)
+    and for configs without inline proxies; provider nodes are not counted."""
+    lines = text.splitlines()
+    start = next((i for i, line in enumerate(lines) if line.startswith("proxies:")), None)
+    if start is None:
+        return None
+    rest = lines[start].removeprefix("proxies:").split("#", 1)[0].strip()
+    if rest:
+        return 0 if rest == "[]" else None
+    count = 0
+    indent: int | None = None
+    for line in lines[start + 1 :]:
+        item = line.lstrip(" ")
+        if not item or item.startswith("#"):
+            continue
+        level = len(line) - len(item)
+        is_item = item == "-" or item.startswith("- ")
+        if indent is None:
+            if not is_item:
+                return None
+            indent = level
+        if level < indent or (level == indent and not is_item):
+            break
+        if level == indent:
+            count += 1
+    return count
+
+
+# The overview and the sidebar still read this summary; the profiles page replaces it.
 @dataclass(frozen=True)
 class ProfileSummary:
     name: str
