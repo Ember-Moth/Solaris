@@ -330,10 +330,82 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   - macOS：每个请求通过 ctypes 调用一次管理库。这是阻塞调用，放到线程池里执行；
   - 依赖只有 protobuf，不需要 HTTP 或 gRPC 库。
 - **宿主抽象** `TunnelHost` 有两个实现，共用同一个控制客户端：
-  - `WindowsServiceHost`：全部方法都走命名管道；
-  - `MacExtensionHost`：启停和控制消息都通过 ctypes 调用管理库。
-- **订阅**在用户上下文中下载，存放在 `%LOCALAPPDATA%\<Product>\` 或 `~/Library/Application Support/<Product>/`。
-  UI 把最终的 YAML 和覆写交给宿主。provider 和规则集的后续更新仍由 mihomo 自己完成。
+  - `ServiceHost`：全部方法都走 Windows 命名管道；开发模式下走本地 socket（第 11 节）；
+  - `MacExtensionHost`（未实现）：启停和控制消息都通过 ctypes 调用管理库。
+
+  测试和 `scripts/preview.py` 用 `tests/support/simulated.py` 里的模拟宿主。
+
+### 7.1 宿主接口里的配置
+
+`validate`、`start`、`reload` 都接收 `TunnelConfig`，对应协议里的 `ValidateRequest`、`StartRequest`、
+`ReloadRequest`：
+
+| 字段 | 内容 |
+| --- | --- |
+| `config_yaml` | 配置原文，即 `ProfileStore` 里存的 YAML |
+| `override_json` | 持久覆写；决策 D4 之前恒为空字符串 |
+| `options` | `RunOptions`：`tun_enabled`、`system_proxy_enabled`、`mixed_port`（0 表示沿用配置）、`allow_lan`。`validate` 不使用 |
+
+- **Start** 用概览页开关当前显示的 TUN 和系统代理状态；端口和局域网连接等设置页（M3）接入后再持久化。
+- **Reload** 用 `GetStatus` 报告的 TUN 和系统代理状态，所以切换配置或订阅更新都不会改变隧道的这两项。
+- 错误码：配置被拒绝时为 `invalid_config`（`message` 是 mihomo 的原始错误，界面显示在「配置无效：」之后）；
+  未运行时 Reload 返回 `not_running`；运行中 Start 返回 `already_running`。中文提示在
+  `viewmodels/feedback.py`。
+
+### 7.2 配置存储
+
+`ProfileStore` 存放在用户数据目录：Windows 为 `%LOCALAPPDATA%\<Product>\`，macOS 为
+`~/Library/Application Support/<Product>/`，`<Product>` 取 `product.py` 的 `DISPLAY_NAME`。
+
+```text
+<data>/
+├── profiles.json           索引：格式版本、当前配置、每份配置的元数据
+└── profiles/<id>.yaml      配置原文，下载或导入时的内容，不做改写
+```
+
+```json
+{
+  "version": 1,
+  "active": "3f9c…",
+  "profiles": [
+    {
+      "id": "3f9c…",
+      "name": "示例订阅 A",
+      "kind": "subscription",
+      "url": "https://sub.example.com/…",
+      "path": "",
+      "auto_update_hours": 12,
+      "updated_at": 1793277795.0,
+      "usage": {"upload": 1288490188, "download": 39728447488, "total": 214748364800, "expire": 1798646400},
+      "proxy_count": 48,
+      "override": null
+    }
+  ]
+}
+```
+
+- `id` 是随机 UUID 的十六进制串，也是 YAML 文件名。`kind` 为 `subscription` 或 `file`；本地文件记下原路径
+  `path`，供「重新读取」。`usage` 来自 `Subscription-Userinfo`，没有这个响应头时为 `null`。
+  `proxy_count` 只用于显示，是对顶层 `proxies:` 列表的计数，数不出来时为 `null`。
+- `override` 为持久覆写预留，决策 D4 之前恒为 `null`。
+- 每个文件都原子替换：同目录临时文件 → fsync → rename。先写 YAML 再写索引；删除时先写索引再删 YAML，
+  所以索引不会指向写了一半的文件。
+- 读不了的索引（JSON 损坏、版本不认识）改名为 `profiles.json.<时间戳>.bad` 留存，然后从空列表开始，
+  不会被后续写入覆盖。
+- 更新失败的标记只在内存里，不写入索引。
+
+### 7.3 订阅与切换
+
+- **下载**在用户上下文中进行（urllib，在工作线程里执行），跟随系统代理设置。User-Agent 为
+  `mihomo-desktop/<版本> clash.meta`，让订阅服务返回 Clash YAML。只接受 http 和 https；超过一个请求帧能装下的
+  大小（16 MiB 减 1 MiB）即拒绝。`Content-Disposition` 里的文件名作为默认名称。
+- **导入**：下载或读文件 → 解码为 UTF-8 → 宿主 `validate` → 写入存储。第一份配置自动成为当前配置。
+- **自动更新**：订阅默认每 12 小时更新一次，可以按配置关闭。界面每分钟检查一次到期的订阅，在启动时也检查；
+  失败的订阅 30 分钟内不重试，行内显示「更新失败」。
+- **切换与更新**：更新先 `validate` 再写入存储；如果更新的是当前配置且隧道在运行，随后 `reload`。切换配置时，
+  隧道在运行就先 `reload`，成功后才记下新的当前配置，核心拒绝时保留原来的配置；隧道未运行只记下选择。
+  下载和校验不持有锁，写入存储和重载在同一把锁下串行执行。
+- UI 只把最终的 YAML 和覆写交给宿主。provider 和规则集的后续更新仍由 mihomo 自己完成。
 
 ## 8. 安全模型
 
