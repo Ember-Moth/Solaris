@@ -70,7 +70,7 @@ def test_english_formats() -> None:
     assert fmt.ago(datetime(2026, 10, 20, 9).timestamp(), NOW) == "Oct 20"
     assert fmt.ago(datetime(2025, 10, 20, 9).timestamp(), NOW) == "Oct 20, 2025"
     assert fmt.date(datetime(2026, 12, 31).timestamp()) == "Dec 31, 2026"
-    assert fmt.latency(None) == ("Timeout", "timeout")
+    assert fmt.latency(0) == ("Timeout", "timeout")
 
 
 @pytest.mark.usefixtures("english")

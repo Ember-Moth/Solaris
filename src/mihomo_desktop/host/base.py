@@ -61,7 +61,7 @@ class HostStatus:
 class Proxy:
     name: str
     type: str
-    delay_ms: int | None  # None until a test succeeds
+    delay_ms: int | None  # None until tested; 0 when the last test failed
 
 
 @dataclass(frozen=True)

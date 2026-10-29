@@ -256,7 +256,7 @@ class OverviewViewModel(QObject):
     def _node_latency(self) -> tuple[str, str]:
         group = main_group(list(self._groups))
         proxy = resolve(list(self._groups), group.name) if group else None
-        if proxy is None or proxy.type in ("Direct", "Reject"):
+        if proxy is None or proxy.type in ("Direct", "Reject") or proxy.delay_ms is None:
             return "", "none"
         return fmt.latency(proxy.delay_ms)
 

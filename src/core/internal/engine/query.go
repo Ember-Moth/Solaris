@@ -181,8 +181,12 @@ func groupToProto(proxy C.Proxy, group outboundgroup.ProxyGroup, sort controlpb.
 	}
 	for _, member := range members {
 		entry := &controlpb.Proxy{Name: member.Name(), Type: member.Type().String()}
-		if delay := member.LastDelayForTestUrl(url); delay != 0 && delay != unknownDelay {
-			value := uint32(delay)
+		if _, tested := member.ExtraDelayHistories()[url]; tested {
+			// A failed test is 0; mihomo reports it as the largest delay.
+			var value uint32
+			if delay := member.LastDelayForTestUrl(url); delay != unknownDelay {
+				value = uint32(delay)
+			}
 			entry.DelayMs = &value
 		}
 		out.Proxies = append(out.Proxies, entry)
@@ -200,7 +204,7 @@ func groupToProto(proxy C.Proxy, group outboundgroup.ProxyGroup, sort controlpb.
 }
 
 func sortableDelay(proxy *controlpb.Proxy) uint64 {
-	if proxy.DelayMs == nil {
+	if proxy.GetDelayMs() == 0 {
 		return 1 << 32
 	}
 	return uint64(*proxy.DelayMs)

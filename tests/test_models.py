@@ -55,7 +55,8 @@ def test_dates_and_ago() -> None:
 
 
 @pytest.mark.parametrize(
-    ("delay", "level"), [(None, "timeout"), (68, "good"), (182, "fair"), (412, "poor")]
+    ("delay", "level"),
+    [(None, "none"), (0, "timeout"), (68, "good"), (182, "fair"), (412, "poor")],
 )
 def test_latency_levels(delay: int | None, level: str) -> None:
     assert fmt.latency(delay)[1] == level

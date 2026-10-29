@@ -1811,7 +1811,7 @@ type Proxy struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
-	DelayMs       *uint32                `protobuf:"varint,3,opt,name=delay_ms,json=delayMs,proto3,oneof" json:"delay_ms,omitempty"` // absent until a test succeeds
+	DelayMs       *uint32                `protobuf:"varint,3,opt,name=delay_ms,json=delayMs,proto3,oneof" json:"delay_ms,omitempty"` // absent until tested; 0 when the last test failed
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

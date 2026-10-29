@@ -37,8 +37,11 @@ FAIR_MS = 300
 
 
 def latency(delay_ms: int | None) -> tuple[str, str]:
-    """Return the text and level ("good", "fair", "poor" or "timeout") of a delay."""
+    """Return the text and level ("good", "fair", "poor", "timeout", or "none" when not
+    tested) of a delay; 0 is a failed test."""
     if delay_ms is None:
+        return "—", "none"
+    if delay_ms == 0:
         return QCoreApplication.translate("Format", "超时"), "timeout"
     if delay_ms < GOOD_MS:
         return f"{delay_ms} ms", "good"

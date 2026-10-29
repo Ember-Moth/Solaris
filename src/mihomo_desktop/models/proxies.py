@@ -30,5 +30,6 @@ def sort_proxies(proxies: tuple[Proxy, ...], sort: str) -> list[Proxy]:
     if sort == "name":
         return sorted(proxies, key=lambda p: p.name)
     if sort == "delay":
-        return sorted(proxies, key=lambda p: (p.delay_ms is None, p.delay_ms or 0))
+        # Failed and untested proxies go last.
+        return sorted(proxies, key=lambda p: (not p.delay_ms, p.delay_ms or 0))
     return list(proxies)

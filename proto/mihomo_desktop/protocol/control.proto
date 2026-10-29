@@ -149,7 +149,7 @@ enum GroupSort {
 message Proxy {
   string name = 1;
   string type = 2;
-  optional uint32 delay_ms = 3; // absent until a test succeeds
+  optional uint32 delay_ms = 3; // absent until tested; 0 when the last test failed
 }
 message ProxyGroup {
   string name = 1;

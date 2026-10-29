@@ -48,14 +48,14 @@ from mihomo_desktop.models.subscription import Download
 GB = 1024**3
 MB = 1024**2
 
-NODES: dict[str, tuple[str, int | None]] = {
+NODES: dict[str, tuple[str, int]] = {  # a delay of 0 is a failed test
     "香港 01": ("VLESS", 68),
     "香港 02": ("Hysteria2", 54),
     "香港 03": ("Trojan", 182),
     "日本 01": ("VLESS", 96),
     "日本 02": ("Shadowsocks", 241),
     "新加坡 01": ("Trojan", 127),
-    "新加坡 02": ("VLESS", None),
+    "新加坡 02": ("VLESS", 0),
     "美国 01": ("Hysteria2", 198),
     "美国 02": ("Shadowsocks", 412),
 }
@@ -546,11 +546,11 @@ class SimulatedHost:
             raise HostError("invalid_request", f"unknown group {group}")
         await asyncio.sleep(self._health_check_s)
         for name in self._groups[group].members:
-            if name in NODES and self._delays[name] is not None:
-                base = NODES[name][1] or 0
+            if name in NODES and self._delays[name]:
+                base = NODES[name][1]
                 self._delays[name] = max(20, base + self._random.randint(-25, 25))
-        alive = [n for n in self._groups["自动选择"].members if self._delays[n] is not None]
-        self._groups["自动选择"].now = min(alive, key=lambda n: self._delays[n] or 0)
+        alive = [n for n in self._groups["自动选择"].members if self._delays[n]]
+        self._groups["自动选择"].now = min(alive, key=lambda n: self._delays[n])
 
     async def poll_traffic(self) -> list[TrafficSample]:
         if not self._running:

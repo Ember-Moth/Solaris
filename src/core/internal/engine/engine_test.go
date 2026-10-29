@@ -212,6 +212,42 @@ func TestEveryRuleTypeHasItsKeyword(t *testing.T) {
 	}
 }
 
+// A proxy whose test failed reads 0; one never tested has no delay.
+func TestFailedTestsTellFromUntested(t *testing.T) {
+	engine := openEngine(t, TunNone)
+	server := target(t)
+	source := fmt.Sprintf(`mixed-port: %d
+proxies:
+  - {name: dead, type: http, server: 127.0.0.1, port: %d}
+proxy-groups:
+  - {name: PROXY, type: select, url: %s, proxies: [DIRECT, dead]}
+rules:
+  - MATCH,PROXY
+`, freePort(t), freePort(t), server.URL+"/generate_204")
+	if err := engine.Start(Profile{Config: []byte(source)}); err != nil {
+		t.Fatal(err)
+	}
+	defer engine.Stop()
+	if err := engine.HealthCheck(context.Background(), "PROXY"); err != nil {
+		t.Fatal(err)
+	}
+	delays := map[string]*uint32{}
+	for _, group := range engine.ListGroups(controlpb.GroupSort_GROUP_SORT_DELAY, false) {
+		for _, proxy := range group.GetProxies() {
+			delays[group.GetName()+"/"+proxy.GetName()] = proxy.DelayMs
+		}
+	}
+	if delay := delays["PROXY/DIRECT"]; delay == nil || *delay == 0 {
+		t.Errorf("DIRECT after its test: %v", delay)
+	}
+	if delay := delays["PROXY/dead"]; delay == nil || *delay != 0 {
+		t.Errorf("dead after its test: %v, want 0", delay)
+	}
+	if delay := delays[globalGroup+"/dead"]; delay != nil {
+		t.Errorf("GLOBAL tests with its own URL, which nothing tested: %v", *delay)
+	}
+}
+
 func isListenError(err error) bool {
 	var opError *net.OpError
 	return errors.As(err, &opError) && opError.Op == "listen"
@@ -235,6 +271,11 @@ func TestQueriesAndOperations(t *testing.T) {
 	if proxyGroup.GetNow() != "direct-a" || proxyGroup.GetTestUrl() != testURL || len(proxyGroup.GetProxies()) != 2 {
 		t.Fatalf("PROXY = %v", proxyGroup)
 	}
+	for _, proxy := range proxyGroup.GetProxies() {
+		if proxy.DelayMs != nil {
+			t.Errorf("%s has a delay before any test: %d", proxy.GetName(), proxy.GetDelayMs())
+		}
+	}
 	if err := engine.HealthCheck(context.Background(), "PROXY"); err != nil {
 		t.Fatal(err)
 	}
@@ -243,7 +284,7 @@ func TestQueriesAndOperations(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, proxy := range group.GetProxies() {
-		if proxy.DelayMs == nil {
+		if proxy.GetDelayMs() == 0 {
 			t.Errorf("%s has no delay after a health check", proxy.GetName())
 		}
 	}
