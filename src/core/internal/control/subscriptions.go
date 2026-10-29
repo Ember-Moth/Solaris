@@ -96,6 +96,8 @@ type subscriptions struct {
 	stopPump chan struct{}
 	pumpDone chan struct{}
 	stopLogs func()
+	// logsStarting is set while a goroutine attaches to mihomo's logger outside mu.
+	logsStarting bool
 }
 
 func newSubscriptions(engine Engine) *subscriptions {
@@ -106,9 +108,9 @@ func newSubscriptions(engine Engine) *subscriptions {
 // on the Windows pipe is when the connection closes.
 func (s *subscriptions) subscribe(ctx context.Context, caller peer.Identity, kind topic, level controlpb.LogLevel) (uint64, error) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.sweepLocked()
 	if len(s.byID) >= maxSubscriptions {
+		s.mu.Unlock()
 		return 0, errTooManySubscriptions
 	}
 	id := s.newIDLocked()
@@ -121,16 +123,44 @@ func (s *subscriptions) subscribe(ctx context.Context, caller peer.Identity, kin
 	}
 	sub.detach = context.AfterFunc(ctx, func() { s.remove(id) })
 	s.byID[id] = sub
-	if kind == topicLogs && s.stopLogs == nil {
-		s.stopLogs = s.engine.WatchLogs(s.onLog)
-	}
+	startLogs := kind == topicLogs && s.stopLogs == nil && !s.logsStarting
+	s.logsStarting = s.logsStarting || startLogs
 	if !s.pumping {
 		s.pumping = true
 		s.stopPump = make(chan struct{})
 		s.pumpDone = make(chan struct{})
 		go s.pump(s.stopPump, s.pumpDone)
 	}
+	s.mu.Unlock()
+	if startLogs {
+		s.attachLogs()
+	}
 	return id, nil
+}
+
+// attachLogs starts watching mihomo's logger. It runs without mu: attaching takes
+// mihomo's own lock, which mihomo holds while it waits for a watcher that may be
+// waiting for mu.
+func (s *subscriptions) attachLogs() {
+	stop := s.engine.WatchLogs(s.onLog)
+	s.mu.Lock()
+	s.logsStarting = false
+	if s.stopLogs == nil && s.hasLogsLocked() {
+		s.stopLogs, stop = stop, nil
+	}
+	s.mu.Unlock()
+	if stop != nil {
+		stop()
+	}
+}
+
+func (s *subscriptions) hasLogsLocked() bool {
+	for _, sub := range s.byID {
+		if sub.topic == topicLogs {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *subscriptions) newIDLocked() uint64 {
@@ -212,13 +242,8 @@ func (s *subscriptions) sweepLocked() {
 // returned function does the detaching and must run without s.mu, because the log
 // goroutine it waits for may be waiting for s.mu itself.
 func (s *subscriptions) releaseLogsLocked() func() {
-	if s.stopLogs == nil {
+	if s.stopLogs == nil || s.hasLogsLocked() {
 		return func() {}
-	}
-	for _, sub := range s.byID {
-		if sub.topic == topicLogs {
-			return func() {}
-		}
 	}
 	stop := s.stopLogs
 	s.stopLogs = nil

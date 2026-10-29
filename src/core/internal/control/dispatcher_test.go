@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"google.golang.org/protobuf/proto"
 
@@ -320,4 +321,28 @@ func TestLifecycleAndCoreMethods(t *testing.T) {
 	expectError(t, call(t, dispatcher, request(20, func(r *controlpb.Request) {
 		r.Method = &controlpb.Request_SetMode{SetMode: &controlpb.SetModeRequest{Mode: controlpb.Mode_MODE_GLOBAL}}
 	})), 20, CodeNotRunning)
+}
+
+func TestLogSubscriptionCarriesMihomoLines(t *testing.T) {
+	dispatcher := development(t)
+	subscribe := call(t, dispatcher, request(1, func(r *controlpb.Request) {
+		r.Method = &controlpb.Request_SubscribeLogs{SubscribeLogs: &controlpb.SubscribeLogsRequest{}}
+	}))
+	id := subscribe.GetSubscribe().GetSubscriptionId()
+	expectOK(t, call(t, dispatcher, request(2, func(r *controlpb.Request) {
+		r.Method = &controlpb.Request_Validate{Validate: &controlpb.ValidateRequest{ConfigYaml: profileYAML(freePort(t))}}
+	})))
+	var seen []string
+	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
+		poll := call(t, dispatcher, request(3, func(r *controlpb.Request) {
+			r.Method = &controlpb.Request_PollEvents{PollEvents: &controlpb.PollEventsRequest{SubscriptionId: id}}
+		}))
+		for _, event := range poll.GetPollEvents().GetEvents() {
+			seen = append(seen, event.GetLog().GetMessage())
+			if strings.Contains(event.GetLog().GetMessage(), "Initial configuration complete") {
+				return
+			}
+		}
+	}
+	t.Fatalf("no parse line from mihomo; got %q", seen)
 }
