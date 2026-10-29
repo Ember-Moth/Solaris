@@ -1664,15 +1664,17 @@ func (*GetStatusRequest) Descriptor() ([]byte, []int) {
 }
 
 type GetStatusResponse struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	State           RunState               `protobuf:"varint,1,opt,name=state,proto3,enum=mihomo_desktop.control.v1.RunState" json:"state,omitempty"`
-	Mode            Mode                   `protobuf:"varint,2,opt,name=mode,proto3,enum=mihomo_desktop.control.v1.Mode" json:"mode,omitempty"`
-	StartedAtUnixMs uint64                 `protobuf:"varint,3,opt,name=started_at_unix_ms,json=startedAtUnixMs,proto3" json:"started_at_unix_ms,omitempty"`
-	MemoryBytes     uint64                 `protobuf:"varint,4,opt,name=memory_bytes,json=memoryBytes,proto3" json:"memory_bytes,omitempty"`
-	ConnectionCount uint32                 `protobuf:"varint,5,opt,name=connection_count,json=connectionCount,proto3" json:"connection_count,omitempty"`
-	LastError       *Error                 `protobuf:"bytes,6,opt,name=last_error,json=lastError,proto3,oneof" json:"last_error,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	State              RunState               `protobuf:"varint,1,opt,name=state,proto3,enum=mihomo_desktop.control.v1.RunState" json:"state,omitempty"`
+	Mode               Mode                   `protobuf:"varint,2,opt,name=mode,proto3,enum=mihomo_desktop.control.v1.Mode" json:"mode,omitempty"`
+	StartedAtUnixMs    uint64                 `protobuf:"varint,3,opt,name=started_at_unix_ms,json=startedAtUnixMs,proto3" json:"started_at_unix_ms,omitempty"`
+	MemoryBytes        uint64                 `protobuf:"varint,4,opt,name=memory_bytes,json=memoryBytes,proto3" json:"memory_bytes,omitempty"`
+	ConnectionCount    uint32                 `protobuf:"varint,5,opt,name=connection_count,json=connectionCount,proto3" json:"connection_count,omitempty"`
+	LastError          *Error                 `protobuf:"bytes,6,opt,name=last_error,json=lastError,proto3,oneof" json:"last_error,omitempty"`
+	TunEnabled         bool                   `protobuf:"varint,7,opt,name=tun_enabled,json=tunEnabled,proto3" json:"tun_enabled,omitempty"`
+	SystemProxyEnabled bool                   `protobuf:"varint,8,opt,name=system_proxy_enabled,json=systemProxyEnabled,proto3" json:"system_proxy_enabled,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *GetStatusResponse) Reset() {
@@ -1745,6 +1747,20 @@ func (x *GetStatusResponse) GetLastError() *Error {
 		return x.LastError
 	}
 	return nil
+}
+
+func (x *GetStatusResponse) GetTunEnabled() bool {
+	if x != nil {
+		return x.TunEnabled
+	}
+	return false
+}
+
+func (x *GetStatusResponse) GetSystemProxyEnabled() bool {
+	if x != nil {
+		return x.SystemProxyEnabled
+	}
+	return false
 }
 
 type SetModeRequest struct {
@@ -3621,7 +3637,7 @@ const file_mihomo_desktop_protocol_control_proto_rawDesc = "" +
 	"\vStopRequest\"1\n" +
 	"\x15SetSystemProxyRequest\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\"\x12\n" +
-	"\x10GetStatusRequest\"\xd3\x02\n" +
+	"\x10GetStatusRequest\"\xa6\x03\n" +
 	"\x11GetStatusResponse\x129\n" +
 	"\x05state\x18\x01 \x01(\x0e2#.mihomo_desktop.control.v1.RunStateR\x05state\x123\n" +
 	"\x04mode\x18\x02 \x01(\x0e2\x1f.mihomo_desktop.control.v1.ModeR\x04mode\x12+\n" +
@@ -3629,7 +3645,10 @@ const file_mihomo_desktop_protocol_control_proto_rawDesc = "" +
 	"\fmemory_bytes\x18\x04 \x01(\x04R\vmemoryBytes\x12)\n" +
 	"\x10connection_count\x18\x05 \x01(\rR\x0fconnectionCount\x12D\n" +
 	"\n" +
-	"last_error\x18\x06 \x01(\v2 .mihomo_desktop.control.v1.ErrorH\x00R\tlastError\x88\x01\x01B\r\n" +
+	"last_error\x18\x06 \x01(\v2 .mihomo_desktop.control.v1.ErrorH\x00R\tlastError\x88\x01\x01\x12\x1f\n" +
+	"\vtun_enabled\x18\a \x01(\bR\n" +
+	"tunEnabled\x120\n" +
+	"\x14system_proxy_enabled\x18\b \x01(\bR\x12systemProxyEnabledB\r\n" +
 	"\v_last_error\"E\n" +
 	"\x0eSetModeRequest\x123\n" +
 	"\x04mode\x18\x01 \x01(\x0e2\x1f.mihomo_desktop.control.v1.ModeR\x04mode\"\\\n" +

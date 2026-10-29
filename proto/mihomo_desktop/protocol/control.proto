@@ -136,6 +136,8 @@ message GetStatusResponse {
   uint64 memory_bytes = 4;
   uint32 connection_count = 5;
   optional Error last_error = 6;
+  bool tun_enabled = 7;
+  bool system_proxy_enabled = 8;
 }
 message SetModeRequest { Mode mode = 1; }
 

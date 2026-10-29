@@ -136,3 +136,61 @@ def test_dropped_connection_fails_pending_calls() -> None:
                 await client.close()
 
     assert asyncio.run(scenario())
+
+
+def test_service_host_maps_status_groups_and_traffic() -> None:
+    pb = control_pb2
+    subscribed: list[int] = []
+
+    async def answer(request: control_pb2.Request) -> control_pb2.Response:
+        method = request.WhichOneof("method")
+        if method == "get_status":
+            return pb.Response(
+                get_status=pb.GetStatusResponse(
+                    state=pb.RUN_STATE_RUNNING,
+                    mode=pb.MODE_GLOBAL,
+                    connection_count=3,
+                    tun_enabled=True,
+                )
+            )
+        if method == "list_groups":
+            group = pb.ProxyGroup(
+                name="节点选择",
+                type="Selector",
+                now="香港 01",
+                proxies=[pb.Proxy(name="香港 01", type="VLESS", delay_ms=68), pb.Proxy(name="X")],
+            )
+            return pb.Response(list_groups=pb.ListGroupsResponse(groups=[group]))
+        if method == "subscribe_traffic":
+            subscribed.append(len(subscribed) + 1)
+            return pb.Response(subscribe=pb.SubscribeResponse(subscription_id=subscribed[-1]))
+        if method == "poll_events" and request.poll_events.subscription_id == 1:
+            # The first subscription has expired; the host must subscribe again.
+            return pb.Response(error=pb.Error(code="unknown_subscription", message="expired"))
+        sample = pb.TrafficSample(up_bytes_per_second=1, down_bytes_per_second=2)
+        return pb.Response(poll_events=pb.PollEventsResponse(events=[pb.Event(traffic=sample)]))
+
+    async def scenario() -> None:
+        server, opener = await serve(answer)
+        async with server:
+            host = ServiceHost(opener)
+            try:
+                status = await host.get_status()
+                assert (status.state, status.mode, status.tun_enabled) == (
+                    "running",
+                    "global",
+                    True,
+                )
+                (group,) = await host.list_groups()
+                assert group.selectable
+                assert [p.delay_ms for p in group.proxies] == [68, None]
+                (sample,) = await host.poll_traffic()
+                assert sample.down_bytes_per_second == 2
+                assert subscribed == [1, 2]
+                with pytest.raises(HostError) as raised:
+                    await host.start()
+                assert raised.value.code == "not_implemented"
+            finally:
+                await host.close()
+
+    asyncio.run(scenario())

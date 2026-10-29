@@ -27,6 +27,8 @@ module-root = "src"
 dev = [
     "pyright>=1.1.414",
     "pytest>=9.1.1",
+    "pytest-qt>=4.5.0",
+    "pyyaml>=6.0.3",
     "ruff>=0.16.9",
 ]
 
@@ -49,9 +51,15 @@ select = [
     "PT",       # pytest style
 ]
 
+[tool.ruff.lint.isort]
+known-first-party = ["mihomo_desktop", "tests"]
+
 [tool.ruff.lint.per-file-ignores]
-# Qt-facing API on ViewModels (slots, signals, properties) is camelCase to match QML.
-"src/mihomo_desktop/viewmodels/**" = ["N802", "N815"]
+# Qt-facing API on ViewModels (slots, signals, properties) is camelCase to match QML;
+# their Chinese UI copy uses fullwidth punctuation.
+"src/mihomo_desktop/viewmodels/**" = ["N802", "N815", "RUF001"]
+# Sample tables read better one row per line.
+"tests/support/simulated.py" = ["E501"]
 
 [tool.ruff.format]
 docstring-code-format = true
@@ -66,4 +74,6 @@ typeCheckingMode = "standard"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
+qt_api = "pyside6"
 addopts = "-ra --strict-markers"

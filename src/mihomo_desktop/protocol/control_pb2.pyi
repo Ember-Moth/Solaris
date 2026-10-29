@@ -256,20 +256,24 @@ class GetStatusRequest(_message.Message):
     def __init__(self) -> None: ...
 
 class GetStatusResponse(_message.Message):
-    __slots__ = ("state", "mode", "started_at_unix_ms", "memory_bytes", "connection_count", "last_error")
+    __slots__ = ("state", "mode", "started_at_unix_ms", "memory_bytes", "connection_count", "last_error", "tun_enabled", "system_proxy_enabled")
     STATE_FIELD_NUMBER: _ClassVar[int]
     MODE_FIELD_NUMBER: _ClassVar[int]
     STARTED_AT_UNIX_MS_FIELD_NUMBER: _ClassVar[int]
     MEMORY_BYTES_FIELD_NUMBER: _ClassVar[int]
     CONNECTION_COUNT_FIELD_NUMBER: _ClassVar[int]
     LAST_ERROR_FIELD_NUMBER: _ClassVar[int]
+    TUN_ENABLED_FIELD_NUMBER: _ClassVar[int]
+    SYSTEM_PROXY_ENABLED_FIELD_NUMBER: _ClassVar[int]
     state: RunState
     mode: Mode
     started_at_unix_ms: int
     memory_bytes: int
     connection_count: int
     last_error: Error
-    def __init__(self, state: _Optional[_Union[RunState, str]] = ..., mode: _Optional[_Union[Mode, str]] = ..., started_at_unix_ms: _Optional[int] = ..., memory_bytes: _Optional[int] = ..., connection_count: _Optional[int] = ..., last_error: _Optional[_Union[Error, _Mapping]] = ...) -> None: ...
+    tun_enabled: bool
+    system_proxy_enabled: bool
+    def __init__(self, state: _Optional[_Union[RunState, str]] = ..., mode: _Optional[_Union[Mode, str]] = ..., started_at_unix_ms: _Optional[int] = ..., memory_bytes: _Optional[int] = ..., connection_count: _Optional[int] = ..., last_error: _Optional[_Union[Error, _Mapping]] = ..., tun_enabled: _Optional[bool] = ..., system_proxy_enabled: _Optional[bool] = ...) -> None: ...
 
 class SetModeRequest(_message.Message):
     __slots__ = ("mode",)

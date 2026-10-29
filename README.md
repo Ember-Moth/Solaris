@@ -3,8 +3,9 @@
 mihomo 的 Windows / macOS 桌面客户端（PySide6 + Nuitka）。内核以 Go 库的形式内嵌：Windows 上运行在
 LocalSystem 服务里，macOS 上运行在 NetworkExtension 系统扩展里。设计见 [docs/architecture.md](docs/architecture.md)。
 
-项目处于骨架阶段：控制协议、帧编解码、方法分发和服务入口已经就位，内核（libclash engine）尚未接入，
-除 `GetInfo` 外的方法都返回 `not_implemented`。`mihomo-desktop` 是产品命名前的工作名，集中在
+项目处于骨架阶段：控制协议、帧编解码、方法分发和服务入口已经就位，界面已实现概览和代理两页（配合模拟宿主）。
+内核层 engine（直接内嵌 mihomo）尚未实现，服务端除 `GetInfo` 外的方法都返回 `not_implemented`。
+`mihomo-desktop` 是产品命名前的工作名，集中在
 `src/core/internal/product/product.go` 与 `src/mihomo_desktop/product.py`。
 
 ## 目录
@@ -33,6 +34,12 @@ uv sync
 uv run python scripts/gen_protocol.py
 ```
 
+修改 [DESIGN.md](DESIGN.md) 的 token 后重新生成 `src/mihomo_desktop/ui/components/Theme.qml`：
+
+```bash
+uv run python scripts/gen_theme.py
+```
+
 运行测试：
 
 ```bash
@@ -53,7 +60,13 @@ go -C src/core run ./service -socket /tmp/mihomo-desktop-dev.sock
 uv run python scripts/control_ping.py --socket /tmp/mihomo-desktop-dev.sock
 ```
 
-启动界面：
+用模拟宿主和示例数据预览界面（不需要服务；目前实现了概览和代理两页）：
+
+```bash
+uv run python scripts/preview.py
+```
+
+启动界面并连接真实服务（Windows 上是已安装的服务；其他平台需设置 `MIHOMO_DESKTOP_DEV_SOCKET` 指向开发服务）：
 
 ```bash
 uv run mihomo-desktop
