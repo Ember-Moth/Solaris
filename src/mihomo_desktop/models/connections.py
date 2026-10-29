@@ -3,7 +3,9 @@ filter and the sort.
 
 The core reports byte totals only, so a rate is the change in a connection's totals over
 the last few polls. Averaging over several polls also smooths over a poll that saw the same
-snapshot twice (TunnelHost.poll_connections)."""
+snapshot twice (TunnelHost.poll_connections): the core takes one a second, as often as the
+pages poll, so a poll now and then finds no new one. The overview ranks its busiest
+connections with the same rates."""
 
 from __future__ import annotations
 
@@ -52,9 +54,10 @@ class ConnectionsState:
     connections: tuple[TrackedConnection, ...]  # in the core's order, oldest first
 
 
-class ConnectionMonitor:
-    def __init__(self, host: TunnelHost, clock: Callable[[], float] = time.monotonic) -> None:
-        self._host = host
+class RateTracker:
+    """Each connection's rates over its last RATE_WINDOW polls."""
+
+    def __init__(self, clock: Callable[[], float] = time.monotonic) -> None:
         self._clock = clock
         # id -> (time, upload total, download total) for the last RATE_WINDOW polls
         self._samples: dict[str, deque[tuple[float, int, int]]] = {}
@@ -63,14 +66,7 @@ class ConnectionMonitor:
         """Drop the samples, so rates after a pause in polling start afresh."""
         self._samples.clear()
 
-    async def refresh(self) -> ConnectionsState:
-        status = await self._host.get_status()
-        if status.state != "running":
-            self._samples.clear()
-            return ConnectionsState(False, ())
-        return ConnectionsState(True, self._track(await self._host.poll_connections()))
-
-    def _track(self, connections: Iterable[Connection]) -> tuple[TrackedConnection, ...]:
+    def track(self, connections: Iterable[Connection]) -> tuple[TrackedConnection, ...]:
         now = self._clock()
         samples: dict[str, deque[tuple[float, int, int]]] = {}
         tracked = []
@@ -85,6 +81,23 @@ class ConnectionMonitor:
             tracked.append(TrackedConnection(connection, up_rate, down_rate))
         self._samples = samples
         return tuple(tracked)
+
+
+class ConnectionMonitor:
+    def __init__(self, host: TunnelHost, clock: Callable[[], float] = time.monotonic) -> None:
+        self._host = host
+        self._rates = RateTracker(clock)
+
+    def forget(self) -> None:
+        """Drop the samples, so rates after a pause in polling start afresh."""
+        self._rates.forget()
+
+    async def refresh(self) -> ConnectionsState:
+        status = await self._host.get_status()
+        if status.state != "running":
+            self._rates.forget()
+            return ConnectionsState(False, ())
+        return ConnectionsState(True, self._rates.track(await self._host.poll_connections()))
 
 
 def matches(tracked: TrackedConnection, query: str, network: str) -> bool:

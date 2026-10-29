@@ -9,6 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from mihomo_desktop.host.base import Connection, HostStatus, ProxyGroup, TrafficSample, TunnelHost
+from mihomo_desktop.models.connections import RateTracker
 
 HISTORY_LENGTH = 40
 RECENT_LIMIT = 5
@@ -16,7 +17,7 @@ RECENT_LIMIT = 5
 
 @dataclass(frozen=True)
 class ConnectionRate:
-    host: str
+    host: str  # the domain, or the destination address of a connection to an IP
     route: str  # "视频服务 · 香港 01", or the single hop such as "DIRECT"
     download_bytes_per_second: int
 
@@ -40,11 +41,10 @@ def _route(chains: tuple[str, ...]) -> str:
 class TunnelSession:
     def __init__(self, host: TunnelHost, clock: Callable[[], float] = time.monotonic) -> None:
         self._host = host
-        self._clock = clock
         self._down: deque[int] = deque([0] * HISTORY_LENGTH, maxlen=HISTORY_LENGTH)
         self._up: deque[int] = deque([0] * HISTORY_LENGTH, maxlen=HISTORY_LENGTH)
         self._latest: TrafficSample | None = None
-        self._seen: dict[str, tuple[int, float]] = {}
+        self._rates = RateTracker(clock)
 
     async def refresh(self, *, include_groups: bool = False) -> TunnelSnapshot:
         status = await self._host.get_status()
@@ -54,12 +54,12 @@ class TunnelSession:
                 self._down.append(sample.down_bytes_per_second)
                 self._up.append(sample.up_bytes_per_second)
                 self._latest = sample
-            recent = self._rates(await self._host.poll_connections())
+            recent = self._busiest(await self._host.poll_connections())
         else:
             self._down.append(0)
             self._up.append(0)
             self._latest = None
-            self._seen.clear()
+            self._rates.forget()
         groups = tuple(await self._host.list_groups()) if include_groups else None
         return TunnelSnapshot(
             status=status,
@@ -70,19 +70,17 @@ class TunnelSession:
             groups=groups,
         )
 
-    def _rates(self, connections: list[Connection]) -> tuple[ConnectionRate, ...]:
-        now = self._clock()
-        rates: list[tuple[int, int, ConnectionRate]] = []
-        seen: dict[str, tuple[int, float]] = {}
-        for connection in connections:
-            previous = self._seen.get(connection.id)
-            rate = 0
-            if previous is not None and now > previous[1]:
-                delta = max(connection.download_bytes - previous[0], 0)
-                rate = int(delta / (now - previous[1]))
-            seen[connection.id] = (connection.download_bytes, now)
-            item = ConnectionRate(connection.host, _route(connection.chains), rate)
-            rates.append((rate, connection.started_at_unix_ms, item))
-        self._seen = seen
-        rates.sort(key=lambda entry: (entry[0], entry[1]), reverse=True)
-        return tuple(item for _, _, item in rates[:RECENT_LIMIT])
+    def _busiest(self, connections: list[Connection]) -> tuple[ConnectionRate, ...]:
+        tracked = sorted(
+            self._rates.track(connections),
+            key=lambda t: (t.download_rate, t.connection.started_at_unix_ms),
+            reverse=True,
+        )
+        return tuple(
+            ConnectionRate(
+                t.connection.host or t.connection.destination,
+                _route(t.connection.chains),
+                t.download_rate,
+            )
+            for t in tracked[:RECENT_LIMIT]
+        )

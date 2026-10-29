@@ -3,7 +3,7 @@ from datetime import datetime
 
 import pytest
 
-from mihomo_desktop.host.base import Proxy
+from mihomo_desktop.host.base import Connection, HostStatus, Proxy, ProxyGroup, TrafficSample
 from mihomo_desktop.models import format as fmt
 from mihomo_desktop.models.proxies import main_group, resolve, sort_proxies
 from mihomo_desktop.models.tunnel import HISTORY_LENGTH, TunnelSession
@@ -104,3 +104,42 @@ def test_session_tracks_history_and_connection_rates() -> None:
         assert stopped.down_history[-1] == 0
 
     asyncio.run(scenario())
+
+
+def test_session_ranks_by_rates_over_several_polls() -> None:
+    """The core takes a snapshot a second, as often as the overview polls, so a poll may find
+    the last one again; the busiest connection keeps its rate meanwhile. A connection to an
+    IP shows its destination."""
+    now = [100.0]
+    snapshots: list[list[Connection]] = []
+
+    class Host:
+        async def get_status(self) -> HostStatus:
+            return HostStatus("running", "rule", 1, 0, 1, False, False)
+
+        async def poll_traffic(self) -> list[TrafficSample]:
+            return []
+
+        async def poll_connections(self) -> list[Connection]:
+            return snapshots.pop(0)
+
+        async def list_groups(self) -> list[ProxyGroup]:
+            return []
+
+    session = TunnelSession(Host(), clock=lambda: now[0])  # pyright: ignore[reportArgumentType]
+
+    async def poll(download: int) -> tuple[str, int]:
+        stream = Connection(
+            "a", "", "tcp", "MATCH", ("DIRECT",), "", 0, download, 1000, "", "10.0.0.2:8080"
+        )
+        snapshots.append([stream])
+        (busiest,) = (await session.refresh()).recent
+        now[0] += 1
+        return busiest.host, busiest.download_bytes_per_second
+
+    async def scenario() -> list[tuple[str, int]]:
+        return [await poll(d) for d in (0, 1000, 1000, 3000)]
+
+    hosts, rates = zip(*asyncio.run(scenario()), strict=True)
+    assert set(hosts) == {"10.0.0.2:8080"}
+    assert rates == (0, 1000, 500, 1000)
