@@ -91,6 +91,22 @@
         <translation>Can’t read the override file</translation>
     </message>
     <message>
+        <source>开发模式不支持 TUN 模式</source>
+        <translation>Development mode doesn’t support TUN mode</translation>
+    </message>
+    <message>
+        <source>开发模式不支持系统代理</source>
+        <translation>Development mode doesn’t support the system proxy</translation>
+    </message>
+    <message>
+        <source>开发模式不支持 TUN 模式和系统代理</source>
+        <translation>Development mode doesn’t support TUN mode or the system proxy</translation>
+    </message>
+    <message>
+        <source>无法保存设置</source>
+        <translation>Can’t save the settings</translation>
+    </message>
+    <message>
         <source>操作失败：{detail}</source>
         <translation>Operation failed: {detail}</translation>
     </message>

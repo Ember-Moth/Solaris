@@ -8,6 +8,7 @@ import pytest
 from mihomo_desktop.host.base import HostError, RunOptions
 from mihomo_desktop.models.library import RETRY_AFTER_S, ProfileLibrary
 from mihomo_desktop.models.profiles import KIND_FILE, ProfileError, Usage
+from mihomo_desktop.models.settings import Settings
 from mihomo_desktop.models.store import ProfileStore
 from tests.support.simulated import (
     NODES,
@@ -23,14 +24,21 @@ OTHER_CONFIG = "proxies:\n  - {name: 东京, type: ss, server: a.example.net, po
 
 
 class Scene:
-    def __init__(self, directory: Path, *, seeded: bool = True) -> None:
+    def __init__(self, directory: Path, *, seeded: bool = True, development: bool = False) -> None:
         self.now = NOW
+        self.settings = Settings()
         self.store = ProfileStore(directory)
         if seeded:
             seed_profiles(self.store, NOW)
-        self.host = SimulatedHost(clock=lambda: self.now)
+        self.host = SimulatedHost(clock=lambda: self.now, development=development)
         self.fetcher = SimulatedFetcher()
-        self.library = ProfileLibrary(self.store, self.host, self.fetcher, clock=lambda: self.now)
+        self.library = ProfileLibrary(
+            self.store,
+            self.host,
+            self.fetcher,
+            clock=lambda: self.now,
+            settings=lambda: self.settings,
+        )
 
 
 def run[T](scenario: Callable[[], Coroutine[Any, Any, T]]) -> T:
@@ -113,7 +121,8 @@ def test_switching_while_running_reloads_and_keeps_tun(tmp_path: Path) -> None:
     assert scene.host.reloads == 1
     assert scene.host.config is not None
     assert scene.host.config.config_yaml == OTHER_CONFIG
-    assert scene.host.config.options == RunOptions(tun_enabled=True, system_proxy_enabled=True)
+    # The switches stay as the tunnel runs them; the port comes from the settings.
+    assert scene.host.config.options == RunOptions(True, True, mixed_port=7890)
     assert scene.store.load().active == "sample-b"
 
 
@@ -254,21 +263,85 @@ def test_removal_states_what_removing_does(tmp_path: Path) -> None:
 
 def test_start_tunnel_uses_the_active_profile(tmp_path: Path) -> None:
     scene = Scene(tmp_path)
-    options = RunOptions(tun_enabled=False, system_proxy_enabled=True)
+    settings = Settings(system_proxy=True, mixed_port=7897, allow_lan=True)
+    scene.settings = settings
 
     async def scenario() -> None:
         with pytest.raises(HostError) as raised:
-            await scene.library.start_tunnel(options)
+            await scene.library.start_tunnel()
         assert raised.value.code == "already_running"
         await scene.host.stop()
-        await scene.library.start_tunnel(options)
+        await scene.library.start_tunnel()
 
     run(scenario)
     assert scene.host.config is not None
     assert scene.host.config.config_yaml == SAMPLE_CONFIG
-    assert scene.host.config.options == options
+    assert scene.host.config.options == RunOptions(False, True, 7897, True)
 
     empty = Scene(tmp_path / "empty", seeded=False)
     with pytest.raises(ProfileError) as raised:
-        run(lambda: empty.library.start_tunnel(options))
+        run(lambda: empty.library.start_tunnel())
     assert raised.value.code == "no_profile"
+
+
+def test_switches_reload_or_wait_for_the_next_start(tmp_path: Path) -> None:
+    scene = Scene(tmp_path)
+
+    async def scenario() -> None:
+        await scene.library.set_tun(False)
+        assert scene.host.reloads == 1
+        assert not (await scene.host.get_status()).tun_enabled
+        await scene.library.set_system_proxy(True)
+        assert (await scene.host.get_status()).system_proxy_enabled
+        await scene.library.apply_settings(Settings(mixed_port=1080, allow_lan=True))
+        assert scene.host.config is not None
+        assert scene.host.config.options == RunOptions(False, True, 1080, True)
+
+        await scene.host.stop()
+        await scene.library.set_tun(True)
+        await scene.library.set_system_proxy(False)
+        await scene.library.apply_settings(Settings(mixed_port=1081))
+        assert scene.host.reloads == 2  # nothing runs, so nothing reloads
+
+    run(scenario)
+
+
+@pytest.mark.parametrize(
+    ("settings", "code"),
+    [
+        (Settings(tun=True), "tun_unsupported"),
+        (Settings(system_proxy=True), "system_proxy_unsupported"),
+        (Settings(tun=True, system_proxy=True), "tun_and_system_proxy_unsupported"),
+    ],
+)
+def test_development_service_refuses_the_switches(
+    tmp_path: Path, settings: Settings, code: str
+) -> None:
+    scene = Scene(tmp_path, development=True)
+    scene.settings = settings
+
+    async def start() -> None:
+        await scene.host.stop()
+        await scene.library.start_tunnel()
+
+    with pytest.raises(ProfileError) as raised:
+        run(start)
+    assert raised.value.code == code
+
+
+def test_development_service_refuses_switching_on(tmp_path: Path) -> None:
+    scene = Scene(tmp_path, development=True)
+    for action, code in (
+        (lambda: scene.library.set_tun(True), "tun_unsupported"),
+        (lambda: scene.library.set_system_proxy(True), "system_proxy_unsupported"),
+    ):
+        with pytest.raises(ProfileError) as raised:
+            run(action)
+        assert raised.value.code == code
+    run(lambda: scene.library.set_system_proxy(False))  # switching off is fine
+
+    # Other failures keep their code.
+    scene.host.busy_ports.add(1080)
+    with pytest.raises(HostError) as failed:
+        run(lambda: scene.library.apply_settings(Settings(mixed_port=1080)))
+    assert failed.value.code == "apply_failed"

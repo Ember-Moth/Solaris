@@ -8,6 +8,7 @@ from dataclasses import dataclass
 
 from mihomo_desktop.host.base import TunnelHost
 from mihomo_desktop.models.library import ProfileLibrary
+from mihomo_desktop.models.settings import SettingsStore
 from mihomo_desktop.models.store import ProfileStore
 from mihomo_desktop.models.subscription import Fetcher
 from mihomo_desktop.viewmodels.common.async_runner import AsyncRunner
@@ -22,6 +23,7 @@ class ViewModels:
     runner: AsyncRunner
     host: TunnelHost
     library: ProfileLibrary
+    settings_store: SettingsStore
     shell: ShellViewModel
     overview: OverviewViewModel
     proxies: ProxiesViewModel
@@ -55,12 +57,16 @@ def compose(
     store: ProfileStore,
     fetcher: Fetcher,
     clock: Callable[[], float] = time.time,
+    *,
+    settings: SettingsStore | None = None,
 ) -> ViewModels:
-    """``clock`` dates profile updates and subscription expiry."""
+    """``clock`` dates profile updates and subscription expiry. The settings live beside the
+    profiles unless given."""
     runner = AsyncRunner()
-    library = ProfileLibrary(store, host, fetcher, clock)
+    settings_store = settings or SettingsStore(store.directory)
+    library = ProfileLibrary(store, host, fetcher, clock, settings=lambda: settings_store.current)
     shell = ShellViewModel(host, runner)
-    overview = OverviewViewModel(host, library, runner)
+    overview = OverviewViewModel(host, library, runner, settings_store)
     proxies = ProxiesViewModel(host, runner)
     profiles = ProfilesViewModel(library, runner, clock)
 
@@ -72,4 +78,4 @@ def compose(
     proxies.selectionApplied.connect(overview.refreshGroups)
     profiles.applied.connect(overview.refreshGroups)
     profiles.applied.connect(proxies.refresh)
-    return ViewModels(runner, host, library, shell, overview, proxies, profiles)
+    return ViewModels(runner, host, library, settings_store, shell, overview, proxies, profiles)

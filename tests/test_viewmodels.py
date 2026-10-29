@@ -7,7 +7,7 @@ import pytest
 from PySide6.QtCore import QObject
 from pytestqt.qtbot import QtBot
 
-from mihomo_desktop.host.base import HostError
+from mihomo_desktop.host.base import HostError, RunOptions
 from mihomo_desktop.host.service import ServiceHost
 from mihomo_desktop.host.transport import Streams
 from mihomo_desktop.models.store import ProfileStore
@@ -43,26 +43,54 @@ def test_overview_shows_the_running_tunnel(qtbot: QtBot, view_models: ViewModels
 
 
 def test_overview_actions(qtbot: QtBot, view_models: ViewModels) -> None:
-    overview = view_models.overview
+    overview, host = view_models.overview, view_models.host
+    assert isinstance(host, SimulatedHost)
     qtbot.waitUntil(lambda: prop(overview, "connected"))
     overview.setMode("global")
     qtbot.waitUntil(lambda: prop(overview, "mode") == "global")
+    # A switch changes the running tunnel and is kept for the next connection.
     overview.setSystemProxy(True)
     qtbot.waitUntil(lambda: prop(overview, "systemProxyEnabled"))
+    assert view_models.settings_store.current.system_proxy
     overview.toggleConnection()
     qtbot.waitUntil(lambda: not prop(overview, "connected"))
     assert prop(overview, "statusTitle") == "未连接"
     assert prop(overview, "recent") == []
     assert prop(overview, "downRate") == "—"
 
-    # Connecting again starts the active profile with what the switches show.
+    # While stopped the switches show, and change, what the next connection asks for.
+    assert (prop(overview, "tunEnabled"), prop(overview, "systemProxyEnabled")) == (False, True)
+    overview.setTun(True)
+    qtbot.waitUntil(lambda: prop(overview, "tunEnabled"))
+    assert view_models.settings_store.current.tun
+    assert host.reloads == 0
     overview.toggleConnection()
     qtbot.waitUntil(lambda: prop(overview, "connected"))
-    host = view_models.host
-    assert isinstance(host, SimulatedHost)
     assert host.config is not None
-    assert host.config.options.tun_enabled
-    assert host.config.options.system_proxy_enabled
+    assert host.config.options == RunOptions(True, True, mixed_port=7890)
+
+
+def test_development_service_explains_the_switches(qtbot: QtBot, tmp_path: Path) -> None:
+    store = ProfileStore(tmp_path)
+    seed_profiles(store, NOW)
+    built = compose(SimulatedHost(development=True), store, SimulatedFetcher(), lambda: NOW)
+    built.start()
+    try:
+        overview = built.overview
+        qtbot.waitUntil(lambda: prop(overview, "connected"))
+        overview.setTun(True)
+        qtbot.waitUntil(lambda: prop(overview, "switchError") == "开发模式不支持 TUN 模式")
+        assert prop(overview, "statusDetail") == "开发模式不支持 TUN 模式"
+        assert not prop(overview, "tunEnabled")
+        assert not built.settings_store.current.tun  # a refusal is not kept
+
+        overview.setSystemProxy(True)
+        qtbot.waitUntil(lambda: prop(overview, "switchError") == "开发模式不支持系统代理")
+        overview.setMode("direct")  # another action clears the hint
+        qtbot.waitUntil(lambda: prop(overview, "mode") == "direct")
+        assert prop(overview, "switchError") == ""
+    finally:
+        built.shutdown()
 
 
 def test_selecting_a_proxy_updates_both_screens(qtbot: QtBot, view_models: ViewModels) -> None:

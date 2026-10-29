@@ -6,7 +6,9 @@ system proxy state the host reports, so neither is interrupted.
 
 Every config goes to the host with the overrides that apply to it (docs/architecture.md
 §7.4): the global one, then the profile's own. An override is stored only after the host
-accepted it on the profile it affects.
+accepted it on the profile it affects. The run options come from the settings (§7.6): a
+start asks for the TUN and system proxy the user chose, a reload keeps the ones the tunnel
+runs with, and both use the settings' mixed port and LAN access.
 
 Every method runs on the asyncio thread and returns the new ProfileList. Downloads and
 their validation run outside the lock; writing the store and reloading hold it, so an
@@ -19,12 +21,13 @@ from __future__ import annotations
 import asyncio
 import time
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from mihomo_desktop.host.base import HostStatus, RunOptions, TunnelConfig, TunnelHost
+from mihomo_desktop.host.base import HostError, HostStatus, RunOptions, TunnelConfig, TunnelHost
 from mihomo_desktop.models.profiles import (
     KIND_FILE,
     KIND_SUBSCRIPTION,
@@ -34,6 +37,7 @@ from mihomo_desktop.models.profiles import (
     Usage,
     count_proxies,
 )
+from mihomo_desktop.models.settings import Settings
 from mihomo_desktop.models.store import ProfileStore
 from mihomo_desktop.models.subscription import (
     Fetcher,
@@ -56,12 +60,33 @@ class Removal:
     successor: Profile | None  # the profile in use afterwards, when ``active``
 
 
-def live_options(status: HostStatus) -> RunOptions:
-    """Options that keep the tunnel as it runs. The port and LAN access come from the
-    settings page (roadmap M3); until then the profile's own values apply."""
-    return RunOptions(
-        tun_enabled=status.tun_enabled, system_proxy_enabled=status.system_proxy_enabled
+def live_options(status: HostStatus, settings: Settings) -> RunOptions:
+    """Options that keep the TUN and system proxy as the tunnel runs them."""
+    return replace(
+        settings.run_options(),
+        tun_enabled=status.tun_enabled,
+        system_proxy_enabled=status.system_proxy_enabled,
     )
+
+
+@contextmanager
+def _naming_switches(options: RunOptions) -> Iterator[None]:
+    """A host that never creates a TUN or sets the system proxy, the development service
+    (docs/architecture.md §11), refuses them with ``unsupported_method``; say which switch."""
+    try:
+        yield
+    except HostError as error:
+        if error.code != "unsupported_method":
+            raise
+        if options.tun_enabled and options.system_proxy_enabled:
+            code = "tun_and_system_proxy_unsupported"
+        elif options.tun_enabled:
+            code = "tun_unsupported"
+        elif options.system_proxy_enabled:
+            code = "system_proxy_unsupported"
+        else:
+            raise
+        raise ProfileError(code, error.message) from error
 
 
 class ProfileLibrary:
@@ -71,11 +96,14 @@ class ProfileLibrary:
         host: TunnelHost,
         fetcher: Fetcher,
         clock: Callable[[], float] = time.time,
+        settings: Callable[[], Settings] = Settings,
     ) -> None:
+        """``settings`` returns the current settings; it is read on the asyncio thread."""
         self._store = store
         self._host = host
         self._fetcher = fetcher
         self._clock = clock
+        self._settings = settings
         self._lock = asyncio.Lock()
         self._list = store.load()
         self._failed: dict[str, float] = {}  # profile id -> time of the failed update
@@ -263,13 +291,50 @@ class ProfileLibrary:
             return self._list
 
     # -- tunnel ------------------------------------------------------------------------------
-    async def start_tunnel(self, options: RunOptions) -> None:
+    async def start_tunnel(self) -> None:
+        """Start the active profile with the settings' run options."""
         async with self._lock:
             active = self._list.active_profile()
             if active is None:
                 raise ProfileError("no_profile", "import a profile first")
             text = await asyncio.to_thread(self._store.read_config, active.id)
-            await self._host.start(TunnelConfig(text, await self._overrides(active.id), options))
+            options = self._settings().run_options()
+            config = TunnelConfig(text, await self._overrides(active.id), options)
+            with _naming_switches(options):
+                await self._host.start(config)
+
+    async def set_tun(self, enabled: bool) -> None:
+        """Reload the running tunnel with TUN on or off; a stopped one starts with the
+        setting, so there is nothing to do."""
+        async with self._lock:
+            status = await self._running()
+            if status is not None:
+                options = replace(live_options(status, self._settings()), tun_enabled=enabled)
+                await self._reload_active(options)
+
+    async def set_system_proxy(self, enabled: bool) -> None:
+        async with self._lock:
+            if await self._running() is None:
+                return
+            with _naming_switches(RunOptions(system_proxy_enabled=enabled)):
+                await self._host.set_system_proxy(enabled)
+
+    async def apply_settings(self, settings: Settings) -> None:
+        """Reload the running tunnel with the mixed port and LAN access of ``settings``,
+        before they are stored: if the core refuses them, the old ones stay in use."""
+        async with self._lock:
+            status = await self._running()
+            if status is not None:
+                await self._reload_active(live_options(status, settings))
+
+    async def _reload_active(self, options: RunOptions) -> None:
+        active = self._list.active_profile()
+        if active is None:
+            raise ProfileError("no_profile", "import a profile first")
+        text = await asyncio.to_thread(self._store.read_config, active.id)
+        config = TunnelConfig(text, await self._overrides(active.id), options)
+        with _naming_switches(options):
+            await self._host.reload(config)
 
     async def _running(self) -> HostStatus | None:
         status = await self._host.get_status()
@@ -284,7 +349,8 @@ class ProfileLibrary:
         status = await self._running()
         if status is not None:
             overrides = await self._overrides(profile_id)
-            await self._host.reload(TunnelConfig(text, overrides, live_options(status)))
+            options = live_options(status, self._settings())
+            await self._host.reload(TunnelConfig(text, overrides, options))
 
     async def _overrides(
         self,
