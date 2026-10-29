@@ -1,9 +1,12 @@
 import QtQuick
 import QtQuick.Controls.Basic
 
-// input: a white field with the border-control outline and body-sm text.
+// input: a white field with the border-control outline and body-sm text; `error` turns the
+// outline danger, and the caller writes the error under the field.
 TextField {
     id: control
+
+    property bool error
 
     implicitHeight: Theme.controlMd
     leftPadding: 10
@@ -25,7 +28,7 @@ TextField {
         radius: Theme.radiusSm
         color: Theme.surface
         border.width: 1
-        border.color: Theme.borderControl
+        border.color: control.error ? Theme.danger : Theme.borderControl
 
         FocusRing {
             targetRadius: Theme.radiusSm

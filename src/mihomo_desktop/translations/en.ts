@@ -171,10 +171,6 @@
         <source>日志</source>
         <translation>Logs</translation>
     </message>
-    <message>
-        <source>设置</source>
-        <translation>Settings</translation>
-    </message>
 </context>
 <context>
     <name>OverrideDialog</name>
@@ -643,6 +639,136 @@ prepend-rules:
     </message>
 </context>
 <context>
+    <name>SettingsPage</name>
+    <message>
+        <source>设置</source>
+        <translation>Settings</translation>
+    </message>
+    <message>
+        <source>接管方式</source>
+        <translation>Inbound</translation>
+    </message>
+    <message>
+        <source>TUN 模式</source>
+        <translation>TUN mode</translation>
+    </message>
+    <message>
+        <source>系统代理</source>
+        <translation>System proxy</translation>
+    </message>
+    <message>
+        <source>混合端口</source>
+        <translation>Mixed port</translation>
+    </message>
+    <message>
+        <source>允许局域网连接</source>
+        <translation>Allow LAN connections</translation>
+    </message>
+    <message>
+        <source>同一网络的设备可以使用混合端口</source>
+        <translation>Devices on the same network can use the mixed port</translation>
+    </message>
+    <message>
+        <source>界面</source>
+        <translation>Interface</translation>
+    </message>
+    <message>
+        <source>语言</source>
+        <translation>Language</translation>
+    </message>
+    <message>
+        <source>外观</source>
+        <translation>Appearance</translation>
+    </message>
+    <message>
+        <source>启动</source>
+        <translation>Startup</translation>
+    </message>
+    <message>
+        <source>登录时打开</source>
+        <translation>Open at login</translation>
+    </message>
+    <message>
+        <source>打开系统设置</source>
+        <translation>Open System Settings</translation>
+    </message>
+    <message>
+        <source>关闭窗口时</source>
+        <translation>When closing the window</translation>
+    </message>
+    <message>
+        <source>隧道继续运行</source>
+        <translation>The tunnel keeps running</translation>
+    </message>
+    <message>
+        <source>关于</source>
+        <translation>About</translation>
+    </message>
+    <message>
+        <source>版本</source>
+        <translation>Version</translation>
+    </message>
+    <message>
+        <source>服务</source>
+        <translation>Service</translation>
+    </message>
+    <message>
+        <source>内核</source>
+        <translation>Core</translation>
+    </message>
+    <message>
+        <source>控制协议</source>
+        <translation>Control protocol</translation>
+    </message>
+    <message>
+        <source>许可证</source>
+        <translation>License</translation>
+    </message>
+    <message>
+        <source>项目主页</source>
+        <translation>Project page</translation>
+    </message>
+</context>
+<context>
+    <name>SettingsViewModel</name>
+    <message>
+        <source>跟随系统</source>
+        <translation>System</translation>
+    </message>
+    <message>
+        <source>浅色</source>
+        <translation>Light</translation>
+    </message>
+    <message>
+        <source>深色</source>
+        <translation>Dark</translation>
+    </message>
+    <message>
+        <source>留在菜单栏</source>
+        <translation>Keep in menu bar</translation>
+    </message>
+    <message>
+        <source>留在托盘</source>
+        <translation>Keep in tray</translation>
+    </message>
+    <message>
+        <source>退出界面</source>
+        <translation>Quit the app</translation>
+    </message>
+    <message>
+        <source>仅安装版可用</source>
+        <translation>Only in the installed app</translation>
+    </message>
+    <message>
+        <source>需要在系统设置的登录项中允许</source>
+        <translation>Allow it under Login Items in System Settings</translation>
+    </message>
+    <message>
+        <source>端口应在 {low}–{high} 之间</source>
+        <translation>Enter a port from {low} to {high}</translation>
+    </message>
+</context>
+<context>
     <name>ShellViewModel</name>
     <message>
         <source>概览</source>
@@ -698,6 +824,21 @@ Protocol v{protocol}</translation>
     <message>
         <source>近 40 秒下载与上传速率</source>
         <translation>Download and upload rates, last 40 seconds</translation>
+    </message>
+</context>
+<context>
+    <name>TrayIcon</name>
+    <message>
+        <source>出站模式</source>
+        <translation>Outbound mode</translation>
+    </message>
+    <message>
+        <source>打开主窗口</source>
+        <translation>Open main window</translation>
+    </message>
+    <message>
+        <source>退出界面（隧道保持运行）</source>
+        <translation>Quit (the tunnel keeps running)</translation>
     </message>
 </context>
 <context>

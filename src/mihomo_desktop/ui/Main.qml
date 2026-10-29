@@ -13,16 +13,61 @@ ApplicationWindow {
     required property OverviewViewModel overviewViewModel
     required property ProxiesViewModel proxiesViewModel
     required property ProfilesViewModel profilesViewModel
+    required property SettingsViewModel settingsViewModel
+    required property DesktopViewModel desktopViewModel
+
+    // Bring the window back from the tray, the Dock or a second launch.
+    function present() {
+        if (visibility === Window.Minimized)
+            showNormal()
+        else
+            show()
+        raise()
+        requestActivate()
+    }
 
     width: Theme.windowDefaultWidth
     height: Theme.windowDefaultHeight
     minimumWidth: Theme.windowMinWidth
     minimumHeight: Theme.windowMinHeight
-    visible: true
+    visible: !desktopViewModel.startHidden
     title: Qt.application.name
     color: Theme.background
     font.family: Fonts.resolve(Theme.type.bodyMd.fontFamily)
     font.pixelSize: Theme.type.bodyMd.fontSize
+
+    // Closing the window never stops the tunnel: it either stays in the tray or the UI quits.
+    onClosing: close => {
+        if (desktopViewModel.hideOnClose) {
+            close.accepted = false
+            hide()
+        } else {
+            desktopViewModel.quit()
+        }
+    }
+
+    Connections {
+        target: window.desktopViewModel
+
+        function onShowWindowRequested() {
+            window.present()
+        }
+
+        function onReopened() {
+            if (!window.visible)
+                window.present()
+        }
+    }
+
+    Loader {
+        active: window.desktopViewModel.trayAvailable
+
+        sourceComponent: TrayIcon {
+            desktop: window.desktopViewModel
+            overview: window.overviewViewModel
+            onShowWindow: window.present()
+        }
+    }
 
     RowLayout {
         anchors.fill: parent
@@ -62,8 +107,9 @@ ApplicationWindow {
                 title: qsTr("日志")
             }
 
-            PlaceholderPage {
-                title: qsTr("设置")
+            SettingsPage {
+                settings: window.settingsViewModel
+                overview: window.overviewViewModel
             }
         }
     }
