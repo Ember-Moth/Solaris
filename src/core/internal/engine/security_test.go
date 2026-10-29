@@ -1,0 +1,210 @@
+package engine
+
+import (
+	"context"
+	"errors"
+	"go/ast"
+	"go/build"
+	"go/parser"
+	"go/token"
+	"go/types"
+	"net"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"testing"
+	"time"
+
+	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/constant/features"
+	"github.com/metacubex/mihomo/hub/route"
+)
+
+// Regression tests for the five requirements of docs/architecture.md §3.3, in order.
+
+// #1: no build carries the cmfa tag, which turns IsSafePath into "always true".
+func TestSecurity1NoCMFABuild(t *testing.T) {
+	if features.CMFA {
+		t.Fatal("this binary was built with the cmfa tag")
+	}
+	// cmfa.go joins the package only under the tag, and does not type-check.
+	tagged := build.Default
+	tagged.BuildTags = []string{"cmfa"}
+	if ok, err := tagged.MatchFile(".", "cmfa.go"); err != nil || !ok {
+		t.Fatalf("cmfa.go is not part of a cmfa build: %v", err)
+	}
+	if ok, _ := build.Default.MatchFile(".", "cmfa.go"); ok {
+		t.Fatal("cmfa.go is part of the normal build")
+	}
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "cmfa.go", nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := (&types.Config{}).Check("engine", fset, []*ast.File{file}, nil); err == nil {
+		t.Fatal("cmfa.go type-checks, so a cmfa build would succeed")
+	}
+	if err := checkPathSandbox(C.Path.HomeDir()); err != nil {
+		t.Fatalf("the sandbox self-check fails in a normal build: %v", err)
+	}
+}
+
+// #2: the controller fields are cleared last, after the override, in every mode.
+func TestSecurity2ControllerIsAlwaysCleared(t *testing.T) {
+	const controller = `
+external-controller: 0.0.0.0:9090
+external-controller-tls: 0.0.0.0:9443
+external-controller-unix: mihomo.sock
+external-controller-pipe: \\.\pipe\mihomo
+external-doh-server: /dns-query
+external-ui: ui
+external-ui-name: zashboard
+external-ui-url: https://example.invalid/ui.zip
+secret: hunter2
+`
+	override := `{"external-controller": "0.0.0.0:9091", "external-controller-pipe": "\\\\.\\pipe\\override",
+		"secret": "again", "external-doh-server": "/again"}`
+	for _, mode := range []TunMode{TunNone, TunOwned} {
+		cfg := admitted(t, mode, Profile{Config: []byte(minimal + controller), Override: []byte(override)})
+		c := cfg.Controller
+		if c.ExternalController != "" || c.ExternalControllerTLS != "" || c.ExternalControllerUnix != "" ||
+			c.ExternalControllerPipe != "" || c.ExternalDohServer != "" || c.Secret != "" ||
+			c.ExternalUI != "" || c.ExternalUIName != "" || c.ExternalUIURL != "" {
+			t.Fatalf("%v: controller survived admission: %+v", mode, c)
+		}
+	}
+}
+
+// #3: embed mode is on, so even a controller started by mistake cannot restart the
+// process, rewrite the configuration or upgrade the core.
+func TestSecurity3EmbedModeGuardsAStrayController(t *testing.T) {
+	openEngine(t, TunNone)
+	dir, err := os.MkdirTemp("", "md-ctl-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+	socket := filepath.Join(dir, "c.sock")
+	route.ReCreateServer(&route.Config{UnixAddr: socket})
+	defer route.ReCreateServer(&route.Config{})
+
+	client := &http.Client{Timeout: 5 * time.Second, Transport: &http.Transport{
+		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return (&net.Dialer{}).DialContext(ctx, "unix", socket)
+		},
+	}}
+	status := func(method, path string) int {
+		request, err := http.NewRequest(method, "http://controller"+path, strings.NewReader("{}"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		response, err := client.Do(request)
+		if err != nil {
+			t.Fatalf("%s %s: %v", method, path, err)
+		}
+		response.Body.Close()
+		return response.StatusCode
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		conn, err := net.Dial("unix", socket)
+		if err == nil {
+			conn.Close()
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("the stray controller never listened: %v", err)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if got := status(http.MethodGet, "/version"); got != http.StatusOK {
+		t.Fatalf("GET /version = %d; the controller is not really up", got)
+	}
+	for _, call := range []struct{ method, path string }{
+		{http.MethodPost, "/restart"},
+		{http.MethodPut, "/configs"},
+		{http.MethodPatch, "/configs"},
+		{http.MethodPost, "/configs/geo"},
+		{http.MethodPost, "/upgrade"},
+		{http.MethodPost, "/upgrade/geo"},
+		{http.MethodPatch, "/rules/disable"},
+	} {
+		if got := status(call.method, call.path); got < 400 {
+			t.Errorf("%s %s = %d, want it refused", call.method, call.path, got)
+		}
+	}
+}
+
+// #4: provider paths stay local by the platform's own rules, and IsSafePath stays on
+// behind them: no SKIP_SAFE_PATH_CHECK, no SAFE_PATHS.
+func TestSecurity4ProviderPathsStayInHome(t *testing.T) {
+	escapes := []string{"../outside.yaml", "providers/../../outside.yaml", filepath.Join(os.TempDir(), "abs.yaml")}
+	if runtime.GOOS == "windows" {
+		escapes = append(escapes, `..\outside.yaml`, `providers\..\..\outside.yaml`, `C:\Windows\win.ini`,
+			`\\server\share\p.yaml`, `C:relative.yaml`, `NUL`)
+	}
+	for _, kind := range []string{"proxy-providers", "rule-providers"} {
+		for _, path := range escapes {
+			source := minimal + kind + ":\n  p:\n    type: file\n    behavior: classical\n    path: '" + path + "'\n"
+			if _, err := admit(profileOf(source), TunNone); !errors.Is(err, ErrInvalidConfig) {
+				t.Errorf("%s path %q: admit = %v, want ErrInvalidConfig", kind, path, err)
+			}
+		}
+	}
+	local := minimal + "proxy-providers:\n  p:\n    type: http\n    url: http://127.0.0.1:1/p.yaml\n    path: providers/p.yaml\n"
+	cfg := admitted(t, TunNone, profileOf(local))
+	if cfg.Providers["p"] == nil {
+		t.Fatal("a local provider path was refused")
+	}
+
+	for name, env := range map[string]string{
+		"SKIP_SAFE_PATH_CHECK": "SKIP_SAFE_PATH_CHECK=true",
+		"SAFE_PATHS":           "SAFE_PATHS=" + os.TempDir(),
+	} {
+		cmd := exec.Command(os.Args[0], "-test.run=^$")
+		cmd.Env = append(os.Environ(), helperEnv+"=1", env)
+		output, err := cmd.CombinedOutput()
+		var exit *exec.ExitError
+		if !errors.As(err, &exit) || exit.ExitCode() != 3 || !strings.Contains(string(output), "refused:") {
+			t.Errorf("with %s the engine opened: %v\n%s", name, err, output)
+		}
+	}
+}
+
+// #5: node selections are stored, so a restart (and the next boot) returns to them.
+func TestSecurity5SelectionSurvivesRestart(t *testing.T) {
+	cfg := admitted(t, TunNone, profileOf(minimal+"profile: {store-selected: false}\n"))
+	if !cfg.Profile.StoreSelected {
+		t.Fatal("store-selected is off")
+	}
+
+	engine := openEngine(t, TunNone)
+	server := target(t)
+	profile := directProfile(freePort(t), server.URL+"/generate_204", "profile: {store-selected: false}")
+	if err := engine.Start(profile); err != nil {
+		t.Fatal(err)
+	}
+	if err := engine.SelectProxy("PROXY", "direct-b"); err != nil {
+		t.Fatal(err)
+	}
+	if err := engine.Stop(); err != nil {
+		t.Fatal(err)
+	}
+	if err := engine.Start(profile); err != nil {
+		t.Fatal(err)
+	}
+	group, err := engine.GetGroup("PROXY", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if group.GetNow() != "direct-b" {
+		t.Fatalf("after a restart PROXY uses %q, want direct-b", group.GetNow())
+	}
+	// Leave the stored choice where the other tests expect it.
+	if err := engine.SelectProxy("PROXY", "direct-a"); err != nil {
+		t.Fatal(err)
+	}
+}
