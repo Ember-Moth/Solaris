@@ -563,7 +563,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   月份名由 `QLocale` 的默认值给出，所以英文显示为 Oct 20、Dec 31, 2026。相对时间（`刚刚`、`5 分钟前`）是带
   `%n` 的文案。数字、单位和速率两种语言写法相同。
 - **语言选择**（`i18n.resolve_language`）按顺序取第一个有效值：
-  1. 设置页的选择（`settings.json` 的 `language`，见 7.6 节；`system` 表示跟随系统）。`app.main(language=…)`
+  1. 设置页的选择（设置项 `language`，见 7.6 节；`system` 表示跟随系统）。`app.main(language=…)`
      和 `scripts/preview.py --lang` 在启动时优先于它；
   2. 环境变量 `MIHOMO_DESKTOP_LANG=zh|en`，用于预览和测试，`scripts/preview.py --lang en` 等价；
   3. 系统的首选界面语言（`QLocale.system().uiLanguages()` 的第一项）：`zh` 开头用中文，其他一律用英文。
@@ -588,38 +588,32 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 
 ### 7.6 设置与桌面行为
 
-用户的设置存放在用户数据目录的 `settings.json`，由 `models/settings.py` 的 `SettingsStore` 读写。设置页
-（`viewmodels/settings.py`）、概览页的 TUN 与系统代理开关、托盘和关闭窗口的行为都读它。
+用户的设置由 `models/settings.py` 的 `SettingsStore` 接口提供，只有三件事：读取 `current`、写入
+`update(**changes)`、订阅变更 `subscribe(listener)`（回调收到改动前后的 `Settings`，在写入的线程上调用，
+返回取消订阅的函数）。设置页（`viewmodels/settings.py`）、概览页的 TUN 与系统代理开关、托盘和关闭窗口的行为
+都只依赖这个接口，并且通过订阅跟上变化，不论改动来自哪一页，还是以后从备份恢复。不接受的值抛
+`ValueError`，写不进去抛 `SettingsError`（`settings_unwritable`），这两种情况都不通知，设置页标题栏显示
+「无法保存设置：…」。
 
-```json
-{
-  "version": 1,
-  "language": "system",
-  "appearance": "system",
-  "close_action": "tray",
-  "launch_at_login": false,
-  "tun": false,
-  "system_proxy": false,
-  "mixed_port": 7890,
-  "allow_lan": false
-}
-```
+**临时实现，待迁移到 SQLite**：本地数据（配置、订阅、覆写、设置）之后统一存进一个 SQLite 数据库，并支持备份到
+iCloud / Google Drive，数据库结构和迁移另行设计。在那之前，`JsonSettingsStore` 把设置存成用户数据目录里的
+`settings.json`：一个 JSON 对象，原子替换，缺少或不接受的值取默认，读不了的文件改名为
+`settings.json.<时间戳>.bad`。这个文件格式不打算保留，也没有版本号。
 
-| 键 | 取值 | 默认 | 含义 |
-| --- | --- | --- | --- |
-| `language` | `system`、`zh`、`en` | `system` | 界面语言（7.5 节） |
-| `appearance` | `system`、`light`、`dark` | `system` | 外观；主题按它取色 |
-| `close_action` | `tray`、`quit` | `tray` | 关闭主窗口时留在托盘，还是退出界面；隧道都不受影响 |
-| `launch_at_login` | 布尔 | `false` | 登录时打开界面。以系统里的登录项为准，界面每次读到系统的状态就写回这里 |
-| `tun` | 布尔 | `false` | 概览页的 TUN 开关：下一次连接是否开启 TUN |
-| `system_proxy` | 布尔 | `false` | 概览页的系统代理开关：下一次连接是否设置系统代理 |
-| `mixed_port` | 1024–65535 | 7890 | 混合端口，总是覆盖配置里的 `mixed-port` |
-| `allow_lan` | 布尔 | `false` | 允许局域网连接（8 节"局域网暴露"） |
+每个设置项在字段元数据里标明范围（`settings.scope(name)`），供设计备份范围：`synced` 随账户同步，换一台设备
+恢复后照样适用；`local` 只在本机生效，恢复到别的设备上没有意义或有风险。
 
-- **读写**：写入与配置索引一样原子替换（7.2 节），只在值改变时写。缺少的键、类型不对或不在取值范围内的值取
-  默认值，不认识的键忽略，所以新增设置项不升格式版本；只有改变已有键的含义时才升版本。读不了的文件（不是
-  JSON、不认识的版本）改名为 `settings.json.<时间戳>.bad` 留存，然后用默认值。写入失败时内存里的设置保持
-  不变，设置页标题栏显示「无法保存设置：…」。
+| 设置项 | 取值 | 默认 | 范围 | 含义 |
+| --- | --- | --- | --- | --- |
+| `language` | `system`、`zh`、`en` | `system` | 同步 | 界面语言（7.5 节） |
+| `appearance` | `system`、`light`、`dark` | `system` | 同步 | 外观；主题按它取色 |
+| `close_action` | `tray`、`quit` | `tray` | 本机 | 关闭主窗口时留在托盘，还是退出界面；隧道都不受影响 |
+| `launch_at_login` | 布尔 | `false` | 本机 | 登录时打开界面。以系统里的登录项为准，界面每次读到系统的状态就写回这里 |
+| `tun` | 布尔 | `false` | 本机 | 概览页的 TUN 开关：下一次连接是否开启 TUN |
+| `system_proxy` | 布尔 | `false` | 本机 | 概览页的系统代理开关：下一次连接是否设置系统代理 |
+| `mixed_port` | 1024–65535 | 7890 | 本机 | 混合端口，总是覆盖配置里的 `mixed-port` |
+| `allow_lan` | 布尔 | `false` | 本机 | 允许局域网连接（8 节"局域网暴露"） |
+
 - **映射到 `RunOptions`**（7.1 节）：Start 用 `Settings.run_options()` 的四项；Reload 的 TUN 和系统代理取自
   `GetStatus`，端口和局域网连接取自设置。
   - **TUN 与系统代理**：开关在概览页，设置页显示同一个 ViewModel 的同一对开关，所以两页总是一致。隧道运行时，
