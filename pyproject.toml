@@ -34,7 +34,7 @@ dev = [
 extend-exclude = ["src/mihomo_desktop/protocol/*_pb2.py", "src/mihomo_desktop/protocol/*_pb2.pyi"]
 target-version = "py314"
 line-length = 100
-src = ["src", "tests", "packaging", "scripts"]
+src = ["src", "tests", "package", "scripts"]
 
 [tool.ruff.lint]
 select = [
@@ -58,7 +58,7 @@ docstring-code-format = true
 
 [tool.pyright]
 exclude = ["src/mihomo_desktop/protocol/*_pb2.py"]
-include = ["src", "tests", "packaging", "scripts"]
+include = ["src", "tests", "package", "scripts"]
 pythonVersion = "3.14"
 venvPath = "."
 venv = ".venv"

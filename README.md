@@ -15,7 +15,7 @@ LocalSystem 服务里，macOS 上运行在 NetworkExtension 系统扩展里。�
 | `src/core/` | Go 模块：`internal/` 是控制分发器、帧编解码等共享代码；`service/` 是 Windows 服务入口；`apple/` 编成 macOS 扩展用的 C archive |
 | `src/mihomo_desktop/` | Python UI：宿主客户端、models、viewmodels、QML |
 | `apple/` | macOS 管理库与系统扩展（待建 Xcode 工程） |
-| `packaging/` | Nuitka 入口与打包脚本 |
+| `package/` | Nuitka 入口与打包脚本 |
 | `scripts/` | 协议代码生成、开发工具 |
 | `testdata/` | Go 与 Python 共用的协议样本 |
 
