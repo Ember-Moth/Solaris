@@ -14,6 +14,7 @@ import (
 	"github.com/metacubex/mihomo/common/yaml"
 	"github.com/metacubex/mihomo/config"
 	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/constant/features"
 	"github.com/metacubex/mihomo/hub/executor"
 	"github.com/metacubex/mihomo/listener/inbound"
 )
@@ -552,6 +553,11 @@ func verifyAdmitted(cfg *config.Config, mode TunMode, options RunOptions) error 
 	}
 	if general.Tun.FileDescriptor != 0 && mode != TunFD {
 		return errors.New("tun.file-descriptor is only for fd mode")
+	}
+	// Without with_gvisor these stacks only fail once mihomo opens the TUN.
+	if stack := general.Tun.Stack; general.Tun.Enable && !features.WithGVisor &&
+		(stack == C.TunGvisor || stack == C.TunMixed) {
+		return fmt.Errorf("tun.stack %s needs a build with the with_gvisor tag", stack)
 	}
 	for name, listener := range cfg.Listeners {
 		if takesOverSystem(listener) {

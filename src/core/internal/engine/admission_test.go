@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/metacubex/mihomo/config"
+	"github.com/metacubex/mihomo/constant/features"
 )
 
 func admitted(t *testing.T, mode TunMode, profile Profile) *config.Config {
@@ -132,6 +133,23 @@ func TestOwnedTUNWritesTheTunSection(t *testing.T) {
 	profile.Options.TUN = false
 	if cfg := admitted(t, TunOwned, profile); cfg.General.Tun.Enable {
 		t.Fatal("tun is on although the options turn it off")
+	}
+}
+
+func TestOwnedTUNRejectsAStackThisBuildLacks(t *testing.T) {
+	if features.WithGVisor {
+		t.Skip("this build includes gVisor")
+	}
+	for _, stack := range []string{"gvisor", "mixed"} {
+		profile := profileOf(minimal + "tun: {stack: " + stack + "}\n")
+		profile.Options.TUN = true
+		if _, err := admit(profile, TunOwned); !errors.Is(err, ErrInvalidConfig) || !strings.Contains(err.Error(), "with_gvisor") {
+			t.Errorf("stack %s: admit = %v", stack, err)
+		}
+		profile.Options.TUN = false
+		if _, err := admit(profile, TunOwned); err != nil {
+			t.Errorf("stack %s with the TUN off: admit = %v", stack, err)
+		}
 	}
 }
 
