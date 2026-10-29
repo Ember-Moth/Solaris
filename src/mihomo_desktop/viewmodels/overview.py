@@ -70,7 +70,8 @@ class OverviewViewModel(QObject):
         self._refreshing = False
         self._busy = False
         self._ticks = 0
-        self._error = ""
+        self._error = ""  # the last action's failure, until the next action
+        self._refresh_error = ""  # the last refresh's failure, until one succeeds
         self._switch_error = ""
         self._timer = QTimer(self)
         self._timer.setInterval(REFRESH_MS)
@@ -111,6 +112,7 @@ class OverviewViewModel(QObject):
 
     def _applied(self, snapshot: TunnelSnapshot) -> None:
         self._refreshing = False
+        self._refresh_error = ""
         self._snapshot = snapshot
         if snapshot.groups is not None:
             self._groups = snapshot.groups
@@ -119,7 +121,7 @@ class OverviewViewModel(QObject):
     def _failed(self, error: BaseException) -> None:
         self._refreshing = False
         self._snapshot = None
-        self._error = failure_text(error)
+        self._refresh_error = failure_text(error)
         self.changed.emit()
 
     def _act(
@@ -204,8 +206,8 @@ class OverviewViewModel(QObject):
 
     @Property(str, notify=changed)
     def statusDetail(self) -> str:
-        if self._error:
-            return self._error
+        if self._error or self._refresh_error:
+            return self._error or self._refresh_error
         if not self._connected() or self._snapshot is None:
             return self.tr("隧道未运行")
         started = self._snapshot.status.started_at_unix_ms / 1000

@@ -7,7 +7,7 @@ import pytest
 from PySide6.QtCore import QObject
 from pytestqt.qtbot import QtBot
 
-from mihomo_desktop.host.base import HostError, RunOptions
+from mihomo_desktop.host.base import HostError, HostStatus, RunOptions
 from mihomo_desktop.host.service import ServiceHost
 from mihomo_desktop.host.transport import Streams
 from mihomo_desktop.models.store import ProfileStore
@@ -45,6 +45,24 @@ def test_overview_shows_the_running_tunnel(qtbot: QtBot, view_models: ViewModels
     assert prop(overview, "statusTitle") == "已连接"
     assert prop(overview, "nodeDelay") == "68 ms"
     assert len(prop(overview, "downPoints")) == 40
+
+
+def test_overview_recovers_when_the_service_answers_again(
+    qtbot: QtBot, view_models: ViewModels, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    overview, host = view_models.overview, view_models.host
+    assert isinstance(host, SimulatedHost)
+    qtbot.waitUntil(lambda: prop(overview, "connected"))
+
+    async def unavailable() -> HostStatus:
+        raise HostError("service_unavailable", "connection refused")
+
+    monkeypatch.setattr(host, "get_status", unavailable)
+    qtbot.waitUntil(lambda: prop(overview, "statusDetail") == "未能连接到服务")
+    assert not prop(overview, "connected")
+    monkeypatch.undo()
+    qtbot.waitUntil(lambda: prop(overview, "connected"))
+    assert prop(overview, "statusDetail").startswith("已运行 ")
 
 
 def test_overview_actions(qtbot: QtBot, view_models: ViewModels) -> None:
