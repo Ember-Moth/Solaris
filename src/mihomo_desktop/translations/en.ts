@@ -107,6 +107,10 @@
         <translation>Can’t save the settings</translation>
     </message>
     <message>
+        <source>无法更改登录时打开</source>
+        <translation>Can’t change “Open at login”</translation>
+    </message>
+    <message>
         <source>操作失败：{detail}</source>
         <translation>Operation failed: {detail}</translation>
     </message>

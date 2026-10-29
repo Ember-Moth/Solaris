@@ -37,6 +37,7 @@ _MESSAGES = {
         "Feedback", "开发模式不支持 TUN 模式和系统代理"
     ),
     "settings_unwritable": QT_TRANSLATE_NOOP("Feedback", "无法保存设置"),
+    "login_item_failed": QT_TRANSLATE_NOOP("Feedback", "无法更改登录时打开"),
 }
 # Codes whose message (a parse error, an HTTP status) helps the user fix the problem.
 _WITH_DETAIL = {
@@ -46,6 +47,7 @@ _WITH_DETAIL = {
     "file_unreadable",
     "override_unreadable",
     "settings_unwritable",
+    "login_item_failed",
 }
 
 
