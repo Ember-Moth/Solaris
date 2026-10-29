@@ -76,14 +76,16 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
 可以借鉴的有：配置补丁流水线的组织方式、fd 模式下启动 TUN 的写法、代理组与 provider 查询的实现。
 它面向移动端的一些假设在桌面上不成立，对应的要求列在 3.3 节。
 
-### 3.1 两种 TUN 模式
+### 3.1 TUN 模式
 
 | 模式 | 使用场景 | 路由 | TUN 来源 |
 | --- | --- | --- | --- |
 | fd 模式 | macOS NE | 宿主负责，`auto-route: false` | 宿主传入 fd（`tun.file-descriptor`） |
-| 自管模式 | Windows 服务；Mac 上的开发模式 | mihomo 负责，开启 `auto-route`、`auto-detect-interface`、`strict-route` | mihomo 自建 wintun 网卡或 utun |
+| 自管模式 | Windows 服务；CI 与测试虚拟机里的 TUN 测试 | mihomo 负责，开启 `auto-route`、`auto-detect-interface`、`strict-route` | mihomo 自建 wintun 网卡或 utun |
+| 无 TUN 模式 | 本机开发 | 不改路由 | 不创建 TUN，只开放回环地址上的混合端口 |
 
-配置流水线按模式参数化：fd 模式强制关闭配置里的 TUN 和自动路由，由宿主提供；自管模式按设置生成 TUN 段。
+配置流水线按模式参数化：fd 模式强制关闭配置里的 TUN 和自动路由，由宿主提供；自管模式按设置生成 TUN 段；
+无 TUN 模式无视用户配置和覆写，强制关闭 TUN，并把监听限制在回环地址（见第 11 节）。
 
 ### 3.2 engine 的职责
 
@@ -372,10 +374,19 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 
 ## 11. 开发与测试
 
-- **在 Mac 上调试 Windows 服务的逻辑**：服务二进制在非 Windows 平台可以作为前台进程运行。此时帧协议
-  跑在一个本地 socket 上，客户端校验降级为 uid 检查，用 `sudo` 运行时由 mihomo 自管 utun。这样
-  `WindowsServiceHost` 和全部方法都能在 Mac 上联调。这只是开发模式，不进入任何发布包；macOS 正式版
+- **在 Mac 上调试 Windows 服务的逻辑**：服务二进制在非 Windows 平台可以作为前台进程运行，以普通用户身份
+  启动；以 root 身份启动时直接拒绝运行。此时帧协议跑在一个本地 socket 上，客户端校验降级为 uid 检查，engine 使用无 TUN
+  模式。这样 `ServiceHost` 和全部方法都能在 Mac 上联调。这只是开发模式，不进入任何发布包；macOS 正式版
   走 provider message，不使用 socket。
+- **本机开发不得改动本机网络**：开发机就是日常使用的机器，开发模式必须满足以下各条，并有测试覆盖：
+  - 不创建 TUN；用户配置或覆写里的 `tun`、`auto-route`、`auto-redirect`、`tproxy-port`、`redir-port` 一律被清除；
+  - 混合端口和其他入站只监听 `127.0.0.1`，强制关闭 `allow-lan`；
+  - 不设置系统代理，不修改路由和系统 DNS；
+  - 请求开启 TUN 或系统代理的方法返回 `unsupported_method`。
+
+  验证真实流量时，用 `curl -x http://127.0.0.1:<混合端口>` 走代理。
+- **TUN 只在隔离环境里测试**：自管模式在 CI 的 Linux runner 上、独立的网络命名空间里测试；wintun 和
+  strict-route 在 Windows 测试虚拟机里验证；macOS NE 在单独的测试 Mac 或虚拟机上验证，不在开发机上运行。
 - **测试覆盖**：
   - engine：配置流水线的回归测试，对应 3.3 节各项；
   - 控制协议：帧头校验、超限拒绝、请求 ID 匹配、订阅缓冲与过期，Go 与 Python 两端用同一组样本互测；

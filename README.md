@@ -50,7 +50,9 @@ uv run pytest
 go -C src/core test ./...
 ```
 
-在 Mac 上联调服务：先以开发模式启动服务（监听本地 socket），再用脚本发一次 `GetInfo`。
+在 Mac 上联调服务：先以开发模式启动服务（监听本地 socket），再用脚本发一次 `GetInfo`。开发模式以普通用户
+运行，不创建 TUN、不改系统代理、路由和 DNS；需要 TUN 的测试只在 CI 或测试虚拟机里做
+（[architecture.md](docs/architecture.md) §11）。
 
 ```bash
 go -C src/core run ./service -socket /tmp/mihomo-desktop-dev.sock

@@ -12,12 +12,16 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/peer"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/server"
 )
+
+// The development server runs on the developer's own machine, so it must never change
+// that machine's network (docs/architecture.md §11). Refusing root means it cannot create
+// a TUN, routes or system DNS even if a later code path tried to.
+var errRoot = errors.New("the development server must not run as root: it never creates a TUN or changes the network")
 
 func run() error {
 	socket := flag.String("socket", "", "development socket path (required)")
@@ -25,10 +29,10 @@ func run() error {
 	if *socket == "" {
 		return errors.New("-socket is required: off Windows the service only runs as a development server")
 	}
-	allowedUID, err := developerUID()
-	if err != nil {
+	if err := refuseRoot(os.Geteuid()); err != nil {
 		return err
 	}
+	uid := uint32(os.Getuid())
 	if err := removeStaleSocket(*socket); err != nil {
 		return err
 	}
@@ -40,29 +44,17 @@ func run() error {
 		listener.Close()
 		return err
 	}
-	if os.Getuid() == 0 && allowedUID != 0 {
-		if err := os.Chown(*socket, int(allowedUID), -1); err != nil {
-			listener.Close()
-			return err
-		}
-	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	slog.Info("development control socket", "path", *socket, "uid", allowedUID)
-	return server.Serve(ctx, listener, peer.UnixSocketVerifier(allowedUID), newDispatcher(), slog.Default())
+	slog.Info("development control socket", "path", *socket, "uid", uid)
+	return server.Serve(ctx, listener, peer.UnixSocketVerifier(uid), newDispatcher(), slog.Default())
 }
 
-// developerUID is the user allowed to connect; under sudo that is the invoking user.
-func developerUID() (uint32, error) {
-	value := os.Getenv("SUDO_UID")
-	if value == "" || os.Getuid() != 0 {
-		return uint32(os.Getuid()), nil
+func refuseRoot(euid int) error {
+	if euid == 0 {
+		return errRoot
 	}
-	uid, err := strconv.ParseUint(value, 10, 32)
-	if err != nil {
-		return 0, fmt.Errorf("invalid SUDO_UID %q", value)
-	}
-	return uint32(uid), nil
+	return nil
 }
 
 func removeStaleSocket(path string) error {
