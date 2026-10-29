@@ -38,7 +38,7 @@ Switch {
 
             Behavior on x {
                 NumberAnimation {
-                    duration: 120
+                    duration: Motion.stateChange
                     easing.type: Easing.OutCubic
                 }
             }

@@ -46,6 +46,10 @@ ScrollView {
             if (page.importOpen)
                 page.closeImport()
         }
+
+        function onRemovalRequested() {
+            removeDialog.show(profileMenu.trigger)
+        }
     }
 
     ColumnLayout {
@@ -434,7 +438,7 @@ ScrollView {
             this.profile = profile
             // Triggering toggles `checked` itself, so it is set here rather than bound.
             autoUpdateItem.checked = profile.autoUpdate
-            popup(anchor, anchor.width - width, anchor.height + Theme.space1)
+            openBelow(anchor)
         }
 
         AppMenuItem {
@@ -452,11 +456,24 @@ ScrollView {
             onTriggered: page.profiles.copyLink(profileMenu.profile.id)
         }
 
+        AppMenuSeparator {}
+
         AppMenuItem {
             text: "删除"
             destructive: true
-            onTriggered: page.profiles.removeProfile(profileMenu.profile.id)
+            onTriggered: page.profiles.requestRemove(profileMenu.profile.id)
         }
+    }
+
+    ConfirmDialog {
+        id: removeDialog
+
+        title: page.profiles.removalTitle
+        message: page.profiles.removalText
+        confirmText: "删除"
+        destructive: true
+        onAccepted: page.profiles.confirmRemove()
+        onRejected: page.profiles.cancelRemove()
     }
 
     FileDialog {

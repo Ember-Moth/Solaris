@@ -1,7 +1,8 @@
 import QtQuick
 import QtQuick.Controls.Basic
 
-// One menu row. Checkable items show a check; destructive ones use danger text.
+// menu-item: text after a 14px check slot; checkable items show menu-check when checked,
+// destructive ones use danger text. Hover and keyboard highlight share one grey.
 MenuItem {
     id: item
 
@@ -9,7 +10,7 @@ MenuItem {
 
     implicitHeight: Theme.controlSm
     leftPadding: Theme.space2 + 14 + Theme.space2
-    rightPadding: Theme.space3
+    rightPadding: Theme.space2
     topPadding: 0
     bottomPadding: 0
     opacity: enabled ? 1 : 0.4
@@ -34,7 +35,7 @@ MenuItem {
     }
 
     background: Rectangle {
-        radius: Theme.radiusSm
+        radius: Theme.radiusXs
         color: item.highlighted ? Theme.surfaceSelected : "transparent"
     }
 }

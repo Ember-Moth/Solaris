@@ -230,6 +230,28 @@ def test_removing_profiles(tmp_path: Path) -> None:
     assert scene.store.load().active == "sample-c"
 
 
+def test_removal_states_what_removing_does(tmp_path: Path) -> None:
+    scene = Scene(tmp_path)
+    other = run(lambda: scene.library.removal("sample-b"))
+    assert (other.profile.id, other.active, other.successor) == ("sample-b", False, None)
+    with pytest.raises(ProfileError) as raised:
+        run(lambda: scene.library.removal("sample-a"))  # in use by the running tunnel
+    assert raised.value.code == "profile_in_use"
+
+    async def stopped() -> None:
+        await scene.host.stop()
+        active = await scene.library.removal("sample-a")
+        assert active.active
+        assert active.successor is not None
+        assert active.successor.id == "sample-b"
+        await scene.library.remove("sample-b")
+        await scene.library.remove("sample-c")
+        last = await scene.library.removal("sample-a")
+        assert (last.active, last.successor) == (True, None)
+
+    run(stopped)
+
+
 def test_start_tunnel_uses_the_active_profile(tmp_path: Path) -> None:
     scene = Scene(tmp_path)
     options = RunOptions(tun_enabled=False, system_proxy_enabled=True)

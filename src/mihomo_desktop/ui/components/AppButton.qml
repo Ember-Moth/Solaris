@@ -1,13 +1,15 @@
 import QtQuick
 import QtQuick.Controls.Basic
 
-// button-primary, button-secondary and button-compact.
+// button-primary, button-secondary, button-compact and button-destructive (confirmation
+// dialogs only).
 Button {
     id: control
 
     property string variant: "secondary"
     readonly property bool primary: variant === "primary"
     readonly property bool compact: variant === "compact"
+    readonly property bool destructive: variant === "destructive"
 
     implicitHeight: compact ? Theme.controlSm : Theme.controlMd
     leftPadding: compact ? Theme.space3 : 14
@@ -22,7 +24,7 @@ Button {
     contentItem: Text {
         text: control.text
         font: control.font
-        color: control.primary ? Theme.textOnPrimary : Theme.text
+        color: control.primary ? Theme.textOnPrimary : control.destructive ? Theme.danger : Theme.text
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight

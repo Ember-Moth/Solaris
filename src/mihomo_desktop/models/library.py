@@ -15,7 +15,7 @@ import asyncio
 import time
 import uuid
 from collections.abc import Callable
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -40,6 +40,15 @@ from mihomo_desktop.models.subscription import (
 DEFAULT_AUTO_UPDATE_HOURS = 12
 # After a failed automatic update, wait this long before the next attempt.
 RETRY_AFTER_S = 30 * 60
+
+
+@dataclass(frozen=True)
+class Removal:
+    """What removing a profile does, for the confirmation shown before it."""
+
+    profile: Profile
+    active: bool  # the profile is the one in use (the tunnel is stopped)
+    successor: Profile | None  # the profile in use afterwards, when ``active``
 
 
 def live_options(status: HostStatus) -> RunOptions:
@@ -198,11 +207,20 @@ class ProfileLibrary:
             await self._save(self._list.put(profile))
             return self._list
 
+    async def removal(self, profile_id: str) -> Removal:
+        """What ``remove`` would do now; raises as it would when the profile cannot go."""
+        profile = self._list.get(profile_id)
+        if profile_id != self._list.active:
+            return Removal(profile, active=False, successor=None)
+        await self._check_not_running()
+        successor = self._list.without(profile_id).active_profile()
+        return Removal(profile, active=True, successor=successor)
+
     async def remove(self, profile_id: str) -> ProfileList:
         async with self._lock:
             self._list.get(profile_id)
-            if profile_id == self._list.active and await self._running() is not None:
-                raise ProfileError("profile_in_use", "disconnect before removing this profile")
+            if profile_id == self._list.active:
+                await self._check_not_running()
             await self._save(self._list.without(profile_id))
             await asyncio.to_thread(self._store.delete_config, profile_id)
             self._mark_failed(profile_id, None)
@@ -220,6 +238,11 @@ class ProfileLibrary:
     async def _running(self) -> HostStatus | None:
         status = await self._host.get_status()
         return status if status.state == "running" else None
+
+    async def _check_not_running(self) -> None:
+        """The profile in use can only go while the tunnel is stopped."""
+        if await self._running() is not None:
+            raise ProfileError("profile_in_use", "disconnect before removing this profile")
 
     async def _reload_if_running(self, text: str) -> None:
         status = await self._running()

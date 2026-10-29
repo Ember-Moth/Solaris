@@ -2,3 +2,4 @@ singleton Theme 1.0 Theme.qml
 singleton Icons 1.0 Icons.qml
 singleton Status 1.0 Status.qml
 singleton Fonts 1.0 Fonts.qml
+singleton Motion 1.0 Motion.qml

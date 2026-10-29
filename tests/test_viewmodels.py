@@ -161,11 +161,46 @@ def test_import_failures(qtbot: QtBot, view_models: ViewModels, tmp_path: Path) 
     assert prop(profiles, "importError") == ""
 
 
-def test_removing_the_profile_in_use_is_refused(qtbot: QtBot, view_models: ViewModels) -> None:
+def test_removal_waits_for_confirmation(
+    qtbot: QtBot, view_models: ViewModels, tmp_path: Path
+) -> None:
     profiles = view_models.profiles
-    qtbot.waitUntil(lambda: prop(view_models.overview, "connected"))
-    profiles.removeProfile("sample-a")
-    qtbot.waitUntil(lambda: prop(profiles, "hasError"))
-    assert prop(profiles, "summary") == "正在使用的配置需要先断开才能删除"
-    profiles.removeProfile("sample-b")
+    with qtbot.waitSignal(profiles.removalRequested):
+        profiles.requestRemove("sample-b")
+    assert prop(profiles, "removalTitle") == "删除「示例订阅 B」？"  # noqa: RUF001
+    assert prop(profiles, "removalText") == "配置文件会从本机删除，无法恢复。"  # noqa: RUF001
+
+    # Cancelling removes nothing, and a late confirmation does not either.
+    profiles.cancelRemove()
+    profiles.confirmRemove()
+    qtbot.wait(50)
+    assert prop(profiles, "summary") == "3 个配置"
+    assert (tmp_path / "profiles" / "sample-b.yaml").exists()
+
+    with qtbot.waitSignal(profiles.removalRequested):
+        profiles.requestRemove("sample-b")
+    profiles.confirmRemove()
     qtbot.waitUntil(lambda: prop(profiles, "summary") == "2 个配置")
+    assert not (tmp_path / "profiles" / "sample-b.yaml").exists()
+
+
+def test_removing_the_profile_in_use(qtbot: QtBot, view_models: ViewModels) -> None:
+    profiles, overview = view_models.profiles, view_models.overview
+    qtbot.waitUntil(lambda: prop(overview, "connected"))
+    # While the tunnel runs it is refused without asking.
+    with qtbot.assertNotEmitted(profiles.removalRequested, wait=100):
+        profiles.requestRemove("sample-a")
+        qtbot.waitUntil(lambda: prop(profiles, "hasError"))
+    assert prop(profiles, "summary") == "正在使用的配置需要先断开才能删除"
+
+    # Once stopped, the confirmation names the profile that takes over.
+    overview.toggleConnection()
+    qtbot.waitUntil(lambda: not prop(overview, "connected"))
+    with qtbot.waitSignal(profiles.removalRequested):
+        profiles.requestRemove("sample-a")
+    assert prop(profiles, "removalText") == (
+        "这是当前使用的配置，删除后改用「示例订阅 B」。配置文件会从本机删除，无法恢复。"  # noqa: RUF001
+    )
+    profiles.confirmRemove()
+    qtbot.waitUntil(lambda: prop(profiles, "activeName") == "示例订阅 B")
+    assert prop(profiles, "summary") == "2 个配置"

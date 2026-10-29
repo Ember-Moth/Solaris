@@ -1,16 +1,37 @@
 import time
+from collections.abc import Iterator
 from pathlib import Path
 
+import pytest
+from PySide6.QtCore import Qt
 from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtQuick import QQuickWindow
+from PySide6.QtTest import QTest
 from pytestqt.qtbot import QtBot
 
 from mihomo_desktop.app import load_ui
 from mihomo_desktop.models.store import ProfileStore
-from mihomo_desktop.viewmodels.composition import compose
+from mihomo_desktop.viewmodels.composition import ViewModels, compose
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
 
 
-def test_main_window_loads_without_qml_warnings(qtbot: QtBot, tmp_path: Path) -> None:
+class Loaded:
+    def __init__(self, view_models: ViewModels, window: QQuickWindow, warnings: list[str]) -> None:
+        self.view_models = view_models
+        self.window = window
+        self.warnings = warnings
+
+    def focused_text(self) -> str | None:
+        item = self.window.activeFocusItem()
+        return None if item is None else item.property("text")
+
+    def key(self, qtbot: QtBot, key: Qt.Key) -> None:
+        QTest.keyClick(self.window, key)
+        qtbot.wait(250)  # longer than any overlay transition
+
+
+@pytest.fixture
+def loaded(qtbot: QtBot, tmp_path: Path) -> Iterator[Loaded]:
     store = ProfileStore(tmp_path)
     seed_profiles(store, time.time())
     view_models = compose(SimulatedHost(), store, SimulatedFetcher())
@@ -19,16 +40,48 @@ def test_main_window_loads_without_qml_warnings(qtbot: QtBot, tmp_path: Path) ->
     engine.warnings.connect(lambda errors: warnings.extend(e.toString() for e in errors))
     try:
         assert load_ui(engine, view_models)
+        (window,) = engine.rootObjects()
+        assert isinstance(window, QQuickWindow)
         view_models.start()
-        qtbot.waitUntil(lambda: view_models.overview.property("connected"))
-        view_models.shell.setPage("proxies")
-        qtbot.waitUntil(lambda: view_models.proxies.property("currentGroup") != "")
-        view_models.shell.setPage("profiles")
-        view_models.profiles.use("sample-b")
-        qtbot.waitUntil(lambda: view_models.profiles.property("activeName") == "示例订阅 B")
-        assert warnings == []
+        yield Loaded(view_models, window, warnings)
     finally:
         view_models.shutdown()
         for root in engine.rootObjects():
             root.deleteLater()
         del engine
+
+
+def test_main_window_loads_without_qml_warnings(qtbot: QtBot, loaded: Loaded) -> None:
+    view_models = loaded.view_models
+    qtbot.waitUntil(lambda: view_models.overview.property("connected"))
+    view_models.shell.setPage("proxies")
+    qtbot.waitUntil(lambda: view_models.proxies.property("currentGroup") != "")
+    view_models.shell.setPage("profiles")
+    view_models.profiles.use("sample-b")
+    qtbot.waitUntil(lambda: view_models.profiles.property("activeName") == "示例订阅 B")
+    assert loaded.warnings == []
+
+
+def test_removal_dialog_keeps_the_profile_by_default(qtbot: QtBot, loaded: Loaded) -> None:
+    profiles = loaded.view_models.profiles
+    loaded.view_models.shell.setPage("profiles")
+
+    def ask() -> None:
+        profiles.requestRemove("sample-b")
+        qtbot.waitUntil(lambda: loaded.focused_text() == "取消")  # the safe default
+
+    ask()
+    loaded.key(qtbot, Qt.Key.Key_Escape)
+    ask()
+    loaded.key(qtbot, Qt.Key.Key_Return)
+    assert profiles.property("summary") == "3 个配置"
+
+    ask()
+    loaded.key(qtbot, Qt.Key.Key_Tab)
+    assert loaded.focused_text() == "删除"
+    loaded.key(qtbot, Qt.Key.Key_Tab)  # focus stays in the dialog
+    assert loaded.focused_text() == "取消"
+    loaded.key(qtbot, Qt.Key.Key_Tab)
+    loaded.key(qtbot, Qt.Key.Key_Return)
+    qtbot.waitUntil(lambda: profiles.property("summary") == "2 个配置")
+    assert loaded.warnings == []

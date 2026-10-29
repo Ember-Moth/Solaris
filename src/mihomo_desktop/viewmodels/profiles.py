@@ -14,7 +14,7 @@ from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
 from mihomo_desktop.models import format as fmt
-from mihomo_desktop.models.library import DEFAULT_AUTO_UPDATE_HOURS, ProfileLibrary
+from mihomo_desktop.models.library import DEFAULT_AUTO_UPDATE_HOURS, ProfileLibrary, Removal
 from mihomo_desktop.models.profiles import Profile, ProfileList
 from mihomo_desktop.viewmodels.common.async_runner import AsyncRunner
 from mihomo_desktop.viewmodels.feedback import failure_text
@@ -50,6 +50,16 @@ def _usage(profile: Profile) -> tuple[str, float | None]:
     return fmt.usage(usage.used, usage.total), min(usage.used / usage.total, 1.0)
 
 
+def _removal_text(removal: Removal) -> str:
+    """The consequences of a removal, stated in its confirmation."""
+    text = ""
+    if removal.active and removal.successor is not None:
+        text = f"这是当前使用的配置，删除后改用「{removal.successor.name}」。"
+    elif removal.active:
+        text = "这是当前使用的配置，删除后需要重新导入配置才能连接。"
+    return text + "配置文件会从本机删除，无法恢复。"
+
+
 def _expiry(profile: Profile, now: float) -> tuple[str, bool]:
     """The expiry date, and whether it has passed."""
     if profile.usage is None or not profile.usage.expire:
@@ -65,6 +75,7 @@ class ProfilesViewModel(QObject):
     changed = Signal()
     applied = Signal()  # the tunnel may run another config now; groups need a refresh
     imported = Signal()  # an import succeeded; the view closes its form
+    removalRequested = Signal()  # a removal awaits confirmation; the view asks
 
     def __init__(
         self,
@@ -83,6 +94,8 @@ class ProfilesViewModel(QObject):
         self._import_error = ""
         self._checking = False
         self._error = ""
+        self._removal: Removal | None = None  # the last one asked about; its text stays
+        self._removal_pending = False  # while the dialog closes
         self._timer = QTimer(self)
         self._timer.setInterval(TICK_MS)
         self._timer.timeout.connect(self.checkUpdates)
@@ -196,9 +209,43 @@ class ProfilesViewModel(QObject):
     def setAutoUpdate(self, profile_id: str, enabled: bool) -> None:
         self._run(self._library.set_auto_update(profile_id, enabled))
 
+    # -- removal -----------------------------------------------------------------------------
     @Slot(str)
-    def removeProfile(self, profile_id: str) -> None:
-        self._run(self._library.remove(profile_id))
+    def requestRemove(self, profile_id: str) -> None:
+        """Work out what removing the profile does, then ask the view to confirm it. The
+        profile in use while the tunnel runs is refused without asking."""
+        self._error = ""
+        self.changed.emit()
+
+        def ready(removal: Removal) -> None:
+            self._removal = removal
+            self._removal_pending = True
+            self.changed.emit()
+            self.removalRequested.emit()
+
+        def failed(error: BaseException) -> None:
+            self._error = failure_text(error)
+            self.changed.emit()
+
+        self._runner.submit(self._library.removal(profile_id), ready, failed)
+
+    @Property(str, notify=changed)
+    def removalTitle(self) -> str:
+        return f"删除「{self._removal.profile.name}」？" if self._removal else ""
+
+    @Property(str, notify=changed)
+    def removalText(self) -> str:
+        return _removal_text(self._removal) if self._removal else ""
+
+    @Slot()
+    def confirmRemove(self) -> None:
+        if self._removal is not None and self._removal_pending:
+            self._removal_pending = False
+            self._run(self._library.remove(self._removal.profile.id))
+
+    @Slot()
+    def cancelRemove(self) -> None:
+        self._removal_pending = False
 
     @Slot(str)
     def copyLink(self, profile_id: str) -> None:
