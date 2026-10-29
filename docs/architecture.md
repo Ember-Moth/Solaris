@@ -552,6 +552,10 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   - ViewModel 用 `self.tr()`，上下文是类名；其他模块用 `QCoreApplication.translate("<上下文>", …)`；
   - 模块级常量（导航项、出站模式、排序方式）用 `i18n.QT_TRANSLATE_NOOP` 标记，在属性里再翻译；
   - Python 文案的参数用 `str.format` 的命名字段，如 `已运行 {uptime}`；
+  - 句子写成一整条文案再填参数，不拼接翻译过的片段：如 `{origin} · {ago}更新` → `{origin} · Updated {ago}`，
+    删除确认的两句话也是一条（`…删除后改用「{successor}」。{deleted}`），语序和句间空格由译文决定；
+  - 模型层的错误只带英文技术细节（HTTP 状态、系统错误、mihomo 原文），由 `viewmodels/feedback.py` 按错误码
+    换成译文，细节原样接在冒号后；
   - 带数量的文案写 `%n` 并传入数量，英文给单复数两种形式（`%n 个代理组` → `1 proxy group` /
     `3 proxy groups`）。中文没有复数形式，`%n` 直接换成数字。
 - **日期与数字**：`models/format.py` 的日期格式本身是可翻译的 QDate 模式（中文 `M 月 d 日`，英文 `MMM d`），
