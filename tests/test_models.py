@@ -93,7 +93,7 @@ def test_session_tracks_history_and_connection_rates() -> None:
         assert second.groups is None
         rates = [r.download_bytes_per_second for r in second.recent]
         assert rates == sorted(rates, reverse=True)
-        assert second.recent[0].host == "www.youtube.com:443"
+        assert second.recent[0].host == "www.youtube.com"
         assert second.recent[0].route == "视频服务 · 香港 01"
 
         await host.stop()

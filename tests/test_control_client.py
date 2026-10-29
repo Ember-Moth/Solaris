@@ -231,3 +231,118 @@ def test_service_host_sends_the_config_with_validate_start_and_reload() -> None:
     assert list(start.start.overrides) == list(overrides)
     assert list(reload.reload.overrides) == list(overrides)
     assert reload.reload.options == expected_options
+
+
+def test_service_host_shares_the_latest_connection_snapshot() -> None:
+    pb = control_pb2
+    snapshots = [
+        [pb.Event(connections=pb.ConnectionSnapshot())],
+        [
+            pb.Event(
+                connections=pb.ConnectionSnapshot(
+                    connections=[
+                        pb.Connection(
+                            id="a",
+                            network="tcp",
+                            source="198.18.0.1:52344",
+                            destination="140.82.112.3:443",
+                            host="github.com",
+                            chains=["香港 01", "节点选择"],
+                            rule="DomainSuffix",
+                            rule_payload="github.com",
+                            download_bytes=2048,
+                        )
+                    ]
+                )
+            )
+        ],
+        [],  # no new snapshot since the last poll
+    ]
+
+    async def answer(request: control_pb2.Request) -> control_pb2.Response:
+        if request.WhichOneof("method") == "subscribe_connections":
+            return pb.Response(subscribe=pb.SubscribeResponse(subscription_id=1))
+        events = snapshots.pop(0)
+        return pb.Response(poll_events=pb.PollEventsResponse(events=events))
+
+    async def scenario() -> None:
+        server, opener = await serve(answer)
+        async with server:
+            host = ServiceHost(opener)
+            try:
+                assert await host.poll_connections() == []
+                (connection,) = await host.poll_connections()
+                assert connection.chains == ("节点选择", "香港 01")  # outermost group first
+                assert connection.rule == "DomainSuffix,github.com"
+                assert connection.destination == "140.82.112.3:443"
+                assert await host.poll_connections() == [connection]
+            finally:
+                await host.close()
+
+    asyncio.run(scenario())
+
+
+def test_service_host_closes_connections() -> None:
+    pb = control_pb2
+    received: list[str] = []
+
+    async def answer(request: control_pb2.Request) -> control_pb2.Response:
+        received.append(request.WhichOneof("method") or "")
+        if request.close_connection.id == "gone":
+            return pb.Response(error=pb.Error(code="invalid_request", message='no connection "x"'))
+        if request.WhichOneof("method") == "close_all_connections":
+            return pb.Response(error=pb.Error(code="not_running", message="core is stopped"))
+        return pb.Response(empty=pb.Empty())
+
+    async def scenario() -> None:
+        server, opener = await serve(answer)
+        async with server:
+            host = ServiceHost(opener)
+            try:
+                await host.close_connection("a")
+                await host.close_connection("gone")  # it ended by itself meanwhile
+                with pytest.raises(HostError) as raised:
+                    await host.close_all_connections()
+                assert raised.value.code == "not_running"
+            finally:
+                await host.close()
+
+    asyncio.run(scenario())
+    assert received == ["close_connection", "close_connection", "close_all_connections"]
+
+
+def test_service_host_subscribes_to_logs_again_for_another_level() -> None:
+    pb = control_pb2
+    subscribed: list[int] = []
+    unsubscribed: list[int] = []
+
+    async def answer(request: control_pb2.Request) -> control_pb2.Response:
+        method = request.WhichOneof("method")
+        if method == "subscribe_logs":
+            subscribed.append(request.subscribe_logs.level)
+            return pb.Response(subscribe=pb.SubscribeResponse(subscription_id=len(subscribed)))
+        if method == "unsubscribe":
+            unsubscribed.append(request.unsubscribe.subscription_id)
+            return pb.Response(empty=pb.Empty())
+        entry = pb.LogEntry(level=pb.LOG_LEVEL_WARNING, message="[TCP] dial", time_unix_ms=5)
+        return pb.Response(poll_events=pb.PollEventsResponse(events=[pb.Event(log=entry)]))
+
+    async def scenario() -> None:
+        server, opener = await serve(answer)
+        async with server:
+            host = ServiceHost(opener)
+            try:
+                (entry,) = await host.poll_logs("info")
+                assert (entry.level, entry.message, entry.time_unix_ms) == (
+                    "warning",
+                    "[TCP] dial",
+                    5,
+                )
+                await host.poll_logs("info")
+                await host.poll_logs("debug")
+            finally:
+                await host.close()
+
+    asyncio.run(scenario())
+    assert subscribed == [pb.LOG_LEVEL_INFO, pb.LOG_LEVEL_DEBUG]
+    assert unsubscribed == [1]
