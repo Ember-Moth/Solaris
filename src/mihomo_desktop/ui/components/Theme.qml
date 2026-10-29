@@ -2,38 +2,45 @@
 
 pragma Singleton
 import QtQuick
+import MihomoDesktop
 
 QtObject {
-    // ---- colors ----
-    readonly property color primary: "#1F5EFF"  // primary
-    readonly property color primaryHover: "#1B53E0"  // primary-hover
-    readonly property color primaryPressed: "#1749CC"  // primary-pressed
-    readonly property color textOnPrimary: "#FFFFFF"  // on-primary
-    readonly property color link: "#1846C7"  // link
-    readonly property color linkHover: "#123A9E"  // link-hover
-    readonly property color background: "#F3F4F6"  // background
-    readonly property color sidebar: "#E9EBEF"  // sidebar
-    readonly property color sidebarHover: "#E0E3E8"  // sidebar-hover
-    readonly property color surface: "#FFFFFF"  // surface
-    readonly property color surfaceSubtle: "#F7F8FA"  // surface-subtle
-    readonly property color surfaceSelected: "#ECEEF1"  // surface-selected
-    readonly property color controlTrack: "#E3E5E9"  // control-track
-    readonly property color divider: "#ECEEF1"  // divider
-    readonly property color border: "#DCDFE4"  // border
-    readonly property color borderButton: "#C9CDD4"  // border-button
-    readonly property color borderControl: "#828893"  // border-control
-    readonly property color text: "#15171C"  // text
-    readonly property color textSecondary: "#3D4350"  // text-secondary
-    readonly property color textTertiary: "#4B5260"  // text-tertiary
-    readonly property color textMuted: "#5F6673"  // text-muted
-    readonly property color success: "#0A6B5B"  // success
-    readonly property color warning: "#8A5300"  // warning
-    readonly property color latencyPoor: "#9A3412"  // latency-poor
-    readonly property color danger: "#B42318"  // danger
-    readonly property color info: "#1846C7"  // info
-    readonly property color chartUpload: "#C2410C"  // chart-upload
-    readonly property color scrim: "#3315171C"  // scrim
-    readonly property color shadowOverlay: "#1F15171C"  // shadow-overlay
+    // Main.qml binds this to the injected Appearance; the theme is light without one.
+    property Appearance appearance
+    readonly property bool dark: appearance?.dark ?? false
+
+    // ---- colors: dark ? colors.dark.<role> : colors.<role> ----
+    readonly property color primary: dark ? "#6495FF" : "#1F5EFF"  // primary
+    readonly property color primaryHover: dark ? "#76A1FF" : "#1B53E0"  // primary-hover
+    readonly property color primaryPressed: dark ? "#88AEFF" : "#1749CC"  // primary-pressed
+    readonly property color textOnPrimary: dark ? "#101216" : "#FFFFFF"  // on-primary
+    readonly property color link: dark ? "#8AAEFF" : "#1846C7"  // link
+    readonly property color linkHover: dark ? "#B5CBFF" : "#123A9E"  // link-hover
+    readonly property color background: dark ? "#1B1D20" : "#F3F4F6"  // background
+    readonly property color sidebar: dark ? "#202227" : "#E9EBEF"  // sidebar
+    readonly property color sidebarHover: dark ? "#26292E" : "#E0E3E8"  // sidebar-hover
+    readonly property color surface: dark ? "#2B2D33" : "#FFFFFF"  // surface
+    readonly property color surfaceSubtle: dark ? "#30343A" : "#F7F8FA"  // surface-subtle
+    readonly property color surfaceSelected: dark ? "#383B43" : "#ECEEF1"  // surface-selected
+    readonly property color controlTrack: dark ? "#121416" : "#E3E5E9"  // control-track
+    readonly property color divider: dark ? "#34373E" : "#ECEEF1"  // divider
+    readonly property color border: dark ? "#3B3F46" : "#DCDFE4"  // border
+    readonly property color borderButton: dark ? "#4C505A" : "#C9CDD4"  // border-button
+    readonly property color borderControl: dark ? "#818691" : "#828893"  // border-control
+    readonly property color text: dark ? "#E6E9ED" : "#15171C"  // text
+    readonly property color textSecondary: dark ? "#CBCFD6" : "#3D4350"  // text-secondary
+    readonly property color textTertiary: dark ? "#B7BCC4" : "#4B5260"  // text-tertiary
+    readonly property color textMuted: dark ? "#A1A6AF" : "#5F6673"  // text-muted
+    readonly property color success: dark ? "#45C4A6" : "#0A6B5B"  // success
+    readonly property color warning: dark ? "#E5A443" : "#8A5300"  // warning
+    readonly property color latencyPoor: dark ? "#F38B5E" : "#9A3412"  // latency-poor
+    readonly property color danger: dark ? "#FF8077" : "#B42318"  // danger
+    readonly property color info: dark ? "#8AAEFF" : "#1846C7"  // info
+    readonly property color chartUpload: dark ? "#F28A4B" : "#C2410C"  // chart-upload
+    readonly property color scrim: dark ? "#80000000" : "#3315171C"  // scrim
+    readonly property color shadowOverlay: dark ? "#66000000" : "#1F15171C"  // shadow-overlay
+    readonly property color shadowSegment: dark ? "#52000000" : "#1F15171C"  // shadow-segment
+    readonly property color shadowNav: dark ? "#3D000000" : "#1415171C"  // shadow-nav
 
     // ---- typography (fontSize px, fontWeight 100-900, lineHeight multiplier) ----
     component TypeRole: QtObject {
@@ -152,4 +159,7 @@ QtObject {
     readonly property int dialogWidth: 400  // spacing.dialog-width
     readonly property int dialogWidthWide: 640  // spacing.dialog-width-wide
     readonly property int editorMinHeight: 240  // spacing.editor-min-height
+
+    // ---- opacity ----
+    readonly property real disabledOpacity: 0.4  // opacity.disabled
 }

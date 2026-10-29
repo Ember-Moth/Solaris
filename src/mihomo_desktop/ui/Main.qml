@@ -25,6 +25,12 @@ ApplicationWindow {
     font.family: Fonts.resolve(Theme.type.bodyMd.fontFamily)
     font.pixelSize: Theme.type.bodyMd.fontSize
 
+    Binding {
+        target: Theme
+        property: "appearance"
+        value: window.appearance
+    }
+
     RowLayout {
         anchors.fill: parent
         spacing: 0

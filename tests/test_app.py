@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickItem, QQuickWindow
 from PySide6.QtTest import QTest
@@ -11,7 +12,9 @@ from pytestqt.qtbot import QtBot
 
 from mihomo_desktop.app import load_ui
 from mihomo_desktop.models.store import ProfileStore
+from mihomo_desktop.viewmodels.appearance import Appearance
 from mihomo_desktop.viewmodels.composition import ViewModels, compose
+from tests.support.appearance import SystemColorScheme
 from tests.support.i18n import ui_language
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
 
@@ -40,12 +43,26 @@ class Loaded:
 
 
 @pytest.fixture
-def loaded(request: pytest.FixtureRequest, qtbot: QtBot, tmp_path: Path) -> Iterator[Loaded]:
+def system() -> SystemColorScheme:
+    """The system's appearance, light unless a test switches it."""
+    return SystemColorScheme()
+
+
+@pytest.fixture
+def appearance(request: pytest.FixtureRequest, system: SystemColorScheme) -> Appearance:
+    """Following the system, or the mode given by indirect parametrization."""
+    return Appearance(getattr(request, "param", "system"), hints=system)
+
+
+@pytest.fixture
+def loaded(
+    request: pytest.FixtureRequest, qtbot: QtBot, tmp_path: Path, appearance: Appearance
+) -> Iterator[Loaded]:
     """The main window in Chinese, or in the language given by indirect parametrization."""
     store = ProfileStore(tmp_path)
     seed_profiles(store, time.time())
     with ui_language(getattr(request, "param", "zh")):
-        view_models = compose(SimulatedHost(), store, SimulatedFetcher())
+        view_models = compose(SimulatedHost(), store, SimulatedFetcher(), appearance=appearance)
         engine = QQmlApplicationEngine()
         warnings: list[str] = []
         engine.warnings.connect(lambda errors: warnings.extend(e.toString() for e in errors))
@@ -62,6 +79,7 @@ def loaded(request: pytest.FixtureRequest, qtbot: QtBot, tmp_path: Path) -> Iter
             del engine
 
 
+@pytest.mark.parametrize("appearance", ["light", "dark"], indirect=True)
 @pytest.mark.parametrize(
     ("loaded", "label"), [("zh", "出站"), ("en", "Outbound")], indirect=["loaded"]
 )
@@ -140,4 +158,20 @@ def test_override_editor_saves_with_ctrl_enter(qtbot: QtBot, loaded: Loaded) -> 
         QTest.keyClick(loaded.window, Qt.Key.Key_Return, Qt.KeyboardModifier.ControlModifier)
     qtbot.waitUntil(lambda: loaded.window.activeFocusItem() is not editor)
     assert profiles.property("profiles")[1]["hasOverride"]
+    assert loaded.warnings == []
+
+
+def test_the_window_repaints_when_the_system_turns_dark(
+    qtbot: QtBot, loaded: Loaded, system: SystemColorScheme
+) -> None:
+    def background() -> str:
+        color = loaded.window.property("color")
+        assert isinstance(color, QColor)
+        return color.name().upper()
+
+    assert background() == "#F3F4F6"
+    system.switch(Qt.ColorScheme.Dark)
+    assert background() == "#1B1D20"
+    loaded.view_models.appearance.setMode("light")
+    assert background() == "#F3F4F6"
     assert loaded.warnings == []
