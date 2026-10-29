@@ -116,8 +116,9 @@ def apply_override(
 
 def check_config(config: TunnelConfig) -> dict[str, Any]:
     """The simulated pipeline (architecture §3.2, ui §4): parse the config, apply the
-    overrides in order, then clear the controller keys. The result must define a proxy,
-    inline or through a provider. Failures use the service's error code."""
+    overrides in order, then clear the controller keys. As in mihomo, every proxy a group
+    or a rule names must exist; a config without proxies routes everything DIRECT and is
+    fine. Failures use the service's error code and mihomo's wording."""
     document = _load(config.config_yaml, "")
     if not isinstance(document, dict):
         raise HostError("invalid_config", "the config is not a YAML mapping")
@@ -131,20 +132,54 @@ def check_config(config: TunnelConfig) -> dict[str, Any]:
         document = apply_override(document, override, label)
     for key in CONTROLLER_KEYS:
         document.pop(key, None)
-    proxies = document.get("proxies")
-    providers = document.get("proxy-providers")
-    if not (isinstance(proxies, list) and proxies) and not (
-        isinstance(providers, dict) and providers
-    ):
-        raise HostError("invalid_config", "the config defines no proxies")
+    _check_references(document)
     return document
 
 
-_CORE_TYPES = {"VLESS": "vless", "Hysteria2": "hysteria2", "Trojan": "trojan", "Shadowsocks": "ss"}
+BUILT_IN_PROXIES = {"DIRECT", "REJECT", "REJECT-DROP", "PASS", "COMPATIBLE", "GLOBAL"}
+# Rules whose payload holds other rules; the simulation does not look inside them.
+NESTED_RULES = {"AND", "OR", "NOT", "SUB-RULE"}
+
+
+def _names(items: Any) -> list[str]:
+    if not isinstance(items, list):
+        return []
+    return [str(item["name"]) for item in items if isinstance(item, dict) and "name" in item]
+
+
+def _check_references(document: dict[str, Any]) -> None:
+    groups = document.get("proxy-groups") or []
+    known = BUILT_IN_PROXIES | set(_names(document.get("proxies"))) | set(_names(groups))
+    for index, group in enumerate(groups if isinstance(groups, list) else []):
+        members = group.get("proxies") if isinstance(group, dict) else None
+        for member in members or []:
+            if str(member) not in known:
+                message = f"proxy group[{index}]: {group.get('name')}: '{member}' not found"
+                raise HostError("invalid_config", message)
+    rules = document.get("rules") or []
+    for index, rule in enumerate(rules if isinstance(rules, list) else []):
+        parts = [part.strip() for part in str(rule).split(",")]
+        if parts[0] in NESTED_RULES:
+            continue
+        position = 1 if parts[0] == "MATCH" else 2
+        target = parts[position] if len(parts) > position else ""
+        if target not in known:
+            message = f"rules[{index}] [{rule}] error: proxy [{target}] not found"
+            raise HostError("invalid_config", message)
+
+
+# Each type with the fields mihomo requires of it, so the real core accepts the sample too
+# (tests/e2e checks that it does).
+_CORE_TYPES = {
+    "VLESS": "type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11",
+    "Hysteria2": "type: hysteria2, password: sample",
+    "Trojan": "type: trojan, password: sample",
+    "Shadowsocks": "type: ss, cipher: aes-128-gcm, password: sample",
+}
 SAMPLE_CONFIG = (
     "mixed-port: 7890\nmode: rule\nproxies:\n"
     + "".join(
-        f"  - {{name: {name}, type: {_CORE_TYPES[kind]}, server: node{i}.example.net, port: 443}}\n"
+        f"  - {{name: {name}, {_CORE_TYPES[kind]}, server: node{i}.example.net, port: 443}}\n"
         for i, (name, (kind, _)) in enumerate(NODES.items())
     )
     + "proxy-groups:\n  - name: 节点选择\n    type: select\n    proxies:\n"

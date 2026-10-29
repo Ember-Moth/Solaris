@@ -130,7 +130,7 @@ def test_a_rejected_override_is_not_stored(tmp_path: Path) -> None:
     for target in ("sample-b", None):
         with pytest.raises(HostError) as raised:
             run(lambda target=target: scene.library.save_override(target, "proxies: []\n"))
-        assert raised.value.code == "invalid_config"  # it removed every proxy
+        assert raised.value.code == "invalid_config"  # the group names proxies it removed
         assert scene.store.read_override(target) == ""
     profiles = run(scene.library.current)
     assert not profiles.get("sample-b").has_override
