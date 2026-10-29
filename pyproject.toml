@@ -81,3 +81,6 @@ testpaths = ["tests"]
 pythonpath = ["."]
 qt_api = "pyside6"
 addopts = "-ra --strict-markers"
+markers = [
+    "e2e: runs the UI against the development service; needs MIHOMO_DESKTOP_E2E=1 (tests/e2e)",
+]

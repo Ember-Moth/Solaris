@@ -51,6 +51,31 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: uv run pytest -q
 
+  # The UI against the real development service (docs/architecture.md §11): no TUN, only
+  # loopback traffic to local servers through the mixed port.
+  e2e:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+        with:
+          enable-cache: true
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: src/core/go.mod
+          cache-dependency-path: src/core/go.sum
+      - name: Install (locked)
+        run: uv sync --frozen
+      - name: Build the development service
+        run: go -C src/core build -o "$RUNNER_TEMP/mihomo-desktop-service" ./service
+      - name: End-to-end tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+          MIHOMO_DESKTOP_E2E: "1"
+          MIHOMO_DESKTOP_E2E_SERVICE: ${{ runner.temp }}/mihomo-desktop-service
+        run: uv run pytest -q tests/e2e
+
   go:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20

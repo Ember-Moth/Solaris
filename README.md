@@ -102,6 +102,14 @@ uv run python scripts/dev.py
 uv run mihomo-desktop
 ```
 
+端到端测试让界面连真实的开发服务，经混合端口访问本机起的 HTTP 服务，不需要 TUN，也不改本机网络
+（[architecture.md](docs/architecture.md) §11）。默认跳过，这样运行（测试自己构建服务；
+`MIHOMO_DESKTOP_E2E_SERVICE` 可指向已构建的服务，`MIHOMO_DESKTOP_E2E_SCREENSHOTS` 可指向保存截图的目录）：
+
+```bash
+MIHOMO_DESKTOP_E2E=1 uv run pytest tests/e2e
+```
+
 ## 许可证
 
 本项目以 [GNU General Public License v3.0](LICENSE)（GPL-3.0-only）发布。Windows 服务和 macOS 系统扩展

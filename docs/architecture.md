@@ -508,12 +508,21 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
     测试用自管模式启动 TUN，经 TUN 访问 `md-srv`，并用 mihomo 的流量统计确认流量确实经过内核；再验证
     TUN 配置不变时 Reload 不重建网卡，关闭 TUN 或 Stop 后链路、策略路由和各路由表都恢复原样。
     矩阵覆盖 `system`、`mips` 栈，以及带 `with_gvisor` 的 `gvisor`、`mixed` 栈。
+- **端到端测试**（`tests/e2e`，标记 `e2e`）：界面连真实的开发服务。每个测试起一个开发服务子进程，用
+  `ServiceHost`、临时数据目录和真实的 ViewModel 组装界面，离屏加载 QML，通过 ViewModel 的槽操作，再用
+  `curl -x` 经混合端口访问本机的 HTTP 服务；配置里的节点是本机的 HTTP 代理，它们记下经过的请求，所以能看出
+  流量走了哪条路。覆盖导入文件和订阅、连接、各页数据、切换模式和节点、TUN 与系统代理被拒、覆写 / 订阅更新 /
+  切换配置时重载不断开已有连接、断开重连与服务重启、混合端口被占用和局域网连接，以及模拟宿主与真实服务对一组
+  配置的判定一致。默认跳过，设置 `MIHOMO_DESKTOP_E2E=1` 才运行；`MIHOMO_DESKTOP_E2E_SERVICE` 可以指向已
+  构建的服务，否则测试自己 `go build`；`MIHOMO_DESKTOP_E2E_SCREENSHOTS` 指向一个目录时保存各页截图。CI 的
+  `e2e` job 在 macOS runner 上先构建服务再运行。全程只用回环地址，不需要 TUN。
 - **测试覆盖**：
   - engine：配置流水线的回归测试，对应 3.3 节各项；开发模式护栏；启停与重载；50 次启停的泄漏检查；
   - 控制协议：帧头校验、超限拒绝、请求 ID 匹配、订阅缓冲与过期，Go 与 Python 两端用同一组样本互测
     （样本里的响应来自一个不链接 mihomo 的假 engine，所以不随 mihomo 版本变化）；
   - Windows CI：服务的客户端校验、管道 SDDL、属主与恢复流程；
-  - Python：用模拟宿主测试 models 与 ViewModel。
+  - Python：用模拟宿主测试 models 与 ViewModel；模拟宿主的配置检查、错误码和措辞跟着真实服务走，端到端测试
+    核对两者一致。
 - **竞态检查**：`go test -race` 会报出 mihomo 自身在 `log.SetLevel` 上的竞态（见 3.2 节），所以 CI 不带
   `-race`；分发器的订阅代码可以单独用 `-race` 检查。
 - **需要真机验收**：真实 TUN 流量、系统代理模拟写入、安装与升级、系统扩展激活。
