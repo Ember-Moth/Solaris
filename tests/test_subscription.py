@@ -62,7 +62,7 @@ def test_decode_config() -> None:
 
 def test_read_config_file(tmp_path: Path) -> None:
     path = tmp_path / "config.yaml"
-    path.write_text(SAMPLE_CONFIG, encoding="utf-8")
+    path.write_bytes(SAMPLE_CONFIG.encode())  # write_text would turn \n into \r\n on Windows
     assert read_config_file(path) == SAMPLE_CONFIG
     with pytest.raises(ProfileError) as raised:
         read_config_file(tmp_path / "missing.yaml")
