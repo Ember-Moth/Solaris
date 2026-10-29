@@ -6,7 +6,6 @@ from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
 from mihomo_desktop.host.base import HostInfo, TunnelHost
-from mihomo_desktop.models.profiles import ProfileSource
 from mihomo_desktop.viewmodels.common.async_runner import AsyncRunner
 
 QML_IMPORT_NAME = "MihomoDesktop"
@@ -34,13 +33,11 @@ class ShellViewModel(QObject):
     def __init__(
         self,
         host: TunnelHost,
-        profiles: ProfileSource,
         runner: AsyncRunner,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._host = host
-        self._profiles = profiles
         self._runner = runner
         self._current_page = "overview"
         self._info: HostInfo | None = None
@@ -73,11 +70,6 @@ class ShellViewModel(QObject):
         if page != self._current_page and any(p["id"] == page for p in PAGES):
             self._current_page = page
             self.currentPageChanged.emit()
-
-    @Property(str, constant=True)
-    def profileName(self) -> str:
-        active = self._profiles.active()
-        return active.name if active else "未导入配置"
 
     @Property(bool, notify=serviceChanged)
     def serviceAvailable(self) -> bool:

@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import time
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from mihomo_desktop.host.base import TunnelHost
-from mihomo_desktop.models.profiles import ProfileSource
+from mihomo_desktop.models.library import ProfileLibrary
+from mihomo_desktop.models.store import ProfileStore
+from mihomo_desktop.models.subscription import Fetcher
 from mihomo_desktop.viewmodels.common.async_runner import AsyncRunner
 from mihomo_desktop.viewmodels.overview import OverviewViewModel
+from mihomo_desktop.viewmodels.profiles import ProfilesViewModel
 from mihomo_desktop.viewmodels.proxies import ProxiesViewModel
 from mihomo_desktop.viewmodels.shell import ShellViewModel
 
@@ -16,9 +21,11 @@ from mihomo_desktop.viewmodels.shell import ShellViewModel
 class ViewModels:
     runner: AsyncRunner
     host: TunnelHost
+    library: ProfileLibrary
     shell: ShellViewModel
     overview: OverviewViewModel
     proxies: ProxiesViewModel
+    profiles: ProfilesViewModel
 
     def initial_properties(self) -> dict[str, object]:
         """Main.qml's required properties."""
@@ -26,6 +33,7 @@ class ViewModels:
             "shellViewModel": self.shell,
             "overviewViewModel": self.overview,
             "proxiesViewModel": self.proxies,
+            "profilesViewModel": self.profiles,
         }
 
     def start(self) -> None:
@@ -33,18 +41,28 @@ class ViewModels:
         self.shell.start()
         self.overview.start()
         self.proxies.refresh()
+        self.profiles.start()
 
     def shutdown(self) -> None:
         self.shell.stop()
         self.overview.stop()
+        self.profiles.stop()
         self.runner.shutdown(finalize=self.host.close)
 
 
-def compose(host: TunnelHost, profiles: ProfileSource) -> ViewModels:
+def compose(
+    host: TunnelHost,
+    store: ProfileStore,
+    fetcher: Fetcher,
+    clock: Callable[[], float] = time.time,
+) -> ViewModels:
+    """``clock`` dates profile updates and subscription expiry."""
     runner = AsyncRunner()
-    shell = ShellViewModel(host, profiles, runner)
-    overview = OverviewViewModel(host, profiles, runner)
+    library = ProfileLibrary(store, host, fetcher, clock)
+    shell = ShellViewModel(host, runner)
+    overview = OverviewViewModel(host, library, runner)
     proxies = ProxiesViewModel(host, runner)
+    profiles = ProfilesViewModel(library, runner, clock)
 
     def page_shown() -> None:
         if shell.currentPage == "proxies":
@@ -52,4 +70,6 @@ def compose(host: TunnelHost, profiles: ProfileSource) -> ViewModels:
 
     shell.currentPageChanged.connect(page_shown)
     proxies.selectionApplied.connect(overview.refreshGroups)
-    return ViewModels(runner, host, shell, overview, proxies)
+    profiles.applied.connect(overview.refreshGroups)
+    profiles.applied.connect(proxies.refresh)
+    return ViewModels(runner, host, library, shell, overview, proxies, profiles)

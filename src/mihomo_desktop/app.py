@@ -14,7 +14,8 @@ from mihomo_desktop import __version__
 from mihomo_desktop.host.base import HostError, TunnelHost
 from mihomo_desktop.host.service import ServiceHost
 from mihomo_desktop.host.transport import Opener, Streams
-from mihomo_desktop.models.profiles import NoProfiles, ProfileSource
+from mihomo_desktop.models.store import ProfileStore, default_data_dir
+from mihomo_desktop.models.subscription import Fetcher, UrlFetcher
 from mihomo_desktop.product import DISPLAY_NAME, PIPE_NAME
 from mihomo_desktop.viewmodels.composition import ViewModels, compose
 
@@ -48,11 +49,19 @@ def load_ui(engine: QQmlApplicationEngine, view_models: ViewModels) -> bool:
     return bool(engine.rootObjects())
 
 
-def main(host: TunnelHost | None = None, profiles: ProfileSource | None = None) -> int:
+def main(
+    host: TunnelHost | None = None,
+    store: ProfileStore | None = None,
+    fetcher: Fetcher | None = None,
+) -> int:
     app = QGuiApplication(sys.argv)
     app.setApplicationName(DISPLAY_NAME)
     app.setApplicationVersion(__version__)
-    view_models = compose(host or ServiceHost(default_opener()), profiles or NoProfiles())
+    view_models = compose(
+        host or ServiceHost(default_opener()),
+        store or ProfileStore(default_data_dir()),
+        fetcher or UrlFetcher(),
+    )
     engine = QQmlApplicationEngine()
     if not load_ui(engine, view_models):
         return 1

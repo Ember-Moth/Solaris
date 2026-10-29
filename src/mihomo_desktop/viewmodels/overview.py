@@ -9,9 +9,9 @@ from typing import Any
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
-from mihomo_desktop.host.base import HostError, ProxyGroup, TunnelHost
+from mihomo_desktop.host.base import ProxyGroup, RunOptions, TunnelHost
 from mihomo_desktop.models import format as fmt
-from mihomo_desktop.models.profiles import ProfileSource
+from mihomo_desktop.models.library import ProfileLibrary
 from mihomo_desktop.models.proxies import main_group, resolve
 from mihomo_desktop.models.tunnel import TunnelSession, TunnelSnapshot
 from mihomo_desktop.viewmodels.common.async_runner import AsyncRunner
@@ -47,14 +47,14 @@ class OverviewViewModel(QObject):
     def __init__(
         self,
         host: TunnelHost,
-        profiles: ProfileSource,
+        library: ProfileLibrary,
         runner: AsyncRunner,
         clock: Callable[[], float] = time.time,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._host = host
-        self._profiles = profiles
+        self._library = library
         self._runner = runner
         self._clock = clock
         self._session = TunnelSession(host)
@@ -123,11 +123,17 @@ class OverviewViewModel(QObject):
     # -- actions -----------------------------------------------------------------------------
     @Slot()
     def toggleConnection(self) -> None:
-        self._act(self._host.stop() if self._connected() else self._start())
-
-    async def _start(self) -> None:
-        # Start carries the profile's config, which the UI does not manage yet.
-        raise HostError("not_implemented", "starting needs profile management")
+        if self._connected():
+            self._act(self._host.stop())
+            return
+        # Connect with what the switches show; the settings page (roadmap M3) will own
+        # the rest of RunOptions.
+        status = self._snapshot.status if self._snapshot else None
+        options = RunOptions(
+            tun_enabled=bool(status and status.tun_enabled),
+            system_proxy_enabled=bool(status and status.system_proxy_enabled),
+        )
+        self._act(self._library.start_tunnel(options))
 
     @Slot(str)
     def setMode(self, mode: str) -> None:
@@ -264,42 +270,3 @@ class OverviewViewModel(QObject):
         if not self._connected() or self._snapshot is None:
             return "全部"
         return f"全部 {self._snapshot.status.connection_count} 个"
-
-    # -- profile -----------------------------------------------------------------------------
-    @Property(bool, constant=True)
-    def hasProfile(self) -> bool:
-        return self._profiles.active() is not None
-
-    @Property(str, constant=True)
-    def profileName(self) -> str:
-        active = self._profiles.active()
-        return active.name if active else ""
-
-    @Property(str, constant=True)
-    def profileDetail(self) -> str:
-        active = self._profiles.active()
-        return f"{active.source} · {active.updated}更新" if active else ""
-
-    @Property(bool, constant=True)
-    def profileHasQuota(self) -> bool:
-        active = self._profiles.active()
-        return bool(active and active.used_bytes is not None and active.total_bytes)
-
-    @Property(str, constant=True)
-    def profileUsage(self) -> str:
-        active = self._profiles.active()
-        if not active or active.used_bytes is None or not active.total_bytes:
-            return ""
-        return f"{fmt.size(active.used_bytes)} / {fmt.size(active.total_bytes)}"
-
-    @Property(float, constant=True)
-    def profileUsedFraction(self) -> float:
-        active = self._profiles.active()
-        if not active or active.used_bytes is None or not active.total_bytes:
-            return 0.0
-        return min(active.used_bytes / active.total_bytes, 1.0)
-
-    @Property(str, constant=True)
-    def profileExpiry(self) -> str:
-        active = self._profiles.active()
-        return f"{active.expires} 到期" if active and active.expires else ""

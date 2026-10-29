@@ -1,0 +1,35 @@
+import QtQuick
+import QtQuick.Controls.Basic
+
+// input: a white field with the border-control outline and body-sm text.
+TextField {
+    id: control
+
+    implicitHeight: Theme.controlMd
+    leftPadding: 10
+    rightPadding: 10
+    topPadding: 0
+    bottomPadding: 0
+    verticalAlignment: TextInput.AlignVCenter
+    color: Theme.text
+    placeholderTextColor: Theme.textMuted
+    selectionColor: Theme.primary
+    selectedTextColor: Theme.textOnPrimary
+    font.family: Fonts.resolve(Theme.type.bodySm.fontFamily)
+    font.pixelSize: Theme.type.bodySm.fontSize
+    font.weight: Theme.type.bodySm.fontWeight
+    opacity: enabled ? 1 : 0.4
+
+    background: Rectangle {
+        implicitWidth: 160
+        radius: Theme.radiusSm
+        color: Theme.surface
+        border.width: 1
+        border.color: Theme.borderControl
+
+        FocusRing {
+            targetRadius: Theme.radiusSm
+            visible: control.activeFocus
+        }
+    }
+}

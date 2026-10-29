@@ -12,6 +12,7 @@ ApplicationWindow {
     required property ShellViewModel shellViewModel
     required property OverviewViewModel overviewViewModel
     required property ProxiesViewModel proxiesViewModel
+    required property ProfilesViewModel profilesViewModel
 
     width: Theme.windowDefaultWidth
     height: Theme.windowDefaultHeight
@@ -31,6 +32,7 @@ ApplicationWindow {
             Layout.fillHeight: true
             Layout.preferredWidth: Theme.sidebarWidth
             shell: window.shellViewModel
+            profiles: window.profilesViewModel
         }
 
         StackLayout {
@@ -40,6 +42,7 @@ ApplicationWindow {
 
             OverviewPage {
                 overview: window.overviewViewModel
+                profiles: window.profilesViewModel
                 shell: window.shellViewModel
             }
 
@@ -47,8 +50,8 @@ ApplicationWindow {
                 proxies: window.proxiesViewModel
             }
 
-            PlaceholderPage {
-                title: "配置"
+            ProfilesPage {
+                profiles: window.profilesViewModel
             }
 
             PlaceholderPage {

@@ -7,6 +7,7 @@ Rectangle {
     id: root
 
     required property ShellViewModel shell
+    required property ProfilesViewModel profiles
 
     implicitWidth: Theme.sidebarWidth
     color: Theme.sidebar
@@ -54,9 +55,11 @@ Rectangle {
                 }
 
                 UiText {
-                    text: root.shell.profileName
+                    Layout.maximumWidth: Theme.sidebarWidth - 92
+                    text: root.profiles.hasActive ? root.profiles.activeName : "未导入配置"
                     role: Theme.type.caption
                     color: Theme.textMuted
+                    elide: Text.ElideRight
                 }
             }
         }

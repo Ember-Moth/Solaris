@@ -32,7 +32,6 @@ from mihomo_desktop.models.profiles import (
     Profile,
     ProfileError,
     ProfileList,
-    ProfileSummary,
     Usage,
     count_proxies,
 )
@@ -407,15 +406,3 @@ def seed_profiles(store: ProfileStore, now: float) -> ProfileList:
     seeded = ProfileList(profiles, "sample-a")
     store.save(seeded)
     return seeded
-
-
-class SampleProfiles:
-    def active(self) -> ProfileSummary | None:
-        return ProfileSummary(
-            name="示例订阅 A",
-            source="sub.example.com",
-            updated="2 小时前",
-            used_bytes=int(38.2 * GB),
-            total_bytes=200 * GB,
-            expires="2026-12-31",
-        )

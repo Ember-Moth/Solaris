@@ -9,6 +9,7 @@ ScrollView {
     id: page
 
     required property OverviewViewModel overview
+    required property ProfilesViewModel profiles
     required property ShellViewModel shell
 
     contentWidth: availableWidth
@@ -267,7 +268,7 @@ ScrollView {
                     Layout.fillWidth: true
 
                     GroupRow {
-                        visible: page.overview.hasProfile
+                        visible: page.profiles.hasActive
                         divider: false
 
                         ColumnLayout {
@@ -275,13 +276,15 @@ ScrollView {
                             spacing: 0
 
                             UiText {
-                                text: page.overview.profileName
+                                Layout.fillWidth: true
+                                text: page.profiles.activeName
                                 role: Theme.type.labelMd
+                                elide: Text.ElideRight
                             }
 
                             UiText {
                                 Layout.fillWidth: true
-                                text: page.overview.profileDetail
+                                text: page.profiles.activeDetail
                                 role: Theme.type.caption
                                 color: Theme.textMuted
                                 elide: Text.ElideRight
@@ -290,13 +293,15 @@ ScrollView {
 
                         AppButton {
                             variant: "compact"
-                            text: "更新"
-                            enabled: false
+                            text: page.profiles.activeUpdating ? "更新中…" : page.profiles.activeRefreshLabel
+                            enabled: !page.profiles.activeUpdating
+                            Accessible.name: text + " " + page.profiles.activeName
+                            onClicked: page.profiles.updateProfile(page.profiles.activeId)
                         }
                     }
 
                     GroupRow {
-                        visible: page.overview.hasProfile && page.overview.profileHasQuota
+                        visible: page.profiles.hasActive && page.profiles.activeHasQuota
                         verticalPadding: Theme.space3
 
                         ColumnLayout {
@@ -308,38 +313,27 @@ ScrollView {
 
                                 UiText {
                                     Layout.fillWidth: true
-                                    text: page.overview.profileUsage
+                                    text: page.profiles.activeUsage
                                     role: Theme.type.dataSm
                                     color: Theme.textTertiary
                                 }
 
                                 UiText {
-                                    text: page.overview.profileExpiry
+                                    text: page.profiles.activeExpiry
                                     role: Theme.type.caption
                                     color: Theme.textTertiary
                                 }
                             }
 
-                            Rectangle {
+                            UsageBar {
                                 Layout.fillWidth: true
-                                implicitHeight: 4
-                                radius: 2
-                                color: Theme.divider
-                                Accessible.role: Accessible.ProgressBar
-                                Accessible.name: "已用流量"
-
-                                Rectangle {
-                                    width: parent.width * page.overview.profileUsedFraction
-                                    height: parent.height
-                                    radius: 2
-                                    color: Theme.textTertiary
-                                }
+                                fraction: page.profiles.activeUsedFraction
                             }
                         }
                     }
 
                     GroupRow {
-                        visible: !page.overview.hasProfile
+                        visible: !page.profiles.hasActive
                         divider: false
 
                         UiText {

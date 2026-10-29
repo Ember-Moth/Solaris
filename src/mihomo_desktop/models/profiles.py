@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Protocol
 
 KIND_SUBSCRIPTION = "subscription"
 KIND_FILE = "file"
@@ -111,23 +110,3 @@ def count_proxies(text: str) -> int | None:
         if level == indent:
             count += 1
     return count
-
-
-# The overview and the sidebar still read this summary; the profiles page replaces it.
-@dataclass(frozen=True)
-class ProfileSummary:
-    name: str
-    source: str  # "sub.example.com" or "config.yaml"
-    updated: str  # "2 小时前"
-    used_bytes: int | None  # None when the subscription reports no quota
-    total_bytes: int | None
-    expires: str | None  # "2026-12-31"
-
-
-class ProfileSource(Protocol):
-    def active(self) -> ProfileSummary | None: ...
-
-
-class NoProfiles:
-    def active(self) -> ProfileSummary | None:
-        return None
