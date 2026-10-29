@@ -54,7 +54,7 @@ ScrollView {
                 spacing: Theme.space2
 
                 SectionLabel {
-                    text: "出站"
+                    text: qsTr("出站")
                 }
 
                 Group {
@@ -65,13 +65,13 @@ ScrollView {
 
                         UiText {
                             Layout.fillWidth: true
-                            text: "模式"
+                            text: qsTr("模式")
                         }
 
                         SegmentedControl {
                             options: page.overview.modeOptions
                             current: page.overview.mode
-                            accessibleName: "模式"
+                            accessibleName: qsTr("模式")
                             enabled: !page.overview.busy
                             onPicked: value => page.overview.setMode(value)
                         }
@@ -91,7 +91,7 @@ ScrollView {
                             rightPadding: Theme.space2
                             topPadding: 0
                             bottomPadding: 0
-                            Accessible.name: "当前节点 " + page.overview.nodeName + "，前往代理页切换"
+                            Accessible.name: qsTr("当前节点 %1，前往代理页切换").arg(page.overview.nodeName)
                             onClicked: page.shell.setPage("proxies")
 
                             contentItem: RowLayout {
@@ -132,13 +132,13 @@ ScrollView {
                     GroupRow {
                         UiText {
                             Layout.fillWidth: true
-                            text: "TUN 模式"
+                            text: qsTr("TUN 模式")
                         }
 
                         AppSwitch {
                             value: page.overview.tunEnabled
                             enabled: !page.overview.busy
-                            Accessible.name: "TUN 模式"
+                            Accessible.name: qsTr("TUN 模式")
                             onRequested: on => page.overview.setTun(on)
                         }
                     }
@@ -146,13 +146,13 @@ ScrollView {
                     GroupRow {
                         UiText {
                             Layout.fillWidth: true
-                            text: "系统代理"
+                            text: qsTr("系统代理")
                         }
 
                         AppSwitch {
                             value: page.overview.systemProxyEnabled
                             enabled: !page.overview.busy
-                            Accessible.name: "系统代理"
+                            Accessible.name: qsTr("系统代理")
                             onRequested: on => page.overview.setSystemProxy(on)
                         }
                     }
@@ -165,7 +165,7 @@ ScrollView {
                 spacing: Theme.space2
 
                 SectionLabel {
-                    text: "流量"
+                    text: qsTr("流量")
                 }
 
                 Group {
@@ -192,7 +192,7 @@ ScrollView {
                                 Layout.leftMargin: -Theme.space3
                                 text: page.overview.downRate
                                 role: Theme.type.dataMd
-                                Accessible.name: "下载 " + text
+                                Accessible.name: qsTr("下载 %1").arg(text)
                             }
 
                             UiText {
@@ -205,7 +205,7 @@ ScrollView {
                                 Layout.leftMargin: -Theme.space3
                                 text: page.overview.upRate
                                 role: Theme.type.dataMd
-                                Accessible.name: "上传 " + text
+                                Accessible.name: qsTr("上传 %1").arg(text)
                             }
 
                             Item {
@@ -213,7 +213,7 @@ ScrollView {
                             }
 
                             UiText {
-                                text: "本次 ↓ " + page.overview.downTotal + " ↑ " + page.overview.upTotal
+                                text: qsTr("本次 ↓ %1 ↑ %2").arg(page.overview.downTotal).arg(page.overview.upTotal)
                                 role: Theme.type.dataSm
                                 color: Theme.textMuted
                             }
@@ -230,13 +230,13 @@ ScrollView {
 
                             UiText {
                                 Layout.fillWidth: true
-                                text: "40 秒前"
+                                text: qsTr("%n 秒前", "", 40)
                                 role: Theme.type.caption
                                 color: Theme.textMuted
                             }
 
                             UiText {
-                                text: "现在"
+                                text: qsTr("现在")
                                 role: Theme.type.caption
                                 color: Theme.textMuted
                             }
@@ -255,11 +255,11 @@ ScrollView {
 
                     SectionLabel {
                         Layout.fillWidth: true
-                        text: "配置"
+                        text: qsTr("配置")
                     }
 
                     LinkButton {
-                        text: "管理"
+                        text: qsTr("管理")
                         onClicked: page.shell.setPage("profiles")
                     }
                 }
@@ -293,7 +293,7 @@ ScrollView {
 
                         AppButton {
                             variant: "compact"
-                            text: page.profiles.activeUpdating ? "更新中…" : page.profiles.activeRefreshLabel
+                            text: page.profiles.activeUpdating ? qsTr("更新中…") : page.profiles.activeRefreshLabel
                             enabled: !page.profiles.activeUpdating
                             Accessible.name: text + " " + page.profiles.activeName
                             onClicked: page.profiles.updateProfile(page.profiles.activeId)
@@ -338,12 +338,12 @@ ScrollView {
 
                         UiText {
                             Layout.fillWidth: true
-                            text: "尚未导入配置"
+                            text: qsTr("尚未导入配置")
                             color: Theme.textMuted
                         }
 
                         LinkButton {
-                            text: "导入"
+                            text: qsTr("导入")
                             onClicked: page.shell.setPage("profiles")
                         }
                     }
@@ -360,7 +360,7 @@ ScrollView {
 
                     SectionLabel {
                         Layout.fillWidth: true
-                        text: "最近连接"
+                        text: qsTr("最近连接")
                     }
 
                     LinkButton {
@@ -420,7 +420,7 @@ ScrollView {
 
                         UiText {
                             Layout.fillWidth: true
-                            text: page.overview.connected ? "没有活动连接" : "未连接"
+                            text: page.overview.connected ? qsTr("没有活动连接") : qsTr("未连接")
                             role: Theme.type.bodySm
                             color: Theme.textMuted
                         }

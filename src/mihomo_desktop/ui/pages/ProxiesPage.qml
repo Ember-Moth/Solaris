@@ -22,18 +22,18 @@ ScrollView {
             Layout.topMargin: Theme.pageTop
             Layout.leftMargin: Theme.pageX
             Layout.rightMargin: Theme.pageX
-            title: "代理"
+            title: qsTr("代理")
             detail: page.proxies.summary
 
             SegmentedControl {
                 options: page.proxies.sortOptions
                 current: page.proxies.sort
-                accessibleName: "节点排序"
+                accessibleName: qsTr("节点排序")
                 onPicked: value => page.proxies.setSort(value)
             }
 
             AppButton {
-                text: page.proxies.testing ? "测速中…" : "测速"
+                text: page.proxies.testing ? qsTr("测速中…") : qsTr("测速")
                 enabled: !page.proxies.testing && page.proxies.currentGroup !== ""
                 onClicked: page.proxies.testCurrentGroup()
             }
@@ -59,7 +59,7 @@ ScrollView {
                 spacing: Theme.space2
 
                 SectionLabel {
-                    text: "代理组"
+                    text: qsTr("代理组")
                 }
 
                 Group {
@@ -85,7 +85,7 @@ ScrollView {
                             topPadding: Theme.space2
                             bottomPadding: Theme.space2
                             Accessible.role: Accessible.RadioButton
-                            Accessible.name: modelData.name + "，当前 " + modelData.now
+                            Accessible.name: qsTr("%1，当前 %2").arg(modelData.name).arg(modelData.now)
                             Accessible.checked: selected
                             onClicked: page.proxies.selectGroup(modelData.name)
 
@@ -186,14 +186,14 @@ ScrollView {
 
                             UiText {
                                 Layout.fillWidth: true
-                                text: "名称"
+                                text: qsTr("名称")
                                 role: Theme.type.caption
                                 color: Theme.textMuted
                             }
 
                             UiText {
                                 Layout.preferredWidth: 120
-                                text: "类型"
+                                text: qsTr("类型")
                                 role: Theme.type.caption
                                 color: Theme.textMuted
                             }
@@ -201,7 +201,7 @@ ScrollView {
                             UiText {
                                 Layout.preferredWidth: 72
                                 horizontalAlignment: Text.AlignRight
-                                text: "延迟"
+                                text: qsTr("延迟")
                                 role: Theme.type.caption
                                 color: Theme.textMuted
                             }

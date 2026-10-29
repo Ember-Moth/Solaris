@@ -55,15 +55,15 @@ ApplicationWindow {
             }
 
             PlaceholderPage {
-                title: "连接"
+                title: qsTr("连接")
             }
 
             PlaceholderPage {
-                title: "日志"
+                title: qsTr("日志")
             }
 
             PlaceholderPage {
-                title: "设置"
+                title: qsTr("设置")
             }
         }
     }
