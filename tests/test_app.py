@@ -85,3 +85,33 @@ def test_removal_dialog_keeps_the_profile_by_default(qtbot: QtBot, loaded: Loade
     loaded.key(qtbot, Qt.Key.Key_Return)
     qtbot.waitUntil(lambda: profiles.property("summary") == "2 个配置")
     assert loaded.warnings == []
+
+
+def test_override_editor_saves_with_ctrl_enter(qtbot: QtBot, loaded: Loaded) -> None:
+    profiles = loaded.view_models.profiles
+    loaded.view_models.shell.setPage("profiles")
+    profiles.editOverride("sample-b")
+
+    def editor_focused() -> bool:
+        item = loaded.window.activeFocusItem()
+        return item is not None and item.metaObject().className().startswith("TextArea")
+
+    qtbot.waitUntil(editor_focused)  # the dialog opens on the editor
+    editor = loaded.window.activeFocusItem()
+    assert editor is not None
+
+    # Enter types a new line; a rejected override keeps the dialog open.
+    editor.setProperty("text", "mode: [")
+    editor.setProperty("cursorPosition", 7)
+    loaded.key(qtbot, Qt.Key.Key_Return)
+    assert loaded.focused_text() == "mode: [\n"
+    QTest.keyClick(loaded.window, Qt.Key.Key_Return, Qt.KeyboardModifier.ControlModifier)
+    qtbot.waitUntil(lambda: profiles.property("overrideError") != "")
+    assert loaded.window.activeFocusItem() is editor
+
+    editor.setProperty("text", "mode: direct\n")
+    with qtbot.waitSignal(profiles.overrideSaved):
+        QTest.keyClick(loaded.window, Qt.Key.Key_Return, Qt.KeyboardModifier.ControlModifier)
+    qtbot.waitUntil(lambda: loaded.window.activeFocusItem() is not editor)
+    assert profiles.property("profiles")[1]["hasOverride"]
+    assert loaded.warnings == []

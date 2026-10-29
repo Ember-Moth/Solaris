@@ -4,9 +4,14 @@ A profile reaches the store only after the host validated it. Switching profiles
 updating the active one while the tunnel runs reloads it in place, with the TUN and
 system proxy state the host reports, so neither is interrupted.
 
+Every config goes to the host with the overrides that apply to it (docs/architecture.md
+§7.4): the global one, then the profile's own. An override is stored only after the host
+accepted it on the profile it affects.
+
 Every method runs on the asyncio thread and returns the new ProfileList. Downloads and
-validation run outside the lock; writing the store and reloading hold it, so an automatic
-update cannot interleave with a switch.
+their validation run outside the lock; writing the store and reloading hold it, so an
+automatic update cannot interleave with a switch. Saving an override validates under the
+lock as well, so the other override it is checked with cannot change meanwhile.
 """
 
 from __future__ import annotations
@@ -87,7 +92,7 @@ class ProfileLibrary:
         url = check_url(url)
         download = await self._fetcher.fetch(url)
         text = decode_config(download.body)
-        await self._host.validate(TunnelConfig(text))
+        await self._host.validate(TunnelConfig(text, await self._overrides(None)))
         profile = Profile(
             id=uuid.uuid4().hex,
             name=name.strip() or download.filename or urlsplit(url).hostname or url,
@@ -103,7 +108,7 @@ class ProfileLibrary:
 
     async def import_file(self, path: Path) -> ProfileList:
         text = await asyncio.to_thread(read_config_file, path)
-        await self._host.validate(TunnelConfig(text))
+        await self._host.validate(TunnelConfig(text, await self._overrides(None)))
         profile = Profile(
             id=uuid.uuid4().hex,
             name=path.stem,
@@ -167,7 +172,7 @@ class ProfileLibrary:
             text, usage = decode_config(download.body), download.usage
         else:
             text, usage = await asyncio.to_thread(read_config_file, Path(profile.path)), None
-        await self._host.validate(TunnelConfig(text))
+        await self._host.validate(TunnelConfig(text, await self._overrides(profile.id)))
         return text, usage
 
     async def _commit_update(self, profile_id: str, text: str, usage: Usage | None) -> None:
@@ -179,7 +184,7 @@ class ProfileLibrary:
         await asyncio.to_thread(self._store.write_config, profile_id, text)
         await self._save(self._list.put(refreshed))
         if profile_id == self._list.active:
-            await self._reload_if_running(text)
+            await self._reload_if_running(profile_id, text)
 
     def _mark_failed(self, profile_id: str, failed_at: float | None) -> None:
         if failed_at is None:
@@ -196,7 +201,7 @@ class ProfileLibrary:
             self._list.get(profile_id)
             text = await asyncio.to_thread(self._store.read_config, profile_id)
             # Reload first: if the core rejects the profile, the old one stays in use.
-            await self._reload_if_running(text)
+            await self._reload_if_running(profile_id, text)
             await self._save(replace(self._list, active=profile_id))
             return self._list
 
@@ -226,6 +231,37 @@ class ProfileLibrary:
             self._mark_failed(profile_id, None)
             return self._list
 
+    # -- overrides: ``None`` is the global override, a profile id that profile's own ----------
+    async def read_override(self, profile_id: str | None) -> str:
+        if profile_id is not None:
+            self._list.get(profile_id)
+        return await asyncio.to_thread(self._store.read_override, profile_id)
+
+    async def save_override(self, profile_id: str | None, text: str) -> ProfileList:
+        """Store an override once the host accepts it, then reload the tunnel if it runs the
+        profile affected. The global override is checked with the active profile, a profile's
+        own with that profile. Blank text removes the override."""
+        async with self._lock:
+            if profile_id is None:
+                target = self._list.active_profile()
+                if target is None:
+                    raise ProfileError("no_profile", "import a profile first")
+                overrides = await self._overrides(target.id, global_text=text)
+            else:
+                target = self._list.get(profile_id)
+                overrides = await self._overrides(target.id, own_text=text)
+            config = await asyncio.to_thread(self._store.read_config, target.id)
+            await self._host.validate(TunnelConfig(config, overrides))
+            await asyncio.to_thread(self._store.write_override, profile_id, text)
+            present = bool(text.strip())
+            if profile_id is None:
+                self._list = replace(self._list, has_global_override=present)
+            else:
+                self._list = self._list.put(replace(target, has_override=present))
+            if target.id == self._list.active:
+                await self._reload_if_running(target.id, config)
+            return self._list
+
     # -- tunnel ------------------------------------------------------------------------------
     async def start_tunnel(self, options: RunOptions) -> None:
         async with self._lock:
@@ -233,7 +269,7 @@ class ProfileLibrary:
             if active is None:
                 raise ProfileError("no_profile", "import a profile first")
             text = await asyncio.to_thread(self._store.read_config, active.id)
-            await self._host.start(TunnelConfig(text, options=options))
+            await self._host.start(TunnelConfig(text, await self._overrides(active.id), options))
 
     async def _running(self) -> HostStatus | None:
         status = await self._host.get_status()
@@ -244,10 +280,30 @@ class ProfileLibrary:
         if await self._running() is not None:
             raise ProfileError("profile_in_use", "disconnect before removing this profile")
 
-    async def _reload_if_running(self, text: str) -> None:
+    async def _reload_if_running(self, profile_id: str, text: str) -> None:
         status = await self._running()
         if status is not None:
-            await self._host.reload(TunnelConfig(text, options=live_options(status)))
+            overrides = await self._overrides(profile_id)
+            await self._host.reload(TunnelConfig(text, overrides, live_options(status)))
+
+    async def _overrides(
+        self,
+        profile_id: str | None,
+        *,
+        global_text: str | None = None,
+        own_text: str | None = None,
+    ) -> tuple[str, ...]:
+        """The override texts that apply to a stored profile, or to a new one for None: the
+        global override, then the profile's own. A text passed in stands for the stored one."""
+        if global_text is None:
+            global_text = await asyncio.to_thread(self._store.read_override, None)
+        if own_text is None:
+            own_text = (
+                await asyncio.to_thread(self._store.read_override, profile_id)
+                if profile_id is not None
+                else ""
+            )
+        return tuple(text for text in (global_text, own_text) if text.strip())
 
     async def _save(self, profiles: ProfileList) -> None:
         await asyncio.to_thread(self._store.save, profiles)

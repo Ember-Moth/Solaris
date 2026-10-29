@@ -13,6 +13,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 import yaml
 
@@ -54,21 +55,83 @@ NODES: dict[str, tuple[str, int | None]] = {
 }
 
 
-def check_config(config: TunnelConfig) -> None:
-    """The simulated pipeline: the YAML must parse to a mapping that defines a proxy,
-    either inline or through a provider. Failures use the service's error code."""
+# The insert keys of an override (docs/architecture.md §7.4): key -> (target list, at front).
+INSERT_KEYS = {
+    "prepend-rules": ("rules", True),
+    "append-rules": ("rules", False),
+    "prepend-proxies": ("proxies", True),
+    "append-proxies": ("proxies", False),
+    "prepend-proxy-groups": ("proxy-groups", True),
+    "append-proxy-groups": ("proxy-groups", False),
+}
+# Cleared after the overrides (architecture §3.3, item 2), so no override can set them.
+CONTROLLER_KEYS = (
+    "external-controller",
+    "external-controller-tls",
+    "external-controller-unix",
+    "external-controller-pipe",
+    "external-doh-server",
+    "secret",
+)
+
+
+def _load(text: str, label: str) -> Any:
     try:
-        document = yaml.safe_load(config.config_yaml)
+        return yaml.safe_load(text)
     except yaml.YAMLError as error:
-        raise HostError("invalid_config", str(error).replace("\n", " ")) from error
+        raise HostError("invalid_config", label + str(error).replace("\n", " ")) from error
+
+
+def merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    """Deep merge: mappings merge key by key, anything else is replaced."""
+    merged = dict(base)
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = merge(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def apply_override(
+    document: dict[str, Any], override: dict[str, Any], label: str
+) -> dict[str, Any]:
+    """One override: the deep merge first, then the insert keys on its result."""
+    result = merge(document, {k: v for k, v in override.items() if k not in INSERT_KEYS})
+    for key, (target, front) in INSERT_KEYS.items():
+        if key not in override:
+            continue
+        items, current = override[key], result.get(target, [])
+        if not isinstance(items, list) or not isinstance(current, list):
+            raise HostError("invalid_config", f"{label}{key} and {target} must be lists")
+        result[target] = [*items, *current] if front else [*current, *items]
+    return result
+
+
+def check_config(config: TunnelConfig) -> dict[str, Any]:
+    """The simulated pipeline (architecture §3.2, §7.4): parse the config, apply the
+    overrides in order, then clear the controller keys. The result must define a proxy,
+    inline or through a provider. Failures use the service's error code."""
+    document = _load(config.config_yaml, "")
     if not isinstance(document, dict):
         raise HostError("invalid_config", "the config is not a YAML mapping")
+    for number, text in enumerate(config.overrides, 1):
+        label = f"override {number}: "
+        override = _load(text, label)
+        if override is None:
+            continue
+        if not isinstance(override, dict):
+            raise HostError("invalid_config", label + "not a YAML mapping")
+        document = apply_override(document, override, label)
+    for key in CONTROLLER_KEYS:
+        document.pop(key, None)
     proxies = document.get("proxies")
     providers = document.get("proxy-providers")
     if not (isinstance(proxies, list) and proxies) and not (
         isinstance(providers, dict) and providers
     ):
         raise HostError("invalid_config", "the config defines no proxies")
+    return document
 
 
 _CORE_TYPES = {"VLESS": "vless", "Hysteria2": "hysteria2", "Trojan": "trojan", "Shadowsocks": "ss"}
@@ -124,6 +187,7 @@ class SimulatedHost:
         self._health_check_s = health_check_s
         self._running = True
         self.config: TunnelConfig | None = None  # the last config started or reloaded
+        self.effective: dict[str, Any] | None = None  # that config after the pipeline
         self.reloads = 0
         self._mode = "rule"
         self._tun = True
@@ -221,7 +285,6 @@ class SimulatedHost:
     async def start(self, config: TunnelConfig) -> None:
         if self._running:
             raise HostError("already_running", "the core is already running")
-        check_config(config)
         self._apply(config)
         self._running = True
         self._started_at = self._clock()
@@ -230,7 +293,6 @@ class SimulatedHost:
     async def reload(self, config: TunnelConfig) -> None:
         if not self._running:
             raise HostError("not_running", "the core is not running")
-        check_config(config)
         self._apply(config)
         self.reloads += 1
 
@@ -320,6 +382,7 @@ class SimulatedHost:
 
     # -- helpers -----------------------------------------------------------------------------
     def _apply(self, config: TunnelConfig) -> None:
+        self.effective = check_config(config)
         self.config = config
         self._tun = config.options.tun_enabled
         self._system_proxy = config.options.system_proxy_enabled

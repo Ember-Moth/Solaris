@@ -1,11 +1,14 @@
-"""Profiles on disk, in the user data directory (docs/architecture.md §7).
+"""Profiles on disk, in the user data directory (docs/architecture.md §7.2).
 
-    <data>/profiles.json        index: version, active profile, metadata of every profile
-    <data>/profiles/<id>.yaml   the config as downloaded or imported
+    <data>/profiles.json         index: version, active profile, metadata of every profile
+    <data>/profiles/<id>.yaml    the config as downloaded or imported
+    <data>/override.yaml         the global override, as the user wrote it
+    <data>/overrides/<id>.yaml   a profile's own override
 
 Every file is replaced atomically (temporary file, fsync, rename), so a crash leaves
 either the old or the new version. The index is written after the config it describes and
-before a config is deleted, so it never names a file that is half written.
+before a config is deleted, so it never names a file that is half written. Overrides are
+not in the index: a profile has one when its file exists, so saving one is a single write.
 """
 
 from __future__ import annotations
@@ -25,6 +28,10 @@ from mihomo_desktop.product import DISPLAY_NAME
 
 INDEX_NAME = "profiles.json"
 CONFIG_DIR = "profiles"
+GLOBAL_OVERRIDE_NAME = "override.yaml"
+OVERRIDE_DIR = "overrides"
+# Version 1 still: the index of the first release also reserved an "override": null field,
+# which is ignored on reading and no longer written.
 FORMAT_VERSION = 1
 
 
@@ -64,7 +71,7 @@ def _usage(raw: Any) -> Usage | None:
     )
 
 
-def _profile(raw: dict[str, Any]) -> Profile:
+def _profile(raw: dict[str, Any], has_override: bool) -> Profile:
     count = raw.get("proxy_count")
     return Profile(
         id=str(raw["id"]),
@@ -76,13 +83,13 @@ def _profile(raw: dict[str, Any]) -> Profile:
         updated_at=float(raw.get("updated_at", 0)),
         usage=_usage(raw.get("usage")),
         proxy_count=int(count) if count is not None else None,
+        has_override=has_override,
     )
 
 
 def _entry(profile: Profile) -> dict[str, Any]:
     entry = asdict(profile)
-    # Reserved for persistent overrides once decision D4 settles their shape.
-    entry["override"] = None
+    del entry["has_override"]  # the override file is the record
     return entry
 
 
@@ -99,20 +106,24 @@ class ProfileStore:
 
     def load(self) -> ProfileList:
         """Read the index. One that cannot be read is set aside, not overwritten later."""
+        has_global_override = self.override_path(None).is_file()
         try:
             raw = json.loads(self.index_path.read_text(encoding="utf-8"))
             if raw.get("version") != FORMAT_VERSION:
                 raise ValueError(f"unsupported index version {raw.get('version')!r}")
-            profiles = tuple(_profile(entry) for entry in raw["profiles"])
+            profiles = tuple(
+                _profile(entry, self.override_path(str(entry["id"])).is_file())
+                for entry in raw["profiles"]
+            )
         except FileNotFoundError:
-            return ProfileList()
+            return ProfileList(has_global_override=has_global_override)
         except OSError, ValueError, KeyError, TypeError, AttributeError:
             self._set_aside()
-            return ProfileList()
+            return ProfileList(has_global_override=has_global_override)
         active = raw.get("active")
         if not any(p.id == active for p in profiles):
             active = None
-        return ProfileList(profiles, active)
+        return ProfileList(profiles, active, has_global_override=has_global_override)
 
     def save(self, profiles: ProfileList) -> None:
         document = {
@@ -133,8 +144,34 @@ class ProfileStore:
         write_atomic(self.config_path(profile_id), text.encode("utf-8"))
 
     def delete_config(self, profile_id: str) -> None:
-        with contextlib.suppress(FileNotFoundError):
-            self.config_path(profile_id).unlink()
+        """Delete a profile's config and its override."""
+        for path in (self.config_path(profile_id), self.override_path(profile_id)):
+            with contextlib.suppress(FileNotFoundError):
+                path.unlink()
+
+    # -- overrides: ``None`` is the global override, a profile id that profile's own ----------
+    def override_path(self, profile_id: str | None) -> Path:
+        if profile_id is None:
+            return self.directory / GLOBAL_OVERRIDE_NAME
+        return self.directory / OVERRIDE_DIR / f"{profile_id}.yaml"
+
+    def read_override(self, profile_id: str | None) -> str:
+        """The override's YAML text; empty when there is none."""
+        try:
+            return self.override_path(profile_id).read_text(encoding="utf-8")
+        except FileNotFoundError:
+            return ""
+        except OSError as error:
+            raise ProfileError("override_unreadable", str(error)) from error
+
+    def write_override(self, profile_id: str | None, text: str) -> None:
+        """Store the text as written; blank text removes the override."""
+        path = self.override_path(profile_id)
+        if text.strip():
+            write_atomic(path, text.encode("utf-8"))
+        else:
+            with contextlib.suppress(FileNotFoundError):
+                path.unlink()
 
     def _set_aside(self) -> None:
         with contextlib.suppress(OSError):

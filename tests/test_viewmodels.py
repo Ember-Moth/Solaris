@@ -204,3 +204,63 @@ def test_removing_the_profile_in_use(qtbot: QtBot, view_models: ViewModels) -> N
     profiles.confirmRemove()
     qtbot.waitUntil(lambda: prop(profiles, "activeName") == "示例订阅 B")
     assert prop(profiles, "summary") == "2 个配置"
+
+
+def test_editing_an_override(qtbot: QtBot, view_models: ViewModels, tmp_path: Path) -> None:
+    profiles, host = view_models.profiles, view_models.host
+    assert isinstance(host, SimulatedHost)
+    qtbot.waitUntil(lambda: prop(view_models.overview, "connected"))
+    with qtbot.waitSignal(profiles.overrideOpened):
+        profiles.editOverride("sample-b")
+    assert prop(profiles, "overrideTitle") == "编辑「示例订阅 B」的覆写"
+    assert prop(profiles, "overrideText") == ""
+
+    # The core's rejection stays in the editor and nothing is stored.
+    with qtbot.assertNotEmitted(profiles.overrideSaved, wait=100):
+        profiles.saveOverride("mode: [\n")
+        qtbot.waitUntil(lambda: prop(profiles, "overrideError") != "")
+    assert prop(profiles, "overrideError").startswith("配置无效：override 1: ")  # noqa: RUF001
+    assert not prop(profiles, "overrideSaving")
+    assert not (tmp_path / "overrides" / "sample-b.yaml").exists()
+
+    # Another profile's override is stored without reloading the tunnel.
+    with qtbot.waitSignal(profiles.overrideSaved):
+        profiles.saveOverride("mode: direct\n")
+    assert prop(profiles, "overrideError") == ""
+    row = prop(profiles, "profiles")[1]
+    assert row["hasOverride"]
+    assert row["source"] == "订阅 · nodes.example.org · 9 个节点 · 已覆写"
+    assert host.reloads == 0
+
+    with qtbot.waitSignal(profiles.overrideOpened):
+        profiles.editOverride("sample-b")
+    assert prop(profiles, "overrideText") == "mode: direct\n"
+
+
+def test_editing_the_global_override_reloads(qtbot: QtBot, view_models: ViewModels) -> None:
+    profiles, host = view_models.profiles, view_models.host
+    assert isinstance(host, SimulatedHost)
+    qtbot.waitUntil(lambda: prop(view_models.overview, "connected"))
+    assert prop(profiles, "globalOverrideDetail") == "所有配置共用 · 未设置"
+    with qtbot.waitSignal(profiles.overrideOpened):
+        profiles.editGlobalOverride()
+    assert prop(profiles, "overrideTitle") == "编辑全局覆写"
+
+    with qtbot.waitSignals([profiles.overrideSaved, profiles.applied]):
+        profiles.saveOverride("mode: global\n")
+    assert prop(profiles, "hasGlobalOverride")
+    assert prop(profiles, "globalOverrideDetail") == "所有配置共用 · 已设置"
+    assert host.reloads == 1
+    assert host.config is not None
+    assert host.config.overrides == ("mode: global\n",)
+
+
+def test_removal_mentions_the_override(qtbot: QtBot, view_models: ViewModels) -> None:
+    profiles = view_models.profiles
+    with qtbot.waitSignal(profiles.overrideOpened):
+        profiles.editOverride("sample-c")
+    with qtbot.waitSignal(profiles.overrideSaved):
+        profiles.saveOverride("mode: direct\n")
+    with qtbot.waitSignal(profiles.removalRequested):
+        profiles.requestRemove("sample-c")
+    assert prop(profiles, "removalText") == "配置文件和它的覆写会从本机删除，无法恢复。"  # noqa: RUF001

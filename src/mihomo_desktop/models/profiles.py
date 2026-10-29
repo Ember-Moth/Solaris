@@ -43,6 +43,7 @@ class Profile:
     updated_at: float = 0.0  # unix seconds of the last download or import
     usage: Usage | None = None
     proxy_count: int | None = None  # inline proxies; None when not countable
+    has_override: bool = False  # it has its own override file; not part of the index
 
     @property
     def is_subscription(self) -> bool:
@@ -54,6 +55,7 @@ class ProfileList:
     profiles: tuple[Profile, ...] = ()
     active: str | None = None  # the id of the profile the tunnel uses
     update_failed: frozenset[str] = frozenset()  # ids whose last update failed; not stored
+    has_global_override: bool = False  # the global override file exists; not in the index
 
     def get(self, profile_id: str) -> Profile:
         for profile in self.profiles:
@@ -77,7 +79,9 @@ class ProfileList:
         active = self.active
         if active == profile_id:
             active = profiles[0].id if profiles else None
-        return ProfileList(profiles, active, self.update_failed - {profile_id})
+        return replace(
+            self, profiles=profiles, active=active, update_failed=self.update_failed - {profile_id}
+        )
 
 
 def count_proxies(text: str) -> int | None:

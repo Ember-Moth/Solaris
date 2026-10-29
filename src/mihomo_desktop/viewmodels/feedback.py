@@ -26,9 +26,16 @@ _MESSAGES = {
     "unknown_profile": "配置不存在",
     "no_profile": "尚未导入配置",
     "profile_in_use": "正在使用的配置需要先断开才能删除",
+    "override_unreadable": "无法读取覆写文件",
 }
 # Codes whose message (a parse error, an HTTP status) helps the user fix the problem.
-_WITH_DETAIL = {"invalid_config", "download_failed", "http_error", "file_unreadable"}
+_WITH_DETAIL = {
+    "invalid_config",
+    "download_failed",
+    "http_error",
+    "file_unreadable",
+    "override_unreadable",
+}
 
 
 def failure_text(error: BaseException) -> str:

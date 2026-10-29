@@ -11,6 +11,7 @@ ScrollView {
 
     required property ProfilesViewModel profiles
     property bool importOpen: false
+    property Item overrideTrigger  // gets focus back when the override editor closes
 
     readonly property int tableMinWidth: 760
     readonly property int usageWidth: 180
@@ -49,6 +50,14 @@ ScrollView {
 
         function onRemovalRequested() {
             removeDialog.show(profileMenu.trigger)
+        }
+
+        function onOverrideOpened() {
+            overrideDialog.show(page.overrideTrigger)
+        }
+
+        function onOverrideSaved() {
+            overrideDialog.close()
         }
     }
 
@@ -193,7 +202,6 @@ ScrollView {
             Layout.fillWidth: true
             Layout.leftMargin: Theme.pageX
             Layout.rightMargin: Theme.pageX
-            Layout.bottomMargin: Theme.pageBottom
             spacing: Theme.space2
 
             SectionLabel {
@@ -427,6 +435,60 @@ ScrollView {
                 }
             }
         }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.leftMargin: Theme.pageX
+            Layout.rightMargin: Theme.pageX
+            Layout.bottomMargin: Theme.pageBottom
+            spacing: Theme.space2
+
+            SectionLabel {
+                text: "覆写"
+            }
+
+            Group {
+                Layout.fillWidth: true
+
+                GroupRow {
+                    divider: false
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 0
+
+                        UiText {
+                            Layout.fillWidth: true
+                            text: "全局覆写"
+                            role: Theme.type.labelMd
+                        }
+
+                        UiText {
+                            Layout.fillWidth: true
+                            text: page.profiles.globalOverrideDetail
+                            role: Theme.type.caption
+                            color: Theme.textMuted
+                            elide: Text.ElideRight
+                        }
+                    }
+
+                    // The global override is checked against the active profile, so it
+                    // needs one.
+                    AppButton {
+                        id: globalOverrideButton
+
+                        variant: "compact"
+                        text: "编辑"
+                        enabled: page.profiles.hasActive
+                        Accessible.name: "编辑全局覆写"
+                        onClicked: {
+                            page.overrideTrigger = globalOverrideButton
+                            page.profiles.editGlobalOverride()
+                        }
+                    }
+                }
+            }
+        }
     }
 
     AppMenu {
@@ -456,6 +518,14 @@ ScrollView {
             onTriggered: page.profiles.copyLink(profileMenu.profile.id)
         }
 
+        AppMenuItem {
+            text: "编辑覆写…"
+            onTriggered: {
+                page.overrideTrigger = profileMenu.trigger
+                page.profiles.editOverride(profileMenu.profile.id)
+            }
+        }
+
         AppMenuSeparator {}
 
         AppMenuItem {
@@ -474,6 +544,12 @@ ScrollView {
         destructive: true
         onAccepted: page.profiles.confirmRemove()
         onRejected: page.profiles.cancelRemove()
+    }
+
+    OverrideDialog {
+        id: overrideDialog
+
+        profiles: page.profiles
     }
 
     FileDialog {

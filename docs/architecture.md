@@ -360,7 +360,9 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 ```text
 <data>/
 ├── profiles.json           索引：格式版本、当前配置、每份配置的元数据
-└── profiles/<id>.yaml      配置原文，下载或导入时的内容，不做改写
+├── profiles/<id>.yaml      配置原文，下载或导入时的内容，不做改写
+├── override.yaml           全局覆写，用户写的 YAML 原文
+└── overrides/<id>.yaml     这份配置自己的覆写
 ```
 
 ```json
@@ -377,8 +379,7 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
       "auto_update_hours": 12,
       "updated_at": 1793277795.0,
       "usage": {"upload": 1288490188, "download": 39728447488, "total": 214748364800, "expire": 1798646400},
-      "proxy_count": 48,
-      "override": null
+      "proxy_count": 48
     }
   ]
 }
@@ -387,7 +388,10 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 - `id` 是随机 UUID 的十六进制串，也是 YAML 文件名。`kind` 为 `subscription` 或 `file`；本地文件记下原路径
   `path`，供「重新读取」。`usage` 来自 `Subscription-Userinfo`，没有这个响应头时为 `null`。
   `proxy_count` 只用于显示，是对顶层 `proxies:` 列表的计数，数不出来时为 `null`。
-- `override` 为持久覆写预留，决策 D4 之前恒为 `null`。
+- 覆写不进索引：文件存在就表示有覆写。保存是一次原子写入，清空文本就删除文件，删除配置时它的覆写随
+  配置文件一起删除。UI 不解析覆写，只存原文、传原文（7.4 节）。
+- 第一版索引的每一项带一个预留的 `"override": null`。读取时忽略它，之后写入不再带。格式版本仍是 1：
+  索引只少了一个没用过的键，旧版本读到新索引也不会把它当成损坏的索引。
 - 每个文件都原子替换：同目录临时文件 → fsync → rename。先写 YAML 再写索引；删除时先写索引再删 YAML，
   所以索引不会指向写了一半的文件。
 - 读不了的索引（JSON 损坏、版本不认识）改名为 `profiles.json.<时间戳>.bad` 留存，然后从空列表开始，
@@ -399,7 +403,7 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 - **下载**在用户上下文中进行（urllib，在工作线程里执行），跟随系统代理设置。User-Agent 为
   `mihomo-desktop/<版本> clash.meta`，让订阅服务返回 Clash YAML。只接受 http 和 https；超过一个请求帧能装下的
   大小（16 MiB 减 1 MiB）即拒绝。`Content-Disposition` 里的文件名作为默认名称。
-- **导入**：下载或读文件 → 解码为 UTF-8 → 宿主 `validate` → 写入存储。第一份配置自动成为当前配置。
+- **导入**：下载或读文件 → 解码为 UTF-8 → 宿主 `validate`（带上全局覆写）→ 写入存储。第一份配置自动成为当前配置。
 - **自动更新**：订阅默认每 12 小时更新一次，可以按配置关闭。界面每分钟检查一次到期的订阅，在启动时也检查；
   失败的订阅 30 分钟内不重试，行内显示「更新失败」。
 - **切换与更新**：更新先 `validate` 再写入存储；如果更新的是当前配置且隧道在运行，随后 `reload`。切换配置时，
@@ -429,6 +433,10 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   照样会被清除。
 - 某段覆写解析失败、不是映射，或插入键的值不是列表时，Validate、Start、Reload 都返回 `invalid_config`，
   `message` 是解析错误原文，界面原样显示。
+- **编辑**：入口是配置「更多」菜单里的「编辑覆写…」和配置页底部的「全局覆写」一行；有覆写的配置在列表第二行
+  写「已覆写」。保存时先用受影响的配置和新覆写调用 `validate`：配置自己的覆写用这份配置校验，全局覆写用
+  当前配置校验（所以没有配置时不能编辑全局覆写）。宿主拒绝时不保存，错误显示在编辑框下方；通过后写入存储，
+  隧道在运行且用的正是受影响的配置时随后 `reload`。校验、写入和重载在配置库的同一把锁下进行。
 
 ## 8. 安全模型
 

@@ -37,6 +37,8 @@ def _source(profile: Profile) -> str:
     parts = ["订阅" if profile.is_subscription else "本地文件", _origin(profile)]
     if profile.proxy_count:
         parts.append(f"{profile.proxy_count} 个节点")
+    if profile.has_override:
+        parts.append("已覆写")
     return " · ".join(parts)
 
 
@@ -57,6 +59,8 @@ def _removal_text(removal: Removal) -> str:
         text = f"这是当前使用的配置，删除后改用「{removal.successor.name}」。"
     elif removal.active:
         text = "这是当前使用的配置，删除后需要重新导入配置才能连接。"
+    if removal.profile.has_override:
+        return text + "配置文件和它的覆写会从本机删除，无法恢复。"
     return text + "配置文件会从本机删除，无法恢复。"
 
 
@@ -76,6 +80,8 @@ class ProfilesViewModel(QObject):
     applied = Signal()  # the tunnel may run another config now; groups need a refresh
     imported = Signal()  # an import succeeded; the view closes its form
     removalRequested = Signal()  # a removal awaits confirmation; the view asks
+    overrideOpened = Signal()  # an override was read; the view opens its editor
+    overrideSaved = Signal()  # the host accepted the override and it is stored
 
     def __init__(
         self,
@@ -96,6 +102,11 @@ class ProfilesViewModel(QObject):
         self._error = ""
         self._removal: Removal | None = None  # the last one asked about; its text stays
         self._removal_pending = False  # while the dialog closes
+        self._override_target: str | None = None  # the profile id; None is the global one
+        self._override_name = ""
+        self._override_text = ""
+        self._override_saving = False
+        self._override_error = ""
         self._timer = QTimer(self)
         self._timer.setInterval(TICK_MS)
         self._timer.timeout.connect(self.checkUpdates)
@@ -180,6 +191,7 @@ class ProfilesViewModel(QObject):
                     "refreshLabel": "更新" if profile.is_subscription else "重新读取",
                     "isSubscription": profile.is_subscription,
                     "autoUpdate": profile.auto_update_hours > 0,
+                    "hasOverride": profile.has_override,
                 }
             )
         return rows
@@ -280,6 +292,89 @@ class ProfilesViewModel(QObject):
 
     def _updated_at(self, profile_id: str) -> float | None:
         return next((p.updated_at for p in self._list.profiles if p.id == profile_id), None)
+
+    # -- overrides ---------------------------------------------------------------------------
+    @Property(bool, notify=changed)
+    def hasGlobalOverride(self) -> bool:
+        return self._list.has_global_override
+
+    @Property(str, notify=changed)
+    def globalOverrideDetail(self) -> str:
+        return "所有配置共用 · " + ("已设置" if self._list.has_global_override else "未设置")
+
+    @Slot(str)
+    def editOverride(self, profile_id: str) -> None:
+        profile = next((p for p in self._list.profiles if p.id == profile_id), None)
+        if profile is not None:
+            self._open_override(profile_id, profile.name)
+
+    @Slot()
+    def editGlobalOverride(self) -> None:
+        self._open_override(None, "")
+
+    def _open_override(self, profile_id: str | None, name: str) -> None:
+        """Read the stored text, then let the view open the editor on it."""
+        self._error = ""
+
+        def read(text: str) -> None:
+            self._override_target, self._override_name = profile_id, name
+            self._override_text = text
+            self._override_error = ""
+            self._override_saving = False
+            self.changed.emit()
+            self.overrideOpened.emit()
+
+        def failed(error: BaseException) -> None:
+            self._error = failure_text(error)
+            self.changed.emit()
+
+        self._runner.submit(self._library.read_override(profile_id), read, failed)
+
+    @Property(str, notify=changed)
+    def overrideTitle(self) -> str:
+        if self._override_target is None:
+            return "编辑全局覆写"
+        return f"编辑「{self._override_name}」的覆写"
+
+    @Property(str, notify=changed)
+    def overrideText(self) -> str:
+        """The stored text when the editor opened."""
+        return self._override_text
+
+    @Property(bool, notify=changed)
+    def overrideSaving(self) -> bool:
+        return self._override_saving
+
+    @Property(str, notify=changed)
+    def overrideError(self) -> str:
+        return self._override_error
+
+    @Slot(str)
+    def saveOverride(self, text: str) -> None:
+        """Validate and store the editor's text. A rejection stays in the editor; success
+        closes it, and refreshes the groups when the tunnel runs the profile affected."""
+        if self._override_saving:
+            return
+        target = self._override_target
+        reloads = target is None or target == self._list.active
+        self._override_saving = True
+        self._override_error = ""
+        self.changed.emit()
+
+        def saved(profiles: ProfileList) -> None:
+            self._override_saving = False
+            self._override_text = text
+            self._loaded(profiles)
+            self.overrideSaved.emit()
+            if reloads:
+                self.applied.emit()
+
+        def failed(error: BaseException) -> None:
+            self._override_saving = False
+            self._override_error = failure_text(error)
+            self.changed.emit()
+
+        self._runner.submit(self._library.save_override(target, text), saved, failed)
 
     # -- import ------------------------------------------------------------------------------
     @Property(bool, notify=changed)

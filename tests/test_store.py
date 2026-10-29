@@ -48,8 +48,63 @@ def test_index_format(tmp_path: Path) -> None:
     (entry,) = document["profiles"]
     assert entry["name"] == "示例订阅 A"
     assert entry["usage"] == {"upload": 1, "download": 2, "total": 300, "expire": 1_800_000_000}
-    assert entry["override"] is None  # reserved for decision D4
+    assert "override" not in entry  # an override is a file of its own
+    assert "has_override" not in entry
     assert store.config_path("a1") == tmp_path / "profiles" / "a1.yaml"
+
+
+def test_overrides_are_files_beside_the_index(tmp_path: Path) -> None:
+    store = ProfileStore(tmp_path)
+    store.save(ProfileList((SUBSCRIPTION, LOCAL), "a1"))
+    assert store.read_override(None) == ""
+    store.write_override(None, "mode: global\n")
+    store.write_override("b2", "prepend-rules: [MATCH,DIRECT]\n")
+    assert (tmp_path / "override.yaml").read_text(encoding="utf-8") == "mode: global\n"
+    assert store.override_path("b2") == tmp_path / "overrides" / "b2.yaml"
+
+    loaded = ProfileStore(tmp_path).load()
+    assert loaded.has_global_override
+    assert [p.has_override for p in loaded.profiles] == [False, True]
+    assert store.read_override("b2") == "prepend-rules: [MATCH,DIRECT]\n"
+
+    # Blank text removes an override; removing a profile's config removes its override.
+    store.write_override(None, "\n  \n")
+    store.delete_config("b2")
+    assert not store.override_path(None).exists()
+    assert not store.override_path("b2").exists()
+    loaded = store.load()
+    assert not loaded.has_global_override
+    assert not loaded.get("b2").has_override
+    assert [p.name for p in (tmp_path / "overrides").iterdir()] == []
+
+
+def test_reads_the_first_release_index(tmp_path: Path) -> None:
+    """The index the profiles page shipped with reserved ``"override": null``."""
+    document = {
+        "version": 1,
+        "active": "a1",
+        "profiles": [
+            {
+                "id": "a1",
+                "name": "示例订阅 A",
+                "kind": "subscription",
+                "url": "https://sub.example.com/s?token=x",
+                "path": "",
+                "auto_update_hours": 12,
+                "updated_at": 1_790_000_000.0,
+                "usage": {"upload": 1, "download": 2, "total": 300, "expire": 1_800_000_000},
+                "proxy_count": 48,
+                "override": None,
+            }
+        ],
+    }
+    (tmp_path / INDEX_NAME).write_text(json.dumps(document), encoding="utf-8")
+    store = ProfileStore(tmp_path)
+    loaded = store.load()
+    assert loaded == ProfileList((SUBSCRIPTION,), "a1")
+    store.save(loaded)
+    (entry,) = json.loads((tmp_path / INDEX_NAME).read_text(encoding="utf-8"))["profiles"]
+    assert "override" not in entry
 
 
 def test_writes_leave_no_temporary_files(tmp_path: Path) -> None:
