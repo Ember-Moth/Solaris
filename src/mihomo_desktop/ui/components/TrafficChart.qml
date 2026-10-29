@@ -11,7 +11,7 @@ Item {
 
     implicitHeight: 112
     Accessible.role: Accessible.Graphic
-    Accessible.name: "近 40 秒下载与上传速率"
+    Accessible.name: qsTr("近 40 秒下载与上传速率")
 
     function points(values: var): var {
         const count = values.length

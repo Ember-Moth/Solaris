@@ -20,6 +20,7 @@ htmlcov/
 *.qmlc
 *.jsc
 *.qm
+!src/mihomo_desktop/translations/*.qm
 .qmlls.ini
 deployment/
 

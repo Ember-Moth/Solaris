@@ -41,6 +41,13 @@ uv run python scripts/gen_protocol.py
 uv run python scripts/gen_theme.py
 ```
 
+改动界面文案后更新翻译目录并编译（源文是中文，英文译文在 `src/mihomo_desktop/translations/en.ts`，
+[architecture.md](docs/architecture.md) §7.5）：
+
+```bash
+uv run python scripts/gen_i18n.py
+```
+
 运行测试：
 
 ```bash
@@ -63,7 +70,8 @@ go -C src/core run ./service -socket /tmp/mihomo-desktop-dev.sock
 uv run python scripts/control_ping.py --socket /tmp/mihomo-desktop-dev.sock
 ```
 
-用模拟宿主和示例数据预览界面（不需要服务；目前实现了概览和代理两页）：
+用模拟宿主和示例数据预览界面（不需要服务；目前实现了概览和代理两页）。界面语言跟随系统，`--lang en` 或
+`--lang zh` 可以指定：
 
 ```bash
 uv run python scripts/preview.py

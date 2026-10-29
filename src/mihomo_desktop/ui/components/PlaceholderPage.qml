@@ -20,7 +20,7 @@ Item {
         }
 
         UiText {
-            text: "尚未实现"
+            text: qsTr("尚未实现")
             role: Theme.type.bodySm
             color: Theme.textMuted
         }

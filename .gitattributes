@@ -1,0 +1,4 @@
+# Translation catalogs (scripts/gen_i18n.py): the .ts stays LF on every checkout, and the
+# compiled .qm committed beside it is binary.
+*.ts text eol=lf
+*.qm binary

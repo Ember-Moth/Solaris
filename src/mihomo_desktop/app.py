@@ -14,6 +14,7 @@ from mihomo_desktop import __version__
 from mihomo_desktop.host.base import HostError, TunnelHost
 from mihomo_desktop.host.service import ServiceHost
 from mihomo_desktop.host.transport import Opener, Streams
+from mihomo_desktop.i18n import Translations, resolve_language
 from mihomo_desktop.models.store import ProfileStore, default_data_dir
 from mihomo_desktop.models.subscription import Fetcher, UrlFetcher
 from mihomo_desktop.product import DISPLAY_NAME, PIPE_NAME
@@ -53,10 +54,14 @@ def main(
     host: TunnelHost | None = None,
     store: ProfileStore | None = None,
     fetcher: Fetcher | None = None,
+    language: str = "",
 ) -> int:
+    """``language`` is ``zh`` or ``en``; empty follows MIHOMO_DESKTOP_LANG, then the system."""
     app = QGuiApplication(sys.argv)
     app.setApplicationName(DISPLAY_NAME)
     app.setApplicationVersion(__version__)
+    translations = Translations(app)
+    translations.apply(resolve_language(language))
     view_models = compose(
         host or ServiceHost(default_opener()),
         store or ProfileStore(default_data_dir()),

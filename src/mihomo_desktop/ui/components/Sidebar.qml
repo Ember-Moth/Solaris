@@ -56,7 +56,7 @@ Rectangle {
 
                 UiText {
                     Layout.maximumWidth: Theme.sidebarWidth - 92
-                    text: root.profiles.hasActive ? root.profiles.activeName : "未导入配置"
+                    text: root.profiles.hasActive ? root.profiles.activeName : qsTr("未导入配置")
                     role: Theme.type.caption
                     color: Theme.textMuted
                     elide: Text.ElideRight

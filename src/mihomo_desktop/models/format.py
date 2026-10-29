@@ -1,8 +1,11 @@
-"""Text for numbers the screens show: rates, sizes, durations, latency and dates."""
+"""Text for numbers the screens show: rates, sizes, durations, latency and dates.
+
+Dates follow the UI language: the patterns are translated and QLocale's default (set by
+i18n.Translations) names the months."""
 
 from __future__ import annotations
 
-import time
+from PySide6.QtCore import QCoreApplication, QDate, QDateTime, QLocale
 
 _UNITS = ("B", "KB", "MB", "GB", "TB")
 
@@ -36,7 +39,7 @@ FAIR_MS = 300
 def latency(delay_ms: int | None) -> tuple[str, str]:
     """Return the text and level ("good", "fair", "poor" or "timeout") of a delay."""
     if delay_ms is None:
-        return "超时", "timeout"
+        return QCoreApplication.translate("Format", "超时"), "timeout"
     if delay_ms < GOOD_MS:
         return f"{delay_ms} ms", "good"
     if delay_ms < FAIR_MS:
@@ -54,22 +57,29 @@ def usage(used_bytes: int, total_bytes: int) -> str:
     return f"{used} / {total}"
 
 
+def _local_date(timestamp: float) -> QDate:
+    return QDateTime.fromSecsSinceEpoch(int(timestamp)).date()
+
+
 def date(timestamp: float) -> str:
-    return time.strftime("%Y-%m-%d", time.localtime(timestamp))
+    # A QDate format pattern (MMM is the month's short name), so translate it as one.
+    pattern = QCoreApplication.translate("Format", "yyyy-MM-dd", "date pattern")
+    return QLocale().toString(_local_date(timestamp), pattern)
 
 
 def ago(timestamp: float, now: float) -> str:
     """When something happened: ``刚刚``, ``5 分钟前``, ``2 小时前``, ``3 天前``, then a date."""
     seconds = max(now - timestamp, 0)
     if seconds < 60:
-        return "刚刚"
+        return QCoreApplication.translate("Format", "刚刚")
     if seconds < 3600:
-        return f"{int(seconds // 60)} 分钟前"
+        return QCoreApplication.translate("Format", "%n 分钟前", None, int(seconds // 60))
     if seconds < 86400:
-        return f"{int(seconds // 3600)} 小时前"
+        return QCoreApplication.translate("Format", "%n 小时前", None, int(seconds // 3600))
     if seconds < 7 * 86400:
-        return f"{int(seconds // 86400)} 天前"
-    then = time.localtime(timestamp)
-    if then.tm_year == time.localtime(now).tm_year:
-        return f"{then.tm_mon} 月 {then.tm_mday} 日"
+        return QCoreApplication.translate("Format", "%n 天前", None, int(seconds // 86400))
+    then = _local_date(timestamp)
+    if then.year() == _local_date(now).year():
+        pattern = QCoreApplication.translate("Format", "M 月 d 日", "date pattern, this year")
+        return QLocale().toString(then, pattern)
     return date(timestamp)

@@ -5,14 +5,23 @@ from pathlib import Path
 import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtQml import QQmlApplicationEngine
-from PySide6.QtQuick import QQuickWindow
+from PySide6.QtQuick import QQuickItem, QQuickWindow
 from PySide6.QtTest import QTest
 from pytestqt.qtbot import QtBot
 
 from mihomo_desktop.app import load_ui
 from mihomo_desktop.models.store import ProfileStore
 from mihomo_desktop.viewmodels.composition import ViewModels, compose
+from tests.support.i18n import ui_language
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
+
+
+def texts(item: QQuickItem) -> set[str]:
+    """Every ``text`` shown under ``item``."""
+    found = {text} if isinstance(text := item.property("text"), str) and text else set()
+    for child in item.childItems():
+        found |= texts(child)
+    return found
 
 
 class Loaded:
@@ -31,29 +40,35 @@ class Loaded:
 
 
 @pytest.fixture
-def loaded(qtbot: QtBot, tmp_path: Path) -> Iterator[Loaded]:
+def loaded(request: pytest.FixtureRequest, qtbot: QtBot, tmp_path: Path) -> Iterator[Loaded]:
+    """The main window in Chinese, or in the language given by indirect parametrization."""
     store = ProfileStore(tmp_path)
     seed_profiles(store, time.time())
-    view_models = compose(SimulatedHost(), store, SimulatedFetcher())
-    engine = QQmlApplicationEngine()
-    warnings: list[str] = []
-    engine.warnings.connect(lambda errors: warnings.extend(e.toString() for e in errors))
-    try:
-        assert load_ui(engine, view_models)
-        (window,) = engine.rootObjects()
-        assert isinstance(window, QQuickWindow)
-        view_models.start()
-        yield Loaded(view_models, window, warnings)
-    finally:
-        view_models.shutdown()
-        for root in engine.rootObjects():
-            root.deleteLater()
-        del engine
+    with ui_language(getattr(request, "param", "zh")):
+        view_models = compose(SimulatedHost(), store, SimulatedFetcher())
+        engine = QQmlApplicationEngine()
+        warnings: list[str] = []
+        engine.warnings.connect(lambda errors: warnings.extend(e.toString() for e in errors))
+        try:
+            assert load_ui(engine, view_models)
+            (window,) = engine.rootObjects()
+            assert isinstance(window, QQuickWindow)
+            view_models.start()
+            yield Loaded(view_models, window, warnings)
+        finally:
+            view_models.shutdown()
+            for root in engine.rootObjects():
+                root.deleteLater()
+            del engine
 
 
-def test_main_window_loads_without_qml_warnings(qtbot: QtBot, loaded: Loaded) -> None:
+@pytest.mark.parametrize(
+    ("loaded", "label"), [("zh", "出站"), ("en", "Outbound")], indirect=["loaded"]
+)
+def test_main_window_loads_without_qml_warnings(qtbot: QtBot, loaded: Loaded, label: str) -> None:
     view_models = loaded.view_models
     qtbot.waitUntil(lambda: view_models.overview.property("connected"))
+    assert label in texts(loaded.window.contentItem())
     view_models.shell.setPage("proxies")
     qtbot.waitUntil(lambda: view_models.proxies.property("currentGroup") != "")
     view_models.shell.setPage("profiles")
