@@ -12,9 +12,13 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
+	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/control"
+	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/engine"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/peer"
+	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/product"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/server"
 )
 
@@ -25,6 +29,7 @@ var errRoot = errors.New("the development server must not run as root: it never 
 
 func run() error {
 	socket := flag.String("socket", "", "development socket path (required)")
+	home := flag.String("home", "", "mihomo home directory (default: the user config directory)")
 	flag.Parse()
 	if *socket == "" {
 		return errors.New("-socket is required: off Windows the service only runs as a development server")
@@ -32,6 +37,20 @@ func run() error {
 	if err := refuseRoot(os.Geteuid()); err != nil {
 		return err
 	}
+	if *home == "" {
+		var err error
+		if *home, err = developmentHome(); err != nil {
+			return err
+		}
+	}
+	core, err := newDevelopmentEngine(*home)
+	if err != nil {
+		return err
+	}
+	defer core.Close()
+	dispatcher := newDevelopmentDispatcher(core)
+	defer dispatcher.Close()
+
 	uid := uint32(os.Getuid())
 	if err := removeStaleSocket(*socket); err != nil {
 		return err
@@ -46,8 +65,29 @@ func run() error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	slog.Info("development control socket", "path", *socket, "uid", uid)
-	return server.Serve(ctx, listener, peer.UnixSocketVerifier(uid), newDispatcher(), slog.Default())
+	slog.Info("development control socket", "path", *socket, "uid", uid, "home", core.HomeDir())
+	return server.Serve(ctx, listener, peer.UnixSocketVerifier(uid), dispatcher, slog.Default())
+}
+
+// developmentHome keeps the development core's files apart from anything a release writes.
+func developmentHome() (string, error) {
+	config, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(config, product.DisplayName, "dev-core"), nil
+}
+
+// newDevelopmentEngine runs mihomo without a TUN: whatever the profile says, nothing
+// takes over the machine's traffic and every inbound stays on 127.0.0.1.
+func newDevelopmentEngine(home string) (*engine.Engine, error) {
+	return engine.New(engine.Options{HomeDir: home, Tun: engine.TunNone})
+}
+
+// newDevelopmentDispatcher serves the host methods so ServiceHost works against it, and
+// rejects the TUN and the system proxy with unsupported_method.
+func newDevelopmentDispatcher(core *engine.Engine) *control.Dispatcher {
+	return control.New(control.Options{Engine: core, HostMethods: true, Development: true})
 }
 
 func refuseRoot(euid int) error {

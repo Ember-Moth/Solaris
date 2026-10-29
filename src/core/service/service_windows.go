@@ -11,8 +11,11 @@ import (
 	"path/filepath"
 
 	"github.com/Microsoft/go-winio"
+	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/svc"
 
+	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/control"
+	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/engine"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/peer"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/product"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/server"
@@ -38,11 +41,33 @@ func run() error {
 	return serve(ctx)
 }
 
+// serviceHome is the core's home under %ProgramData%. Per-owner homes in users\<SID>\
+// arrive with Claim (docs/architecture.md §5.1, §5.4); mihomo opens cache.db once per
+// process, so switching owners will need a fresh service process.
+func serviceHome() (string, error) {
+	programData, err := windows.KnownFolderPath(windows.FOLDERID_ProgramData, 0)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(programData, product.DisplayName, "core"), nil
+}
+
 func serve(ctx context.Context) error {
 	executable, err := os.Executable()
 	if err != nil {
 		return err
 	}
+	home, err := serviceHome()
+	if err != nil {
+		return err
+	}
+	core, err := engine.New(engine.Options{HomeDir: home, Tun: engine.TunOwned})
+	if err != nil {
+		return err
+	}
+	defer core.Close()
+	dispatcher := control.New(control.Options{Engine: core, HostMethods: true})
+	defer dispatcher.Close()
 	listener, err := winio.ListenPipe(product.PipeName, &winio.PipeConfig{
 		SecurityDescriptor: product.PipeSDDL,
 		InputBufferSize:    pipeBufferSize,
@@ -52,7 +77,7 @@ func serve(ctx context.Context) error {
 		return fmt.Errorf("listen on %s: %w", product.PipeName, err)
 	}
 	verify := peer.PipeClientVerifier(filepath.Join(filepath.Dir(executable), product.UIExecutable))
-	return server.Serve(ctx, listener, verify, newDispatcher(), slog.Default())
+	return server.Serve(ctx, listener, verify, dispatcher, slog.Default())
 }
 
 type service struct{}
