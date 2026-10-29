@@ -1,0 +1,7 @@
+proxies:
+  - {name: 香港 01, type: ss, server: hk.example.net, port: 8388, cipher: aes-128-gcm, password: sample}
+  - {name: 日本 01, type: ss, server: jp.example.net, port: 8388, cipher: aes-128-gcm, password: sample}
+proxy-groups:
+  - {name: 节点选择, type: select, proxies: [香港 01, 日本 01]}
+rules:
+  - MATCH,节点选择

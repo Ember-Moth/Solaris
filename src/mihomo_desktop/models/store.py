@@ -10,10 +10,13 @@ Each method is one transaction. ``save`` writes the whole list: a profile missin
 or an override cleared, is marked deleted rather than removed; a profile's config is
 removed with ``delete_config``, as it is only a cache. The config is written before the
 list that names it, so the list never names a profile without one.
+
+``open_database`` also imports the file store of earlier versions, once (file_import.py).
 """
 
 from __future__ import annotations
 
+import logging
 import os
 import sqlite3
 import sys
@@ -22,11 +25,23 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-from mihomo_desktop.models.database import DATABASE_NAME, Database, sync_rows
+from mihomo_desktop.models import file_import
+from mihomo_desktop.models.database import (
+    DATABASE_NAME,
+    Database,
+    read_state,
+    sync_rows,
+    write_state,
+)
 from mihomo_desktop.models.profiles import Profile, ProfileError, ProfileList, Usage
+from mihomo_desktop.models.settings import write_settings
 from mihomo_desktop.product import DISPLAY_NAME
 
 GLOBAL_SCOPE = "global"  # the scope of the global override
+# The state key of the import: present once it is stored, with the files still to rename.
+FILE_IMPORT_KEY = "file_import"
+
+_log = logging.getLogger(__name__)
 
 
 def default_data_dir() -> Path:
@@ -40,8 +55,11 @@ def default_data_dir() -> Path:
 
 
 def open_database(directory: Path, *, clock: Callable[[], float] = time.time) -> Database:
-    """The database in ``directory``, migrated."""
+    """The database in ``directory``, migrated. The first time, the file store of earlier
+    versions is imported in one transaction and its files renamed afterwards; an import
+    that fails leaves the files as they were, to be tried again at the next start."""
     database = Database(directory / DATABASE_NAME, clock=clock)
+    _import_files(database, directory)
     with database.transaction() as connection:
         # Configs left by a crash between writing one and saving the list.
         connection.execute(
@@ -214,3 +232,52 @@ def write_override(
         "WHERE overrides.yaml IS NOT excluded.yaml OR overrides.deleted_at IS NOT NULL",
         (scope, text, now),
     )
+
+
+# -- the file store of earlier versions ---------------------------------------------------
+def _import_files(database: Database, directory: Path) -> None:
+    with database.reading() as connection:
+        marker = read_state(connection, FILE_IMPORT_KEY)
+    if marker is None:
+        try:
+            found = file_import.read_files(directory)
+            with database.transaction() as connection:
+                now = database.clock()
+                _merge(connection, found, now)
+                write_state(connection, FILE_IMPORT_KEY, {"pending": found.files}, now)
+        except (OSError, sqlite3.Error) as error:
+            _log.warning(
+                "importing the files in %s failed; trying again next time: %s", directory, error
+            )
+            return
+        pending = list(found.files)
+    else:
+        pending = list(marker["pending"])
+    if pending:
+        left = file_import.set_aside(directory, pending)
+        try:
+            with database.transaction() as connection:
+                write_state(connection, FILE_IMPORT_KEY, {"pending": left}, database.clock())
+        except sqlite3.Error as error:  # the files renamed are skipped next time
+            _log.warning("could not record the renamed files: %s", error)
+
+
+def _merge(connection: sqlite3.Connection, found: file_import.FileStore, now: float) -> None:
+    """Add what the files hold to the database. It is empty unless an earlier import failed
+    and the user went on meanwhile; then what is stored already stays as it is."""
+    stored = load_profiles(connection)
+    known = {p.id for p in stored.profiles}
+    added = tuple(p for p in found.profiles.profiles if p.id not in known)
+    for profile in added:
+        if (text := found.configs.get(profile.id)) is not None:
+            write_config(connection, profile.id, text, now)
+    active = stored.active or found.profiles.active
+    save_profiles(connection, ProfileList(stored.profiles + added, active), now)
+    imported = {p.id for p in added}
+    for profile_id, text in found.overrides.items():
+        has_row = connection.execute(
+            "SELECT 1 FROM overrides WHERE scope = ?", (_scope(profile_id),)
+        ).fetchone()
+        if (profile_id is None or profile_id in imported) and has_row is None:
+            write_override(connection, profile_id, text, now)
+    write_settings(connection, found.settings, now, keep=True)
