@@ -127,8 +127,15 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
     会短暂影响模式等全局设置；分发器用操作锁串行执行它。
 - **启停与重载**：
   - Start 首次应用配置；Reload 原地 `hub.ApplyConfig`，mihomo 在 TUN 配置不变时不重建 TUN。
-  - 应用后核对端口和 TUN 是否真的打开（`hub.ApplyConfig` 只记日志、不返回错误），没打开就返回
-    `ErrApplyFailed`：Start 回到空闲配置并进入 FAILED；Reload 保持运行并记录 `last_error`。
+  - Reload 不断开已有连接：`hub.ApplyConfig` 只替换代理表和规则表（`tunnel.UpdateProxies`、`UpdateRules`），
+    不碰 `statistic.DefaultManager` 里的连接；入站只在地址变化时重建，关闭的也只是监听 socket。已有连接沿用
+    建立时选定的出站，直到结束，即使那个节点已从新配置里删掉。应用期间（毫秒级）隧道处于 Suspend，这时新到的
+    连接会被直接关闭（`tunnel.isHandle`）。A2 实测见 [routing.md](routing.md) 第 12 节。
+  - 应用前先试开新配置要新开的入站端口（TCP，混合端口和 SOCKS 端口还有 UDP），已经由内核打开的跳过。端口被
+    占用时直接返回 `ErrApplyFailed`，信息是系统的监听错误，什么都不改：Reload 保留原来的配置和端口，Start
+    进入 FAILED。`hub.ApplyConfig` 会先关旧端口再开新端口、失败只记日志，没有这一步，运行中的内核会丢掉端口。
+  - 应用后仍核对端口和 TUN 是否真的打开（`hub.ApplyConfig` 只记日志、不返回错误；试开与应用之间端口可能
+    被抢走），没打开就返回 `ErrApplyFailed`：Start 回到空闲配置并进入 FAILED；Reload 保持运行并记录 `last_error`。
   - Stop 先调 `executor.Shutdown`（关闭 TUN、清理 iptables、保存 fake-ip 池），再应用一份空闲配置，
     然后关闭全部连接和旧 provider。`executor.Shutdown` 本是为进程退出写的，单独调用会留下监听端口、
     DNS 服务和 provider 的后台任务。对已停止的内核调用 Stop 不做任何事。
@@ -137,6 +144,10 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
   fake-ip 与 DNS 缓存清理、日志订阅，覆盖 4.3 节的内核方法表。
   - 代理组按配置顺序（即 `GLOBAL` 的成员顺序）列出，`GLOBAL` 排最后，隐藏组不列出。
   - 选择节点对 selector 生效，对 url-test、fallback 是固定节点；健康检查会像 mihomo 自己的组测速一样解除固定。
+  - 节点的 `delay_ms` 按所在组的测速地址取：从没测过时不填，最近一次测速失败时为 0，否则是延迟。界面把前者
+    显示为"—"、后者显示为"超时"。重载会换掉节点对象，测速结果随之清空。
+  - 连接的 `rule` 和规则列表的 `type` 用配置里的写法（`DST-PORT`、`MATCH`），不用 mihomo 内部的类型名
+    （`DstPort`、`Match`）。
   - provider 列表不含 mihomo 为组内联节点生成的 compatible provider。
 - **单实例**：mihomo 用包级全局变量保存状态，`engine.New` 在已有 engine 打开时直接失败。
 - **mihomo 自身的竞态**：`log.SetLevel` 写全局变量时没有同步，`go test -race` 下 Reload 会报出；属于上游问题。

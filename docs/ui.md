@@ -36,8 +36,10 @@
 - **Reload** 用 `GetStatus` 报告的 TUN 和系统代理状态，所以切换配置或订阅更新都不会改变隧道的这两项；端口和
   局域网连接取自设置。
 - 错误码：配置被拒绝时为 `invalid_config`（`message` 是 mihomo 的原始错误，界面显示在「配置无效：」之后）；
-  未运行时 Reload 返回 `not_running`；运行中 Start 返回 `already_running`。中文提示在
-  `viewmodels/feedback.py`。
+  未运行时 Reload 返回 `not_running`；运行中 Start 返回 `already_running`；端口打不开（例如混合端口被其他程序
+  占用）时为 `apply_failed`，`message` 是系统的监听错误，界面显示在「配置未能生效：」之后，Reload 失败时隧道
+  保持原来的配置和端口，Start 失败时状态为"连接失败"。中文提示在 `viewmodels/feedback.py`。
+- 只有 DIRECT、没有任何节点的配置是合法的；策略组或规则引用了不存在的节点或策略组时，内核拒绝。
 
 ## 2. 配置存储
 

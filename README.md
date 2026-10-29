@@ -3,8 +3,8 @@
 mihomo 的 Windows / macOS 桌面客户端（PySide6 + Nuitka）。内核以 Go 库的形式内嵌：Windows 上运行在
 LocalSystem 服务里，macOS 上运行在 NetworkExtension 系统扩展里，关闭界面后隧道继续运行。
 
-现状：内核（engine、控制协议、开发模式服务）和界面的六个页面都已实现，界面支持中英双语、浅色与深色；界面与真实服务的
-端到端联调、Windows 服务产品化、macOS 系统扩展、SQLite 存储与云备份、自定义分流还在计划中。进度和下一步见
+现状：内核（engine、控制协议、开发模式服务）和界面的六个页面都已实现，界面支持中英双语、浅色与深色，并已与真实的
+开发服务端到端联调；Windows 服务产品化、macOS 系统扩展、SQLite 存储与云备份、自定义分流还在计划中。进度和下一步见
 [docs/roadmap.md](docs/roadmap.md)。`mihomo-desktop` 是产品命名前的工作名，集中在
 `src/core/internal/product/product.go` 与 `src/mihomo_desktop/product.py`。
 
