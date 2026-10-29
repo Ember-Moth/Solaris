@@ -26,7 +26,7 @@ from pytestqt.qtbot import QtBot
 from mihomo_desktop.app import load_ui
 from mihomo_desktop.host.service import ServiceHost
 from mihomo_desktop.host.transport import unix_opener
-from mihomo_desktop.models.settings import JsonSettingsStore
+from mihomo_desktop.models.settings import DatabaseSettingsStore
 from mihomo_desktop.models.store import ProfileStore
 from mihomo_desktop.models.subscription import UrlFetcher
 from mihomo_desktop.product import DISPLAY_NAME
@@ -87,7 +87,7 @@ def app(qtbot: QtBot, tmp_path: Path, service: DevService, network: Network) -> 
     mixed port in the settings."""
     data = tmp_path / "data"
     store = ProfileStore(data)
-    settings = JsonSettingsStore(data)
+    settings = DatabaseSettingsStore(store.database)
     settings.update(mixed_port=free_port())
     host = ServiceHost(unix_opener(str(service.socket)))
     name = QCoreApplication.applicationName()

@@ -4,7 +4,7 @@ import pytest
 from PySide6.QtCore import QCoreApplication, Qt
 from pytestqt.qtbot import QtBot
 
-from mihomo_desktop.models.settings import JsonSettingsStore
+from mihomo_desktop.models.settings import DatabaseSettingsStore
 from mihomo_desktop.models.store import ProfileStore
 from mihomo_desktop.viewmodels.appearance import APPEARANCE_ENV, Appearance, resolve_mode
 from mihomo_desktop.viewmodels.composition import compose
@@ -84,11 +84,10 @@ def test_unknown_modes_are_rejected(qapp: QCoreApplication) -> None:
 
 
 def test_the_stored_appearance_drives_the_theme(qapp: QCoreApplication, tmp_path: Path) -> None:
-    settings = JsonSettingsStore(tmp_path)
+    store = ProfileStore(tmp_path)
+    settings = DatabaseSettingsStore(store.database)
     settings.update(appearance="dark")
-    view_models = compose(
-        SimulatedHost(), ProfileStore(tmp_path), SimulatedFetcher(), settings=settings
-    )
+    view_models = compose(SimulatedHost(), store, SimulatedFetcher(), settings=settings)
     appearance = view_models.appearance
     assert appearance.property("mode") == "dark"  # the stored choice at startup
     view_models.settings.setAppearance("light")  # the settings page

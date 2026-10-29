@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from mihomo_desktop.desktop.login import LoginItem, UnavailableLoginItem
 from mihomo_desktop.host.base import TunnelHost
 from mihomo_desktop.models.library import ProfileLibrary
-from mihomo_desktop.models.settings import JsonSettingsStore, Settings, SettingsStore
+from mihomo_desktop.models.settings import DatabaseSettingsStore, Settings, SettingsStore
 from mihomo_desktop.models.store import ProfileStore
 from mihomo_desktop.models.subscription import Fetcher
 from mihomo_desktop.viewmodels.appearance import Appearance
@@ -96,11 +96,11 @@ def compose(
     start_hidden: bool = False,
     appearance: Appearance | None = None,
 ) -> ViewModels:
-    """``clock`` dates profile updates and subscription expiry. The settings live beside the
-    profiles unless given. ``tray_available`` and ``start_hidden``: see DesktopViewModel.
+    """``clock`` dates profile updates and subscription expiry. The settings live in the
+    profiles' database unless given. ``tray_available`` and ``start_hidden``: see DesktopViewModel.
     ``appearance`` defaults to the stored choice; the settings page changes it from then on."""
     runner = AsyncRunner()
-    settings_store = settings or JsonSettingsStore(store.directory)
+    settings_store = settings or DatabaseSettingsStore(store.database)
     library = ProfileLibrary(store, host, fetcher, clock, settings=lambda: settings_store.current)
     shell = ShellViewModel(host, runner)
     overview = OverviewViewModel(host, library, runner, settings_store)

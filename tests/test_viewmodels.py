@@ -13,6 +13,7 @@ from mihomo_desktop.host.transport import Streams
 from mihomo_desktop.models.store import ProfileStore
 from mihomo_desktop.viewmodels.composition import ViewModels, compose
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
+from tests.support.storage import has_config, has_override
 
 
 def prop(view_model: QObject, name: str) -> Any:
@@ -226,13 +227,13 @@ def test_removal_waits_for_confirmation(
     profiles.confirmRemove()
     qtbot.wait(50)
     assert prop(profiles, "summary") == "3 个配置"
-    assert (tmp_path / "profiles" / "sample-b.yaml").exists()
+    assert has_config(tmp_path, "sample-b")
 
     with qtbot.waitSignal(profiles.removalRequested):
         profiles.requestRemove("sample-b")
     profiles.confirmRemove()
     qtbot.waitUntil(lambda: prop(profiles, "summary") == "2 个配置")
-    assert not (tmp_path / "profiles" / "sample-b.yaml").exists()
+    assert not has_config(tmp_path, "sample-b")
 
 
 def test_removing_the_profile_in_use(qtbot: QtBot, view_models: ViewModels) -> None:
@@ -272,7 +273,7 @@ def test_editing_an_override(qtbot: QtBot, view_models: ViewModels, tmp_path: Pa
         qtbot.waitUntil(lambda: prop(profiles, "overrideError") != "")
     assert prop(profiles, "overrideError").startswith("配置无效：override 1: ")  # noqa: RUF001
     assert not prop(profiles, "overrideSaving")
-    assert not (tmp_path / "overrides" / "sample-b.yaml").exists()
+    assert not has_override(tmp_path, "sample-b")
 
     # Another profile's override is stored without reloading the tunnel.
     with qtbot.waitSignal(profiles.overrideSaved):

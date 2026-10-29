@@ -1,5 +1,6 @@
-import json
 import sys
+import threading
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -12,7 +13,9 @@ from mihomo_desktop.models.profiles import (
     ProfileList,
     Usage,
 )
-from mihomo_desktop.models.store import INDEX_NAME, ProfileStore, default_data_dir, write_atomic
+from mihomo_desktop.models.settings import DatabaseSettingsStore
+from mihomo_desktop.models.store import ProfileStore, default_data_dir
+from tests.support.storage import refuse_writes, stored
 
 SUBSCRIPTION = Profile(
     id="a1",
@@ -24,110 +27,134 @@ SUBSCRIPTION = Profile(
     usage=Usage(1, 2, 300, 1_800_000_000),
     proxy_count=48,
 )
-LOCAL = Profile(id="b2", name="config", kind=KIND_FILE, path="/tmp/config.yaml")
+LOCAL = Profile(id="b2", name="config", kind=KIND_FILE, path="/tmp/config.yaml", in_pool=False)
+
+
+class Clock:
+    def __init__(self) -> None:
+        self.now = 1_000.0
+
+    def __call__(self) -> float:
+        return self.now
+
+
+def rows(directory: Path, table: str, columns: str) -> dict[str, tuple[object, ...]]:
+    return {row[0]: row[1:] for row in stored(directory, f"SELECT {columns} FROM {table}")}
 
 
 def test_profiles_round_trip(tmp_path: Path) -> None:
     store = ProfileStore(tmp_path)
     assert store.load() == ProfileList()
     store.write_config("a1", "proxies: []\n")
+    store.write_config("b2", "mixed-port: 7890\n")
     store.save(ProfileList((SUBSCRIPTION, LOCAL), "a1", frozenset({"a1"})))
+    store.close()
 
-    loaded = ProfileStore(tmp_path).load()
+    store = ProfileStore(tmp_path)
     # Update failures are not stored.
-    assert loaded == ProfileList((SUBSCRIPTION, LOCAL), "a1")
+    assert store.load() == ProfileList((SUBSCRIPTION, LOCAL), "a1")
     assert store.read_config("a1") == "proxies: []\n"
+    assert store.load().get("b2").in_pool is False
+    store.save(ProfileList((LOCAL, SUBSCRIPTION), "b2"))  # reordered, another one in use
+    assert store.load() == ProfileList((LOCAL, SUBSCRIPTION), "b2")
+    # The profile in use is the one the routing state names (routing.md §9).
+    assert stored(tmp_path, "SELECT profile_id FROM routing_state") == [("b2",)]
 
 
-def test_index_format(tmp_path: Path) -> None:
+def test_what_came_with_a_config_is_stored_with_it(tmp_path: Path) -> None:
+    """The time, usage and proxy count describe the downloaded config, a cache of this
+    machine (storage.md §2), so they are kept beside it and not with the profile."""
     store = ProfileStore(tmp_path)
     store.save(ProfileList((SUBSCRIPTION,), "a1"))
-    document = json.loads((tmp_path / INDEX_NAME).read_text(encoding="utf-8"))
-    assert document["version"] == 1
-    assert document["active"] == "a1"
-    (entry,) = document["profiles"]
-    assert entry["name"] == "示例订阅 A"
-    assert entry["usage"] == {"upload": 1, "download": 2, "total": 300, "expire": 1_800_000_000}
-    assert "override" not in entry  # an override is a file of its own
-    assert "has_override" not in entry
-    assert store.config_path("a1") == tmp_path / "profiles" / "a1.yaml"
+    assert store.load().get("a1") == replace(
+        SUBSCRIPTION, updated_at=0.0, usage=None, proxy_count=None
+    )
+    store.write_config("a1", "proxies: []\n")
+    store.save(ProfileList((SUBSCRIPTION,), "a1"))
+    assert store.load().get("a1") == SUBSCRIPTION
+    columns = "profile_id, fetched_at, upload, download, total, expire, proxy_count"
+    assert rows(tmp_path, "profile_contents", columns) == {
+        "a1": (1_790_000_000.0, 1, 2, 300, 1_800_000_000, 48)
+    }
 
 
-def test_overrides_are_files_beside_the_index(tmp_path: Path) -> None:
-    store = ProfileStore(tmp_path)
+def test_records_change_only_when_their_values_do(tmp_path: Path) -> None:
+    clock = Clock()
+    store = ProfileStore(tmp_path, clock=clock)
+    store.write_config("a1", "proxies: []\n")
+    store.save(ProfileList((SUBSCRIPTION, LOCAL), "a1"))
+    clock.now = 2_000.0
+    store.save(ProfileList((SUBSCRIPTION, LOCAL), "a1"))  # nothing changed
+    store.save(ProfileList((SUBSCRIPTION, replace(LOCAL, name="renamed")), "a1"))
+    columns = "id, created_at, updated_at, deleted_at"
+    assert rows(tmp_path, "profiles", columns) == {
+        "a1": (1_000.0, 1_000.0, None),
+        "b2": (1_000.0, 2_000.0, None),
+    }
+    # An update that only downloaded the config again leaves the profile as it was.
+    clock.now = 3_000.0
+    store.write_config("a1", "proxies: []\n")
+    store.save(ProfileList((replace(SUBSCRIPTION, updated_at=3_000.0), LOCAL), "a1"))
+    assert rows(tmp_path, "profiles", columns)["a1"] == (1_000.0, 1_000.0, None)
+    assert rows(tmp_path, "profile_contents", "profile_id, updated_at")["a1"] == (3_000.0,)
+
+
+def test_removed_profiles_are_marked_deleted(tmp_path: Path) -> None:
+    clock = Clock()
+    store = ProfileStore(tmp_path, clock=clock)
+    for profile in (SUBSCRIPTION, LOCAL):
+        store.write_config(profile.id, "proxies: []\n")
+    store.write_override("b2", "mode: direct\n")
+    store.save(ProfileList((SUBSCRIPTION, LOCAL), "a1"))
+
+    clock.now = 2_000.0
+    store.save(ProfileList((SUBSCRIPTION,), "a1"))
+    store.delete_config("b2")
+    assert store.load() == ProfileList((SUBSCRIPTION,), "a1")
+    # The record stays, marked, for a backup to merge; the config, a cache, is gone.
+    assert rows(tmp_path, "profiles", "id, updated_at, deleted_at")["b2"] == (2_000.0, 2_000.0)
+    assert rows(tmp_path, "overrides", "scope, deleted_at") == {"b2": (2_000.0,)}
+    with pytest.raises(ProfileError) as raised:
+        store.read_config("b2")
+    assert raised.value.code == "config_missing"
+    assert store.read_override("b2") == ""
+
+    clock.now = 3_000.0
+    store.save(ProfileList((SUBSCRIPTION, LOCAL), "a1"))  # the same id is restored
+    assert rows(tmp_path, "profiles", "id, updated_at, deleted_at")["b2"] == (3_000.0, None)
+
+
+def test_overrides(tmp_path: Path) -> None:
+    clock = Clock()
+    store = ProfileStore(tmp_path, clock=clock)
     store.save(ProfileList((SUBSCRIPTION, LOCAL), "a1"))
     assert store.read_override(None) == ""
     store.write_override(None, "mode: global\n")
     store.write_override("b2", "prepend-rules: [MATCH,DIRECT]\n")
-    assert (tmp_path / "override.yaml").read_text(encoding="utf-8") == "mode: global\n"
-    assert store.override_path("b2") == tmp_path / "overrides" / "b2.yaml"
 
     loaded = ProfileStore(tmp_path).load()
     assert loaded.has_global_override
     assert [p.has_override for p in loaded.profiles] == [False, True]
+    assert store.read_override(None) == "mode: global\n"
     assert store.read_override("b2") == "prepend-rules: [MATCH,DIRECT]\n"
 
-    # Blank text removes an override; removing a profile's config removes its override.
+    # Blank text deletes an override: the record is marked, and writing again restores it.
+    clock.now = 2_000.0
     store.write_override(None, "\n  \n")
-    store.delete_config("b2")
-    assert not store.override_path(None).exists()
-    assert not store.override_path("b2").exists()
     loaded = store.load()
     assert not loaded.has_global_override
-    assert not loaded.get("b2").has_override
-    assert [p.name for p in (tmp_path / "overrides").iterdir()] == []
-
-
-def test_reads_the_first_release_index(tmp_path: Path) -> None:
-    """The index the profiles page shipped with reserved ``"override": null``."""
-    document = {
-        "version": 1,
-        "active": "a1",
-        "profiles": [
-            {
-                "id": "a1",
-                "name": "示例订阅 A",
-                "kind": "subscription",
-                "url": "https://sub.example.com/s?token=x",
-                "path": "",
-                "auto_update_hours": 12,
-                "updated_at": 1_790_000_000.0,
-                "usage": {"upload": 1, "download": 2, "total": 300, "expire": 1_800_000_000},
-                "proxy_count": 48,
-                "override": None,
-            }
-        ],
-    }
-    (tmp_path / INDEX_NAME).write_text(json.dumps(document), encoding="utf-8")
-    store = ProfileStore(tmp_path)
-    loaded = store.load()
-    assert loaded == ProfileList((SUBSCRIPTION,), "a1")
-    store.save(loaded)
-    (entry,) = json.loads((tmp_path / INDEX_NAME).read_text(encoding="utf-8"))["profiles"]
-    assert "override" not in entry
-
-
-def test_writes_leave_no_temporary_files(tmp_path: Path) -> None:
-    target = tmp_path / "nested" / "file.json"
-    write_atomic(target, b"one")
-    write_atomic(target, b"two")
-    assert target.read_bytes() == b"two"
-    assert [p.name for p in target.parent.iterdir()] == ["file.json"]
-
-
-def test_unreadable_index_is_set_aside(tmp_path: Path) -> None:
-    (tmp_path / INDEX_NAME).write_text("{not json", encoding="utf-8")
-    store = ProfileStore(tmp_path)
-    assert store.load() == ProfileList()
-    assert not (tmp_path / INDEX_NAME).exists()
-    (aside,) = tmp_path.glob(f"{INDEX_NAME}.*.bad")
-    assert aside.read_text(encoding="utf-8") == "{not json"
-
-
-def test_newer_index_is_not_overwritten(tmp_path: Path) -> None:
-    (tmp_path / INDEX_NAME).write_text('{"version": 2, "profiles": []}', encoding="utf-8")
-    assert ProfileStore(tmp_path).load() == ProfileList()
-    assert len(list(tmp_path.glob(f"{INDEX_NAME}.*.bad"))) == 1
+    assert store.read_override(None) == ""
+    assert rows(tmp_path, "overrides", "scope, updated_at, deleted_at")["global"] == (
+        2_000.0,
+        2_000.0,
+    )
+    clock.now = 3_000.0
+    store.write_override(None, "mode: rule\n")
+    assert store.read_override(None) == "mode: rule\n"
+    assert rows(tmp_path, "overrides", "scope, updated_at, deleted_at")["global"] == (
+        3_000.0,
+        None,
+    )
 
 
 def test_active_must_name_a_profile(tmp_path: Path) -> None:
@@ -142,6 +169,76 @@ def test_missing_config_is_a_profile_error(tmp_path: Path) -> None:
         store.read_config("nope")
     assert raised.value.code == "config_missing"
     store.delete_config("nope")  # deleting twice is fine
+
+
+def test_a_config_no_profile_names_goes_at_the_next_start(tmp_path: Path) -> None:
+    """A crash between writing a new profile's config and saving the list leaves it behind."""
+    store = ProfileStore(tmp_path)
+    store.write_config("a1", "proxies: []\n")
+    store.write_config("new", "proxies: []\n")
+    store.save(ProfileList((SUBSCRIPTION,), "a1"))
+    store.close()
+    ProfileStore(tmp_path).close()
+    assert stored(tmp_path, "SELECT profile_id FROM profile_contents") == [("a1",)]
+
+
+def test_failed_writes_are_profile_errors(tmp_path: Path) -> None:
+    store = ProfileStore(tmp_path)
+    store.write_config("a1", "proxies: []\n")
+    store.save(ProfileList((SUBSCRIPTION,), "a1"))
+    refuse_writes(tmp_path, "profiles")
+    with pytest.raises(ProfileError) as raised:
+        store.save(ProfileList((SUBSCRIPTION, LOCAL), "b2"))
+    assert raised.value.code == "storage_failed"
+    assert "disk is full" in raised.value.message
+    assert store.load() == ProfileList((SUBSCRIPTION,), "a1")  # all or nothing
+
+
+def test_threads_share_the_store(tmp_path: Path) -> None:
+    """The asyncio thread's workers and the Qt thread read and write at the same time."""
+    store = ProfileStore(tmp_path)
+    settings = DatabaseSettingsStore(store.database)
+    profiles = [
+        Profile(id=f"p{n}", name=f"配置 {n}", kind=KIND_SUBSCRIPTION, url=f"https://e/{n}")
+        for n in range(8)
+    ]
+    errors: list[BaseException] = []
+    lock = threading.Lock()  # the library writes the list under its own lock
+    saved = [ProfileList()]
+
+    def write(profile: Profile) -> None:
+        try:
+            for round_ in range(20):
+                store.write_config(profile.id, f"# {round_}\nproxies: []\n")
+                store.write_override(profile.id, f"mode: {'rule' if round_ % 2 else 'direct'}\n")
+                with lock:
+                    saved[0] = saved[0].put(replace(profile, auto_update_hours=round_))
+                    store.save(saved[0])
+                settings.update(mixed_port=10_000 + round_)
+        except BaseException as error:
+            errors.append(error)
+
+    def read() -> None:
+        try:
+            for _ in range(100):
+                listed = store.load()
+                for profile in listed.profiles:
+                    assert store.read_config(profile.id).endswith("proxies: []\n")
+        except BaseException as error:
+            errors.append(error)
+
+    threads = [threading.Thread(target=write, args=(p,)) for p in profiles]
+    threads += [threading.Thread(target=read) for _ in range(4)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert errors == []
+    loaded = ProfileStore(tmp_path).load()
+    assert {p.id: p.auto_update_hours for p in loaded.profiles} == {p.id: 19 for p in profiles}
+    assert all(store.read_override(p.id) == "mode: rule\n" for p in profiles)
+    assert settings.current.mixed_port == 10_019
+    assert DatabaseSettingsStore(store.database).current == settings.current
 
 
 @pytest.mark.parametrize(

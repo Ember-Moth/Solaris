@@ -228,7 +228,8 @@ def test_removing_profiles(tmp_path: Path) -> None:
 
     profiles = run(lambda: scene.library.remove("sample-b"))
     assert [p.id for p in profiles.profiles] == ["sample-a", "sample-c"]
-    assert not scene.store.config_path("sample-b").exists()
+    with pytest.raises(ProfileError, match="config_missing"):
+        scene.store.read_config("sample-b")
 
     async def remove_active_when_stopped() -> None:
         await scene.host.stop()

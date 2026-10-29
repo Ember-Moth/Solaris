@@ -1,9 +1,8 @@
 """The user's settings (docs/ui.md §8).
 
 Code depends on the ``SettingsStore`` interface only: read ``current``, write with
-``update``, and ``subscribe`` to hear of changes. ``JsonSettingsStore`` is a stand-in that
-keeps them in ``<data>/settings.json`` until the local data moves to SQLite; its file format
-is not meant to last.
+``update``, and ``subscribe`` to hear of changes. ``DatabaseSettingsStore`` keeps them in
+the local database (database.py).
 
 Every setting names its scope in the field's metadata: ``synced`` settings follow the user
 to other devices with the backup, ``local`` ones only mean something on this machine.
@@ -13,15 +12,15 @@ from __future__ import annotations
 
 import contextlib
 import json
-import time
-from collections.abc import Callable
-from dataclasses import asdict, dataclass, field, fields, replace
-from pathlib import Path
+import sqlite3
+import threading
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field, fields, replace
 from typing import Any, Protocol
 
 from mihomo_desktop.host.base import RunOptions
+from mihomo_desktop.models.database import Database
 from mihomo_desktop.models.profiles import ProfileError
-from mihomo_desktop.models.store import write_atomic
 
 LANGUAGES = ("system", "zh", "en")
 APPEARANCES = ("system", "light", "dark")
@@ -139,55 +138,91 @@ class Notifier:
             listener(before, after)
 
 
-SETTINGS_NAME = "settings.json"
+class DatabaseSettingsStore:
+    """The settings as rows of the database's ``settings`` table: one per setting that was
+    ever changed, the value as JSON beside the setting's scope. A setting without a row,
+    or with a value it does not accept, takes its default.
 
+    The app keeps one store per database. Code that writes the table itself, such as a
+    restore, calls ``reload`` afterwards so the listeners hear of it."""
 
-class JsonSettingsStore:
-    """Temporary: the settings as one JSON object in ``settings.json``, replaced atomically.
-    A missing or unacceptable value takes its default; a file that cannot be read is set
-    aside as ``settings.json.<timestamp>.bad``."""
-
-    def __init__(self, directory: Path) -> None:
-        self.path = directory / SETTINGS_NAME
+    def __init__(self, database: Database) -> None:
+        self._database = database
         self._notifier = Notifier()
-        self._current = self._load()
+        self._lock = threading.Lock()  # one change at a time, from any thread
+        with database.reading() as connection:
+            self._current = read_settings(connection)
 
     @property
     def current(self) -> Settings:
         return self._current
 
     def update(self, **changes: Any) -> Settings:
-        before = self._current
-        after = check(replace(before, **changes))
-        if after == before:
-            return before
-        text = json.dumps(asdict(after), ensure_ascii=False, indent=2) + "\n"
-        try:
-            write_atomic(self.path, text.encode("utf-8"))
-        except OSError as error:
-            raise SettingsError("settings_unwritable", str(error)) from error
-        self._current = after
+        with self._lock:
+            before = self._current
+            after = check(replace(before, **changes))
+            if after == before:
+                return before
+            changed = {
+                item.name: getattr(after, item.name)
+                for item in fields(Settings)
+                if getattr(after, item.name) != getattr(before, item.name)
+            }
+            try:
+                with self._database.transaction() as connection:
+                    write_settings(connection, changed, self._database.clock())
+            except sqlite3.Error as error:
+                raise SettingsError("settings_unwritable", str(error)) from error
+            self._current = after
         self._notifier.notify(before, after)
+        return after
+
+    def reload(self) -> Settings:
+        """Read the table again and tell the listeners what changed."""
+        with self._lock:
+            before = self._current
+            with self._database.reading() as connection:
+                after = read_settings(connection)
+            self._current = after
+        if after != before:
+            self._notifier.notify(before, after)
         return after
 
     def subscribe(self, listener: Listener) -> Callable[[], None]:
         return self._notifier.subscribe(listener)
 
-    def _load(self) -> Settings:
-        try:
-            raw = json.loads(self.path.read_text(encoding="utf-8"))
-            if not isinstance(raw, dict):
-                raise ValueError("not a JSON object")
-        except FileNotFoundError:
-            return Settings()
-        except OSError, ValueError:
-            with contextlib.suppress(OSError):
-                self.path.replace(self.path.with_name(f"{SETTINGS_NAME}.{int(time.time())}.bad"))
-            return Settings()
-        defaults = Settings()
-        values = {
-            name: raw[name]
-            for name in (item.name for item in fields(Settings))
-            if name in raw and _accepts(name, raw[name], getattr(defaults, name))
-        }
-        return Settings(**values)
+
+def accepted(raw: Mapping[str, object]) -> dict[str, Any]:
+    """The settings in ``raw`` whose values they accept; anything else is left out."""
+    defaults = Settings()
+    return {
+        item.name: raw[item.name]
+        for item in fields(Settings)
+        if item.name in raw and _accepts(item.name, raw[item.name], getattr(defaults, item.name))
+    }
+
+
+def read_settings(connection: sqlite3.Connection) -> Settings:
+    raw: dict[str, object] = {}
+    for key, value in connection.execute("SELECT key, value FROM settings"):
+        with contextlib.suppress(ValueError):
+            raw[key] = json.loads(value)
+    return Settings(**accepted(raw))
+
+
+def write_settings(
+    connection: sqlite3.Connection, values: Mapping[str, Any], now: float, *, keep: bool = False
+) -> None:
+    """Store checked values with their scopes; ``keep`` leaves the ones already stored."""
+    if keep:
+        conflict = "NOTHING"
+    else:
+        conflict = (
+            "UPDATE SET value = excluded.value, scope = excluded.scope, "
+            "updated_at = excluded.updated_at"
+        )
+    connection.executemany(
+        "INSERT INTO settings (key, value, scope, updated_at) VALUES (?, ?, ?, ?) "
+        f"ON CONFLICT (key) DO {conflict}",
+        [(name, json.dumps(value), scope(name), now) for name, value in values.items()],
+    )

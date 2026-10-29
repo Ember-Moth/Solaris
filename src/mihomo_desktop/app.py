@@ -19,7 +19,7 @@ from mihomo_desktop.host.base import HostError, TunnelHost
 from mihomo_desktop.host.service import ServiceHost
 from mihomo_desktop.host.transport import Opener, Streams
 from mihomo_desktop.i18n import Translations, resolve_language
-from mihomo_desktop.models.settings import JsonSettingsStore, SettingsStore
+from mihomo_desktop.models.settings import DatabaseSettingsStore, SettingsStore
 from mihomo_desktop.models.store import ProfileStore, default_data_dir
 from mihomo_desktop.models.subscription import Fetcher, UrlFetcher
 from mihomo_desktop.product import DISPLAY_NAME, PIPE_NAME
@@ -82,18 +82,20 @@ def main(
     """``language`` is ``zh`` or ``en`` and wins over the settings at startup; empty follows
     the settings, then MIHOMO_DESKTOP_LANG, then the system. ``appearance`` is ``system``,
     ``light`` or ``dark`` and likewise wins over the settings; empty follows the settings,
-    then MIHOMO_DESKTOP_APPEARANCE, then the system. The settings and the lock that keeps
-    one UI per user live beside the profiles."""
+    then MIHOMO_DESKTOP_APPEARANCE, then the system. The settings live in the profiles'
+    database, and the lock that keeps one UI per user beside it; the lock is taken before
+    the database is opened, so only one UI migrates it. The store is closed on exit."""
     app = QGuiApplication(sys.argv)
     app.setApplicationName(DISPLAY_NAME)
     app.setApplicationVersion(__version__)
     # Closing the window hides it in the tray or quits explicitly (DesktopViewModel).
     app.setQuitOnLastWindowClosed(False)
-    store = store or ProfileStore(default_data_dir())
-    instance = SingleInstance(store.directory)
+    directory = store.directory if store else default_data_dir()
+    instance = SingleInstance(directory)
     if not instance.claim():
         return 0  # the UI already running shows its window
-    settings = JsonSettingsStore(store.directory)
+    store = store or ProfileStore(directory)
+    settings = DatabaseSettingsStore(store.database)
     translations = Translations(app)
     translations.apply(resolve_language(language or settings.current.language))
     view_models = compose(
@@ -109,6 +111,7 @@ def main(
     engine = QQmlApplicationEngine()
     if not load_ui(engine, view_models):
         instance.release()
+        store.close()
         return 1
     # Queued: the switch happens once the control that asked for it has handled its click.
     switch = partial(switch_language, translations, engine, view_models)
@@ -121,4 +124,5 @@ def main(
     instance.release()
     view_models.settings.languageChanged.disconnect(switch)
     del switch, engine  # tear down QML before the ViewModels it binds to
+    store.close()
     return code

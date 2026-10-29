@@ -43,7 +43,8 @@ class Profile:
     updated_at: float = 0.0  # unix seconds of the last download or import
     usage: Usage | None = None
     proxy_count: int | None = None  # inline proxies; None when not countable
-    has_override: bool = False  # it has its own override file; not part of the index
+    has_override: bool = False  # it has an override of its own; read from the overrides
+    in_pool: bool = True  # its nodes join the node pool of the user's plans (routing.md §5.2)
 
     @property
     def is_subscription(self) -> bool:
@@ -55,7 +56,7 @@ class ProfileList:
     profiles: tuple[Profile, ...] = ()
     active: str | None = None  # the id of the profile the tunnel uses
     update_failed: frozenset[str] = frozenset()  # ids whose last update failed; not stored
-    has_global_override: bool = False  # the global override file exists; not in the index
+    has_global_override: bool = False  # there is a global override; read from the overrides
 
     def get(self, profile_id: str) -> Profile:
         for profile in self.profiles:

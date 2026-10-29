@@ -171,7 +171,7 @@ def test_blank_text_removes_an_override(tmp_path: Path) -> None:
     run(lambda: scene.library.save_override("sample-a", "mode: direct\n"))
     profiles = run(lambda: scene.library.save_override("sample-a", "  \n"))
     assert not profiles.get("sample-a").has_override
-    assert not scene.store.override_path("sample-a").exists()
+    assert scene.store.read_override("sample-a") == ""
     assert run(lambda: scene.library.read_override("sample-a")) == ""
 
 
@@ -193,5 +193,5 @@ def test_removing_a_profile_removes_its_override(tmp_path: Path) -> None:
     scene = Scene(tmp_path)
     run(lambda: scene.library.save_override("sample-b", "mode: direct\n"))
     run(lambda: scene.library.remove("sample-b"))
-    assert not scene.store.override_path("sample-b").exists()
+    assert scene.store.read_override("sample-b") == ""
     assert scene.store.read_config("sample-a") == SAMPLE_CONFIG
