@@ -13,7 +13,7 @@ MenuItem {
     rightPadding: Theme.space2
     topPadding: 0
     bottomPadding: 0
-    opacity: enabled ? 1 : 0.4
+    opacity: enabled ? 1 : Theme.disabledOpacity
 
     indicator: Icon {
         x: Theme.space2

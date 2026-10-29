@@ -11,7 +11,7 @@ AbstractButton {
     implicitWidth: 28
     implicitHeight: 28
     padding: 0
-    opacity: enabled ? 1 : 0.4
+    opacity: enabled ? 1 : Theme.disabledOpacity
     Accessible.role: Accessible.Button
     Accessible.name: accessibleName
 

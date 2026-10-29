@@ -16,7 +16,7 @@ Button {
     rightPadding: leftPadding
     topPadding: 0
     bottomPadding: 0
-    opacity: enabled ? 1 : 0.4
+    opacity: enabled ? 1 : Theme.disabledOpacity
     font.family: Fonts.resolve(Theme.type.labelMd.fontFamily)
     font.pixelSize: compact ? Theme.type.labelSm.fontSize : Theme.type.labelMd.fontSize
     font.weight: Theme.type.labelMd.fontWeight

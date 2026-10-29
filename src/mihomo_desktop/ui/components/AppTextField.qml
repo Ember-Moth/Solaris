@@ -18,7 +18,7 @@ TextField {
     font.family: Fonts.resolve(Theme.type.bodySm.fontFamily)
     font.pixelSize: Theme.type.bodySm.fontSize
     font.weight: Theme.type.bodySm.fontWeight
-    opacity: enabled ? 1 : 0.4
+    opacity: enabled ? 1 : Theme.disabledOpacity
 
     background: Rectangle {
         implicitWidth: 160

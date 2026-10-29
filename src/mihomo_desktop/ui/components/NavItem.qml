@@ -38,7 +38,7 @@ AbstractButton {
             anchors.topMargin: 1
             anchors.bottomMargin: -1
             radius: Theme.radiusMd
-            color: "#1415171C"
+            color: Theme.shadowNav
             visible: item.active
         }
         Rectangle {
