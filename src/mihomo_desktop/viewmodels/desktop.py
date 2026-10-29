@@ -13,7 +13,7 @@ from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
 from mihomo_desktop.desktop.tray import taskbar_is_light, tray_icon
-from mihomo_desktop.models.settings import SettingsStore
+from mihomo_desktop.models.settings import Settings, SettingsStore
 
 QML_IMPORT_NAME = "MihomoDesktop"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -48,6 +48,7 @@ class DesktopViewModel(QObject):
         was opened at login and starts in the tray."""
         super().__init__(parent)
         self._settings = settings
+        settings.subscribe(self._settings_changed)
         self._tray = tray_available
         self._start_hidden = start_hidden and tray_available
         self._mac = platform == "darwin"
@@ -117,8 +118,9 @@ class DesktopViewModel(QObject):
         """Closing the window leaves the UI in the tray; without a tray it quits the UI."""
         return self._tray and self._settings.current.close_action == "tray"
 
-    def settingsChanged(self) -> None:
-        self.closeActionChanged.emit()
+    def _settings_changed(self, before: Settings, after: Settings) -> None:
+        if before.close_action != after.close_action:
+            self.closeActionChanged.emit()
 
     @Slot()
     def showWindow(self) -> None:

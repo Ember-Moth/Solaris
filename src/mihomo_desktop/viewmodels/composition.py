@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from mihomo_desktop.desktop.login import LoginItem, UnavailableLoginItem
 from mihomo_desktop.host.base import TunnelHost
 from mihomo_desktop.models.library import ProfileLibrary
-from mihomo_desktop.models.settings import SettingsStore
+from mihomo_desktop.models.settings import JsonSettingsStore, SettingsStore
 from mihomo_desktop.models.store import ProfileStore
 from mihomo_desktop.models.subscription import Fetcher
 from mihomo_desktop.viewmodels.common.async_runner import AsyncRunner
@@ -84,7 +84,7 @@ def compose(
     """``clock`` dates profile updates and subscription expiry. The settings live beside the
     profiles unless given. ``tray_available`` and ``start_hidden``: see DesktopViewModel."""
     runner = AsyncRunner()
-    settings_store = settings or SettingsStore(store.directory)
+    settings_store = settings or JsonSettingsStore(store.directory)
     library = ProfileLibrary(store, host, fetcher, clock, settings=lambda: settings_store.current)
     shell = ShellViewModel(host, runner)
     overview = OverviewViewModel(host, library, runner, settings_store)
@@ -108,7 +108,6 @@ def compose(
     proxies.selectionApplied.connect(overview.refreshGroups)
     profiles.applied.connect(overview.refreshGroups)
     profiles.applied.connect(proxies.refresh)
-    settings_page.changed.connect(desktop.settingsChanged)
     return ViewModels(
         runner,
         host,

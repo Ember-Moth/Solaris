@@ -9,7 +9,7 @@ from pytestqt.qtbot import QtBot
 
 from mihomo_desktop.desktop.login import LoginItemError, LoginItemStatus
 from mihomo_desktop.host.base import RunOptions
-from mihomo_desktop.models.settings import SETTINGS_NAME, Settings
+from mihomo_desktop.models.settings import SETTINGS_NAME, JsonSettingsStore, Settings
 from mihomo_desktop.models.store import ProfileStore
 from mihomo_desktop.viewmodels.composition import ViewModels, compose
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
@@ -85,14 +85,29 @@ def test_choices_are_stored(qtbot: QtBot, view_models: ViewModels, tmp_path: Pat
 
     assert (prop(settings, "language"), prop(settings, "appearance")) == ("en", "dark")
     assert prop(settings, "closeAction") == "quit"
-    stored = view_models.settings_store.load()
+    stored = JsonSettingsStore(tmp_path).current  # read back from the file
     assert (stored.language, stored.appearance, stored.close_action) == ("en", "dark", "quit")
-    assert (tmp_path / SETTINGS_NAME).is_file()
 
 
-def test_unwritable_settings_are_reported(qtbot: QtBot, view_models: ViewModels) -> None:
+def test_the_page_follows_changes_made_elsewhere(qtbot: QtBot, view_models: ViewModels) -> None:
+    """A change that does not come from the page, e.g. a restored backup, still shows."""
+    settings, desktop = view_models.settings, view_models.desktop
+    with (
+        qtbot.waitSignal(settings.languageChanged),
+        qtbot.waitSignal(settings.mixedPortChanged),
+        qtbot.waitSignal(desktop.closeActionChanged),
+    ):
+        view_models.settings_store.update(language="en", mixed_port=7897, close_action="quit")
+    assert prop(settings, "language") == "en"
+    assert prop(settings, "mixedPort") == 7897
+    assert prop(settings, "closeAction") == "quit"
+
+
+def test_unwritable_settings_are_reported(
+    qtbot: QtBot, view_models: ViewModels, tmp_path: Path
+) -> None:
     settings = view_models.settings
-    view_models.settings_store.path.mkdir()  # nothing can replace it
+    (tmp_path / SETTINGS_NAME).mkdir()  # nothing can replace the settings file
     with qtbot.assertNotEmitted(settings.languageChanged):
         settings.setLanguage("en")
     assert prop(settings, "language") == "system"

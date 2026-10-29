@@ -25,7 +25,7 @@ from mihomo_desktop.desktop.login import (
     task_xml,
 )
 from mihomo_desktop.desktop.tray import TRAY_DIR, tray_icon, tray_supported
-from mihomo_desktop.models.settings import SettingsStore
+from mihomo_desktop.models.settings import JsonSettingsStore
 from mihomo_desktop.viewmodels.desktop import DesktopViewModel
 
 EXE = Path(r"C:\Program Files\Mihomo Desktop\mihomo-desktop.exe")
@@ -190,7 +190,7 @@ def test_tray_icons() -> None:
 def test_closing_the_window(
     qapp: QCoreApplication, tmp_path: Path, tray: bool, close_action: str, hides: bool
 ) -> None:
-    settings = SettingsStore(tmp_path)
+    settings = JsonSettingsStore(tmp_path)
     settings.update(close_action=close_action)
     desktop = DesktopViewModel(settings, tray_available=tray, start_hidden=True, platform="win32")
     assert desktop.property("hideOnClose") is hides

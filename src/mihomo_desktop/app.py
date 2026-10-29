@@ -19,7 +19,7 @@ from mihomo_desktop.host.base import HostError, TunnelHost
 from mihomo_desktop.host.service import ServiceHost
 from mihomo_desktop.host.transport import Opener, Streams
 from mihomo_desktop.i18n import Translations, resolve_language
-from mihomo_desktop.models.settings import SettingsStore
+from mihomo_desktop.models.settings import JsonSettingsStore
 from mihomo_desktop.models.store import ProfileStore, default_data_dir
 from mihomo_desktop.models.subscription import Fetcher, UrlFetcher
 from mihomo_desktop.product import DISPLAY_NAME, PIPE_NAME
@@ -83,7 +83,7 @@ def main(
     instance = SingleInstance(store.directory)
     if not instance.claim():
         return 0  # the UI already running shows its window
-    settings = SettingsStore(store.directory)
+    settings = JsonSettingsStore(store.directory)
     translations = Translations(app)
     translations.apply(resolve_language(language or settings.current.language))
     view_models = compose(

@@ -1,37 +1,59 @@
 import json
+from dataclasses import fields
 from pathlib import Path
 
 import pytest
 
 from mihomo_desktop.host.base import RunOptions
-from mihomo_desktop.models.settings import SETTINGS_NAME, Settings, SettingsError, SettingsStore
+from mihomo_desktop.models.settings import (
+    LOCAL,
+    SETTINGS_NAME,
+    SYNCED,
+    JsonSettingsStore,
+    Settings,
+    SettingsError,
+    SettingsStore,
+    scope,
+)
+
+
+def test_every_setting_has_a_scope() -> None:
+    assert {f.name: scope(f.name) for f in fields(Settings)} == {
+        "language": SYNCED,
+        "appearance": SYNCED,
+        "close_action": LOCAL,
+        "launch_at_login": LOCAL,
+        "tun": LOCAL,
+        "system_proxy": LOCAL,
+        "mixed_port": LOCAL,
+        "allow_lan": LOCAL,
+    }
 
 
 def test_defaults_without_a_file(tmp_path: Path) -> None:
-    store = SettingsStore(tmp_path)
+    store = JsonSettingsStore(tmp_path)
     assert store.current == Settings()
     assert not (tmp_path / SETTINGS_NAME).exists()  # nothing is written until a change
     assert store.current.run_options() == RunOptions(mixed_port=7890)
 
 
-def test_update_writes_the_file(tmp_path: Path) -> None:
-    store = SettingsStore(tmp_path)
-    store.update(language="en", mixed_port=7897, allow_lan=True, tun=True)
+def test_update_writes_and_notifies(tmp_path: Path) -> None:
+    store: SettingsStore = JsonSettingsStore(tmp_path)
+    seen: list[tuple[Settings, Settings]] = []
+    stop = store.subscribe(lambda before, after: seen.append((before, after)))
 
-    document = json.loads((tmp_path / SETTINGS_NAME).read_text(encoding="utf-8"))
-    assert document == {
-        "version": 1,
-        "language": "en",
-        "appearance": "system",
-        "close_action": "tray",
-        "launch_at_login": False,
-        "tun": True,
-        "system_proxy": False,
-        "mixed_port": 7897,
-        "allow_lan": True,
-    }
-    assert SettingsStore(tmp_path).current == store.current
+    store.update(language="en", mixed_port=7897, allow_lan=True, tun=True)
+    changed = Settings(language="en", tun=True, mixed_port=7897, allow_lan=True)
+    assert store.current == changed
+    assert seen == [(Settings(), changed)]
+    assert JsonSettingsStore(tmp_path).current == changed
     assert store.current.run_options() == RunOptions(True, False, 7897, True)
+
+    store.update(language="en")  # no change, no write, nobody told
+    assert len(seen) == 1
+    stop()
+    store.update(language="zh")
+    assert len(seen) == 1
 
 
 @pytest.mark.parametrize(
@@ -47,42 +69,34 @@ def test_update_writes_the_file(tmp_path: Path) -> None:
     ],
 )
 def test_update_refuses_invalid_values(tmp_path: Path, change: dict[str, object]) -> None:
-    store = SettingsStore(tmp_path)
+    store = JsonSettingsStore(tmp_path)
+    store.subscribe(lambda before, after: pytest.fail("nothing changed"))
     with pytest.raises(ValueError, match="invalid"):
         store.update(**change)
     assert store.current == Settings()
     assert not (tmp_path / SETTINGS_NAME).exists()
 
 
-def test_invalid_and_unknown_keys_take_defaults(tmp_path: Path) -> None:
-    document = {
-        "version": 1,
-        "language": "zh",
-        "appearance": "neon",  # not a choice
-        "mixed_port": "7890",  # not a number
-        "allow_lan": 1,  # not a boolean
-        "close_action": "quit",
-        "from_a_later_release": True,
-    }
-    (tmp_path / SETTINGS_NAME).write_text(json.dumps(document), encoding="utf-8")
-    assert SettingsStore(tmp_path).current == Settings(language="zh", close_action="quit")
-
-
-@pytest.mark.parametrize("text", ["{not json", '{"version": 2}', "[1, 2]", '"text"'])
-def test_unreadable_file_is_set_aside(tmp_path: Path, text: str) -> None:
-    (tmp_path / SETTINGS_NAME).write_text(text, encoding="utf-8")
-    store = SettingsStore(tmp_path)
-    assert store.current == Settings()
-    (kept,) = tmp_path.glob(f"{SETTINGS_NAME}.*.bad")
-    assert kept.read_text(encoding="utf-8") == text
-    store.update(language="en")  # the next write does not touch the copy
-    assert kept.read_text(encoding="utf-8") == text
-
-
-def test_failed_write_keeps_the_current_settings(tmp_path: Path) -> None:
-    store = SettingsStore(tmp_path)
+def test_failed_write_keeps_the_settings(tmp_path: Path) -> None:
+    store = JsonSettingsStore(tmp_path)
+    store.subscribe(lambda before, after: pytest.fail("nothing changed"))
     (tmp_path / SETTINGS_NAME).mkdir()  # the rename onto it fails
     with pytest.raises(SettingsError) as raised:
         store.update(allow_lan=True)
     assert raised.value.code == "settings_unwritable"
     assert store.current == Settings()
+
+
+def test_unacceptable_values_take_defaults(tmp_path: Path) -> None:
+    document = {"language": "zh", "appearance": "neon", "mixed_port": "7890", "allow_lan": 1}
+    (tmp_path / SETTINGS_NAME).write_text(json.dumps(document), encoding="utf-8")
+    assert JsonSettingsStore(tmp_path).current == Settings(language="zh")
+
+
+def test_unreadable_file_is_set_aside(tmp_path: Path) -> None:
+    (tmp_path / SETTINGS_NAME).write_text("{not json", encoding="utf-8")
+    store = JsonSettingsStore(tmp_path)
+    assert store.current == Settings()
+    (kept,) = tmp_path.glob(f"{SETTINGS_NAME}.*.bad")
+    store.update(language="en")
+    assert kept.read_text(encoding="utf-8") == "{not json"

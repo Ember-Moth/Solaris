@@ -81,6 +81,9 @@ class SettingsViewModel(QObject):
     ) -> None:
         super().__init__(parent)
         self._settings = settings
+        # Whoever changes the settings, the page follows: this page, the overview's switches,
+        # or (later) a restored backup.
+        settings.subscribe(self._settings_changed)
         self._library = library
         self._host = host
         self._runner = runner
@@ -106,15 +109,25 @@ class SettingsViewModel(QObject):
     def _current(self) -> Settings:
         return self._settings.current
 
-    def _store(self, **changes: Any) -> bool:
+    def _settings_changed(self, before: Settings, after: Settings) -> None:
+        if before.language != after.language:
+            self.languageChanged.emit()
+        if before.appearance != after.appearance:
+            self.appearanceChanged.emit()
+        if before.mixed_port != after.mixed_port:
+            self.mixedPortChanged.emit()
+        self.changed.emit()
+
+    def _store(self, **changes: Any) -> None:
+        """Write ``changes``; the subscription updates the page."""
+        failed = self._error
+        self._error = ""
         try:
             self._settings.update(**changes)
         except SettingsError as error:
             self._error = failure_text(error)
+        if self._error or failed:
             self.changed.emit()
-            return False
-        self._error = ""
-        return True
 
     @Property(str, notify=changed)
     def error(self) -> str:
@@ -132,9 +145,8 @@ class SettingsViewModel(QObject):
 
     @Slot(str)
     def setLanguage(self, language: str) -> None:
-        changes = language in LANGUAGES and language != self._current().language
-        if changes and self._store(language=language):
-            self.languageChanged.emit()
+        if language in LANGUAGES:
+            self._store(language=language)
 
     @Property(str, notify=appearanceChanged)
     def appearance(self) -> str:
@@ -147,9 +159,8 @@ class SettingsViewModel(QObject):
 
     @Slot(str)
     def setAppearance(self, appearance: str) -> None:
-        changes = appearance in APPEARANCES and appearance != self._current().appearance
-        if changes and self._store(appearance=appearance):
-            self.appearanceChanged.emit()
+        if appearance in APPEARANCES:
+            self._store(appearance=appearance)
 
     # -- desktop -----------------------------------------------------------------------------
     @Property(str, notify=changed)
@@ -162,9 +173,8 @@ class SettingsViewModel(QObject):
 
     @Slot(str)
     def setCloseAction(self, action: str) -> None:
-        if action in CLOSE_ACTIONS and action != self._current().close_action:
+        if action in CLOSE_ACTIONS:
             self._store(close_action=action)
-            self.changed.emit()
 
     @Property(bool, notify=changed)
     def launchAtLoginAvailable(self) -> bool:
@@ -285,7 +295,6 @@ class SettingsViewModel(QObject):
         def applied(_: object) -> None:
             self._applying = False
             self._store(mixed_port=settings.mixed_port, allow_lan=settings.allow_lan)
-            self.mixedPortChanged.emit()
             self.changed.emit()
 
         def failed(error: BaseException) -> None:

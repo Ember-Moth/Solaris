@@ -14,7 +14,7 @@ from mihomo_desktop.i18n import QT_TRANSLATE_NOOP
 from mihomo_desktop.models import format as fmt
 from mihomo_desktop.models.library import ProfileLibrary
 from mihomo_desktop.models.proxies import main_group, resolve
-from mihomo_desktop.models.settings import SettingsError, SettingsStore
+from mihomo_desktop.models.settings import Settings, SettingsError, SettingsStore
 from mihomo_desktop.models.tunnel import TunnelSession, TunnelSnapshot
 from mihomo_desktop.viewmodels.common.async_runner import AsyncRunner
 from mihomo_desktop.viewmodels.feedback import failure_text
@@ -62,6 +62,7 @@ class OverviewViewModel(QObject):
         self._library = library
         self._runner = runner
         self._settings = settings
+        settings.subscribe(self._settings_changed)
         self._clock = clock
         self._session = TunnelSession(host)
         self._snapshot: TunnelSnapshot | None = None
@@ -81,6 +82,10 @@ class OverviewViewModel(QObject):
 
     def stop(self) -> None:
         self._timer.stop()
+
+    def _settings_changed(self, before: Settings, after: Settings) -> None:
+        if (before.tun, before.system_proxy) != (after.tun, after.system_proxy):
+            self.changed.emit()  # the switches show the settings while stopped
 
     def retranslate(self) -> None:
         """Re-read the text properties in the language just installed."""
