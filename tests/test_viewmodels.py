@@ -20,6 +20,11 @@ def prop(view_model: QObject, name: str) -> Any:
     return view_model.property(name)
 
 
+def rows(view_model: QObject, name: str = "model") -> list[Any]:
+    """The rows of a KeyedListModel property."""
+    return list(prop(view_model, name).rows)
+
+
 NOW = datetime(2026, 10, 29, 12).timestamp()
 
 
@@ -99,14 +104,14 @@ def test_selecting_a_proxy_updates_both_screens(qtbot: QtBot, view_models: ViewM
     assert prop(proxies, "currentSelectable")
     proxies.selectProxy("香港 02")
     qtbot.waitUntil(lambda: prop(overview, "nodeName") == "香港 02")
-    selected = [node["name"] for node in prop(proxies, "nodes") if node["selected"]]
+    selected = [node.name for node in rows(proxies, "nodes") if node.selected]
     assert selected == ["香港 02"]
 
     proxies.selectGroup("自动选择")
     assert not prop(proxies, "currentSelectable")
     proxies.selectProxy("日本 01")  # ignored: the core picks for URLTest groups
     proxies.setSort("delay")
-    assert prop(proxies, "nodes")[0]["name"] == "香港 02"
+    assert rows(proxies, "nodes")[0].name == "香港 02"
 
 
 def test_unreachable_service_is_reported(qtbot: QtBot, tmp_path: Path) -> None:
@@ -127,16 +132,16 @@ def test_unreachable_service_is_reported(qtbot: QtBot, tmp_path: Path) -> None:
 def test_profiles_page_lists_the_samples(qtbot: QtBot, view_models: ViewModels) -> None:
     profiles = view_models.profiles
     assert prop(profiles, "summary") == "3 个配置"
-    a, b, c = prop(profiles, "profiles")
-    assert (a["name"], a["active"], b["active"]) == ("示例订阅 A", True, False)
-    assert a["source"] == "订阅 · sub.example.com · 9 个节点"
-    assert (a["usage"], a["expiry"], a["updated"]) == ("38.2 / 200 GB", "2026-12-31", "2 小时前")
-    assert a["hasQuota"]
-    assert abs(a["usedFraction"] - 0.191) < 0.001
-    assert b["updated"] == "3 天前"
-    assert c["source"] == "本地文件 · config.yaml · 9 个节点"
-    assert (c["usage"], c["expiry"], c["refreshLabel"]) == ("—", "—", "重新读取")
-    assert not c["hasQuota"]
+    a, b, c = rows(profiles)
+    assert (a.name, a.active, b.active) == ("示例订阅 A", True, False)
+    assert a.source == "订阅 · sub.example.com · 9 个节点"
+    assert (a.usage, a.expiry, a.updated) == ("38.2 / 200 GB", "2026-12-31", "2 小时前")
+    assert a.hasQuota
+    assert abs(a.usedFraction - 0.191) < 0.001
+    assert b.updated == "3 天前"
+    assert c.source == "本地文件 · config.yaml · 9 个节点"
+    assert (c.usage, c.expiry, c.refreshLabel) == ("—", "—", "重新读取")
+    assert not c.hasQuota
 
     # The overview's profile group and the sidebar read the active profile.
     assert prop(profiles, "activeName") == "示例订阅 A"
@@ -152,14 +157,14 @@ def test_switching_profiles_reloads_the_tunnel(qtbot: QtBot, view_models: ViewMo
     with qtbot.waitSignal(profiles.applied):
         profiles.use("sample-b")
     assert prop(profiles, "activeName") == "示例订阅 B"
-    assert [row["active"] for row in prop(profiles, "profiles")] == [False, True, False]
+    assert [row.active for row in rows(profiles)] == [False, True, False]
     assert host.reloads == 1
 
     profiles.updateProfile("sample-b")
     assert prop(profiles, "activeUpdating")
-    assert prop(profiles, "profiles")[1]["updated"] == "正在更新"
+    assert rows(profiles)[1].updated == "正在更新"
     qtbot.waitUntil(lambda: not prop(profiles, "activeUpdating"))
-    assert prop(profiles, "profiles")[1]["updated"] == "刚刚"
+    assert rows(profiles)[1].updated == "刚刚"
     assert host.reloads == 2
 
 
@@ -168,8 +173,8 @@ def test_importing_from_a_link(qtbot: QtBot, view_models: ViewModels) -> None:
     with qtbot.waitSignal(profiles.imported):
         profiles.importUrl("https://new.example.com/sub", "新订阅", True)
     assert prop(profiles, "summary") == "4 个配置"
-    row = prop(profiles, "profiles")[-1]
-    assert (row["name"], row["active"], row["autoUpdate"]) == ("新订阅", False, True)
+    row = rows(profiles)[-1]
+    assert (row.name, row.active, row.autoUpdate) == ("新订阅", False, True)
     assert prop(profiles, "autoUpdateLabel") == "每 12 小时自动更新"
 
 
@@ -255,9 +260,9 @@ def test_editing_an_override(qtbot: QtBot, view_models: ViewModels, tmp_path: Pa
     with qtbot.waitSignal(profiles.overrideSaved):
         profiles.saveOverride("mode: direct\n")
     assert prop(profiles, "overrideError") == ""
-    row = prop(profiles, "profiles")[1]
-    assert row["hasOverride"]
-    assert row["source"] == "订阅 · nodes.example.org · 9 个节点 · 已覆写"
+    row = rows(profiles)[1]
+    assert row.hasOverride
+    assert row.source == "订阅 · nodes.example.org · 9 个节点 · 已覆写"
     assert host.reloads == 0
 
     with qtbot.waitSignal(profiles.overrideOpened):

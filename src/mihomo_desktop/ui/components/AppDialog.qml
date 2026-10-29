@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Templates as T
 import QtQuick.Layouts
 
 // dialog (DESIGN.md "Components → 对话框"): a modal box on the scrim with a one-line title,
@@ -7,28 +8,37 @@ import QtQuick.Layouts
 // cancel first, as on macOS; Windows shows them mirrored).
 //
 // Esc rejects. Enter runs the focused button, or `defaultButton` when focus is elsewhere.
-// Focus starts on `initialFocus` and goes back to `returnFocusTo` once the dialog closes.
+// Focus starts on `initialFocus`, stays inside while the dialog shows and goes back to
+// `returnFocusTo` once it closes.
 Dialog {
     id: dialog
 
     property bool wide
-    property Item defaultButton
+    property T.AbstractButton defaultButton
     property Item initialFocus: defaultButton
     property Item returnFocusTo
     property int returnFocusReason: Qt.OtherFocusReason
     default property alias content: body.data
     property alias buttons: buttonRow.data
+    property bool holdsFocus: false  // from opening until it starts to close
 
     // Opens the dialog; `from` gets focus back afterwards, with its focus ring if it had one.
     function show(from: Item) {
+        showFor(from, Focus.reasonAfter(from))
+    }
+
+    // Opens the dialog for a control that has handed its focus on, such as the trigger of the
+    // menu the dialog was opened from: it gets focus back afterwards for `reason`.
+    function showFor(from: Item, reason: int) {
         returnFocusTo = from
-        returnFocusReason = from && from.visualFocus ? Qt.TabFocusReason : Qt.OtherFocusReason
+        returnFocusReason = reason
         open()
     }
 
     function activate(focused: Item) {
-        if (focused && typeof focused.click === "function" && focused.enabled)
-            focused.click()
+        const button = focused as T.AbstractButton
+        if (button && button.enabled)
+            button.click()
         else if (defaultButton && defaultButton.enabled)
             defaultButton.click()
     }
@@ -45,8 +55,24 @@ Dialog {
     footer: null
 
     onAboutToShow: {
+        holdsFocus = true
         if (initialFocus)
             initialFocus.forceActiveFocus()
+    }
+    onAboutToHide: holdsFocus = false
+
+    // A menu that opened the dialog and is still fading out hands focus back to the page
+    // once it has gone; the dialog takes it back. Other overlays may hold it.
+    readonly property Connections focusKeeper: Connections {
+        // Null until the dialog is parented to the overlay; Connections would fall back to
+        // the dialog itself.
+        target: dialog.parent ? dialog.parent.Window.window : null
+
+        function onActiveFocusItemChanged() {
+            const focused = dialog.parent.Window.activeFocusItem
+            if (dialog.holdsFocus && focused && !Focus.within(focused, dialog.parent))
+                (dialog.initialFocus ?? dialog.contentItem).forceActiveFocus()
+        }
     }
     // Qt may already have handed focus back to the window, but without the reason that
     // shows a focus ring, so focus is set again.
@@ -68,6 +94,7 @@ Dialog {
             role: Theme.type.bodyMdStrong
             elide: Text.ElideRight
             Accessible.role: Accessible.Heading
+            Accessible.name: text
         }
 
         ColumnLayout {

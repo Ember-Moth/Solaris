@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable, Coroutine
+from dataclasses import dataclass, fields
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -17,6 +18,7 @@ from mihomo_desktop.models import format as fmt
 from mihomo_desktop.models.library import DEFAULT_AUTO_UPDATE_HOURS, ProfileLibrary, Removal
 from mihomo_desktop.models.profiles import Profile, ProfileList
 from mihomo_desktop.viewmodels.common.async_runner import AsyncRunner
+from mihomo_desktop.viewmodels.common.keyed_list import KeyedListModel
 from mihomo_desktop.viewmodels.feedback import failure_text
 
 QML_IMPORT_NAME = "MihomoDesktop"
@@ -24,6 +26,35 @@ QML_IMPORT_MAJOR_VERSION = 1
 
 # Checks which subscriptions are due and keeps "2 小时前" current.
 TICK_MS = 60_000
+
+
+@dataclass(frozen=True)
+class ProfileRow:
+    """One row of the profile table, as text."""
+
+    id: str
+    name: str
+    source: str
+    active: bool
+    usage: str
+    hasQuota: bool
+    usedFraction: float
+    expiry: str
+    expired: bool
+    updated: str
+    updateFailed: bool
+    updating: bool
+    refreshLabel: str
+    isSubscription: bool
+    autoUpdate: bool
+    hasOverride: bool
+
+    @property
+    def profileId(self) -> str:  # QML reserves ``id``
+        return self.id
+
+
+ROLES = (*(f.name for f in fields(ProfileRow) if f.name != "id"), "profileId")
 
 
 def _origin(profile: Profile) -> str:
@@ -128,6 +159,10 @@ class ProfilesViewModel(QObject):
         self._timer = QTimer(self)
         self._timer.setInterval(TICK_MS)
         self._timer.timeout.connect(self.checkUpdates)
+        # Rows update in place, so the table keeps its delegates and the keyboard focus.
+        self._model = KeyedListModel(ROLES, self)
+        self.changed.connect(self._sync_rows)
+        self._sync_rows()
 
     def start(self) -> None:
         self.checkUpdates()
@@ -182,41 +217,43 @@ class ProfilesViewModel(QObject):
     def hasError(self) -> bool:
         return bool(self._error)
 
-    @Property("QVariantList", notify=changed)  # pyright: ignore[reportArgumentType]
-    def profiles(self) -> list[dict[str, object]]:
+    @Property(QObject, constant=True)
+    def model(self) -> KeyedListModel:
+        """The profiles as ProfileRow items."""
+        return self._model
+
+    def _sync_rows(self) -> None:
         now = self._clock()
-        rows: list[dict[str, object]] = []
-        for profile in self._list.profiles:
-            usage, fraction = _usage(profile)
-            expiry, expired = _expiry(profile, now)
-            updating = profile.id in self._updating
-            if updating:
-                updated = self.tr("正在更新")
-            elif profile.id in self._list.update_failed:
-                updated = self.tr("更新失败")
-            else:
-                updated = fmt.ago(profile.updated_at, now)
-            rows.append(
-                {
-                    "id": profile.id,
-                    "name": profile.name,
-                    "source": _source(profile),
-                    "active": profile.id == self._list.active,
-                    "usage": usage,
-                    "hasQuota": fraction is not None,
-                    "usedFraction": fraction or 0.0,
-                    "expiry": expiry,
-                    "expired": expired,
-                    "updated": updated,
-                    "updateFailed": profile.id in self._list.update_failed and not updating,
-                    "updating": updating,
-                    "refreshLabel": self._refresh_label(profile),
-                    "isSubscription": profile.is_subscription,
-                    "autoUpdate": profile.auto_update_hours > 0,
-                    "hasOverride": profile.has_override,
-                }
-            )
-        return rows
+        self._model.sync([self._row(profile, now) for profile in self._list.profiles])
+
+    def _row(self, profile: Profile, now: float) -> ProfileRow:
+        usage, fraction = _usage(profile)
+        expiry, expired = _expiry(profile, now)
+        updating = profile.id in self._updating
+        if updating:
+            updated = self.tr("正在更新")
+        elif profile.id in self._list.update_failed:
+            updated = self.tr("更新失败")
+        else:
+            updated = fmt.ago(profile.updated_at, now)
+        return ProfileRow(
+            id=profile.id,
+            name=profile.name,
+            source=_source(profile),
+            active=profile.id == self._list.active,
+            usage=usage,
+            hasQuota=fraction is not None,
+            usedFraction=fraction or 0.0,
+            expiry=expiry,
+            expired=expired,
+            updated=updated,
+            updateFailed=profile.id in self._list.update_failed and not updating,
+            updating=updating,
+            refreshLabel=self._refresh_label(profile),
+            isSubscription=profile.is_subscription,
+            autoUpdate=profile.auto_update_hours > 0,
+            hasOverride=profile.has_override,
+        )
 
     @Property(str, notify=changed)
     def autoUpdateLabel(self) -> str:

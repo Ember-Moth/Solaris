@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 // A confirmation: the title asks, `message` states the consequences. The confirm button is
@@ -14,7 +13,7 @@ AppDialog {
 
     defaultButton: destructive ? cancelButton : confirmButton
 
-    UiText {
+    AccessibleText {
         Layout.fillWidth: true
         text: dialog.message
         role: Theme.type.bodySm

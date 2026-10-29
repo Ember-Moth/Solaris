@@ -4,7 +4,8 @@ import QtQuick.Controls.Basic
 // menu (DESIGN.md "Components → 菜单"): AppMenuItems on a white overlay with the overlay
 // shadow. openBelow() places it under its trigger, right edges aligned, as a "more" menu;
 // openDropdown() left-aligns it, as a dropdown's list. Either goes above the trigger when
-// the window has no room below.
+// the window has no room below; when neither side has room it takes the roomier one and
+// stays inside the window.
 Menu {
     id: menu
 
@@ -20,13 +21,17 @@ Menu {
         openAt(anchor, 0)
     }
 
+    // popup() makes the trigger the menu's parent, so the menu's own window goes with a
+    // trigger that is destroyed, such as a removed row's button; the new trigger's counts.
     function openAt(anchor: Item, x: real) {
         trigger = anchor
-        triggerFocusReason = anchor.visualFocus ? Qt.TabFocusReason : Qt.OtherFocusReason
-        const bottom = anchor.mapToItem(Overlay.overlay, 0, anchor.height).y
-        const room = Overlay.overlay.height - Theme.overlayMargin - bottom - Theme.overlayGap
-        const y = implicitHeight <= room ? anchor.height + Theme.overlayGap : -Theme.overlayGap - implicitHeight
-        popup(anchor, x, y)
+        triggerFocusReason = Focus.reasonAfter(anchor)
+        const overlay = anchor.Overlay.overlay
+        const top = anchor.mapToItem(overlay, 0, 0).y
+        const roomBelow = overlay.height - Theme.overlayMargin - (top + anchor.height + Theme.overlayGap)
+        const roomAbove = top - Theme.overlayGap - Theme.overlayMargin
+        const below = implicitHeight <= roomBelow || (implicitHeight > roomAbove && roomBelow >= roomAbove)
+        popup(anchor, x, below ? anchor.height + Theme.overlayGap : -Theme.overlayGap - implicitHeight)
     }
 
     // At least menu-min-width, and as wide as the longest item: the ListView that holds the

@@ -4,4 +4,5 @@ UiText {
     role: Theme.type.sectionLabel
     color: Theme.textMuted
     Accessible.role: Accessible.Heading
+    Accessible.name: text
 }

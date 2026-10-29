@@ -114,6 +114,10 @@
         <translation>%1, %2</translation>
     </message>
     <message>
+        <source>规则 %1，链路 %2，下载 %3，上传 %4，时长 %5</source>
+        <translation>Rule %1, chain %2, download %3, upload %4, duration %5</translation>
+    </message>
+    <message>
         <source>关闭 %1 的连接</source>
         <translation>Close the connection to %1</translation>
     </message>
@@ -479,6 +483,14 @@ prepend-rules:
         <source>本次 ↓ %1 ↑ %2</source>
         <translation>Session ↓ %1 ↑ %2</translation>
     </message>
+    <message>
+        <source>本次下载 %1，上传 %2</source>
+        <translation>Session download %1, upload %2</translation>
+    </message>
+    <message>
+        <source>下载 %1，上传 %2</source>
+        <translation>Download %1, upload %2</translation>
+    </message>
     <message numerus="yes">
         <source>%n 秒前</source>
         <translation>
@@ -651,10 +663,6 @@ prepend-rules:
         <translation>Updated</translation>
     </message>
     <message>
-        <source>使用 %1</source>
-        <translation>Use %1</translation>
-    </message>
-    <message>
         <source>更新中…</source>
         <translation>Updating…</translation>
     </message>
@@ -681,6 +689,10 @@ prepend-rules:
     <message>
         <source>编辑全局覆写</source>
         <translation>Edit global override</translation>
+    </message>
+    <message>
+        <source>%1。用量 %2，到期 %3，更新 %4</source>
+        <translation>%1. Usage %2, expires %3, updated %4</translation>
     </message>
     <message>
         <source>复制订阅链接</source>
@@ -852,6 +864,10 @@ prepend-rules:
     <message>
         <source>延迟</source>
         <translation>Latency</translation>
+    </message>
+    <message>
+        <source>%1，延迟 %2</source>
+        <translation>%1, latency %2</translation>
     </message>
 </context>
 <context>
@@ -1064,6 +1080,14 @@ Protocol v{protocol}</translation>
         <source>未导入配置</source>
         <translation>No profile</translation>
     </message>
+    <message>
+        <source>页面</source>
+        <translation>Pages</translation>
+    </message>
+    <message>
+        <source>服务状态</source>
+        <translation>Service status</translation>
+    </message>
 </context>
 <context>
     <name>SortHeader</name>
@@ -1103,6 +1127,10 @@ Protocol v{protocol}</translation>
     <message>
         <source>已用流量</source>
         <translation>Data used</translation>
+    </message>
+    <message>
+        <source>已用 %1%</source>
+        <translation>%1% used</translation>
     </message>
 </context>
 </TS>

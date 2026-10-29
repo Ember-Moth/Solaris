@@ -15,6 +15,10 @@ ScrollView {
     contentWidth: availableWidth
     clip: true
 
+    ScrollToFocus {
+        flickable: page.contentItem as Flickable
+    }
+
     ColumnLayout {
         width: page.availableWidth
         spacing: Theme.space5
@@ -93,7 +97,7 @@ ScrollView {
                             rowHeight: Theme.rowSingle
                             verticalPadding: Theme.space2
 
-                            UiText {
+                            AccessibleText {
                                 Layout.fillWidth: true
                                 text: page.overview.switchError
                                 role: Theme.type.caption
@@ -114,7 +118,7 @@ ScrollView {
                                     text: qsTr("混合端口")
                                 }
 
-                                UiText {
+                                AccessibleText {
                                     Layout.fillWidth: true
                                     visible: text !== ""
                                     text: page.settings.portError
@@ -141,6 +145,7 @@ ScrollView {
                                     regularExpression: /[0-9]{0,5}/
                                 }
                                 Accessible.name: qsTr("混合端口")
+                                Accessible.description: page.settings.portError
                                 onEditingFinished: page.settings.setMixedPort(text)
                             }
                         }
@@ -157,7 +162,7 @@ ScrollView {
                                     text: qsTr("允许局域网连接")
                                 }
 
-                                UiText {
+                                AccessibleText {
                                     Layout.fillWidth: true
                                     visible: text !== ""
                                     text: page.settings.lanError !== "" ? page.settings.lanError : page.settings.allowLan ? qsTr("同一网络的设备可以使用混合端口") : ""
@@ -171,6 +176,7 @@ ScrollView {
                                 value: page.settings.allowLan
                                 enabled: !page.settings.applying
                                 Accessible.name: qsTr("允许局域网连接")
+                                Accessible.description: page.settings.lanError !== "" ? page.settings.lanError : page.settings.allowLan ? qsTr("同一网络的设备可以使用混合端口") : ""
                                 onRequested: on => page.settings.setAllowLan(on)
                             }
                         }
@@ -250,7 +256,7 @@ ScrollView {
                                     text: qsTr("登录时打开")
                                 }
 
-                                UiText {
+                                AccessibleText {
                                     Layout.fillWidth: true
                                     visible: text !== ""
                                     text: page.settings.launchAtLoginDetail
@@ -270,6 +276,7 @@ ScrollView {
                                 value: page.settings.launchAtLogin
                                 enabled: page.settings.launchAtLoginAvailable
                                 Accessible.name: qsTr("登录时打开")
+                                Accessible.description: page.settings.launchAtLoginDetail
                                 onRequested: on => page.settings.setLaunchAtLogin(on)
                             }
                         }
@@ -286,7 +293,7 @@ ScrollView {
                                     text: qsTr("关闭窗口时")
                                 }
 
-                                UiText {
+                                AccessibleText {
                                     Layout.fillWidth: true
                                     text: qsTr("隧道继续运行")
                                     role: Theme.type.caption
@@ -338,10 +345,11 @@ ScrollView {
                                     text: aboutRow.modelData.label
                                 }
 
-                                UiText {
+                                AccessibleText {
                                     text: aboutRow.modelData.value
                                     role: Theme.type.dataMd
                                     color: Theme.textSecondary
+                                    Accessible.name: aboutRow.modelData.label + " " + text
                                 }
                             }
                         }

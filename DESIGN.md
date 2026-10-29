@@ -224,6 +224,22 @@ components:
     typography: "{typography.caption}"
     height: "{spacing.row-header}"
     padding: "{spacing.4}"
+  table-header-sorted:
+    backgroundColor: "{colors.surface-subtle}"
+    textColor: "{colors.text}"
+    typography: "{typography.caption}"
+  sort-indicator:
+    textColor: "{colors.text}"
+    size: 12px
+  header-status:
+    textColor: "{colors.text-muted}"
+    typography: "{typography.body-sm}"
+  header-status-warning:
+    textColor: "{colors.warning}"
+    typography: "{typography.body-sm}"
+  header-status-error:
+    textColor: "{colors.danger}"
+    typography: "{typography.body-sm}"
   value-mono:
     textColor: "{colors.text-secondary}"
     typography: "{typography.data-md}"
@@ -313,6 +329,42 @@ components:
     rounded: "{rounded.sm}"
     height: "{spacing.control-sm}"
     padding: "{spacing.2}"
+  search-field:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text}"
+    typography: "{typography.body-sm}"
+    rounded: "{rounded.sm}"
+    height: "{spacing.control-md}"
+    padding: 30px
+  search-glyph:
+    textColor: "{colors.text-muted}"
+    size: 14px
+  select:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text}"
+    typography: "{typography.body-sm}"
+    rounded: "{rounded.sm}"
+    height: "{spacing.control-sm}"
+    width: 120px
+    padding: 10px
+  select-hover:
+    backgroundColor: "{colors.surface-subtle}"
+    textColor: "{colors.text}"
+  select-pressed:
+    backgroundColor: "{colors.surface-selected}"
+    textColor: "{colors.text}"
+  select-chevron:
+    textColor: "{colors.text-muted}"
+    size: 14px
+  checkbox:
+    backgroundColor: "{colors.surface}"
+    rounded: "{rounded.xs}"
+    size: 16px
+  checkbox-checked:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
+    rounded: "{rounded.xs}"
+    size: 16px
   status-dot-running:
     backgroundColor: "{colors.success}"
     rounded: "{rounded.full}"
@@ -474,7 +526,7 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
   - `border-control` `#828893`：输入框、下拉框、单选圈和关闭状态的开关轨道。这些控件靠边框识别，在白底上 3.6:1、窗口底色上 3.2:1，满足非文字 3:1。
 - **状态色只用于文字和小圆点**，不铺底色：
   - `success` `#0A6B5B`：服务运行中、延迟小于 150 ms；
-  - `warning` `#8A5300`：延迟 150–300 ms、WARN 日志、需要留意的提示（如开启局域网连接）；
+  - `warning` `#8A5300`：延迟 150–300 ms、WARN 日志、需要留意的提示（如开启局域网连接）、日志的暂停状态；
   - `latency-poor` `#9A3412`：延迟 300 ms 以上；
   - `danger` `#B42318`：ERROR 日志、破坏性操作的文字；
   - `info` `#1846C7`：INFO 日志级别。
@@ -524,6 +576,9 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
 规则：
 
 - 行高中文正文不低于 1.5，日志行 1.6；不对中文加字距。
+- 行高按 CSS 的含义实现：每行高 = 字号 × 系数，如 `body-sm` 13 × 1.5 ≈ 20px、`caption` 12 × 1.4 ≈ 17px，会换行的文字用这个固定行高排版。Qt 的比例行高乘的是字体自身的行高（约为字号的 1.2 倍，中文回退字体更高），排出来比规定的松，不要用。
+  - 单行文字保持字体自身的高度，在行和控件里垂直居中；行和控件的高度由 `row-*`、`control-*` 决定，不由文字撑开。
+  - 并排的几列文字（如日志的时间、级别、消息）用同一个固定行高，首行才能对齐。
 - 会跳动的数字（速率、计时、计数）一律等宽，避免抖动；静态的小数字可以用 Inter，但要开启等宽数字特性 `tnum`。
 - 一个界面最多三种字重：400、500、600。不使用 700 以上的粗体，也不用超过 18px 的字号。
 - 文案以名词和短语为主，不写解释性副标题。需要说明时放在行内第二行，用 `caption`，不超过一句。
@@ -548,7 +603,10 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
 窗口默认 `window-default-width` × `window-default-height`（1280 × 800），最小 `window-min-width` × `window-min-height`（960 × 640）。
 
 - **整体结构**：左侧固定宽度 `sidebar-width`（216px）侧栏，右侧内容区。内容区内边距上 `page-top` 20px、左右 `page-x` 32px、下 `page-bottom` 40px。
-- **页面标题栏**：一行，左侧是 `title` 加一段 13px 的状态文字（如「已运行 2:14:36」「5 个代理组」），右侧是本页操作。下方一条 `header-rule`，再隔 20px 开始内容。
+- **页面标题栏**：一行，左侧是 `title` 加一段 13px 的状态文字（`header-status`，如「已运行 2:14:36」「5 个代理组」），右侧依次是本页的筛选控件（搜索框、分段控件）和操作按钮。下方一条 `header-rule`，再隔 20px 开始内容。
+  - 状态文字平时用 `text-muted`；操作失败时改写成错误原因，用 `danger`（`header-status-error`）；需要留意的状态用 `warning`（`header-status-warning`，如日志的「已暂停」）。不另弹横幅。
+  - 宽度不够时，标题和状态文字至少留 280px。放不下「标题 + 状态 + 筛选控件 + 按钮」时，筛选控件整组移到 `header-rule` 下方单独一行，左对齐，与上下内容各隔 20px；按钮留在标题栏。
+  - 状态文字放不下时用省略号截断；标题、按钮和分段控件的文字不截断，也不换行。
 - **分组**：分组标题与分组间隔 8px；分组之间上下 20px、左右 24px。宽度足够时分组排成两列，每列不窄于 `group-column-min`（400px）；内容区放不下两列时退为一列，不出现横向滚动。
 - **行高**：单行行 `row-single` 44px，双行行（主文字加说明）`row-double` 52px，表头 `row-header` 32px。行内左右内边距 16px。
 - **控件高度**：标准 `control-md` 36px（标题栏按钮、表单输入），紧凑 `control-sm` 32px（行内按钮、分段控件、设置里的下拉框和数字框）。
@@ -556,7 +614,7 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
 - **列表与表格**优先于卡片网格。表格放在分组容器里，列宽不够时只在容器内部横向滚动；主列用省略号截断，数值列右对齐。
 - **间距**：以 4px 为基数，只用 4、8、12、16、20、24、32、40。
 - **浮层位置**：
-  - 菜单和弹出层在触发控件下方打开，间隔 `overlay-gap` 4px。「更多」菜单的右边缘与触发按钮对齐；下拉菜单左对齐，宽度不小于下拉框。下方放不下时改到上方。
+  - 菜单和弹出层在触发控件下方打开，间隔 `overlay-gap` 4px。「更多」菜单的右边缘与触发按钮对齐；下拉菜单左对齐，宽度不小于下拉框。下方放不下时改到上方；上下都放不下时放在空间较大的一侧，再按下一条限制在窗口内，内容在浮层里滚动。
   - 任何浮层与窗口边缘至少相距 `overlay-margin` 8px，不超出窗口。
   - 菜单宽度不小于 `menu-min-width` 180px，随最长的项变宽；弹出层宽度在 `popover-min-width` 240px 到 `popover-max-width` 360px 之间。
   - 对话框在窗口内水平、垂直居中，宽度 `dialog-width` 400px；含编辑框的对话框用 `dialog-width-wide` 640px。高度随内容，最多为窗口高度减去上下各 40px，超出时只滚动正文，标题和按钮行不动。
@@ -588,7 +646,7 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
   - `full`：开关、状态圆点、单选圈、进度条。
 
   嵌套时内层圆角等于外层减去内边距，例如分段控件底槽 6px、内边距 2px，选项 4px；菜单 8px、内边距 4px，菜单项 4px。浮层不使用比 `md` 更大的圆角。
-- **线宽**一律 1px；单选圈 1.5px。
+- **线宽**一律 1px；单选圈和复选框 1.5px。
 - **图标**：线性图标，24 网格、2px 描边、圆角端点与拐角（与 Lucide 同一风格）。导航 18px，行内 14–16px。不使用填充图标、插画或 emoji。
 - **侧栏左上角的标记**目前是占位图形，等产品命名后替换为正式标识。
 
@@ -598,21 +656,38 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
   - 导航项默认没有自己的底色（与侧栏同色），悬停 `nav-item-hover`。
   - 当前项使用白底、600 字重，图标改为 `primary`，并带 Elevation 中规定的轻阴影。
   - 侧栏底部用 8px 圆角的浅底块显示服务状态：状态圆点、一行状态文字、内核与协议版本（中文一行，英文分两行，见「英文文案」）。
+- **托盘图标**：
+  - 图形与侧栏左上角的标记相同（同为占位），画在 22 单位的视框里，描边 2.6，比界面图标粗，在 16–22px 的托盘尺寸下仍清楚；导出为 32px 的 SVG，放在 `ui/tray/`。
+  - macOS 用模板图（黑色加不透明度），由系统按菜单栏外观着色。Windows 按任务栏的深浅各备一套：浅色任务栏用浅色外观的 `text`（`#15171C`），深色任务栏用白色。任务栏的深浅取系统的「默认 Windows 模式」，不取应用的外观，应用固定为深色时托盘图标也不跟着变。
+  - 隧道未运行时整个图形 45% 不透明。不加彩色角标、状态圆点或第二种图形。
+  - 提示文字写「应用名 · 状态」，如「Mihomo Desktop · 已连接」。
+  - 托盘菜单是系统原生菜单，外观跟随平台，不套用下文应用内菜单的样式。依次是：状态（不可点）、连接 / 断开、「出站模式」子菜单（单选）、打开主窗口、「退出界面（隧道保持运行）」，各组之间用分隔线。子菜单只出现在这里，是「不做多级子菜单」的例外。
+  - Windows 上单击或双击图标打开主窗口，右键打开菜单；macOS 上单击打开菜单。
 - **页面标题栏**：见 Layout。连接状态放在概览页标题位置，写作「已连接 / 未连接」。连接与断开是一个普通按钮：已连接时为次要按钮「断开」，未连接时为主按钮「连接」。不做大号圆形开关。
 - **分组与行**：
   - 分组标题用 `section-label`；可以在右侧放一个文字链接（如「管理」）。
   - 行的左侧是标签（可加一行 `row-secondary-text` 说明），右侧是值或控件。
   - 整行可点击时，悬停用 `row-hover`，选中用 `row-selected`，并在左侧加一个 `primary` 勾或单选圈。
   - 行的附加状态（如配置「已覆写」）写进第二行说明，用「 · 」与其他信息隔开，不加徽章或彩色标记。
+  - 说明里需要留意的内容可以用 `warning` 色写一段（`notice-warning`）：整句都是提示时整句用 `warning`，如开启局域网连接后的「同一网络的设备可以使用混合端口」；与其他说明同在一行时只给最后一段上色，前面用「 · 」隔开，如「订阅 · 9 个节点 · 更新失败：HTTP 503，沿用上次的节点」。一行最多一段，不加图标或底色；错误用 `danger`，不用 `warning`。表格单元格同理，「已过期」「更新失败」整格用 `warning`。
 - **按钮**：
   - 主按钮（`button-primary`）每页最多一个，用于该页最主要的创建或启动动作；对话框里的主按钮是它的默认按钮（见下文「对话框」）。
   - 其余按钮都是次要按钮（`button-secondary`），白底加 `border-button` 外框。
   - 行内操作用 `button-compact`；只有图标的操作用 `icon-button`（无边框，与所在行同底色），必须带无障碍名称。
   - 破坏性操作放进「更多」菜单（`menu-item-destructive`），执行前弹出破坏性确认框；不做红色实心按钮。
   - 破坏性确认框里的确认按钮用 `button-destructive`：白底、`border-button` 外框、`danger` 文字，悬停和按下的底色与次要按钮相同。它只出现在确认框里。
-- **分段控件**：用于 2–4 个互斥选项（出站模式、排序、日志级别、TCP / UDP 筛选）。选中项用白底加 600 字重，不只靠底色区分。超过 4 个选项改用下拉框。
+- **分段控件**：用于 2–4 个互斥选项（出站模式、排序、日志级别、TCP / UDP 筛选）。选中项用白底加 600 字重，不只靠底色区分。超过 4 个选项改用下拉框。键盘上每一段是一个 Tab 停靠点，空格选中。
 - **开关**：40 × 24 的轨道，开启用 `switch-on`，关闭用 `switch-off`；圆钮 18px，内缩 3px。开关只用于立即生效的布尔设置，并通过 `aria-checked` 表达状态。
-- **输入框与下拉框**：`surface` 底（浅色下为白底）加 `border-control` 外框。设置行里用 `input-compact`，表单里用 `input`。错误状态：外框改为 `danger`，下方用 `input-error`（`caption`、`danger`）原样写出错误，不加图标。选中的文字用 `primary` 底、`on-primary` 字，输入框和 YAML 编辑框相同。
+- **复选框**：用于表单里提交时才生效的选择，如导入表单的「每 12 小时自动更新」；立即生效的设置用开关。16px 方框、4px 圆角：未勾选时 `checkbox`（`surface` 底、1.5px `border-control` 外框），勾选时 `checkbox-checked`（`primary` 底、12px `on-primary` 勾，无外框）。文字在方框右侧 8px，`body-sm`、`text-secondary`，点击文字也能切换。
+- **输入框**：`surface` 底（浅色下为白底）加 `border-control` 外框。设置行里用 `input-compact`，表单里用 `input`。错误状态：外框改为 `danger`，下方用 `input-error`（`caption`、`danger`）原样写出错误，不加图标。选中的文字用 `primary` 底、`on-primary` 字，输入框和 YAML 编辑框相同。
+- **搜索框** `search-field`：36px 的输入框，左侧 10px 处是 14px 的放大镜（`search-glyph`，`text-muted`），文字从 30px 处开始。
+  - 占位文字写明搜什么，如「搜索主机、进程或规则」，它同时是搜索框的无障碍名称；宽度至少放得下占位文字（连接页不窄于 220px，日志页不窄于 200px）。
+  - 边输入边筛选，不设搜索按钮和清除按钮。Esc 清空已输入的文字；框里没有文字时 Esc 交给外层处理。
+  - 放在标题栏的筛选位置、分段控件之前，标题栏放不下时随筛选控件一起换到下一行（见 Layout）。
+- **下拉框** `select`：自绘的按钮，32px 高、`border-control` 外框、6px 圆角，左内边距 10px、右内边距 8px；左侧是当前选项（`body-sm`、`text`，放不下时截断），右侧 8px 外是 14px 的向下箭头（`select-chevron`，`text-muted`）。最窄 120px。悬停 `select-hover`、按下 `select-pressed`，与次要按钮相同。
+  - 点击或空格打开它的下拉菜单（见「菜单」）：左对齐、不窄于下拉框，当前选项带勾；选中后菜单关闭，焦点回到下拉框。
+  - 选项超过 4 个，或选项文字太长、放不进分段控件时用下拉框（如「关闭窗口时」）。
+  - 读屏把它报作下拉框（combobox）：名称是所在行的标签，描述是当前选项。
 - **YAML 编辑框** `code-editor`：多行等宽文本框，`data-md` 文字、`border-control` 外框、6px 圆角、10px 内边距，最小高度 `editor-min-height` 240px，内容更长时在框内滚动；不自动换行，长行横向滚动。错误状态与输入框相同。
 - **延迟**：用等宽文字显示数值，按阈值着色（`latency-good` < 150 ms、`latency-fair` 150–300 ms、`latency-poor` > 300 ms、`latency-timeout` 显示「超时」）。不用彩色药丸。
 - **流量**：
@@ -620,7 +695,13 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
   - 趋势图是两条 1.5px 的折线，配浅色水平参考线，没有面积填充，也没有柱状图。
 - **用量进度**：4px 高，底槽 `progress-track`，填充 `progress-fill`（中性灰），不用强调色，旁边写出具体数值。
 - **表格**：表头 `table-header`；数值列用 `data-sm` 并右对齐；行操作（如关闭连接）是行尾的 `icon-button`。
-- **日志**：等宽 `log-line`，三列依次是时间、级别、消息。级别只用文字颜色区分（`log-level-*`），不加底色。暂停状态写在标题栏的状态文字里，不弹出横幅。
+  - **排序**：可排序的列，表头是按钮。当前排序列的表头文字用 `text`（`table-header-sorted`），后接 12px 箭头（`sort-indicator`）：↓ 表示从大到小，↑ 表示从小到大。右对齐的数值列把箭头放在文字左侧，让文字与下面的数值右边对齐。未排序的表头 `text-muted`，悬停变 `text`。点新的一列先按从大到小排，再点同一列反向。读屏名称带上方向，如「速率，从大到小」。
+  - **速率和流量**写成两行：上一行 ↓ 下载，下一行 ↑ 上传；箭头用 `rate-download-glyph` / `rate-upload-glyph` 的颜色，数值用 `data-sm`、`text-secondary`，箭头与数值相隔 4px，整列右对齐。这样的行用 `row-double`。概览等单行位置仍写成一行（见「流量」）。
+  - **选中与键盘**：表格整体是一个 Tab 停靠点，焦点环画在表格容器上（8px 圆角）；行本身和行尾的图标按钮不进 Tab 顺序。↑ ↓ 移动选中行，Page Up / Page Down 翻一屏，Home / End 到首尾，选中行始终滚动到可见处；Enter 或空格打开选中行的详情弹出层；Delete（或 Backspace）执行行尾操作。可排序的表头按钮各是一个停靠点。
+  - 选中行用 `row-selected`，主列文字改为 600 字重；鼠标点击一行即选中并打开详情。详情关闭后焦点回到表格。
+- **日志**：等宽 `log-line`，三列依次是时间、级别、消息。级别只用文字颜色区分（`log-level-*`），不加底色。
+  - 暂停状态写在标题栏的状态文字里，用 `warning` 色（`header-status-warning`）：「已暂停」，暂停期间有新日志时写「已暂停 · 12 条新日志」。不弹出横幅；出错时状态文字改用 `danger`。
+  - 日志面板是一个 Tab 停靠点，焦点环画在面板上：↑ ↓ 滚动一行，Page Up / Page Down 和空格翻一屏，Home / End 到首尾。滚到底部时跟随新日志，向上滚动后停在原处。
 - **菜单**（「更多」菜单、下拉菜单）参照 Windows 11 的上下文菜单与 macOS 的菜单：
   - 容器 `menu`：白底、1px `border`、8px 圆角、4px 内边距，带浮层阴影。
   - 菜单项 `menu-item`：32px 高、4px 圆角、`body-sm` 文字，左右内边距 8px，左侧留 14px 的勾选位。可勾选的项勾上时显示 `menu-check`：14px 的 `primary` 勾。
@@ -641,12 +722,24 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
 - **浮层的键盘行为**：
   - Esc 关闭最上层的浮层。在对话框里按 Esc 等于「取消」。
   - 打开时焦点移入浮层：菜单用 ↑ ↓ 移动高亮，Enter 或空格执行；普通确认框聚焦确认按钮；破坏性确认框聚焦「取消」；编辑对话框聚焦编辑框；含输入框的弹出层聚焦第一个输入框。
-  - 模态对话框把焦点限制在内部：Tab 和 Shift+Tab 只在对话框的控件之间循环，到不了背后的页面。
+  - 模态对话框把焦点限制在内部：Tab 和 Shift+Tab 只在对话框的控件之间循环，到不了背后的页面。对话框显示期间，焦点也不会被交回页面，包括从菜单项打开对话框、菜单还在淡出的时候。
   - Enter 执行默认按钮；用 Tab 把焦点移到其他按钮后，Enter 和空格执行聚焦的按钮。多行编辑框里 Enter 换行，Ctrl+Enter（macOS 上为 ⌘↩）执行默认按钮。
-  - 浮层关闭后，焦点回到打开它的控件。
+  - 浮层关闭后，焦点回到打开它的控件，焦点环显示与否也与打开前相同。从菜单项打开的对话框，关闭后焦点回到菜单的触发按钮。打开它的控件已经不在时（如刚删除的那一行），焦点交给接替它的控件，见「焦点与键盘」。
   - 打开时自动聚焦的按钮不显示焦点环，默认按钮靠主按钮样式辨认，用户按下 Tab 后照常显示；输入框和编辑框只要获得焦点就显示焦点环。
 - **滚动条**：沿用 Qt 的细滑块，滚动时出现、停下后淡出，不加轨道底色。滑块颜色 `border-control`，按下时 `text-muted`。表格只在容器内部横向滚动时常驻显示。
-- **焦点**：所有可交互元素在键盘聚焦时显示 2px `primary` 外环，外扩 2px；不能去掉焦点环。
+- **焦点与键盘**：只用键盘能完成全部操作。
+  - 所有可交互元素在键盘聚焦时显示 2px `primary` 外环，外扩 2px；不能去掉焦点环。按钮类控件被鼠标点击得到的焦点不显示焦点环；输入框和编辑框只要有焦点就显示。
+  - Tab 顺序与阅读顺序一致：侧栏导航，标题栏（筛选控件、按钮），然后是内容区。分组成行排列时（如概览）逐行先左后右，分成两个独立的列时（如设置）先左列后右列；组内从上到下，行内从左到右。
+  - 每个控件是一个停靠点。整行可点的列表（配置、代理组、节点）每行是一个停靠点，行里的按钮紧跟在这一行之后；↑ ↓ 在行之间移动焦点，空格执行这一行（使用配置、选中代理组或节点），只移动焦点不会切换。表格和日志面板整体只占一个停靠点（见「表格」「日志」）。
+  - 获得焦点的控件连同焦点环要完整可见：页面和表格自动滚动，在控件四周留出 12px；比可见区域还宽的行只保证左端可见。
+  - 列表数据刷新时行原地更新，焦点留在原来的行上。焦点所在的行被删除时，焦点移到接替它位置的行；删除的是最后一行时移到上一行；一行也不剩时移到本页的主操作（如「从链接导入」）。内联表单收起后，焦点回到打开它的按钮。
+  - macOS 上按钮类控件能否用 Tab 到达，跟随系统设置里的「键盘导航」，与原生应用一致；输入框、列表和表格始终可以到达。Windows 上 Tab 到达所有控件。
+- **读屏**：键盘焦点到哪里，读屏就能读出那是什么、处于什么状态。
+  - 每个控件都有名称和正确的角色。名称写控件对应的标签，如开关的名称是所在行的「TUN 模式」。只有图标的按钮写明动作和对象，如「示例订阅 A 的更多操作」「关闭 www.example.com 的连接」；按钮文字只有动词时在名称里补上对象，如「更新 示例订阅 A」。
+  - 整行可点的列表行报作单选按钮：名称是主文字，描述是其他各列，如「订阅 · sub.example.com · 9 个节点。用量 38.2 / 200 GB，到期 2026-12-31，更新 2 小时前」，当前项为选中。表格行报作行，名称是主列，描述是其他各列。
+  - 分段控件报作一个分组，名称是它的标签，每一段是单选按钮；开关报作复选框，带开关状态；下拉框见上文；流量图是图形，描述写当前速率；用量条是进度条，描述写已用的百分比；日志每行读作一条，包含时间、级别和消息。
+  - 页面标题、分组标题和对话框标题报作标题（heading）。标题栏状态、服务状态、错误、空状态和「关于」里的数值报作静态文字；行内说明同时写进对应控件的描述，如端口错误、局域网连接的提示。
+  - 只起装饰作用的图形不进读屏：状态圆点、单选圈、图标，以及旁边已有文字说明的 ↓ ↑ 箭头。
 - **禁用**：保留原样式，降低到 `opacity.disabled`（40%）不透明度，鼠标指针不变为手形。
 - **空状态**：在容器里写一句简短的事实，如「没有匹配的连接」「未连接」。不放插画，不加引导性营销文案。
 - **动效**：只用于状态切换反馈和浮层进出，不做页面转场、数字滚动或循环动画。
@@ -666,6 +759,7 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
 - 数据和代码类内容（规则、版本、端口、日志）用等宽字体，保留原文。
 - 新增组件前先复用这里已有的分组、行、分段控件、开关和表格。
 - 破坏性操作先确认：确认框默认聚焦「取消」，标题写明对象，正文写清后果。
+- 只用键盘能完成每一项操作，每个控件都有读屏名称；删除、刷新或关闭浮层之后，焦点落在用户预期的位置。
 
 ### Don't
 
@@ -680,3 +774,4 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
 - 不要超过一个强调色，也不要在一个页面里放多个主色按钮。
 - 不要用反相、调暗或叠加透明度从浅色值推导深色；深色值只取 `colors.dark`。不要用纯黑做底色。
 - 不要在实现中临时发明这份契约以外的颜色、圆角或间距；确有需要时先更新 DESIGN.md。
+- 不要让焦点在列表刷新、删除一行或关闭浮层后掉回窗口，也不要用整行重建的方式刷新列表。

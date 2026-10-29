@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import MihomoDesktop
 
@@ -36,7 +35,7 @@ AppDialog {
         onSubmitted: dialog.save()
     }
 
-    UiText {
+    AccessibleText {
         Layout.fillWidth: true
         visible: text !== ""
         text: dialog.profiles.overrideError

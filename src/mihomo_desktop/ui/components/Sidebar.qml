@@ -54,7 +54,7 @@ Rectangle {
                     role: Theme.type.bodyMdStrong
                 }
 
-                UiText {
+                AccessibleText {
                     Layout.maximumWidth: Theme.sidebarWidth - 92
                     text: root.profiles.hasActive ? root.profiles.activeName : qsTr("未导入配置")
                     role: Theme.type.caption
@@ -67,6 +67,8 @@ Rectangle {
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 2
+            Accessible.role: Accessible.PageTabList
+            Accessible.name: qsTr("页面")
 
             Repeater {
                 model: root.shell.pages
@@ -92,6 +94,8 @@ Rectangle {
             implicitHeight: status.implicitHeight + 2 * Theme.space3
             radius: Theme.radiusMd
             color: Theme.background
+            Accessible.role: Accessible.Grouping
+            Accessible.name: qsTr("服务状态")
 
             ColumnLayout {
                 id: status
@@ -106,13 +110,13 @@ Rectangle {
                         running: root.shell.serviceAvailable
                     }
 
-                    UiText {
+                    AccessibleText {
                         text: root.shell.serviceText
                         role: Theme.type.labelSmStrong
                     }
                 }
 
-                UiText {
+                AccessibleText {
                     Layout.fillWidth: true
                     text: root.shell.serviceDetail
                     role: Theme.type.caption

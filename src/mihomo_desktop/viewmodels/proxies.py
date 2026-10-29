@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, fields
+
 from PySide6.QtCore import Property, QObject, Signal, Slot
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
@@ -10,6 +12,7 @@ from mihomo_desktop.i18n import QT_TRANSLATE_NOOP
 from mihomo_desktop.models import format as fmt
 from mihomo_desktop.models.proxies import SORTS, sort_proxies
 from mihomo_desktop.viewmodels.common.async_runner import AsyncRunner
+from mihomo_desktop.viewmodels.common.keyed_list import KeyedListModel
 from mihomo_desktop.viewmodels.feedback import failure_text
 
 QML_IMPORT_NAME = "MihomoDesktop"
@@ -21,6 +24,35 @@ SORT_LABELS = {
     "delay": QT_TRANSLATE_NOOP("ProxiesViewModel", "延迟"),
 }
 NO_DELAY_TYPES = ("Direct", "Reject")
+
+
+@dataclass(frozen=True)
+class GroupRow:
+    """One proxy group in the list of groups; names are unique, so the name is the id."""
+
+    name: str
+    kind: str
+    now: str
+    selected: bool
+
+    @property
+    def id(self) -> str:
+        return self.name
+
+
+@dataclass(frozen=True)
+class NodeRow:
+    """One node of the current group."""
+
+    name: str
+    type: str
+    delay: str
+    level: str
+    selected: bool
+
+    @property
+    def id(self) -> str:
+        return self.name
 
 
 @QmlElement
@@ -41,6 +73,10 @@ class ProxiesViewModel(QObject):
         self._sort = "config"
         self._testing = False
         self._error = ""
+        # Rows update in place, so the lists keep their delegates and the keyboard focus.
+        self._group_model = KeyedListModel([f.name for f in fields(GroupRow)], self)
+        self._node_model = KeyedListModel([f.name for f in fields(NodeRow)], self)
+        self.changed.connect(self._sync_rows)
 
     @Slot()
     def refresh(self) -> None:
@@ -71,12 +107,16 @@ class ProxiesViewModel(QObject):
     def summary(self) -> str:
         return self._error or self.tr("%n 个代理组", "", len(self._groups))
 
-    @Property("QVariantList", notify=changed)  # pyright: ignore[reportArgumentType]
-    def groups(self) -> list[dict[str, object]]:
-        return [
-            {"name": g.name, "kind": g.type, "now": g.now, "selected": g.name == self._current}
-            for g in self._groups
-        ]
+    @Property(QObject, constant=True)
+    def groups(self) -> KeyedListModel:
+        """The groups as GroupRow items."""
+        return self._group_model
+
+    def _sync_rows(self) -> None:
+        self._group_model.sync(
+            [GroupRow(g.name, g.type, g.now, g.name == self._current) for g in self._groups]
+        )
+        self._node_model.sync(self._nodes())
 
     @Slot(str)
     def selectGroup(self, name: str) -> None:
@@ -115,25 +155,21 @@ class ProxiesViewModel(QObject):
             self._sort = sort
             self.changed.emit()
 
-    @Property("QVariantList", notify=changed)  # pyright: ignore[reportArgumentType]
-    def nodes(self) -> list[dict[str, object]]:
+    @Property(QObject, constant=True)
+    def nodes(self) -> KeyedListModel:
+        """The current group's nodes, in the chosen order, as NodeRow items."""
+        return self._node_model
+
+    def _nodes(self) -> list[NodeRow]:
         group = self._group()
         if group is None:
             return []
-        result: list[dict[str, object]] = []
+        result: list[NodeRow] = []
         for proxy in sort_proxies(group.proxies, self._sort):
             text, level = (
                 ("—", "none") if proxy.type in NO_DELAY_TYPES else fmt.latency(proxy.delay_ms)
             )
-            result.append(
-                {
-                    "name": proxy.name,
-                    "type": proxy.type,
-                    "delay": text,
-                    "level": level,
-                    "selected": proxy.name == group.now,
-                }
-            )
+            result.append(NodeRow(proxy.name, proxy.type, text, level, proxy.name == group.now))
         return result
 
     @Slot(str)

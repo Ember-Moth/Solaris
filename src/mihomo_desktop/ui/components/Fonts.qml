@@ -31,6 +31,6 @@ QtObject {
             return family
         if (family === "JetBrains Mono")
             return Qt.platform.os === "osx" ? "Menlo" : Qt.platform.os === "windows" ? "Consolas" : "monospace"
-        return Qt.application.font.family
+        return Application.font.family
     }
 }

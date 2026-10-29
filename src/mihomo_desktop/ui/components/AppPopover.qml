@@ -17,7 +17,7 @@ Popup {
 
     function openBelow(anchor: Item) {
         trigger = anchor
-        returnFocusReason = anchor.visualFocus ? Qt.TabFocusReason : Qt.OtherFocusReason
+        returnFocusReason = Focus.reasonAfter(anchor)
         const top = anchor.mapToItem(Overlay.overlay, 0, 0)
         const roomBelow = Overlay.overlay.height - Theme.overlayMargin - (top.y + anchor.height + Theme.overlayGap)
         const roomAbove = top.y - Theme.overlayGap - Theme.overlayMargin
