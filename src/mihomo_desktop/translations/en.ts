@@ -9,6 +9,39 @@
     </message>
 </context>
 <context>
+    <name>ConnectionsViewModel</name>
+    <message>
+        <source>全部</source>
+        <translation>All</translation>
+    </message>
+    <message>
+        <source>未连接</source>
+        <translation>Not connected</translation>
+    </message>
+    <message numerus="yes">
+        <source>{shown} / %n 个</source>
+        <translation>
+            <numerusform>{shown} of %n connection</numerusform>
+            <numerusform>{shown} of %n connections</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 个</source>
+        <translation>
+            <numerusform>%n connection</numerusform>
+            <numerusform>%n connections</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>没有连接</source>
+        <translation>No connections</translation>
+    </message>
+    <message>
+        <source>没有匹配的连接</source>
+        <translation>No matching connections</translation>
+    </message>
+</context>
+<context>
     <name>Feedback</name>
     <message>
         <source>该功能尚未实现</source>
@@ -139,6 +172,62 @@
         <source>M 月 d 日</source>
         <comment>date pattern, this year</comment>
         <translation>MMM d</translation>
+    </message>
+</context>
+<context>
+    <name>LogsViewModel</name>
+    <message>
+        <source>调试</source>
+        <translation>Debug</translation>
+    </message>
+    <message>
+        <source>信息</source>
+        <translation>Info</translation>
+    </message>
+    <message>
+        <source>警告</source>
+        <translation>Warning</translation>
+    </message>
+    <message>
+        <source>错误</source>
+        <translation>Error</translation>
+    </message>
+    <message>
+        <source>导出失败：{detail}</source>
+        <translation>Export failed: {detail}</translation>
+    </message>
+    <message numerus="yes">
+        <source>已导出 %n 条</source>
+        <translation>
+            <numerusform>Exported %n line</numerusform>
+            <numerusform>Exported %n lines</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>已暂停 · %n 条新日志</source>
+        <translation>
+            <numerusform>Paused · %n new line</numerusform>
+            <numerusform>Paused · %n new lines</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>已暂停</source>
+        <translation>Paused</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 条</source>
+        <translation>
+            <numerusform>%n line</numerusform>
+            <numerusform>%n lines</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>没有匹配的日志</source>
+        <translation>No matching lines</translation>
+    </message>
+    <message>
+        <source>没有日志</source>
+        <translation>No logs</translation>
     </message>
 </context>
 <context>
