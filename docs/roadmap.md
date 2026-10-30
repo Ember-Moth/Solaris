@@ -3,25 +3,25 @@
 本文规划从现在到首个可发布版本的工作：现在做到了哪里、接下来按什么顺序做、每个里程碑怎样算完成、哪些决定要在
 什么时候做出。各部分的设计见 [文档一览](#7-文档一览)。每完成一轮更新本文。
 
-最近一次整理：2026-10-30，第三轮 A 合并后。
+最近一次整理：2026-10-30，第四轮合并后。
 
 ## 1. 当前进度
 
 | 部分 | 状态 | 说明 |
 | --- | --- | --- |
 | 架构与视觉规范 | 完成 | architecture.md、ui.md、DESIGN.md；原型在 Claude Design 画布上（第 30 版，按页面分页，与 DESIGN.md 同步，过时的画板在"归档"页） |
-| 控制协议 | v1 | 消息、方法表、帧编解码；Go 与 Python 共用样本测试；配置来源是订阅原文或拼装（`Composition`）；分流的 `InspectSource`、`ListGeoCategories`、`PreviewGroup`、`MatchRule`、`ConvertToPlan`、`ExportPlan`；`RegisterWarp`；链式出口与组网出站的字段；`RunOptions.tun_stack` |
+| 控制协议 | v1 | 消息、方法表、帧编解码；Go 与 Python 共用样本测试；配置来源是订阅原文或拼装（`Composition`）；分流的 `InspectSource`、`ListGeoCategories`、`PreviewGroup`、`MatchRule`、`ConvertToPlan`、`ExportPlan`；`RegisterWarp`、`ListVpnGate`；组网的 `GetMeshStatus`、`LoginMesh`；链式出口与组网的字段；`RunOptions.tun_stack` |
 | engine（内嵌 mihomo） | 完成 | mihomo v1.19.33；无 TUN、自管 TUN 和 fd 三种模式；覆写、§3.3 安全项、开发模式护栏；TUN 栈可选（D3），fd 模式下 `includeAllNetworks` 时换用 gVisor（D19） |
 | Windows 服务 | 代码完成，待实测 | 全部内核方法与 `PollEvents`；认领与属主、注销停止与登录恢复、系统代理、客户端校验。逻辑用替身平台测，ACL、WinINet 和客户端校验在 CI 的 Windows 机器上测；服务本身还没在 Windows 虚拟机上跑过 |
-| Python 宿主层 | 完成 | 控制客户端、全部请求映射、日志与连接接口、模拟宿主、macOS 的 `MacExtensionHost` |
-| 界面 | 完成，两项待做 | 七页；覆写编辑；中英双语；浅色与深色；托盘、单实例、登录时打开；qmllint 与无障碍检查；应用图标"日冕"。待做：自绘顶部区域、单个连接开关（D26），见第 2 节 |
+| Python 宿主层 | 完成 | 控制客户端、全部请求映射、日志与连接接口、模拟宿主、macOS 的 `MacExtensionHost`；`core_available`（D27）与接管方式（D26） |
+| 界面 | 完成 | 七页；覆写编辑；中英双语；浅色与深色；托盘、单实例、登录时打开、`--quit`；qmllint 与无障碍检查；应用图标"日冕"；自绘顶部区域；单个连接开关（D26）；没有内核时先存下订阅、隐藏需要内核的部分（D27）。Windows 的顶部区域只在 CI 上测过 |
 | 端到端联调 | 完成 | `tests/e2e` 在 CI 的 macOS 上让界面连真实开发服务，走通导入、连接、分流和方案的流程；节点是本机起的代理，没用真实订阅 |
-| 数据存储与备份 | 本地部分完成 | SQLite；快照的导出与恢复（替换或合并）、`BackupProvider` 接口、本地目录提供方、自动备份的逻辑；Google Drive、iCloud 未做 |
+| 数据存储与备份 | 本地与 iCloud 完成 | SQLite，墓碑保留 90 天；快照的导出与恢复（替换或合并）；本地目录和 iCloud（CloudKit）提供方；自动备份接到界面上。iCloud 还没在真机上运行过；Google Drive 未做 |
 | 自定义分流 | 完成（M8a、M8b） | 分流方式、节点池、地区组、默认模板、41 个服务、规则编辑与撤销、立即生效；策略组编辑器与预览、规则测试、搜索与按目标筛选、以此创建方案、导入导出、查看生成的配置 |
-| 链式出口与组网 | WARP 与组网出站完成 | WARP 出口（M9）内核与界面完成，只对假服务器和模拟宿主验证过；组网出站单独处理（D24）完成。Tor（M10）、应用内组网（M11）、VPN Gate（M12）未做 |
+| 链式出口与组网 | 除 Tor 外完成 | WARP 出口（M9）、VPN Gate 出口（M12）、组网出站单独处理（D24）、应用内组网（M11）的内核与界面都已完成，只对假服务器、构造的出站和模拟宿主验证过，真实验收未做。Tor（M10）未做 |
 | macOS 原生部分 | 代码完成，待实测 | Xcode 工程、管理库 C 接口；系统扩展用 utun 以 fd 模式运行内核，带 GEO 数据；"包含所有网络"（D19）；测试 Mac 实测未做 |
-| 打包与发布 | 已写好，未实测 | macOS：`scripts/build_app.py` 组装并签名 `Solaris.app`，`release.yml` 签名、公证、出 .dmg，还没运行过。Windows：`scripts/build_windows.py` 和 NSIS 安装器，CI 构建不签名的安装包并在 runner 上安装、升级、卸载；签名待定 |
-| 发布准备（M6） | 部分 | 检查更新与下载、诊断信息导出、第三方许可证清单、一键导入链接已做，两个平台都注册了 scheme；Windows 签名、第一次发布未做 |
+| 打包与发布 | 已写好，未实测 | macOS：`scripts/build_app.py` 组装并签名 `Solaris.app`。Windows：`scripts/build_windows.py` 和 NSIS 安装器，首发不签名（D29），CI 构建安装包并在 runner 上安装、升级、卸载。`release.yml` 签名、公证、出 .dmg 和安装包，建草稿 Release，附 `SHA256SUMS` 和源代码包；还没运行过 |
+| 发布准备（M6） | 只差第一次发布 | 检查更新与下载（Windows 不签名时只核对 SHA-256）、诊断信息导出、完整的第三方许可证清单、一键导入链接、README 的下载与安装、`PRIVACY.md`、发布说明模板 |
 | CI | 全绿 | Python（macOS、Windows）、Go（macOS、Windows、Linux）、macOS 上的 e2e、Apple 的不签名构建、Windows 安装包的装卸、网络命名空间里的 TUN 测试（四种栈和 fd 模式） |
 
 ## 2. 开发计划
@@ -39,30 +39,26 @@
 | D 第一轮 | 2026-10-30 | M8b 分流进阶；M5 收尾（`MacExtensionHost`、组装 `Solaris.app`、发布工作流）；M6 先行项 |
 | D 第二轮 | 2026-10-30 | M9 WARP 出口（内核、界面）；组网出站单独处理（D24）；M7 备份的本地部分 |
 | D 第三轮 A | 2026-10-30 | M4 服务（属主、恢复、系统代理、客户端校验）；M4 打包（Nuitka、NSIS、CI 装卸、发布 job）；"TUN 协议栈"与"包含所有网络"；应用图标 |
+| 第四轮 | 2026-10-30 | 自绘顶部区域；单个连接开关（D26）；没有内核时的导入（D27）；发布与不签名的 Windows 版（D29）；`--quit`、墓碑清理、表结构复核；M12 VPN Gate 出口；M11 应用内组网；M7 的 iCloud 部分。合并前两份审查找出的问题（组网的监听与启动时机、iCloud 失败重试、断开时换订阅、VPN Gate 列表的输入校验）都已修好 |
 
-### 第四轮：顶部区域与连接开关（下一步，不等环境）
+### 已知问题
 
-两项改的文件基本不重叠，可以并行：
-
-- **自绘顶部区域**：隐藏系统标题栏，按 DESIGN.md「顶部区域」和原型"品牌与窗口"页实现。macOS 保留红绿灯，在开发机上
-  做和验收；Windows 自绘窗口按钮，拖动、贴靠和缩放仍由系统处理，要在 Windows 虚拟机上验收。
-- **单个连接开关**（D26）：概览页出站分组第一行改为"连接"开关；TUN 和系统代理的开关移到设置页「接管方式」，标为
-  "连接时使用"，默认都开；macOS 上 TUN 必选、没有开关。见 DESIGN.md「连接开关」和 ui.md 第 8 节。
-
-零散的收尾，可以穿插在这一轮里做：
-
-- 许可证清单补全：Qt Image Formats 两项的全文、CPython 自带库的逐项列表、wintun 的预编译 DLL；
-- 界面加退出命令，安装器升级时不再直接结束界面进程；
-- 清理软删除的策略组和规则；
-- 用户可见的材料：README 或下载页、发布说明、隐私说明（WARP 经过 Cloudflare、诊断导出的内容）。
+- **不稳定的测试**：TUN 测试在 gVisor、mixed 栈上偶尔报"mihomo carried no traffic"；Windows runner 保留了一段端口时，
+  Go 测试绑定 UDP 端口失败；`tests/test_backup_viewmodel.py` 的验收在 Windows 上偶尔读到空的订阅行。都与改动无关，重跑
+  能过，要逐个修稳。
+- **race 检测**：`go test -race ./internal/engine/` 在 main 上就有数据竞争报告（mihomo 的全局状态和测试之间的 GEO 更新
+  协程），CI 不跑 `-race`。
+- **订阅页的节点数**含组网出站，mesh.md 第 3 节写的是不计入，要改一边。
 
 ### 第三轮 B：实测（等环境）
 
 - **M4 实测**：wintun、strict-route、DNS 泄漏、四种栈、安装升级卸载；服务的认领与换属主重启、注销停止与登录恢复、
   系统代理的模拟写入；Windows 的顶部区域。需要 Windows 虚拟机。
-- **M5 实测**：系统扩展审批、utun、四种栈、D8、`includeAllNetworks`、第一次公证；之后做 M7 的 iCloud 部分。需要测试 Mac。
-- **M9 验收**：真实注册和第 3 节的四项验收，在开发服务上做（不建 TUN）。需要一个只有 TCP 的真实节点。
-- **M6 收尾与首发**：Windows 签名、第一次发布（见下面的首发清单）。
+- **M5 实测**：系统扩展审批、utun、四种栈、D8、`includeAllNetworks`、第一次公证；断开时导入、连接后读取（D27）；iCloud
+  备份。需要测试 Mac。
+- **链式出口与组网的真实验收**：M9 WARP、M12 VPN Gate（exits.md 第 10 节）和 M11 组网（mesh.md 10.8 节），在开发服务上做
+  （不建 TUN）。需要真实节点和你自己的组网账户。
+- **M6 首发**：第一次运行发布工作流，发布草稿 Release，"检查更新"对真实 Release 验证。
 
 ### 首发清单
 
@@ -73,37 +69,35 @@
 | Windows 服务、安装器、实测（M4） | 代码完成，安装器在 CI 上装卸验证过；实测等虚拟机 |
 | macOS 在全新 Mac 上的验收（M5），第一次公证 | 代码完成；等测试 Mac |
 | "TUN 协议栈"与"包含所有网络"设置 | 代码完成；四种栈和 `includeAllNetworks` 的实测、各平台的默认栈，等虚拟机和测试 Mac |
-| 自绘顶部区域（DESIGN.md「顶部区域」） | 第四轮 |
-| 单个连接开关（D26） | 第四轮 |
+| 自绘顶部区域（DESIGN.md「顶部区域」） | 完成；Windows 的窗口按钮、拖动和贴靠等虚拟机验收 |
+| 单个连接开关（D26） | 完成 |
 | 应用图标与品牌素材 | 完成："日冕"，`scripts/gen_icons.py` 生成全部尺寸，已接入 `Solaris.app`、`Solaris.exe` 和安装器 |
-| Windows 代码签名，签名者常量替换占位值（`update/signature.py` 与 `internal/product`），发布构建链接时打开 `SignedRelease` | 等签名方案 |
-| 发布工作流：两个平台的安装包、发布到 GitHub Releases、SHA256SUMS；"检查更新"对真实 Release 验证 | 两个平台的安装包和各自的 `.sha256` 已在 `release.yml` 里（没运行过，Windows 不签名）；发布到 Releases 和 SHA256SUMS 未做 |
-| WARP 出口的真实验收（M9） | 等真实节点 |
+| Windows 代码签名 | 首发不签名（D29）；签名方案定下后再接上签名者常量和 `SignedRelease` |
+| 发布工作流：两个平台的安装包、发布到 GitHub Releases、SHA256SUMS；"检查更新"对真实 Release 验证 | 已写好：两个平台的安装包、草稿 Release、`SHA256SUMS`、源代码包；还没运行过 |
+| WARP、VPN Gate 出口和组网的真实验收（M9、M12、M11） | 等真实节点和组网账户 |
 | 真实网络测试：真实订阅、DNS 泄漏、IPv6、睡眠唤醒、切换网络 | 两个平台实测时一起做 |
-| 许可证清单补全 | 第四轮 |
-| 用户可见的材料：下载页或 README、发布说明、隐私说明 | 第四轮 |
-| 数据库表结构定稳：首发后不再"不写兼容代码"，改表要写迁移 | 首发前复核 |
+| 许可证清单补全 | 完成 |
+| 用户可见的材料：下载页或 README、发布说明、隐私说明 | 完成：README 的下载与安装、`PRIVACY.md`、`.github/release-notes.md` |
+| 数据库表结构定稳：首发后不再"不写兼容代码"，改表要写迁移 | 第四轮已复核；首发前不再改表 |
 
-**建议放到首发之后**（待你确认）：Google Drive 与 iCloud 备份（首发用本地备份）、M10 Tor、M11 应用内组网、
-M12 VPN Gate。
+**建议放到首发之后**（待你确认）：Google Drive 备份、M10 Tor。
 
 ### 首发之后
 
-- **M7 云端备份**：Google Drive（C2，等 Google Cloud 项目）；iCloud（M5 实测之后）。自动备份随第一个云端提供方接到界面上。
+- **Google Drive 备份**（C2，等 Google Cloud 项目）。
 - **M10 Tor 出口**（实验功能）：arti 经 pyo3 运行在界面进程，见 [exits.md](exits.md) 第 4 节。
-- **M11 应用内组网**：见 [mesh.md](mesh.md) 第 9 节。
-- **M12 VPN Gate 出口**：复用 M9 的链式出口框架，开工前先核实 VPN Gate 的使用条款，见 [exits.md](exits.md) 第 5 节。
 
 ### 需要你提供或决定的
 
 | 事项 | 最晚何时 | 用途 |
 | --- | --- | --- |
-| 单独的测试 Mac 或 macOS 虚拟机 | 现在（M5 代码已完成） | 系统扩展实测、D8、`includeAllNetworks`、iCloud |
-| Windows 测试机或虚拟机 | 现在（M4 代码已完成） | M4 实测、Windows 的顶部区域验收 |
-| 一个只有 TCP 的真实节点 | M9 验收 | 验证 WARP 出口的 MASQUE over HTTP/2 |
-| Windows 代码签名方案 | M6 收尾 | Authenticode 签名、服务对客户端的签名校验 |
+| 单独的测试 Mac 或 macOS 虚拟机 | 现在 | 系统扩展实测、D8、`includeAllNetworks`、断开时导入、iCloud |
+| Windows 测试机或虚拟机 | 现在 | M4 实测、Windows 的顶部区域验收 |
+| 一个只有 TCP 的真实节点 | 链式出口验收 | 验证 WARP 出口的 MASQUE over HTTP/2、VPN Gate 出口 |
+| 你自己的 Tailscale、ZeroTier 或 EasyTier 网络 | M11 验收 | 应用内组网的登录、状态和规则 |
+| Windows 代码签名方案 | 首发之后（D29） | Authenticode 签名、服务对客户端的签名校验 |
 | Google Cloud 项目与"桌面应用"类型的 OAuth 客户端 | Google Drive 备份开工前（同意屏幕审核要时间） | Google Drive 备份 |
-| D5b、D8、D27、D28 | 见第 5 节 | — |
+| D5b、D8、D28 | 见第 5 节 | — |
 
 Apple 的签名材料（证书、两份描述文件、公证 API Key）已齐，见 apple/README.md。
 
@@ -137,7 +131,8 @@ Apple 的签名材料（证书、两份描述文件、公证 API Key）已齐，
 - 虚拟机实测：服务以 SYSTEM 运行时的认领与重启辅助进程、`SessionLogon` / `SessionLogoff`、模拟 token 写 HKCU 后浏览器
   生效、开机后登录时恢复、真实 ProgramData 下的 ACL、Nuitka 构建的界面通过客户端校验；wintun、strict-route、DNS 泄漏、
   四种栈；UAC 提示、升级后恢复隧道。
-- 没做的：签名（等方案）；管理员接管（D5b）；PowerEvent 唤醒后重置连接、超时逐层递减。
+- 没做的：签名（首发不签名，D29）；管理员接管（D5b）；PowerEvent 唤醒后重置连接、超时逐层递减。安装器升级、卸载时
+  先用 `--quit` 请界面退出，10 秒没退出才结束进程。
 
 **验收**：在全新的 Windows 虚拟机上依次完成以下步骤，并且 DNS 泄漏测试通过：
 1. 安装后连接；
@@ -157,7 +152,7 @@ Apple 的签名材料（证书、两份描述文件、公证 API Key）已齐，
 `.sha256`。CI 做不签名的构建，并在网络命名空间里测 fd 模式。
 
 **剩下**：测试 Mac 实测（找 utun 描述符、四种栈、重连时描述符的归属、`includeAllNetworks`、D8、hardened runtime 下的
-启动、登录项 `SMAppService`）；第一次运行发布工作流（公证）；D27、D28。部署目标暂定 macOS 15.0。
+启动、登录项 `SMAppService`）；第一次运行发布工作流（公证）；D28。部署目标暂定 macOS 15.0。
 
 **验收**：在全新的 Mac 上安装公证后的 .app → 批准系统扩展 → 连接 → 退出 App 后隧道仍在 → 重新打开 App 能读到状态。
 
@@ -170,8 +165,10 @@ spctl 与 Team ID、Windows 的 WinVerifyTrust，确认后才打开安装包）�
 `scripts/gen_licenses.py` 生成的第三方许可证清单、`solaris://` 与 `clash://` 一键导入链接（D6）。macOS 的 scheme 由
 `Solaris.app` 的 Info.plist 注册，Windows 的由安装器注册。
 
-**剩下**：Windows 签名方案和签名者常量；第一次发布（到 GitHub Releases、SHA256SUMS），之后让"检查更新"对真实 Release
-验证（现在只对本机的假服务器测过）；许可证清单补全；崩溃日志。
+第四轮补上了：`release.yml` 建草稿 Release，附两个安装包、`SHA256SUMS` 和源代码包；Windows 安装包不签名时检查更新只核对
+SHA-256，确认框写明未签名（D29）；完整的许可证清单；README 的下载与安装、`PRIVACY.md`、发布说明模板。
+
+**剩下**：第一次运行发布工作流，之后让"检查更新"对真实 Release 验证（现在只对本机的假服务器测过）；崩溃日志。
 
 ### M7 数据存储与云备份
 
@@ -184,8 +181,11 @@ spctl 与 Team ID、Windows 的 WinVerifyTrust，确认后才打开安装包）�
 本机的假订阅服务器跑通了不经云端的验收：导出后在空数据目录恢复，全部还原，订阅重新下载并校验；两个数据目录各改一部分
 后合并，较新的修改胜出。
 
-**剩下**：Google Drive（C2：OAuth 登录、appDataFolder、开启时提示备份不加密并包含订阅链接）；iCloud（管理库里用
-CloudKit 私有数据库实现提供方，M5 实测之后）。
+iCloud 部分完成（2026-10-30，第四轮）：管理库里的 CloudKit 函数（私有数据库，容器 `iCloud.dev.tschen.solaris`）、
+Python 的 iCloud 提供方、设置页的 iCloud 一行；自动备份随它接到界面上，失败后不再频繁重试，留给每小时一次的补备份。
+CloudKit 还没真正运行过：开发机上不运行签名的 .app，测试 Mac 上的手动步骤见 apple/README.md。
+
+**剩下**：iCloud 在测试 Mac 上的验收；Google Drive（C2：OAuth 登录、appDataFolder，等 Google Cloud 项目）。
 
 **验收**（云端部分）：
 1. 在一台机器上导入几份订阅、覆写和分流方案，登录 Google 后自动备份；
@@ -223,15 +223,26 @@ CloudKit 私有数据库实现提供方，M5 实测之后）。
 验收：一分钟内连上 Tor 网络；check.torproject.org 显示正在使用 Tor；能打开 `.onion` 网站；退出界面后同一规则的
 连接被拒绝；抓包确认 arti 没有直连流量。
 
-### M11 应用内组网（首发后）
+### M11 应用内组网
 
 在应用里添加 Tailscale、ZeroTier、EasyTier 网络：凭据存系统凭据库，Tailscale 交互式登录，显示组网状态。设计见
-[mesh.md](mesh.md) 第 9 节。
+[mesh.md](mesh.md) 第 10 节。
+
+**状态**：内核、协议（`GetMeshStatus` 57、`LoginMesh` 58）和界面完成（2026-10-30，第四轮），只对构造出来的出站、假数据和
+模拟宿主测试过。订阅带的组网出站仍然有流量经过时才启动，EasyTier 的监听一律关闭（mesh.md 10.6 节）。
+
+**验收**：用你自己的网络，经开发服务做，步骤见 mesh.md 10.8 节。
 
 ### M12 VPN Gate 出口（D25）
 
-经节点拉取 VPN Gate 的服务器列表，只用 TCP 的 OpenVPN 服务器；默认负载均衡组按网站分配服务器并跳过失效的。复用 M9 的
-链式出口框架，控制方法 `ListVpnGate` 预留 56。开工前先核实使用条款，不允许就不做。设计见 [exits.md](exits.md) 第 5 节。
+经节点拉取 VPN Gate 的服务器列表，只用 TCP 的 OpenVPN 服务器；默认负载均衡组按网站分配服务器并跳过失效的。设计见
+[exits.md](exits.md) 第 5 节。
+
+**状态**：内核、协议（`ListVpnGate` 56）和界面完成（2026-10-30，第四轮），只对假列表服务器和模拟宿主测试过。使用条款在
+开工前核实（exits.md 5.1 节）：官网允许用 CSV 列表做自己的客户端；标着"Academic Use Only"的服务器一律不用。列表按
+不可信的输入处理：每份配置限大小，只接受公网地址。
+
+**验收**：经真实节点在开发服务上做，步骤见 exits.md 第 10 节。
 
 ## 4. 协作方式
 
@@ -253,7 +264,6 @@ CloudKit 私有数据库实现提供方，M5 实测之后）。
 | --- | --- | --- | --- |
 | D5b | 内核运行中能否由管理员接管其他用户的隧道（倾向可以，需 UAC 确认） | M4 实测前 | 服务的属主逻辑；接管加在 `owner.Service.Claim` 里，现在只能等隧道停了再认领 |
 | D8 | provider message 单条大小上限 | M5 实测 | `Reload` 能否直接携带大配置 |
-| D27 | macOS 上隧道未连接时没有内核，`Validate`、`InspectSource` 返回 `not_running`，断开时导入订阅会失败：是否在界面进程或管理库里另做校验 | M5 实测 | 断开状态下的导入流程 |
 | D28 | 支持的最低 macOS：PySide6 6.12.0 的绑定库要求 macOS 26，要支持 15 得钉在 6.11.x（apple/README.md） | 首发前 | 部署目标、依赖版本 |
 
 ### 5.2 已决定（2026-10-29 至 10-30）
@@ -285,6 +295,8 @@ CloudKit 私有数据库实现提供方，M5 实测之后）。
 | D24 | 保留 Tailscale、ZeroTier、EasyTier 出站；它们不进节点池和任何策略组，作为"组网"出站单独列出、供规则引用；只用作出站，安全项关闭 EasyTier 对外提供出口和子网的选项 | mesh.md |
 | D25 | VPN Gate 作为第三种链式出口：经节点拉列表，只用 TCP 的 OpenVPN 服务器，按国家和评分挑选；默认负载均衡组按网站分配服务器并跳过失效的，也可选只用一台；定位是换 IP 和住宅 IP，不宣传隐私；开工前先核实使用条款 | exits.md 第 5 节 |
 | D26 | 界面上只有一个连接开关（概览页出站分组第一行）；连接时怎样接管流量由设置页「接管方式」决定，TUN 和系统代理默认都开；macOS 上 TUN 是必选的 | DESIGN.md「连接开关」、ui.md 第 8 节 |
+| D27 | 订阅由 Python 下载、Go 内核解析和校验，只此一份解析。没有内核能应答时（macOS 隧道断开）先存下原文，连接后、`Start` 之前再解析和校验；界面在没有内核时隐藏需要它的部分 | ui.md 第 3 节 |
+| D29 | 首发的 Windows 安装包不签名：服务对客户端只做文件身份校验，检查更新只核对 SHA-256；签名方案定下后再接上 | release.md |
 
 ## 6. 风险
 
