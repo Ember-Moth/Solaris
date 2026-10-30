@@ -159,9 +159,12 @@ func (e *Engine) runMesh(run *meshRun) {
 	if run.networks != nil {
 		pruneMeshState(e.home, run.networks)
 	}
+	// Taken now: a start still under way once the configuration has moved on keeps the
+	// function it began with.
+	start := startMesh
 	for _, outbound := range run.fresh {
 		go func() {
-			if err := startMesh(outbound.adapter); err != nil {
+			if err := start(outbound.adapter); err != nil {
 				log.Warnln("[engine] mesh outbound %s did not start: %s", outbound.name, err)
 				outbound.setStartErr(err)
 			}

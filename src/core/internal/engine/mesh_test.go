@@ -8,6 +8,7 @@ import (
 	"slices"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/metacubex/mihomo/adapter/outbound"
 	C "github.com/metacubex/mihomo/constant"
@@ -60,7 +61,24 @@ func replaceStartMesh(t *testing.T) *fakeStarts {
 	return fake
 }
 
-// waitStarts waits for n starts and returns every start so far, sorted.
+// waitStartErr waits until the engine has recorded why the outbound name did not start: the
+// fake reports the start before it returns, and the engine records the failure after.
+func waitStartErr(t *testing.T, engine *Engine, name string) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if outbound := engine.meshOutbound(name); outbound != nil && outbound.lastStartErr() != nil {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("no failed start of %s was recorded", name)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// waitStarts waits for n starts and returns every start so far, sorted. The starts' results
+// may not be recorded yet; waitStartErr waits for a failure.
 func (f *fakeStarts) waitStarts(t *testing.T, n int) []string {
 	t.Helper()
 	for range n {
@@ -220,6 +238,7 @@ func TestMeshStatus(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = engine.Stop() })
 	starts.waitStarts(t, 2)
+	waitStartErr(t, engine, "公司")
 	statuses, err := engine.MeshStatus(context.Background())
 	if err != nil {
 		t.Fatal(err)
