@@ -94,6 +94,11 @@ class SettingsStore(Protocol):
         """Call ``listener`` after every change; returns the call that stops it."""
         ...
 
+    def reload(self) -> Settings:
+        """Read the stored settings again after code wrote them itself, such as a restored
+        backup, and tell the listeners what changed."""
+        ...
+
 
 _CHOICES: dict[str, tuple[str, ...]] = {
     "language": LANGUAGES,
