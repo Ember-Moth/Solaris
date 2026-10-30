@@ -411,6 +411,9 @@ def test_icloud_backs_up_when_turned_on_and_after_changes(
     # A change goes up once it has settled.
     machine.call(machine.vms.library.save_override(None, "mode: global\n"))
     settle(qtbot, machine, lambda: len(icloud.records) == 2)
+    # The upload landed; its time is recorded once the call returns, so wait for that
+    # before moving the clock, or the backup takes the later time.
+    qtbot.waitUntil(lambda: prop(backup, "icloudStatus") == "上次备份：刚刚 · 成功")
     machine.clock.now += 120
     qtbot.waitUntil(lambda: prop(backup, "icloudStatus") == "上次备份：2 分钟前 · 成功")
     assert len(icloud.records) == 2  # nothing changed since
