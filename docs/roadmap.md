@@ -78,14 +78,30 @@ B1、B2 的结果与遗留：
   更新（更新后要等下一次 Start 或 Reload 才生效）。重名改为直接改节点名，成员在内核里算好后用精确 `filter`
   列出，见 routing.md 8.1 节。空的自建组也改走节点选择并警告；订阅自带的 `proxy-providers` 不进节点池。
 - 遗留给后续：`RULE-SET`、`SUB-RULE` 不能作为规则条目的匹配项（M8b 的"原始规则"要处理）；升级用户的分流方式
-  还没选过，默认给哪种在 C1 定；GEO 数据是否全量附带见 D18；都只用本机代理节点验证过，没用真实订阅跑过。
+  还没选过，默认给哪种在 C1 定；GEO 数据全量随安装包附带（D18）；都只用本机代理节点验证过，没用真实订阅跑过。
+
+### 改名为 Solaris（C1 合并后立即进行）
+
+产品名和应用名定为 Solaris（D1）。项目未发布，所有标识直接替换，不保留旧名的兼容。"mihomo"指内核时保持不变。
+
+| 项目 | 新值 |
+| --- | --- |
+| 显示名、数据目录 | `Solaris`（`~/Library/Application Support/Solaris/`、`%LOCALAPPDATA%\Solaris\`、`C:\ProgramData\Solaris\`） |
+| 数据库文件 | `solaris.db` |
+| GitHub 仓库、Go 模块 | `Ember-Moth/solaris`，`github.com/Ember-Moth/solaris/src/core` |
+| Python 包、命令 | `solaris`；QML 模块名 `Solaris` |
+| 协议 | proto 包 `solaris.protocol`；帧 magic `SLRS` |
+| Windows | 服务 `SolarisService`，界面 `Solaris.exe`，管道 `\\.\pipe\ProtectedPrefix\Administrators\solaris` |
+| macOS | bundle id `dev.tschen.solaris`，系统扩展 `dev.tschen.solaris.tunnel`，iCloud 容器 `iCloud.dev.tschen.solaris` |
+| 环境变量 | 前缀 `SOLARIS_`（如 `SOLARIS_LANG`、`SOLARIS_DEV_SOCKET`、`SOLARIS_E2E`） |
+| 订阅下载的 User-Agent | `solaris/<版本> clash.meta` |
 
 ### 阶段 C：分流界面与云备份（下一步）
 
 | 编号 | 工作 | 内容 | 可并行 |
 | --- | --- | --- | --- |
 | C1 | M8a 界面部分 | 订阅页简化、分流页、添加规则对话框、服务清单、地区表、默认模板、立即生效与撤销（routing.md 第 4、5 节）。依赖 B1、B2 | 与 C2 并行 |
-| C2 | M7 Google Drive 备份 | 快照、提供方接口、OAuth 登录、设置页"备份与同步"、恢复。前提是 D14 已定、Google Cloud 项目和 OAuth 客户端已建 | 与 C1 并行 |
+| C2 | M7 Google Drive 备份 | 快照、提供方接口、OAuth 登录、设置页"备份与同步"、恢复。前提是 Google Cloud 项目和 OAuth 客户端已建 | 与 C1 并行 |
 
 ### 阶段 D：进阶与平台
 
@@ -104,7 +120,7 @@ B1、B2 的结果与遗留：
 | Windows 测试机或虚拟机 | B3 开始前 | M4 的安装、wintun、DNS 泄漏测试 |
 | Google Cloud 项目与"桌面应用"类型的 OAuth 客户端 | C2 开始前（同意屏幕审核要时间，越早越好） | Google Drive 备份 |
 | Apple Developer 账号、NE entitlement、单独的测试 Mac | 阶段 D 的 M5 开始前 | macOS 系统扩展、iCloud |
-| D14、D1、D2、D5 等决策 | 见第 5 节 | — |
+| D5b、D8 | 见第 5 节 | — |
 
 ## 3. 里程碑
 
@@ -159,11 +175,13 @@ B1、B2 的结果与遗留：
 
 范围：
 
-- **属主管理**：`Claim` / `TakeOver`；按 SID 划分 home 目录并设置 ACL；`owner.json`；会话注销时的策略（D5）。
+- **属主管理**：`Claim` / `TakeOver`；按 SID 划分 home 目录并设置 ACL；`owner.json`；属主注销时停止隧道并在下次登录时恢复（D5），管理员接管（D5b）。
 - **持久化与开机恢复**：`was_running`、`overrides.json` 和节点选择（`store-selected`）。
 - **系统代理**：模拟属主会话的 token 写入用户的 HKCU，停止时还原（architecture.md §5.5）。
 - **客户端校验补全**：锁定文件身份；发布构建校验 Authenticode 签名者（architecture.md §5.3）。
-- **实测**：wintun、strict-route、DNS 泄漏；确定 TUN 栈（D3）；登录时打开的计划任务。
+- **TUN 栈**：带 `with_gvisor` 构建，四种栈（system、mips、gvisor、mixed）都提供；设置页加"TUN 协议栈"选项（本机
+  设置，映射到配置的 `tun.stack`），默认值按实测结果定（D3）。
+- **实测**：wintun、strict-route、DNS 泄漏，四种栈逐一验证；登录时打开的计划任务。
 - **打包**：Nuitka standalone 构建脚本（包括 QML 目录、字体、翻译）；NSIS 安装器负责安装、升级、卸载，参考 hypervpn 的 `packaging/windows/`。
 
 验收：在全新的 Windows 虚拟机上依次完成以下步骤，并且 DNS 泄漏测试通过：
@@ -181,7 +199,9 @@ B1、B2 的结果与遗留：
 
 - **前置条件**：Apple Developer 账号、Team ID、NE entitlement，以及一台单独的测试 Mac 或 macOS 虚拟机。系统扩展会创建 utun，不在开发机上运行。
 - **Xcode 工程**：管理库（C ABI）和 PacketTunnel 系统扩展；xcframework 由 `src/core/apple` 编出，包含 engine 的 fd 模式和控制分发器。
-- **扩展内部**：获取 utun fd，设置隧道网络和 DNS，建立 provider message 通道。D7、D8 先用原型验证。
+- **架构**：先只做 arm64（D2）。
+- **扩展内部**：获取 utun fd，设置隧道网络和 DNS，建立 provider message 通道。配置和 Windows 一样经 `Start` /
+  `Reload` 传入（D7）；单条消息的大小上限（D8）先用原型验证，不够就分片。
 - **Python 侧**：实现 `MacExtensionHost`，通过 ctypes 调用管理库。
 - **打包**：把 Nuitka 产物、管理库和系统扩展组装成 .app，签名并公证；实测登录项（`SMAppService`）。
 
@@ -189,10 +209,12 @@ B1、B2 的结果与遗留：
 
 ### M6 发布准备
 
-- **命名**：确定产品名（D1），替换代码里的工作名标识。
+- **命名**：产品名已定为 Solaris（D1）；代码里的工作名标识在 C1 合并后统一替换。
 - **签名与发布**：准备 Windows Authenticode 和 Apple Developer ID 证书；建立发布 CI，负责构建、签名和生成校验和。
 - **诊断**：诊断信息导出、崩溃日志。
-- **按决策实施**：自动更新（D11）、订阅一键导入的 URL scheme（D6）。
+- **订阅一键导入**（D6）：注册 `solaris://install-config?url=…` 和机场网站常用的 `clash://install-config`，打开后进入
+  导入流程，导入前照常校验。
+- **检查更新与下载**（D11）：从 GitHub Releases 检查新版本并下载安装包，校验签名后由用户确认安装，不静默安装。
 - **许可合规**：发布包附带 LICENSE 和第三方许可证清单（Qt、字体等），并说明对应源代码的获取方式。
 
 ### M7 数据存储与云备份
@@ -264,16 +286,8 @@ B1、B2 的结果与遗留：
 
 | # | 事项 | 最晚何时 | 影响 |
 | --- | --- | --- | --- |
-| D14 | Google 令牌的存放方式。倾向系统凭据库，需要新增 `keyring` 之类的依赖 | C2 开始前 | 依赖、打包、安全 |
-| D1 | 产品名 | M4 安装器和 M5 bundle id 之前 | 服务名、管道名、协议 magic、bundle id、目录 |
-| D2 | 支持的架构（Windows x64 / arm64，macOS arm64 / x86_64） | M4、M5 构建前 | 构建矩阵、xcframework 切片 |
-| D5 | 属主注销时是否停止隧道；管理员能否接管 | M4 | 服务的属主逻辑 |
-| D3 | TUN 栈与构建标签（M1 实测数据见 architecture.md §3.4） | M4 实测后 | 兼容性、体积 |
-| D7 | macOS 配置传递方式 | M5 开始 | 扩展的启动流程 |
+| D5b | 内核运行中能否由管理员接管其他用户的隧道（倾向可以，需 UAC 确认） | M4 | 服务的属主逻辑 |
 | D8 | provider message 单条大小上限 | M5 原型 | `Reload` 能否直接携带大配置 |
-| D6 | 订阅一键导入的 URL scheme（如 `clash://install-config`） | M6 安装器注册前 | 深链接处理、安装器注册 |
-| D11 | 是否内置自动更新 | M6 | 发布基础设施 |
-| D18 | GEO 数据是否全量随安装包附带（geosite 4.4 MB、geoip 16.5 MB）。倾向全量；替代是 lite 版或 metadb，会少分类 | M4、M5 打包前 | 安装包体积、分类完整度 |
 
 ### 5.2 已决定（均为 2026-10-29）
 
@@ -287,6 +301,15 @@ B1、B2 的结果与遗留：
 | D15 | 自定义分流（第二版）：<br>• 全局开关"订阅自带 / 我的方案"，首次导入时自动选择；<br>• "我的方案"下所有订阅组成节点池，可单独排除；<br>• 可以有多套方案；<br>• 规则条目按意图记录，默认按服务添加；<br>• 第一版规则类型为 GEOSITE / GEOIP、域名、IP 段 | routing.md |
 | D16 | 分流配置在内核里拼装，节点筛选和规则匹配都用 mihomo 自己的逻辑 | routing.md 第 8 节 |
 | D17 | GEO 分类列表由内核从正在使用的 GEO 数据里读取；安装包附带初始 GEO 数据，另附一份分类名清单作兜底 | routing.md 第 8 节 |
+| D1 | 产品名与应用名都是 Solaris，定稿不再改变。GitHub 仓库改为 `Ember-Moth/solaris`，macOS bundle id 前缀 `dev.tschen.solaris` | 本文第 2 节"改名" |
+| D14 | Google 令牌存放在系统凭据库（macOS 钥匙串、Windows 凭据管理器），新增 `keyring` 依赖 | storage.md 第 4 节 |
+| D18 | GEO 数据全量随安装包附带（geosite 4.4 MB、geoip 16.5 MB） | routing.md 第 8 节 |
+| D2 | 构建架构：Windows 只做 x64，macOS 先只做 arm64 | 本文 M4、M5 |
+| D3 | Windows 带 `with_gvisor` 构建，四种 TUN 栈都提供，由用户在设置里选择 | architecture.md §3.4 |
+| D5 | 属主注销时停止隧道，下次登录后恢复 | architecture.md §5.4 |
+| D6 | 订阅一键导入注册 `solaris://install-config?url=…` 和 `clash://install-config` | 本文 M6 |
+| D7 | macOS 的配置和 Windows 一样，经控制协议的 `Start` / `Reload` 传入 | architecture.md §6.2 |
+| D11 | 内置检查更新与下载：安装包来自 GitHub Releases，校验签名，由用户确认安装 | 本文 M6 |
 
 ## 6. 风险
 
@@ -318,7 +341,7 @@ A3 已把表格、标题栏折行、浮层方向、搜索框、下拉按钮、�
 - 标题栏右侧的分段控件作为页面级开关；状态文字位置的撤销提示（"撤销"用 link 色，作为例外）；
 - 侧栏改为"订阅""分流"。
 
-另有一项待确认：英文文案里"接管方式"译为 "Inbound"。
+英文文案里"接管方式"译为 "Inbound"，已确认。
 
 ## 8. 文档一览
 

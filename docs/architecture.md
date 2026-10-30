@@ -181,8 +181,8 @@ Windows 服务以 SYSTEM 身份运行内核，下面每一项都必须满足，�
 ### 3.4 构建标签
 
 mihomo 提供的可选标签有 `with_gvisor`、`with_low_memory`、`no_tailscale`、`no_zerotier`、
-`no_easytier`、`no_fake_tcp`。任何情况下都不带 `cmfa`。Windows 服务和 macOS NE 各用哪个组合属于决策 D3，
-M1 的实测数据如下（v1.19.33，Go 1.27.3，`-trimpath -ldflags "-s -w"`，`./service` 的二进制体积）：
+`no_easytier`、`no_fake_tcp`。任何情况下都不带 `cmfa`。Windows 服务带 `with_gvisor` 构建，四种 TUN 栈都提供，由用户在设置里选择（决策 D3）；
+macOS NE 的组合在 M5 确定。M1 的实测数据如下（v1.19.33，Go 1.27.3，`-trimpath -ldflags "-s -w"`，`./service` 的二进制体积）：
 
 | 标签 | Windows amd64 | macOS arm64 |
 | --- | --- | --- |
@@ -406,7 +406,9 @@ PID 来防止管道名被抢注。
 
 - 同一时间只有一个属主（用户 SID 加会话）。
 - 属主以外的用户只能调用 `GetInfo`，其余方法一律返回 `owned_by_other_user` 错误。
-- 内核运行中如何移交给其他用户，待定。
+- 属主注销时停止隧道，保留 `was_running`，属主下次登录后自动恢复（决策 D5）。TUN 是全局的，不停止的话，其他用户的
+  流量会走属主的订阅。
+- 内核运行中能否由管理员接管，待定。
 
 ### 5.5 系统代理
 
@@ -436,7 +438,8 @@ WinINet；内核停止时还原。开机恢复时，如果属主尚未登录，�
 
 1. 用 `setTunnelNetworkSettings` 设置路由、地址和 DNS，DNS 指向 mihomo 的 dns-hijack 地址；
 2. 找到 utun 的 fd，以 fd 模式启动 engine；
-3. 加载配置，初始化 Go 分发器。不监听任何 socket，mihomo 的 HTTP 控制器也不启动。
+3. 初始化 Go 分发器，配置和 Windows 一样由界面经控制协议的 `Start` / `Reload` 传入（决策 D7），不经
+   `startVPNTunnel(options:)`。不监听任何 socket，mihomo 的 HTTP 控制器也不启动。
 
 扩展自身发出的流量本来就不进入隧道，因此不用设置 socket 保护回调。
 
