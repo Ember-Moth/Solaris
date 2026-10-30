@@ -375,7 +375,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 
 ## 9. 分流
 
-设计见 [routing.md](routing.md)；这里写界面怎样实现它（roadmap C1）。
+设计见 [routing.md](routing.md)；这里写界面怎样实现它（roadmap C1、M8b）。
 
 - **分流方式决定隧道运行什么**（`ProfileLibrary`）：
   - "订阅自带"（`routing_state.mode = 'profile'`）：当前配置（`ProfileList.active`，即 `routing_state.profile_id`）的
@@ -406,6 +406,24 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
     分类列表取自 `list_geo_categories`，连不上时用安装包附带的清单。
   - "订阅自带"且这份订阅正在运行时，用 `list_groups` 和 `list_rules` 只读列出它的策略组和规则；不在运行时
     写出 `inspect_source` 给的数量。
+  - **规则测试**（M8b）：测试框的文字由 `plans.match_target` 读成主机和端口，停顿 0.4 秒或回车后交给
+    `ProfileLibrary.match_rule`：用显示的方案（含未提交的移动）、节点池和全局覆写拼成 `TunnelConfig`，调用宿主的
+    `match_rule`。结果的条目 id 标出命中的行（`RuleRow.hit`，兜底是 `fallbackHit`），方案每次改动生效后用同一段
+    文字重测。
+  - **搜索与按目标筛选**只影响显示：`RuleRow` 仍按完整列表算 `first` / `last`，所以菜单里的上移、下移照常；
+    `filtering` 为真时 QML 禁用拖动手柄。
+  - **自建策略组**：`customGroups` 列出方案里的自建组，说明写"类型 · 节点数、其他成员数、直连 / 拒绝"，节点数取
+    报告里的 `node_count`。编辑器是 `GroupEditor`（`viewmodels/routing_groups.py`）：条件改动停止 0.25 秒后经
+    `ProfileLibrary.preview_group` 调用 `PreviewGroup`（组名临时用 id，名称不影响预览），延迟取自运行中内核的
+    `list_groups`。保存走 `RoutingViewModel.put_group`：编辑的组保持位置，新组排在最后，内核拒绝时对话框不关闭。
+    删除前列出引用它的规则条目、兜底和其他组（routing.md §5.5），确认后这些规则改走节点选择、其他组去掉它，
+    可以撤销。
+  - **转换与导出**是 `PlanTransfer`（`viewmodels/routing_transfer.py`）：`convert_profile` / `convert_file`
+    调用 `ConvertToPlan`，摘要对话框确认后用 `plans.plan_from_json` 把内核写的方案 JSON 读成 `Plan`（条目的
+    `items` 还原成界面的 `content`：域名加 `=`、`~` 前缀，IP 段带 `no_resolve`，分类的 GEOIP 没有 `no-resolve`
+    时记 `"no_resolve": false`），再由 `ProfileLibrary.add_plan` 校验、存储，勾选"创建后改用"时切到"我的方案"
+    并使用它。导出和"查看生成的配置"调用 `export_plan`（`EXPORT_SHARE` / `EXPORT_GENERATED`，后者带运行中的或
+    设置里的 `RunOptions`），只读显示；复制进剪贴板，另存为写 UTF-8 文件。
 - **其他页面**：订阅页的行在说明里写"规则使用中""不加入节点池"；概览页"出站"分组的"当前使用"跳到分流页；
   代理页用报告里的节点池标出每个节点的来源订阅，地区组收进可折叠的"地区"小节；连接页用
   `Connection.rule_entry_id` 显示规则条目名称，第二行是内核的原始规则。

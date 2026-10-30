@@ -300,7 +300,7 @@ listeners:
 | --- | --- |
 | `RegisterWarp` | 请求带经由组名、协议，以及可选的已有账户（只有设备 id 和 token）。不带已有账户就注册新设备；带了就为这台设备换密钥。返回完整账户。需要内核在运行，否则 `not_running` |
 
-- 字段号用 55（51 到 54 已留给 M8b）。
+- 字段号用 55（51 到 54 是 M8b 的四个方法）。
 - 两种宿主都提供；模拟宿主返回一个固定的假账户。
 - 实现放在 `src/core/internal/warp`。HTTP 客户端的连接经 `proxydialer.NewByName(经由组, tunnel)` 发出，超时 30 秒。
 
