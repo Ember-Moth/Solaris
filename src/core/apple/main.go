@@ -1,6 +1,8 @@
 // Command apple builds the C archive linked into the macOS system extension
-// (docs/architecture.md §6.3). handleAppMessage passes each provider message to
-// solaris_handle_message and returns the encoded Response to the app.
+// (docs/architecture.md §6). The extension reads the tunnel's network with
+// solaris_tunnel_network, attaches the utun descriptor with solaris_attach_tun once its
+// network settings are in place, hands each provider message to solaris_handle_message,
+// and detaches with solaris_detach_tun before the tunnel goes down.
 package main
 
 /*
@@ -9,17 +11,43 @@ package main
 import "C"
 
 import (
-	"context"
 	"unsafe"
 
 	"github.com/Ember-Moth/Solaris/src/core/internal/control"
 	"github.com/Ember-Moth/Solaris/src/core/internal/frame"
-	"github.com/Ember-Moth/Solaris/src/core/internal/peer"
 )
 
-// dispatcher stays nil until the extension starts the engine in fd mode (M5), and
-// solaris_handle_message answers not_implemented meanwhile.
-var dispatcher *control.Dispatcher
+// solaris_tunnel_network describes the tunnel's network (engine.FDNetwork) as JSON for
+// the extension's network settings. The caller releases the buffer with solaris_free.
+//
+//export solaris_tunnel_network
+func solaris_tunnel_network(length *C.size_t) unsafe.Pointer {
+	data := networkJSON()
+	*length = C.size_t(len(data))
+	return C.CBytes(data)
+}
+
+// solaris_attach_tun opens the engine in fd mode on the utun descriptor, with home as
+// mihomo's home directory, and the dispatcher that answers solaris_handle_message; the
+// core runs once a Start message brings its configuration. The descriptor stays the
+// caller's: Go never closes it, and mihomo runs on duplicates of it that Go closes. It
+// returns NULL, or an error the caller releases with solaris_free.
+//
+//export solaris_attach_tun
+func solaris_attach_tun(fd C.int, home *C.char) *C.char {
+	if err := attach(int(fd), C.GoString(home)); err != nil {
+		return C.CString(err.Error())
+	}
+	return nil
+}
+
+// solaris_detach_tun stops the core and closes the dispatcher and every duplicate of the
+// descriptor. Once it returns, Go no longer uses the descriptor, and the caller may close it.
+//
+//export solaris_detach_tun
+func solaris_detach_tun() {
+	detach()
+}
 
 // solaris_handle_message answers one Request. The returned buffer belongs to the
 // caller, who releases it with solaris_free.
@@ -27,14 +55,10 @@ var dispatcher *control.Dispatcher
 //export solaris_handle_message
 func solaris_handle_message(request unsafe.Pointer, requestLength C.size_t, responseLength *C.size_t) unsafe.Pointer {
 	var response []byte
-	switch {
-	case requestLength > frame.MaxRequestBytes:
+	if requestLength > frame.MaxRequestBytes {
 		response = control.EncodeFailure(0, control.CodeInvalidRequest, "request exceeds the size limit")
-	case dispatcher == nil:
-		response = control.EncodeFailure(0, control.CodeNotImplemented, "the extension does not start the engine yet")
-	default:
-		// The system restricts provider messages to this app, so there is no peer identity.
-		response = dispatcher.Handle(context.Background(), peer.Identity{}, C.GoBytes(request, C.int(requestLength)))
+	} else {
+		response = handle(C.GoBytes(request, C.int(requestLength)))
 	}
 	*responseLength = C.size_t(len(response))
 	return C.CBytes(response)
