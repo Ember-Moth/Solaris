@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from solaris.desktop import links
 from solaris.desktop.login import LoginItem, UnavailableLoginItem
 from solaris.host.base import TunnelHost
+from solaris.models.backup import Backups
 from solaris.models.library import ProfileLibrary
 from solaris.models.settings import DatabaseSettingsStore, Settings, SettingsStore
 from solaris.models.store import ProfileStore
@@ -16,6 +17,7 @@ from solaris.models.subscription import Fetcher
 from solaris.update.updater import Updater
 from solaris.viewmodels.about import AboutViewModel
 from solaris.viewmodels.appearance import Appearance
+from solaris.viewmodels.backup import BackupViewModel
 from solaris.viewmodels.common.async_runner import AsyncRunner
 from solaris.viewmodels.connections import ConnectionsViewModel
 from solaris.viewmodels.desktop import DesktopViewModel
@@ -45,6 +47,7 @@ class ViewModels:
     desktop: DesktopViewModel
     appearance: Appearance
     about: AboutViewModel
+    backup: BackupViewModel
 
     def initial_properties(self) -> dict[str, object]:
         """Main.qml's required properties."""
@@ -60,6 +63,7 @@ class ViewModels:
             "settingsViewModel": self.settings,
             "desktopViewModel": self.desktop,
             "aboutViewModel": self.about,
+            "backupViewModel": self.backup,
         }
 
     def start(self) -> None:
@@ -85,6 +89,7 @@ class ViewModels:
         self.logs.retranslate()
         self.settings.retranslate()
         self.about.retranslate()
+        self.backup.retranslate()
 
     def open_link(self, link: str) -> None:
         """An install link arrived (docs/release.md §7): show the window and the import form
@@ -144,6 +149,7 @@ def compose(
     about = AboutViewModel(
         updater or Updater(store.directory), settings_store, host, library, runner, logs.held
     )
+    backup = BackupViewModel(Backups(store.database), library, settings_store, runner, clock=clock)
 
     def page_shown() -> None:
         if shell.currentPage == "proxies":
@@ -165,6 +171,11 @@ def compose(
     routing.routingChanged.connect(profiles.reload)
     routing.applied.connect(overview.refreshGroups)
     routing.applied.connect(proxies.refresh)
+    # A restored backup changes the profiles and the routing under every page.
+    backup.restored.connect(profiles.reload)
+    backup.restored.connect(routing.reload)
+    backup.restored.connect(overview.refreshGroups)
+    backup.restored.connect(proxies.refresh)
 
     def routing_shown() -> None:
         proxies.set_pool(*routing.pool_sources())
@@ -195,4 +206,5 @@ def compose(
         desktop,
         appearance,
         about,
+        backup,
     )
