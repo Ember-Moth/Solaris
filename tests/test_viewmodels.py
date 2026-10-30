@@ -98,7 +98,9 @@ def test_overview_actions(qtbot: QtBot, view_models: ViewModels) -> None:
     qtbot.waitUntil(lambda: prop(overview, "mode") == "global")
     # A switch changes the running tunnel and is kept for the next connection.
     overview.setSystemProxy(False)
-    qtbot.waitUntil(lambda: not prop(overview, "systemProxyEnabled"))
+    # The switch shows the change at once; wait for the action itself, which keeps the
+    # connection switch disabled until it is done.
+    qtbot.waitUntil(lambda: not prop(overview, "systemProxyEnabled") and not prop(overview, "busy"))
     assert not view_models.settings_store.current.system_proxy
     assert prop(overview, "statusDetail").startswith("TUN · 已运行 ")
 
@@ -116,7 +118,7 @@ def test_overview_actions(qtbot: QtBot, view_models: ViewModels) -> None:
     # While stopped the switches show, and change, what the next connection asks for.
     assert (prop(overview, "tunEnabled"), prop(overview, "systemProxyEnabled")) == (True, False)
     overview.setTun(False)
-    qtbot.waitUntil(lambda: not prop(overview, "tunEnabled"))
+    qtbot.waitUntil(lambda: not prop(overview, "tunEnabled") and not prop(overview, "busy"))
     assert not view_models.settings_store.current.tun
     assert host.reloads == 0
     overview.setConnected(True)
