@@ -440,3 +440,24 @@ def test_service_host_carries_the_vpngate_servers() -> None:
         "203.0.113.11",
         ["AES-128-CBC"],
     )
+
+
+def test_simulated_list_vpngate_goes_through_any_outbound() -> None:
+    """As in the core, the list may go out through any outbound of the running configuration:
+    a group, a node or a built-in one; nothing else."""
+    host = SimulatedHost()
+
+    async def scenario() -> list[str | None]:
+        report = await host.reload(TunnelConfig(composition=COMPOSITION))
+        assert report is not None
+        outcomes: list[str | None] = []
+        for via in (report.groups[0].name, report.nodes[0].name, "DIRECT", "没有这个"):
+            try:
+                await host.list_vpngate(via)
+                outcomes.append(None)
+            except HostError as error:
+                outcomes.append(error.code)
+        return outcomes
+
+    assert asyncio.run(scenario()) == [None, None, None, "invalid_request"]
+    assert len(host.vpngate_calls) == 3

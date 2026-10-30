@@ -24,9 +24,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	ovpn "github.com/metacubex/mihomo/transport/openvpn"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 )
@@ -41,8 +43,12 @@ const (
 	// maxList bounds what is read of the answer, and messageLength what an error quotes.
 	maxList       = 16 << 20
 	messageLength = 512
-	// MaxServers keeps the answer well inside a response frame.
+	// MaxServers and MaxAnswer keep the servers well inside a response frame (8 MiB): the
+	// list is read up to 16 MiB, and a padded row must not take the connection down.
 	MaxServers = 500
+	MaxAnswer  = 6 << 20
+	// maxConfig bounds a server's OpenVPN configuration; VPN Gate's are about 6 KiB.
+	maxConfig = 64 << 10
 	// maxOperator bounds the operator's name, which the UI shows.
 	maxOperator = 128
 )
@@ -65,7 +71,9 @@ const (
 var required = []string{columnHost, columnIP, columnScore, columnCountry, columnConfig}
 
 // restricted is how an operator says a server is for academic use only; the project's own
-// servers say so (docs/exits.md §5.1), so the exit leaves them to that use.
+// servers say so (docs/exits.md §5.1), so the exit leaves them to that use. It is looked for
+// in the operator's name and message as written, with case, punctuation and spacing evened
+// out (folded).
 const restricted = "academic use only"
 
 // NewClient is an HTTP client whose connections go out through dial, bounded by Timeout.
@@ -146,10 +154,20 @@ func Parse(data []byte) ([]*controlpb.VpnGateServer, error) {
 		}
 		return strings.Compare(a.GetHostName(), b.GetHostName())
 	})
-	if len(servers) > MaxServers {
-		servers = servers[:MaxServers]
+	return within(servers), nil
+}
+
+// within keeps the best servers that fit MaxServers and MaxAnswer.
+func within(servers []*controlpb.VpnGateServer) []*controlpb.VpnGateServer {
+	size := 0
+	for n, server := range servers {
+		// The field's tag and length come on top of the message itself.
+		size += proto.Size(server) + 8
+		if n == MaxServers || size > MaxAnswer {
+			return servers[:n]
+		}
 	}
-	return servers, nil
+	return servers
 }
 
 func fields(line string) ([]string, error) {
@@ -186,11 +204,18 @@ func read(row []string, columns map[string]int) (*controlpb.VpnGateServer, bool)
 	if !validHost(host) || !validCountry(country) {
 		return nil, false
 	}
-	operator := clean(field(columnOperator))
-	if strings.Contains(strings.ToLower(operator+" "+field(columnMessage)), restricted) {
+	if strings.Contains(fold(field(columnOperator)+" "+field(columnMessage)), restricted) {
 		return nil, false
 	}
-	config, err := base64.StdEncoding.DecodeString(strings.Join(strings.Fields(field(columnConfig)), ""))
+	address, err := netip.ParseAddr(field(columnIP))
+	if err != nil {
+		return nil, false
+	}
+	encoded := strings.Join(strings.Fields(field(columnConfig)), "")
+	if base64.StdEncoding.DecodedLen(len(encoded)) > maxConfig+2 {
+		return nil, false
+	}
+	config, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil {
 		return nil, false
 	}
@@ -200,14 +225,14 @@ func read(row []string, columns map[string]int) (*controlpb.VpnGateServer, bool)
 	}
 	return &controlpb.VpnGateServer{
 		HostName: host,
-		Ip:       field(columnIP),
+		Ip:       address.Unmap().String(),
 		Country:  country,
 		Score:    int64(count(field(columnScore), 63)),
 		PingMs:   uint32(count(field(columnPing), 32)),
 		SpeedBps: count(field(columnSpeed), 64),
 		Sessions: uint32(count(field(columnSessions), 32)),
 		UptimeMs: count(field(columnUptime), 64),
-		Operator: operator,
+		Operator: clean(field(columnOperator)),
 		Openvpn:  options,
 	}, true
 }
@@ -230,6 +255,15 @@ func validHost(host string) bool {
 
 func validCountry(code string) bool {
 	return len(code) == 2 && code[0] >= 'A' && code[0] <= 'Z' && code[1] >= 'A' && code[1] <= 'Z'
+}
+
+// fold evens out text for a match: lower case, and every run of characters other than
+// letters and digits (spaces, tabs, underscores, punctuation, control characters) one space.
+func fold(text string) string {
+	words := strings.FieldsFunc(strings.ToLower(strings.ToValidUTF8(text, " ")), func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	})
+	return strings.Join(words, " ")
 }
 
 // clean is a name as the UI may show it: valid UTF-8 without control characters, cut short.
@@ -263,6 +297,9 @@ var blocks = []string{"ca", "cert", "key", "tls-auth"}
 // TCP servers at a public IP address are taken: TCP needs nothing of the via node but TCP,
 // and an address keeps DNS out of the way (docs/exits.md §5.2). An error says why not.
 func Convert(config string) (*controlpb.OpenVpnOptions, error) {
+	if len(config) > maxConfig {
+		return nil, errors.New("the configuration is larger than 64 KiB")
+	}
 	options := &controlpb.OpenVpnOptions{}
 	inline := map[string]*strings.Builder{}
 	block := ""
@@ -369,16 +406,55 @@ func setRemote(options *controlpb.OpenVpnOptions, remote string) error {
 	if err != nil {
 		return fmt.Errorf("remote %q is not an IP address", host)
 	}
-	if !address.IsGlobalUnicast() || address.IsPrivate() {
+	address = address.Unmap()
+	if !public(address) {
 		return fmt.Errorf("remote %s is not a public address", address)
 	}
 	number, err := strconv.Atoi(port)
 	if err != nil || number <= 0 || number > 0xffff {
 		return fmt.Errorf("remote port %q", port)
 	}
-	options.Server = address.Unmap().String()
+	options.Server = address.String()
 	options.Port = uint32(number)
 	return nil
+}
+
+// special are the special-purpose ranges of RFC 6890 and IANA's registries that it updates:
+// none of them is a server on the Internet. 198.18.0.0/15 is also mihomo's fake-ip pool.
+var special = func() []netip.Prefix {
+	var prefixes []netip.Prefix
+	for _, text := range []string{
+		"0.0.0.0/8", "10.0.0.0/8", "100.64.0.0/10", "127.0.0.0/8", "169.254.0.0/16", "172.16.0.0/12",
+		"192.0.0.0/24", "192.0.2.0/24", "192.31.196.0/24", "192.52.193.0/24", "192.88.99.0/24",
+		"192.168.0.0/16", "192.175.48.0/24", "198.18.0.0/15", "198.51.100.0/24", "203.0.113.0/24",
+		"224.0.0.0/4", "240.0.0.0/4",
+		"64:ff9b::/96", "64:ff9b:1::/48", "100::/64", "2001::/23", "2001:db8::/32", "2002::/16",
+		"2620:4f:8000::/48", "3fff::/20", "5f00::/16", "fc00::/7", "fe80::/10", "ff00::/8",
+	} {
+		prefixes = append(prefixes, netip.MustParsePrefix(text))
+	}
+	return prefixes
+}()
+
+// globalUnicast is IPv6's global unicast space, outside of which nothing is public.
+var globalUnicast = netip.MustParsePrefix("2000::/3")
+
+// public reports whether address may be a server on the Internet: unicast, and in none of
+// the special-purpose ranges.
+func public(address netip.Addr) bool {
+	address = address.Unmap()
+	if !address.IsValid() || address.Zone() != "" || !address.IsGlobalUnicast() {
+		return false
+	}
+	if address.Is6() && !globalUnicast.Contains(address) {
+		return false
+	}
+	for _, prefix := range special {
+		if prefix.Contains(address) {
+			return false
+		}
+	}
+	return true
 }
 
 // check holds the options to what the pinned mihomo accepts, and to TCP.
