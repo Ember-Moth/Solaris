@@ -55,9 +55,19 @@ go -C src/core build -buildmode=c-archive -o ../../build/apple/libmihomo_desktop
 
 ### 机密的保管
 
-证书的 `.p12` 及其密码、两份描述文件、`.p8` 私钥都不进仓库，也不贴到对话里。发布 CI 用 GitHub Actions
-Secrets 注入：`APPLE_TEAM_ID`、`MACOS_CERTIFICATE_NAME`、`MACOS_CERTIFICATE_BASE64`、`MACOS_CERTIFICATE_PASSWORD`、
-`MACOS_APP_PROFILE_BASE64`、`MACOS_NETWORK_EXTENSION_PROFILE_BASE64`、`KEYCHAIN_PASSWORD`、
-`APP_STORE_CONNECT_KEY_ID`、`APP_STORE_CONNECT_ISSUER_ID`、`APP_STORE_CONNECT_API_KEY`。签名任务校验证书、Team、
-有效期，以及两份描述文件的权限：主应用必须有 `system-extension.install`，扩展必须有
+证书的 `.p12` 及其密码、两份描述文件、`.p8` 私钥都不进仓库，也不贴到对话里。发布 CI 从 GitHub 的 `release`
+Environment 读取它们；这个 Environment 只允许 `main` 分支和 `v*` 标签部署，每次部署都要 Ember-Moth 批准。
+
+| 名称 | 类型 | 状态 |
+| --- | --- | --- |
+| `APPLE_TEAM_ID` | 变量 | 已配置：`GY9ZKZMAZA` |
+| `MACOS_CERTIFICATE_NAME` | 变量 | 已配置：`Developer ID Application: Herta Network LLC (GY9ZKZMAZA)`，证书建好后核对 |
+| `APP_STORE_CONNECT_KEY_ID` | 变量 | 已配置：`2QSRW72GKA`（Herta Network LLC 的 Team Key，Developer 权限） |
+| `APP_STORE_CONNECT_ISSUER_ID` | 变量 | 已配置 |
+| `APP_STORE_CONNECT_API_KEY` | 机密 | 已配置 |
+| `KEYCHAIN_PASSWORD` | 机密 | 已配置（随机生成） |
+| `MACOS_CERTIFICATE_BASE64`、`MACOS_CERTIFICATE_PASSWORD` | 机密 | 待配置：Developer ID Application 证书建好后 |
+| `MACOS_APP_PROFILE_BASE64`、`MACOS_NETWORK_EXTENSION_PROFILE_BASE64` | 机密 | 待配置：两份描述文件建好后 |
+
+签名任务校验证书、Team、有效期，以及两份描述文件的权限：主应用必须有 `system-extension.install`，扩展必须有
 `packet-tunnel-provider-systemextension`。

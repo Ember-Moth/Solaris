@@ -88,7 +88,7 @@ B1、B2 的结果与遗留：
 | --- | --- |
 | 显示名、数据目录 | `Solaris`（`~/Library/Application Support/Solaris/`、`%LOCALAPPDATA%\Solaris\`、`C:\ProgramData\Solaris\`） |
 | 数据库文件 | `solaris.db` |
-| GitHub 仓库、Go 模块 | `Ember-Moth/solaris`，`github.com/Ember-Moth/solaris/src/core` |
+| GitHub 仓库、Go 模块 | `Ember-Moth/Solaris`（已改名），`github.com/Ember-Moth/Solaris/src/core` |
 | Python 包、命令 | `solaris`；QML 模块名 `Solaris` |
 | 协议 | proto 包 `solaris.protocol`；帧 magic `SLRS` |
 | Windows | 服务 `SolarisService`，界面 `Solaris.exe`，管道 `\\.\pipe\ProtectedPrefix\Administrators\solaris` |
@@ -301,7 +301,7 @@ B1、B2 的结果与遗留：
 | D15 | 自定义分流（第二版）：<br>• 全局开关"订阅自带 / 我的方案"，首次导入时自动选择；<br>• "我的方案"下所有订阅组成节点池，可单独排除；<br>• 可以有多套方案；<br>• 规则条目按意图记录，默认按服务添加；<br>• 第一版规则类型为 GEOSITE / GEOIP、域名、IP 段 | routing.md |
 | D16 | 分流配置在内核里拼装，节点筛选和规则匹配都用 mihomo 自己的逻辑 | routing.md 第 8 节 |
 | D17 | GEO 分类列表由内核从正在使用的 GEO 数据里读取；安装包附带初始 GEO 数据，另附一份分类名清单作兜底 | routing.md 第 8 节 |
-| D1 | 产品名与应用名都是 Solaris，定稿不再改变。GitHub 仓库改为 `Ember-Moth/solaris`，macOS bundle id 前缀 `dev.tschen.solaris` | 本文第 2 节"改名" |
+| D1 | 产品名与应用名都是 Solaris，定稿不再改变。GitHub 仓库改为 `Ember-Moth/Solaris`，macOS bundle id 前缀 `dev.tschen.solaris` | 本文第 2 节"改名" |
 | D14 | Google 令牌存放在系统凭据库（macOS 钥匙串、Windows 凭据管理器），新增 `keyring` 依赖 | storage.md 第 4 节 |
 | D18 | GEO 数据全量随安装包附带（geosite 4.4 MB、geoip 16.5 MB） | routing.md 第 8 节 |
 | D2 | 构建架构：Windows 只做 x64，macOS 先只做 arm64 | 本文 M4、M5 |
