@@ -33,15 +33,20 @@ go -C src/core build -buildmode=c-archive -o ../../build/apple/libsolaris.a ./ap
 | App Group | `group.dev.tschen.solaris` | 留给大配置的共享容器（D8） |
 | iCloud Container | `iCloud.dev.tschen.solaris` | iCloud 备份（storage.md 第 5 节） |
 
+### 签名材料（2026-10-30 已齐）
+
+- **证书**：Developer ID Application，G2 签发，2027-11-29 到期。证书每年要续：续期后重新生成两份描述文件，再更新
+  `MACOS_CERTIFICATE_*` 和两个描述文件机密。新建证书要在开发者网站上选 G2 Sub-CA；G1 签发的证书只能用到
+  2027-02-01。
+- **描述文件**：`Solaris Developer ID`、`Solaris Tunnel Developer ID`，都授权上面这张证书，都含 App Group
+  `group.dev.tschen.solaris`。
+- **公证**：Herta Network LLC 的 Team Key `2QSRW72GKA`（Developer 权限）。
+
 ### 还要准备（M5 开始前）
 
-- **证书**：Developer ID Application，用来签应用、系统扩展和 DMG。只有 Account Holder 能创建。发 DMG 不需要
-  Developer ID Installer。
-- **描述文件**：两份 macOS **Developer ID** 类型的描述文件，分别对应两个 App ID，都授权上面那张证书。
-  调试时如果不想每次都公证，可以另外登记测试 Mac 的 Provisioning UDID，建两份 macOS App Development 描述文件。
-- **公证**：App Store Connect → Users and Access → Integrations → Keys，建一个 Developer 角色的 API Key，
-  得到 Key ID、Issuer ID 和 `AuthKey_<KeyID>.p8`。
 - **测试机**：一台单独的 Apple Silicon Mac 或 macOS 虚拟机。系统扩展会创建 utun，不在开发机上运行。
+- **调试签名**（可选）：登记测试 Mac 的 Provisioning UDID，用 Apple Development 证书建两份 macOS App Development
+  描述文件，调试时就不必每次公证。
 - **最低系统版本**：建议 macOS 15（PySide6 绑定库实际的部署版本是 15.0），M5 确认。
 
 ### entitlement
@@ -66,8 +71,8 @@ Environment 读取它们；这个 Environment 只允许 `main` 分支和 `v*` �
 | `APP_STORE_CONNECT_ISSUER_ID` | 变量 | 已配置 |
 | `APP_STORE_CONNECT_API_KEY` | 机密 | 已配置 |
 | `KEYCHAIN_PASSWORD` | 机密 | 已配置（随机生成） |
-| `MACOS_CERTIFICATE_BASE64`、`MACOS_CERTIFICATE_PASSWORD` | 机密 | 待配置：Developer ID Application 证书建好后 |
-| `MACOS_APP_PROFILE_BASE64`、`MACOS_NETWORK_EXTENSION_PROFILE_BASE64` | 机密 | 待配置：两份描述文件建好后 |
+| `MACOS_CERTIFICATE_BASE64`、`MACOS_CERTIFICATE_PASSWORD` | 机密 | 已配置：G2 证书，SHA-1 `F462D4E8…FC33`，2027-11-29 到期 |
+| `MACOS_APP_PROFILE_BASE64`、`MACOS_NETWORK_EXTENSION_PROFILE_BASE64` | 机密 | 已配置：`Solaris Developer ID`、`Solaris Tunnel Developer ID`（2026-10-30），都授权上面这张证书 |
 
 签名任务校验证书、Team、有效期，以及两份描述文件的权限：主应用必须有 `system-extension.install`，扩展必须有
 `packet-tunnel-provider-systemextension`。
