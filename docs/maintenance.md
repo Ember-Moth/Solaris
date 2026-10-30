@@ -275,7 +275,7 @@ SHA-256。界面从不静默安装，用户确认后才打开安装包。
 - **视觉**：先改 [DESIGN.md](../DESIGN.md)，再运行 `scripts/gen_theme.py` 生成 `Theme.qml`。
 - **文案**：中文是源语言；改动文案后运行 `scripts/gen_i18n.py`，并在 `src/solaris/translations/en.ts` 里补齐英文。
   文案保持中立、简短（DESIGN.md 的 Typography 一节）。
-- **决策**：新的设计决策接着编号（D30 起）记进 [decisions.md](decisions.md)；已有的编号不变，代码注释引用它们。
+- **决策**：新的设计决策接着编号（D32 起）记进 [decisions.md](decisions.md)；已有的编号不变，代码注释引用它们。
 - 每个改动先开 PR，CI 全绿再合并；main 变红时先修。
 
 ### 5.3 表结构与存下的格式
@@ -292,8 +292,9 @@ SHA-256。界面从不静默安装，用户确认后才打开安装包。
 
 ### 5.4 依赖升级
 
-- **mihomo**：钉在 `Meta` 分支的 tag 上（`src/core/go.mod`）。engine 只经少量入口（`hub`、`executor`、`tunnel`）
-  调用 mihomo，接口变化时集中在那里修改。升级前跑完整测试，并按 [architecture.md](architecture.md) §3.3 逐条复核
+- **mihomo**：钉在 `Meta` 分支的 tag 上（`src/core/go.mod`）。mihomo 的运行时（`hub`、`executor`、`tunnel` 等
+  包级状态）只在 engine 里用（`imports_test.go` 检查）；`admission`、`compose`、`vpngate` 用 mihomo 无状态的解析
+  函数、类型和常量，升级时这几处也要核对。升级前跑完整测试，并按 [architecture.md](architecture.md) §3.3 逐条复核
   安全要求；3.4 节的体积表随之更新。
 - **GEO 数据**的版本和 SHA-256 钉在 `scripts/fetch_geodata.py` 里；改了之后用 `--categories` 重新生成附带的分类名
   清单（`src/solaris/host/geo_categories.py`），CI 用 `--check` 核对。

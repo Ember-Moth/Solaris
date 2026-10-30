@@ -72,7 +72,8 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
 
 ## 3. Go 内核层：engine
 
-内核层由本仓库自己实现，位于 `src/core/internal/engine`，直接依赖 mihomo（`github.com/metacubex/mihomo`）。
+内核层由本仓库自己实现，位于 `src/core/internal/engine`，直接依赖 mihomo（`github.com/metacubex/mihomo`）；
+配置准入流水线的各步在 `src/core/internal/admission`（3.2 节）。
 
 [libclash](https://github.com/Herta-Network/libclash) 是此前为移动端写的 CMFA 风格封装，**只作参考，不作为依赖**。
 可以借鉴的有：配置补丁流水线的组织方式、fd 模式下启动 TUN 的写法、代理组与 provider 查询的实现。
@@ -86,7 +87,8 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
 | 自管模式 | Windows 服务；CI 与测试虚拟机里的 TUN 测试 | mihomo 负责，开启 `auto-route`、`auto-detect-interface`、`strict-route` | mihomo 自建 wintun 网卡或 utun |
 | 无 TUN 模式 | 本机开发 | 不改路由 | 不创建 TUN，只开放回环地址上的混合端口 |
 
-模式在创建 engine 时固定（`engine.TunNone`、`TunOwned`、`TunFD`），配置流水线按模式打补丁：
+模式在创建 engine 时固定（`engine.Options.Tun`，取 `admission.TunNone`、`TunOwned`、`TunFD`），配置流水线按模式
+打补丁：
 
 - **无 TUN 模式**无视用户配置和覆写：写入全部关闭的 `tun` 段（`enable`、`auto-route`、`auto-redirect`、
   `auto-detect-interface`、`strict-route`），清零 `redir-port` 和 `tproxy-port`，并把全部入站限制在回环地址
@@ -97,13 +99,14 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
   TUN 打开时同时打开 mihomo DNS，因为 dns-hijack 要交给它解析。`allow_lan` 为 false 时，入站同样限制在回环地址。
 - **fd 模式**（`engine.Options.TunFD` 是宿主的 utun 描述符）：TUN 总是开着，因为扩展只在隧道连接时运行；
   关闭 `auto-route`、`auto-redirect`、`auto-detect-interface`、`strict-route`，`dns-mode` 设为 `disabled`，
-  路由和系统 DNS 都由宿主设置；去掉 `device`，接口由描述符决定。TUN 的网络是 `engine.FDNetwork`，也就是
+  路由和系统 DNS 都由宿主设置；去掉 `device`，接口由描述符决定。TUN 的网络是 `admission.FDNetwork`，也就是
   mihomo 的默认值：mihomo 从 fake-ip 段取 TUN 的 IPv4 地址（段首地址的 /30），所以 `dns.fake-ip-range` 固定为
   `198.18.0.1/16`，得到 198.18.0.1/30；IPv6 是 fdfe:dcba:9876::1/126，MTU 9000。mihomo 总会劫持 TUN 地址的下一个
   地址（198.18.0.2:53），宿主把它设为系统的 DNS 服务器（6.2 节）。栈取 `RunOptions.tun_stack`，没有指定时用
   配置里的，配置也没写时默认 gVisor（构建不带 `with_gvisor` 时为 mips）；扩展开启了 `includeAllNetworks` 时（D19，
-  扩展在 attach 时告诉 engine，即 `engine.Options.IncludeAllNetworks`），不论栈来自哪里，`system` 和 `mixed` 都
-  换成这个默认栈，并记一条警告日志（3.4 节），解析后再核对一次，留下这两种栈就拒绝。打开 mihomo DNS；
+  扩展在 attach 时告诉 engine，即 `engine.Options.IncludeAllNetworks`，engine 再交给流水线），不论栈来自哪里，
+  `system` 和 `mixed` 都换成这个默认栈，并由 engine 记一条警告日志（3.4 节），解析后再核对一次，留下这两种栈就
+  拒绝。打开 mihomo DNS；
   `allow_lan` 为 false 时，入站同样限制在回环地址。准入最后核对 TUN 的地址和 MTU。用户关掉 `ipv6`，或者系统没有
   全局单播 IPv6 地址时，mihomo 不给 TUN 配 IPv6 地址；扩展的 utun 自带 fdfe:dcba:9876::1，所以在扩展里只有前一种
   情况。这时宿主仍把 IPv6 路由进隧道，这部分流量被丢弃。
@@ -132,7 +135,11 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
   拼装出映射 → 依次应用覆写 → 按 TUN 模式打补丁 → 最后一步强制安全项 → 重新编码后交给
   `executor.ParseWithBytes` → 校验解析结果，任一项不符就拒绝（fail closed）→ `hub.ApplyConfig`。`Validate`、
   `Start`、`Reload` 都走同一条流水线，`Validate` 走到校验为止。
-- **拼装**（决策 D16，[routing.md](routing.md) 第 8 节）：`Profile.Composition` 取代 YAML 时，
+  - 分工：解析之前的各步在 `internal/admission`（`admission.Prepare`，拼装调用 `internal/compose`），对解析结果的
+    校验也在那里（`admission.Verify`）；中间的 `executor.ParseWithBytes` 和之后的应用由 engine 调用，因为解析也会
+    改动 mihomo 的全局状态（见下文覆写一节的 `temporaryUpdateGeneral`）。`admission` 不写日志：fd 模式换栈这类
+    改动作为警告返回，由 engine 以 `[engine]` 前缀记进 mihomo 日志。
+- **拼装**（决策 D16，[routing.md](routing.md) 第 8 节）：`admission.Profile.Composition` 取代 YAML 时，
   `internal/compose` 把每份订阅转成内联 proxy-provider，按方案生成内置组、地区组和自建组（成员在内核里算好，
   写成 `use` 加精确的 `filter`），把规则条目展开成规则，再加上基础段（`compose/base.yaml`：fake-ip DNS、嗅探、
   GEO 数据）。拼装只是流水线的起点：覆写、平台补丁和安全项照常在它之后，有测试守住这一顺序。`Validate`、
@@ -180,6 +187,14 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
     （`DstPort`、`Match`）。
   - provider 列表不含 mihomo 为组内联节点生成的 compatible provider。
 - **单实例**：mihomo 用包级全局变量保存状态，`engine.New` 在已有 engine 打开时直接失败。
+- **mihomo 的运行时只在 engine 里**：保存运行时状态或操作它的包（`hub`、`executor`、`route`、`tunnel`、
+  `statistic`、`listener`、`resolver`、`updater`、`cachefile`、`proxydialer`、`log`）只有 engine 引用；
+  `admission`、`compose`、`vpngate` 只用 mihomo 无状态的解析函数、类型和常量。`internal/engine/imports_test.go`
+  检查其他包的导入，守住这条界线。
+- **接口直接用协议消息**（D31）：engine 的方法返回控制协议的 protobuf 消息（`controlpb`），分发器原样放进响应，
+  不再映射。这些消息就是控制协议的数据模型；分发器是 engine 唯一的调用方；`compose`、`warp`、`vpngate` 本来就
+  产出它们；而从 mihomo 类型到消息的映射只能留在 engine，因为分发器从不引用 mihomo。把映射挪出 engine，就得再
+  定义一套与协议一一对应的 Go 类型，行为上没有任何收益。
 - **mihomo 自身的竞态**：`log.SetLevel` 写全局变量时没有同步，`go test -race` 下 Reload 会报出；属于上游问题。
 
 ### 3.3 以 SYSTEM 身份运行时的安全要求
@@ -228,7 +243,7 @@ mihomo 提供的可选标签有 `with_gvisor`、`with_low_memory`、`no_tailscal
   `RunOptions.tun_stack`。用户在设置页的"TUN 协议栈"里选（D3，ui.md §8），两个平台都默认"跟随配置"；各平台的
   默认栈在真机验收后再定（[maintenance.md](maintenance.md) 2.1、2.2 节）。
 - macOS NE 开启 `includeAllNetworks` 时，`system` 和 `mixed` 栈不能工作，只剩 `mips` 和 `gvisor`。sing-tun 有
-  对应的检查（`StackOptions.IncludeAllNetworks`），但 mihomo 不传这个选项，所以由 engine 在 fd 模式下把这两种栈
+  对应的检查（`StackOptions.IncludeAllNetworks`），但 mihomo 不传这个选项，所以由准入流水线在 fd 模式下把这两种栈
   换成 gVisor（3.1 节）。`includeAllNetworks` 默认关闭，用户可以在设置页打开（D19，ui.md §8），下次连接时生效；
   设置页同时把这两种栈置灰，已选的改成 gVisor。CI 的 fd 模式测试对这两种栈再各跑一次打开它的情形。
 - 系统扩展的可执行文件（Release，`with_gvisor`）由 Xcode 在签名前做 `strip -x`（`STRIP_STYLE: non-global`），
@@ -555,9 +570,9 @@ Solaris.app/Contents/
 
 ### 6.2 扩展内的运行流程
 
-1. 从 Go 读出隧道的网络（`solaris_tunnel_network`，即 `engine.FDNetwork`），用 `setTunnelNetworkSettings`
+1. 从 Go 读出隧道的网络（`solaris_tunnel_network`，即 `admission.FDNetwork`），用 `setTunnelNetworkSettings`
    设置：地址 198.18.0.1/30 和 fdfe:dcba:9876::1/126，MTU 9000，IPv4 和 IPv6 的默认路由都进隧道；DNS 服务器
-   198.18.0.2，查询进入隧道后由 mihomo 劫持应答（3.1 节）。地址只在 Go 里定义这一处，扩展的网络设置和 engine
+   198.18.0.2，查询进入隧道后由 mihomo 劫持应答（3.1 节）。地址只在 Go 里定义这一处，扩展的网络设置和准入流水线
    的 fd 补丁都从这里取，Go 的测试核对补丁解析出的 TUN 与它一致；
 2. 网络设置完成后 NE 才打开 utun。扩展在 0 到 1024 号描述符里找
    `getsockopt(SYSPROTO_CONTROL, UTUN_OPT_IFNAME)` 返回 utun 名字的那个（与 hypervpn 的
@@ -747,6 +762,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   `e2e` job 在 macOS runner 上先构建服务再运行。全程只用回环地址，不需要 TUN。
 - **测试覆盖**：
   - engine：配置流水线的回归测试，对应 3.3 节各项；开发模式护栏；启停与重载；50 次启停的泄漏检查；
+    只有 engine 引用 mihomo 运行时的导入检查（`imports_test.go`）。这些测试经 mihomo 解析、核对解析结果；
+    不需要解析的流水线步骤（覆写插入、fd 模式的警告、`FDNetwork` 与 TUN 的核对）在 `internal/admission` 里单测；
   - 控制协议：帧头校验、超限拒绝、请求 ID 匹配、订阅缓冲与过期，Go 与 Python 两端用同一组样本互测
     （样本里的响应来自一个不链接 mihomo 的假 engine，所以不随 mihomo 版本变化）；
   - 属主：认领与换属主重启、按属主恢复、注销停止、系统代理的开启与还原，用替身平台在所有平台上测

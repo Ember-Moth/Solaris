@@ -66,7 +66,7 @@ mihomo 自带三种组网出站：`tailscale`、`zerotier`、`easytier`。它们
   拒绝。Tailscale 出站只在 `with_gvisor` 构建里有，不带这个标签时 mihomo 拒绝任何 Tailscale 出站，所以 CI 的核心
   测试另外带 `with_gvisor` 跑一次这组测试。
 
-强制的做法（`internal/engine/mesh.go`，安全项的最后一步）：
+强制的做法（`internal/admission/mesh.go`，安全项的最后一步）：
 
 - 顶层 `proxies` 和每个 proxy-provider 的 `payload` 里，类型为 `easytier` 的出站：删掉 `proxy-networks`、
   `mapped-listeners`、`listeners`，`enable-exit-node` 写成 false，`no-listener` 写成 true。

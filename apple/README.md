@@ -222,14 +222,14 @@ mihomo home 在扩展容器的 `Application Support/Solaris/core`，`startTunnel
 
 | 函数 | 作用 |
 | --- | --- |
-| `solaris_tunnel_network(&length)` | 隧道的网络（`engine.FDNetwork`）的 JSON：IPv4 地址和掩码、IPv6 地址和前缀长度、DNS 服务器、MTU |
+| `solaris_tunnel_network(&length)` | 隧道的网络（`admission.FDNetwork`）的 JSON：IPv4 地址和掩码、IPv6 地址和前缀长度、DNS 服务器、MTU |
 | `solaris_attach_tun(fd, home, resources, include_all_networks)` | 把 `resources` 里的 GEO 数据复制进 `home`（缺少时），再以 fd 模式打开 engine 和分发器；`include_all_networks` 是扩展从 `protocolConfiguration` 读到的 `includeAllNetworks`，打开时 engine 把 `system`、`mixed` 栈换成 gVisor（D19）；返回 NULL 或错误字符串 |
 | `solaris_detach_tun()` | 取消在途消息并等它们结束，停止内核，关闭分发器和 Go 的描述符副本 |
 | `solaris_handle_message(request, length, &response_length)` | 处理一条编码好的 Request，返回 Response；没有 attach 时返回 `not_running` |
 | `solaris_free(pointer)` | 释放上面几个函数返回的缓冲区和字符串 |
 
-- **地址只定义一处**：隧道的地址、DNS 服务器和 MTU 都在 Go 的 `engine.FDNetwork` 里，扩展从
-  `solaris_tunnel_network` 读来设置 utun，engine 的 fd 补丁也用它；Go 的测试核对补丁解析出的 TUN 与它一致。
+- **地址只定义一处**：隧道的地址、DNS 服务器和 MTU 都在 Go 的 `admission.FDNetwork` 里，扩展从
+  `solaris_tunnel_network` 读来设置 utun，准入流水线的 fd 补丁也用它；Go 的测试核对补丁解析出的 TUN 与它一致。
 - **描述符归 NE**：`startTunnel` 在网络设置完成后找到 utun 的描述符（与 hypervpn 的
   `AppleRawTunFileDescriptor.locate` 相同的做法），交给 `solaris_attach_tun`。Go 从不关闭它，mihomo 只用它的
   副本。`stopTunnel` 先 `solaris_detach_tun`（Go 关掉自己的副本），再调用 completion handler，之后 NE 关闭
