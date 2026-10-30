@@ -82,6 +82,7 @@ type Engine interface {
 	ConvertToPlan(source []byte, options compose.Conversion) (*controlpb.ConvertToPlanResponse, error)
 	ExportPlan(profile engine.Profile, format controlpb.ExportFormat) ([]byte, error)
 	RegisterWarp(ctx context.Context, via string, request warp.Request) (*controlpb.WarpAccount, error)
+	ListVpnGate(ctx context.Context, via string) ([]*controlpb.VpnGateServer, error)
 }
 
 // Host is the Windows service's part of the host methods (docs/architecture.md §5): who may
@@ -340,6 +341,7 @@ func composition(request *controlpb.Composition) *compose.Composition {
 		InfoFilter: request.GetInfoFilter(),
 		Plan:       []byte(request.GetPlanJson()),
 		Warp:       request.GetEgress().GetWarp(),
+		VpnGate:    request.GetEgress().GetVpnGate(),
 	}
 	for _, source := range request.GetSources() {
 		out.Sources = append(out.Sources, compose.Source{
@@ -589,6 +591,16 @@ func (d *Dispatcher) coreMethod(ctx context.Context, caller peer.Identity, reque
 		return &controlpb.Response{Result: &controlpb.Response_ExportPlan{ExportPlan: &controlpb.ExportPlanResponse{Yaml: string(exported)}}}
 	case *controlpb.Request_RegisterWarp:
 		return d.registerWarp(ctx, method.RegisterWarp)
+	case *controlpb.Request_ListVpnGate:
+		// Outside the operation lock too, as registerWarp: the list takes a while to arrive.
+		if method.ListVpnGate.GetVia() == "" {
+			return failure(CodeInvalidRequest, "list_vpngate needs the via group")
+		}
+		servers, err := d.engine.ListVpnGate(ctx, method.ListVpnGate.GetVia())
+		if err != nil {
+			return engineFailure(err)
+		}
+		return &controlpb.Response{Result: &controlpb.Response_ListVpnGate{ListVpnGate: &controlpb.ListVpnGateResponse{Servers: servers}}}
 	}
 	return failure(CodeNotImplemented, methodName(request)+" is not implemented")
 }

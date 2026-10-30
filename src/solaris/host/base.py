@@ -83,11 +83,48 @@ class WarpAccount:
 
 
 @dataclass(frozen=True)
+class OpenVpnOptions:
+    """A VPN Gate server's OpenVPN configuration, as mihomo's openvpn outbound takes it."""
+
+    server: str  # an IP address
+    port: int
+    proto: str  # "tcp"
+    cipher: str
+    data_ciphers: tuple[str, ...]
+    auth: str
+    comp_lzo: str
+    ca: str  # PEM
+    cert: str
+    key: str
+    tls_auth: str
+    key_direction: str
+
+
+@dataclass(frozen=True)
+class VpnGateServer:
+    """A server of VPN Gate's list, run by a volunteer, as list_vpngate read it
+    (docs/exits.md §5.2). The ones the UI picks go back unchanged in every composition."""
+
+    host_name: str  # unique in the list
+    ip: str
+    country: str  # ISO 3166 code, upper case
+    score: int
+    ping_ms: int
+    speed_bps: int
+    sessions: int
+    uptime_ms: int
+    operator: str
+    openvpn: OpenVpnOptions
+
+
+@dataclass(frozen=True)
 class Egress:
     """What the chained exits need (docs/exits.md §7.1). An exit without its material is
     unavailable, and the rules that name it reject their connections (D21)."""
 
     warp: WarpAccount | None = None
+    # The VPN Gate servers the UI picked, in the order the exit's group lists them.
+    vpngate: tuple[VpnGateServer, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -418,6 +455,13 @@ class TunnelHost(Protocol):
         name), or gives ``existing`` a key for ``protocol`` (docs/exits.md §3.2). Raises
         HostError("not_running") while the core is stopped, and "operation_failed" with
         Cloudflare's text when registration fails."""
+        ...
+
+    async def list_vpngate(self, via: str) -> list[VpnGateServer]:
+        """VPN Gate's TCP OpenVPN servers, best score first, fetched through the running
+        configuration's group ``via`` (its name; docs/exits.md §5.2). Raises
+        HostError("not_running") while the core is stopped, and "operation_failed" when the
+        list cannot be fetched."""
         ...
 
     async def stop(self) -> None: ...

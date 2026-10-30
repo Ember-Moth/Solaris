@@ -26,7 +26,10 @@ OUTBOUND_NAMES = {
     DIRECT: QT_TRANSLATE_NOOP("RoutingViewModel", "直连"),
     REJECT: QT_TRANSLATE_NOOP("RoutingViewModel", "拒绝"),
 }
-EXIT_NAMES = {plans.WARP: QT_TRANSLATE_NOOP("RoutingViewModel", "WARP 出口")}
+EXIT_NAMES = {
+    plans.WARP: QT_TRANSLATE_NOOP("RoutingViewModel", "WARP 出口"),
+    plans.VPNGATE: QT_TRANSLATE_NOOP("RoutingViewModel", "VPN Gate 出口"),
+}
 WARNINGS = {
     "region_empty": QT_TRANSLATE_NOOP("RoutingViewModel", "无节点，暂走节点选择"),
     "group_empty": QT_TRANSLATE_NOOP("RoutingViewModel", "没有成员，暂走节点选择"),
@@ -104,8 +107,8 @@ def _sections(sections: list[list[tuple[str, str]]]) -> list[dict[str, object]]:
 
 
 def group_options(plan: Plan | None, report: CompositionReport | None) -> list[dict[str, object]]:
-    """The groups the WARP exit may go out through: built-in groups, the regions with nodes,
-    then custom groups."""
+    """The groups an exit may go out through: built-in groups, the regions with nodes, then
+    custom groups."""
     return _sections(_group_sections(plan, report))
 
 
@@ -117,14 +120,18 @@ def target_options(plan: Plan | None, report: CompositionReport | None) -> list[
         [
             *_group_sections(plan, report),
             [(m.id, m.name) for m in (report.mesh if report else ())],
-            [(plans.WARP, target_label(plans.WARP, plan))],
+            [(exit_id, target_label(exit_id, plan)) for exit_id in EXIT_NAMES],
             [(DIRECT, target_label(DIRECT, plan)), (REJECT, target_label(REJECT, plan))],
         ]
     )
-    if not plans.warp_exit(plan).enabled:
-        off = QCoreApplication.translate("RoutingViewModel", "未启用")
-        warp = next(o for o in options if o["value"] == plans.WARP)
-        warp.update(note=off, enabled=False)
+    enabled = {
+        plans.WARP: plans.warp_exit(plan).enabled,
+        plans.VPNGATE: plans.vpngate_exit(plan).enabled,
+    }
+    off = QCoreApplication.translate("RoutingViewModel", "未启用")
+    for option in options:
+        if not enabled.get(str(option["value"]), True):
+            option.update(note=off, enabled=False)
     return options
 
 

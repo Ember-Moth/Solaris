@@ -28,6 +28,9 @@ type Composition struct {
 	Plan       []byte
 	// Warp is the WARP exit's device; without it the exit is unavailable (docs/exits.md §3.3).
 	Warp *controlpb.WarpAccount
+	// VpnGate are the VPN Gate exit's servers, as the UI picked them; without any the exit
+	// is unavailable (docs/exits.md §5.3).
+	VpnGate []*controlpb.VpnGateServer
 }
 
 // Result is a composed configuration with its report. Lines[i] is the rule
@@ -82,6 +85,9 @@ type composer struct {
 	warp     *controlpb.WarpAccount
 	// warpUsed is set once a rule goes to the WARP exit and it has a device.
 	warpUsed bool
+	vpnGate  []*controlpb.VpnGateServer
+	// vpnGateUsed is set once a rule goes to the VPN Gate exit and it has servers.
+	vpnGateUsed bool
 	// share names the exits and mesh outbounds whether or not they run here: an exported
 	// plan goes to configurations that bring their own.
 	share bool
@@ -101,12 +107,16 @@ func newComposer(composition Composition) (*composer, error) {
 	if err := checkSources(composition.Sources); err != nil {
 		return nil, err
 	}
+	if err := checkVpnGate(composition.VpnGate); err != nil {
+		return nil, fmt.Errorf("vpngate: %w", err)
+	}
 	c := &composer{
 		plan:     plan,
 		sources:  composition.Sources,
 		byID:     map[string]*group{},
 		meshByID: map[string]*node{},
 		warp:     composition.Warp,
+		vpnGate:  composition.VpnGate,
 	}
 	taken, err := c.groupNames()
 	if err != nil {
@@ -160,6 +170,11 @@ func Compose(composition Composition) (*Result, error) {
 			return nil, fmt.Errorf("warp account: %w", err)
 		}
 		proxies = append(proxies, outbound)
+	}
+	if c.vpnGateUsed {
+		outbounds, group := c.vpnGateExit(result.Report)
+		proxies = append(proxies, outbounds...)
+		config["proxy-groups"] = append(config["proxy-groups"].([]any), group)
 	}
 	if len(proxies) != 0 {
 		config["proxies"] = proxies
@@ -244,8 +259,13 @@ func (c *composer) groupNames() (map[string]bool, error) {
 	for _, name := range reservedNames {
 		taken[name] = true
 	}
-	// The exit's name is the plan's whether it runs or not, so turning it on renames nothing.
+	// The exits' names are the plan's whether they run or not, so turning one on renames
+	// nothing. The VPN Gate servers' names come with the composition.
 	taken[warpName(c.plan.Locale)] = true
+	taken[vpnGateName(c.plan.Locale)] = true
+	for _, server := range c.vpnGate {
+		taken[vpnGateServerName(server)] = true
+	}
 	claim := func(id, name string) error {
 		if taken[name] {
 			return fmt.Errorf("group %q: the name %q is taken", id, name)
@@ -519,6 +539,16 @@ func (c *composer) target(entryID, target string, report *controlpb.CompositionR
 			c.warpUsed = true
 		}
 		return warpName(c.plan.Locale)
+	}
+	if target == EgressVpnGate {
+		switch {
+		case c.share:
+		case len(c.vpnGate) == 0:
+			return reject(ReasonEgressUnavailable)
+		default:
+			c.vpnGateUsed = true
+		}
+		return vpnGateName(c.plan.Locale)
 	}
 	if strings.HasPrefix(target, meshPrefix) {
 		n, ok := c.meshByID[target]

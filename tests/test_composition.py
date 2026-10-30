@@ -24,12 +24,18 @@ from solaris.host.base import (
     SourceInspection,
     SourceNode,
     TunnelConfig,
+    VpnGateServer,
     WarpAccount,
     bundled_geo_categories,
 )
 from solaris.host.service import ServiceHost
 from solaris.protocol import control_pb2
-from tests.support.simulated import SAMPLE_CONFIG, SimulatedHost, check_config
+from tests.support.simulated import (
+    SAMPLE_CONFIG,
+    VPNGATE_SERVERS,
+    SimulatedHost,
+    check_config,
+)
 from tests.test_control_client import serve
 
 pb = control_pb2
@@ -377,3 +383,60 @@ def test_simulated_host_inspects_and_lists_categories() -> None:
     assert "telegram" in categories.geosite.names
     host.has_geodata = False
     assert asyncio.run(host.list_geo_categories()) == bundled_geo_categories()
+
+
+def test_service_host_carries_the_vpngate_servers() -> None:
+    """ListVpnGate's servers come back as the UI keeps them, and go to the core unchanged in
+    the composition (docs/exits.md §7)."""
+    received: list[pb.Request] = []
+    server = VPNGATE_SERVERS[0]
+
+    async def answer(request: pb.Request) -> pb.Response:
+        received.append(request)
+        if request.WhichOneof("method") == "list_vpn_gate":
+            listed = pb.VpnGateServer(
+                host_name=server.host_name,
+                ip=server.ip,
+                country=server.country,
+                score=server.score,
+                ping_ms=server.ping_ms,
+                speed_bps=server.speed_bps,
+                sessions=server.sessions,
+                uptime_ms=server.uptime_ms,
+                operator=server.operator,
+                openvpn=pb.OpenVpnOptions(
+                    server=server.openvpn.server,
+                    port=server.openvpn.port,
+                    proto="tcp",
+                    cipher="AES-128-CBC",
+                    data_ciphers=["AES-128-CBC"],
+                    auth="SHA1",
+                    ca=server.openvpn.ca,
+                    cert=server.openvpn.cert,
+                    key=server.openvpn.key,
+                ),
+            )
+            return pb.Response(list_vpn_gate=pb.ListVpnGateResponse(servers=[listed]))
+        return pb.Response(composition=pb.CompositionReport())
+
+    async def scenario() -> list[VpnGateServer]:
+        listening, opener = await serve(answer)
+        async with listening:
+            host = ServiceHost(opener)
+            try:
+                servers = await host.list_vpngate("节点选择")
+                composition = replace(COMPOSITION, egress=Egress(vpngate=tuple(servers)))
+                await host.validate(TunnelConfig(composition=composition))
+                return servers
+            finally:
+                await host.close()
+
+    servers = asyncio.run(scenario())
+    assert servers == [server]
+    assert received[0].list_vpn_gate == pb.ListVpnGateRequest(via="节点选择")
+    sent = received[1].validate.composition.egress.vpn_gate
+    assert [s.host_name for s in sent] == [server.host_name]
+    assert (sent[0].openvpn.server, list(sent[0].openvpn.data_ciphers)) == (
+        "203.0.113.11",
+        ["AES-128-CBC"],
+    )

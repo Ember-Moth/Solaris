@@ -1,5 +1,5 @@
-"""The chained exits on the routing page's groups tab (docs/exits.md §2, §6): for now the
-WARP exit, its row and its settings dialog.
+"""The chained exits on the routing page's groups tab (docs/exits.md §2, §6): the WARP and
+VPN Gate exits, their rows and their settings dialogs.
 
 Each control of the dialog applies at once, as a switch does (DESIGN.md "开关"): turning the
 exit on and its via group change the plan, which is validated, stored and reloaded like any
@@ -10,22 +10,25 @@ tunnel is stopped waits for the next connection. So does a key for a new protoco
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import replace
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Property, QObject, Signal, Slot
+from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
-from solaris.host.base import WARP_PROTOCOLS, HostError, WarpAccount
+from solaris.host.base import WARP_PROTOCOLS, HostError, VpnGateServer, WarpAccount
 from solaris.i18n import QT_TRANSLATE_NOOP
 from solaris.models import format as fmt
 from solaris.models import plans
 from solaris.models.library import ProfileLibrary, Routing
 from solaris.models.profiles import ProfileError
+from solaris.models.regions import region_name
 from solaris.models.settings import SettingsStore
+from solaris.models.vpngate import ServerList
 from solaris.viewmodels import routing_text as text
 from solaris.viewmodels.common.async_runner import AsyncRunner
+from solaris.viewmodels.common.keyed_list import KeyedListModel
 from solaris.viewmodels.feedback import failure_text
 
 if TYPE_CHECKING:
@@ -339,3 +342,395 @@ class WarpExit(QObject):
             self.changed.emit()
 
         self._runner.submit(self._library.forget_warp(), self._routing.adopt, failed)
+
+
+# -- the VPN Gate exit (docs/exits.md §5) ------------------------------------------------------
+MODES = {
+    "per-site": (
+        QT_TRANSLATE_NOOP("VpnGateExit", "按网站分配"),
+        QT_TRANSLATE_NOOP("VpnGateExit", "同一网站总走同一台，网站看到的 IP 不变"),
+    ),
+    "single": (
+        QT_TRANSLATE_NOOP("VpnGateExit", "只用一台"),
+        QT_TRANSLATE_NOOP("VpnGateExit", "所有网站走同一台，失效后换下一台"),
+    ),
+}
+assert tuple(MODES) == plans.VPNGATE_MODES
+# The servers are checked as often as the exit's group tests them; the list is fetched again
+# once it is an hour old (vpngate.REFRESH_S).
+CHECK_MS = 120_000
+
+
+@dataclass(frozen=True)
+class ServerRow:
+    """A server the exit uses, in the order of its group."""
+
+    id: str  # the host name
+    title: str  # 日本 · vpn381472650
+    detail: str  # the volunteer's name
+    delay: str
+    delayLevel: str  # fmt.latency's level
+
+
+@QmlElement
+@QmlUncreatable("VpnGateExit is created in Python and injected into the view.")  # pyright: ignore[reportCallIssue]
+class VpnGateExit(QObject):
+    """The VPN Gate exit's row and settings dialog. The plan holds its switch, via group,
+    countries, server count and how sites are shared out; each applies at once. The core
+    fetches the list through the via group of the running plan, so a refresh asked for while
+    the tunnel is stopped waits for the next connection; while it runs, the list is fetched
+    again hourly and the servers are checked every two minutes (§5.2)."""
+
+    changed = Signal()
+    opened = Signal()
+
+    def __init__(
+        self,
+        routing: RoutingViewModel,
+        runner: AsyncRunner,
+        library: ProfileLibrary,
+        parent: QObject | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self._routing = routing
+        self._runner = runner
+        self._library = library
+        self._clock = library.now
+        self._running = False
+        self._refreshing = False
+        self._checking = False
+        self._pending = False  # a refresh asked for while stopped
+        self._error = ""  # why the last refresh failed
+        self._change_error = ""
+        self._servers = KeyedListModel(list(ServerRow.__dataclass_fields__), self)
+        self._timer = QTimer(self)
+        self._timer.setInterval(CHECK_MS)
+        self._timer.timeout.connect(self._tick)
+        routing.changed.connect(self.changed)
+        self.changed.connect(self._sync_rows)
+        self._sync_rows()
+
+    def retranslate(self) -> None:
+        self.changed.emit()
+
+    def _exit(self) -> plans.VpnGateExit:
+        return plans.vpngate_exit(self._routing.plan())
+
+    def _list(self) -> ServerList:
+        return self._routing.vpngate_list()
+
+    def _usable(self) -> bool:
+        """The core can fetch the list: the tunnel runs the plan, which turned the exit on."""
+        return self._running and self._routing.routes_with_plan() and self._exit().enabled
+
+    # -- the tunnel and the timer ------------------------------------------------------------
+    def set_running(self, running: bool) -> None:
+        """The tunnel started or stopped. Once it runs, a refresh that waited goes ahead, and
+        so does one for a list over an hour old."""
+        if running == self._running:
+            return
+        self._running = running
+        if running:
+            self._timer.start()
+            if self._exit().enabled and (self._pending or self._list().stale(self._clock())):
+                self._refresh()
+        else:
+            self._timer.stop()
+        self.changed.emit()
+
+    def _tick(self) -> None:
+        if not self._usable() or self._refreshing or self._checking:
+            return
+        if self._list().stale(self._clock()):
+            self._refresh()
+            return
+        if not self._list().picked:
+            return
+        self._checking = True
+
+        def done(routing: Routing) -> None:
+            self._checking = False
+            self._routing.adopt(routing)
+
+        def failed(error: BaseException) -> None:
+            self._checking = False
+            if not isinstance(error, HostError | ProfileError):
+                raise error
+
+        self._runner.submit(self._library.check_vpngate(), done, failed)
+
+    # -- the row -----------------------------------------------------------------------------
+    @Property(str, notify=changed)
+    def name(self) -> str:
+        return text.target_label(plans.VPNGATE, None)
+
+    def _via_label(self) -> str:
+        return text.target_label(self._exit().via, self._routing.plan(), self._routing.report())
+
+    def _via_empty(self) -> bool:
+        report = self._routing.report()
+        return report is not None and any(
+            w.entry_id == plans.VPNGATE and w.reason == "via_empty" for w in report.warnings
+        )
+
+    def _country_names(self, codes: Iterable[str]) -> str:
+        return self.tr("、").join(region_name(code) for code in codes)
+
+    @Property(str, notify=changed)
+    def caption(self) -> str:
+        via = self._via_label()
+        if self._via_empty():
+            via = self.tr("{via}，暂经节点选择").format(via=via)
+        countries = self._country_names(self._exit().countries) or self.tr("未选国家")
+        return self.tr("经由 {via} · {countries}").format(via=via, countries=countries)
+
+    def _picked(self) -> tuple[VpnGateServer, ...]:
+        return self._list().picked_servers() if self._exit().enabled else ()
+
+    def _state(self) -> tuple[str, str]:
+        if not self._exit().enabled:
+            return self.tr("未启用"), TONE_MUTED
+        if self._refreshing:
+            return self.tr("正在获取…"), TONE_MUTED
+        picked = self._picked()
+        if picked:
+            countries = {s.country for s in picked}
+            count = self.tr("%n 台", "", len(picked))
+            if len(countries) == 1:
+                return f"{region_name(next(iter(countries)))} {count}", TONE_NORMAL
+            return count, TONE_NORMAL
+        if not self._list().servers and not self._running and not self._error:
+            return self.tr("连接后获取"), TONE_MUTED
+        return self.tr("不可用"), TONE_WARNING
+
+    @Property(str, notify=changed)
+    def status(self) -> str:
+        return self._state()[0]
+
+    @Property(str, notify=changed)
+    def statusTone(self) -> str:
+        return self._state()[1]
+
+    # -- the dialog --------------------------------------------------------------------------
+    @Slot()
+    def open(self) -> None:
+        self._change_error = ""
+        self.changed.emit()
+        self.opened.emit()
+
+    @Property(bool, notify=changed)
+    def busy(self) -> bool:
+        return bool(self._routing.property("busy"))
+
+    @Property(bool, notify=changed)
+    def active(self) -> bool:
+        return self._exit().enabled
+
+    @Slot(bool)
+    def setActive(self, on: bool) -> None:
+        """Turn the exit on in the plan, and fetch the list when there is none fresh."""
+        vpngate = self._exit()
+        if on == vpngate.enabled:
+            return
+
+        def stored() -> None:
+            if not on:
+                self._pending = False
+            elif self._list().stale(self._clock()) and not self._refreshing:
+                self._refresh()
+
+        self._put(replace(vpngate, enabled=on), stored)
+
+    @Property(str, notify=changed)
+    def via(self) -> str:
+        return self._exit().via
+
+    @Property(str, notify=changed)
+    def viaLabel(self) -> str:
+        return self._via_label()
+
+    @Property("QVariantList", notify=changed)  # pyright: ignore[reportArgumentType]
+    def viaOptions(self) -> list[dict[str, object]]:
+        return text.group_options(self._routing.plan(), self._routing.report())
+
+    @Slot(str)
+    def setVia(self, group_id: str) -> None:
+        vpngate = self._exit()
+        if group_id != vpngate.via:
+            self._put(replace(vpngate, via=group_id))
+
+    @Property("QVariantList", notify=changed)  # pyright: ignore[reportArgumentType]
+    def countryOptions(self) -> list[dict[str, object]]:
+        """The countries of the list with their server counts, then those the plan chose that
+        the list lacks; checked when chosen. The last one chosen cannot be taken away."""
+        servers = self._list()
+        chosen = self._exit().countries
+        counts = dict(servers.countries())
+        codes = [code for code, _ in servers.countries()]
+        codes += [code for code in chosen if code not in counts]
+        return [
+            {
+                "value": code,
+                "label": region_name(code),
+                "note": str(counts.get(code, 0)),
+                "checked": code in chosen,
+                "enabled": chosen != (code,),
+            }
+            for code in codes
+        ]
+
+    @Property(str, notify=changed)
+    def countriesLabel(self) -> str:
+        return self._country_names(self._exit().countries)
+
+    @Slot(str)
+    def toggleCountry(self, code: str) -> None:
+        vpngate = self._exit()
+        chosen = list(vpngate.countries)
+        if code in chosen:
+            if len(chosen) == 1:
+                return  # one country at least, or the exit has nothing to pick
+            chosen.remove(code)
+        else:
+            chosen.append(code)
+        self._put(replace(vpngate, countries=tuple(chosen)))
+
+    @Property(bool, notify=changed)
+    def severalCountries(self) -> bool:
+        return len(self._exit().countries) > 1
+
+    @Property(str, notify=changed)
+    def count(self) -> str:
+        return str(self._exit().count)
+
+    @Property("QVariantList", notify=changed)  # pyright: ignore[reportArgumentType]
+    def countOptions(self) -> list[dict[str, str]]:
+        return [
+            {"value": str(n), "label": self.tr("%n 台", "", n)}
+            for n in range(1, plans.VPNGATE_MAX_COUNT + 1)
+        ]
+
+    @Property(str, notify=changed)
+    def countLabel(self) -> str:
+        return self.tr("%n 台", "", self._exit().count)
+
+    @Slot(str)
+    def setCount(self, value: str) -> None:
+        vpngate = self._exit()
+        count = int(value)
+        if count != vpngate.count and 1 <= count <= plans.VPNGATE_MAX_COUNT:
+            self._put(replace(vpngate, count=count))
+
+    @Property(str, notify=changed)
+    def mode(self) -> str:
+        return self._exit().mode
+
+    @Property("QVariantList", notify=changed)  # pyright: ignore[reportArgumentType]
+    def modeOptions(self) -> list[dict[str, str]]:
+        return [
+            {"value": value, "label": self.tr(label), "detail": self.tr(detail)}
+            for value, (label, detail) in MODES.items()
+        ]
+
+    @Slot(str)
+    def setMode(self, mode: str) -> None:
+        vpngate = self._exit()
+        if mode != vpngate.mode and mode in MODES:
+            self._put(replace(vpngate, mode=mode))
+
+    def _put(self, vpngate: plans.VpnGateExit, stored: Callable[[], None] | None = None) -> None:
+        plan = self._routing.plan()
+        if plan is None:
+            return
+        self._change_error = ""
+
+        def done() -> None:
+            if stored is not None:
+                stored()
+            self.changed.emit()
+
+        def failed(message: str) -> None:
+            self._change_error = message
+
+        self._routing.put_plan(plans.with_vpngate_exit(plan, vpngate), done, failed)
+
+    @Property(str, notify=changed)
+    def changeError(self) -> str:
+        return self._change_error
+
+    # -- the servers -------------------------------------------------------------------------
+    @Property(QObject, constant=True)
+    def servers(self) -> KeyedListModel:
+        """The servers the exit uses, in the order of its group."""
+        return self._servers
+
+    @Property(str, notify=changed)
+    def serversTitle(self) -> str:
+        if self._refreshing:
+            return self.tr("正在获取服务器列表…")
+        picked = self._picked()
+        if picked:
+            return self.tr("在用 %n 台服务器", "", len(picked))
+        return self.tr("没有在用的服务器")
+
+    @Property(str, notify=changed)
+    def serversDetail(self) -> str:
+        """When the list was fetched, or why there are no servers; a failure is ``error``."""
+        servers = self._list()
+        if self._refreshing:
+            return self.tr("经节点连接 VPN Gate")
+        if not servers.servers:
+            if self._running and self._routing.routes_with_plan():
+                return self.tr("还没有获取服务器列表")
+            return self.tr("连接后经节点获取服务器列表")
+        fetched = self.tr("列表更新于 {ago}").format(ago=fmt.ago(servers.fetched_at, self._clock()))
+        if self._exit().enabled and not self._picked():
+            return self.tr("所选国家暂无可用的服务器") + " · " + fetched
+        return fetched
+
+    @Property(str, notify=changed)
+    def error(self) -> str:
+        return self._error
+
+    @Property(bool, notify=changed)
+    def canRefresh(self) -> bool:
+        return not self._refreshing and self._routing.plan() is not None
+
+    @Slot()
+    def refresh(self) -> None:
+        """Fetch the list now, or once the tunnel runs."""
+        if self.canRefresh:
+            self._refresh()
+
+    def _refresh(self) -> None:
+        self._error = ""
+        if not self._running or not self._routing.routes_with_plan():
+            self._pending = True
+            self.changed.emit()
+            return
+        self._pending = False
+        self._refreshing = True
+        self.changed.emit()
+
+        def refreshed(routing: Routing) -> None:
+            self._refreshing = False
+            self._routing.adopt(routing)
+
+        def failed(error: BaseException) -> None:
+            self._refreshing = False
+            if isinstance(error, HostError) and error.code == "not_running":
+                self._running, self._pending = False, True
+            else:
+                self._error = failure_text(error)
+            self.changed.emit()
+
+        self._runner.submit(self._library.refresh_vpngate(), refreshed, failed)
+
+    def _sync_rows(self) -> None:
+        servers = self._list()
+        rows = []
+        for server in self._picked():
+            delay, level = fmt.latency(servers.delays.get(server.host_name))
+            title = f"{region_name(server.country)} · {server.host_name}"
+            rows.append(ServerRow(server.host_name, title, server.operator, delay, level))
+        self._servers.sync(rows)

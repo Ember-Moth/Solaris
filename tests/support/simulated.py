@@ -46,6 +46,7 @@ from solaris.host.base import (
     HostStatus,
     LogEntry,
     MeshOutbound,
+    OpenVpnOptions,
     PlanConversion,
     PoolNode,
     Proxy,
@@ -58,6 +59,7 @@ from solaris.host.base import (
     SourceNode,
     TrafficSample,
     TunnelConfig,
+    VpnGateServer,
     WarpAccount,
     bundled_geo_categories,
     taken_over,
@@ -230,6 +232,36 @@ ADAPTER_TYPES = {
 MESH_TYPES = ("tailscale", "zerotier", "easytier")
 WARP_TARGET = "egress:warp"
 WARP_NAMES = {"zh": "WARP 出口", "en": "WARP exit"}  # the outbound, by the plan's locale
+VPNGATE_TARGET = "egress:vpngate"
+VPNGATE_NAMES = {"zh": "VPN Gate 出口", "en": "VPN Gate exit"}  # the group, by locale
+
+
+def _vpngate_server(
+    host: str, country: str, last: int, score: int, ping: int, operator: str
+) -> VpnGateServer:
+    address = f"203.0.113.{last}"
+    pem = "-----BEGIN CERTIFICATE-----\nc2ltdWxhdGVk\n-----END CERTIFICATE-----\n"
+    options = OpenVpnOptions(
+        address, 443, "tcp", "AES-128-CBC", ("AES-128-CBC",), "SHA1", "", pem, pem, pem, "", ""
+    )
+    return VpnGateServer(
+        host, address, country, score, ping, 80_000_000, 12, 86_400_000, operator, options
+    )
+
+
+# VPN Gate's list as list_vpngate answers it, best score first; made up (docs/exits.md §5.2).
+VPNGATE_SERVERS = (
+    _vpngate_server("vpn381472650", "JP", 11, 1_480_212, 9, "DESKTOP-K7Q2's owner"),
+    _vpngate_server("vpn902215377", "KR", 21, 1_204_877, 31, "MainPC's owner"),
+    _vpngate_server("vpn517730941", "JP", 12, 998_120, 14, "SAKURA's owner"),
+    _vpngate_server("vpn204561388", "JP", 13, 845_301, 18, "yuno's owner"),
+    _vpngate_server("vpn660918245", "KR", 22, 702_455, 35, "Eunho's owner"),
+    _vpngate_server("vpn731004562", "JP", 14, 655_090, 22, "GamePlayPC's owner"),
+    _vpngate_server("vpn118274093", "JP", 15, 431_786, 25, "tosi's owner"),
+    _vpngate_server("vpn845302117", "RU", 31, 302_115, 160, "Viktor's owner"),
+    _vpngate_server("vpn390017264", "JP", 16, 255_901, 28, "ikeda's owner"),
+    _vpngate_server("vpn572283910", "US", 41, 120_334, 140, "PC's owner"),
+)
 # Share link schemes as proxy types.
 LINK_SCHEMES = {
     "ss": "ss",
@@ -408,12 +440,20 @@ def compose(composition: Composition) -> tuple[dict[str, Any], CompositionReport
     meshes = {outbound.id: outbound.name for outbound in mesh}
     warp_name = WARP_NAMES.get(str(plan.get("locale")), WARP_NAMES["zh"])
     warp_used = False
+    vpngate_name = VPNGATE_NAMES.get(str(plan.get("locale")), VPNGATE_NAMES["zh"])
+    vpngate_used = False
     warnings: list[CompositionWarning] = []
 
     def target(entry_id: str, wanted: str) -> str:
-        nonlocal warp_used
+        nonlocal warp_used, vpngate_used
         if wanted in BUILT_IN_PROXIES:
             return wanted
+        if wanted == VPNGATE_TARGET:
+            if composition.egress.vpngate:
+                vpngate_used = True
+                return vpngate_name
+            warnings.append(CompositionWarning(entry_id, "egress_unavailable", wanted))
+            return "REJECT"
         if wanted == WARP_TARGET or wanted.startswith("mesh:"):
             if wanted == WARP_TARGET and composition.egress.warp is not None:
                 warp_used = True
@@ -455,6 +495,32 @@ def compose(composition: Composition) -> tuple[dict[str, Any], CompositionReport
         if account.protocol == "masque-h2":
             outbound["network"] = "h2"
         mesh_proxies.append(outbound)
+    exit_groups: list[dict[str, Any]] = []
+    if vpngate_used:
+        settings = (plan.get("egress") or {}).get("vpngate") or {}
+        via = str(settings.get("via") or "proxy")
+        if via not in names or members.get(via, ([None], [None])) == ([], []):
+            warnings.append(CompositionWarning(VPNGATE_TARGET, "via_empty", via))
+            via = "proxy"
+        servers = composition.egress.vpngate
+        for server in servers:
+            mesh_proxies.append(
+                {
+                    "name": f"VPN Gate {server.country} {server.host_name}",
+                    "type": "openvpn",
+                    "server": server.openvpn.server,
+                    "port": server.openvpn.port,
+                    "dialer-proxy": names[via],
+                }
+            )
+        single = settings.get("mode") == "single"
+        exit_groups.append(
+            {
+                "name": vpngate_name,
+                "type": "fallback" if single else "load-balance",
+                "proxies": [f"VPN Gate {s.country} {s.host_name}" for s in servers],
+            }
+        )
 
     def group_proxies(group: ComposedGroup) -> list[str]:
         if group.id not in members:
@@ -467,7 +533,8 @@ def compose(composition: Composition) -> tuple[dict[str, Any], CompositionReport
         "proxies": proxies + mesh_proxies,
         "proxy-groups": [
             {"name": g.name, "type": "select", "proxies": group_proxies(g)} for g in groups
-        ],
+        ]
+        + exit_groups,
         "rules": [",".join(part for part in (r.type, r.payload, r.proxy) if part) for r in rules],
     }
     report = CompositionReport(
@@ -992,6 +1059,14 @@ class SimulatedHost:
         # next one raises instead of registering.
         self.warp_calls: list[tuple[str, str, str]] = []
         self.warp_error: HostError | None = None
+        # list_vpngate's via groups, the list it answers and the error the next call raises.
+        self.vpngate_calls: list[str] = []
+        self.vpngate_servers: tuple[VpnGateServer, ...] = VPNGATE_SERVERS
+        self.vpngate_error: HostError | None = None
+        # The VPN Gate exit's servers as the proxies page lists them, by outbound name, and
+        # their last delay test: None until tested, 0 when it failed.
+        self._openvpn: dict[str, VpnGateServer] = {}
+        self._openvpn_delays: dict[str, int | None] = {}
         self._mode = "rule"
         # Running as the default settings ask for.
         running = taken_over(RunOptions(not development, not development), takeover)
@@ -1187,6 +1262,24 @@ class SimulatedHost:
             client_id="AAAA",
             registered_at_unix_ms=1_793_318_400_000,
         )
+
+    async def list_vpngate(self, via: str) -> list[VpnGateServer]:
+        # A fixed made-up list; the real one comes from VPN Gate (docs/exits.md §5.2).
+        if not self._running:
+            raise HostError("not_running", "the core is not running")
+        groups = _names((self.effective or {}).get("proxy-groups"))
+        if self.effective is not None and via not in groups:
+            raise HostError("invalid_request", f"no group {via!r} in the running configuration")
+        self.vpngate_calls.append(via)
+        if self.vpngate_error is not None:
+            error, self.vpngate_error = self.vpngate_error, None
+            raise error
+        return list(self.vpngate_servers)
+
+    def fail_vpngate(self, host_name: str) -> None:
+        """Make the VPN Gate server's last delay test fail, as the exit's health check would."""
+        name = next(n for n, s in self._openvpn.items() if s.host_name == host_name)
+        self._openvpn_delays[name] = 0
 
     async def stop(self) -> None:
         self._running = False
@@ -1430,8 +1523,28 @@ class SimulatedHost:
             raise HostError("apply_failed", message, retryable=True)
         self.config = config
         self.report = report
+        self._show_exit_groups()
         self._tun = config.options.tun_enabled
         self._system_proxy = config.options.system_proxy_enabled
+
+    def _show_exit_groups(self) -> None:
+        """List the VPN Gate exit's group, as the core does once a rule uses it; new servers
+        start untested, as after a reload."""
+        for name in VPNGATE_NAMES.values():
+            self._groups.pop(name, None)
+        servers = {s.host_name: s for s in VPNGATE_SERVERS + self.vpngate_servers}
+        self._openvpn, self._openvpn_delays = {}, {}
+        for group in (self.effective or {}).get("proxy-groups") or []:
+            if group.get("name") not in VPNGATE_NAMES.values():
+                continue
+            kind = "Fallback" if group.get("type") == "fallback" else "LoadBalance"
+            members = [str(m) for m in group.get("proxies") or []]
+            for member in members:
+                host = member.rsplit(" ", 1)[-1]
+                if host in servers:
+                    self._openvpn[member] = servers[host]
+                    self._openvpn_delays[member] = None
+            self._groups[group["name"]] = _Group(kind, members, members[0] if members else "")
 
     def _state(self) -> str:
         if self._running:
@@ -1444,6 +1557,8 @@ class SimulatedHost:
         if name in self._groups:
             final = self._final(name)
             return Proxy(name, self._groups[name].type, self._delays.get(final))
+        if name in self._openvpn:
+            return Proxy(name, "OpenVPN", self._openvpn_delays.get(name))
         return Proxy(name, NODES[name][0], self._delays[name])
 
     def _final(self, name: str) -> str:

@@ -25,7 +25,8 @@ system proxy state the host reports, so neither is interrupted.
 
 The WARP exit's account belongs to the device, not to a plan: it lives in the system's
 credential store (credentials.py) and joins the composition of every plan that turns the
-exit on (docs/exits.md §3.2).
+exit on (docs/exits.md §3.2). So does the VPN Gate exit's server list (vpngate.py, §5.2),
+from which each composition takes the servers its plan chooses.
 
 Every method runs on the asyncio thread. Downloads and their validation run outside the
 lock; writing the store and reloading hold it, so an automatic update cannot interleave
@@ -41,7 +42,7 @@ import time
 import uuid
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -62,10 +63,11 @@ from solaris.host.base import (
     SourceInspection,
     TunnelConfig,
     TunnelHost,
+    VpnGateServer,
     WarpAccount,
     bundled_geo_categories,
 )
-from solaris.models import plans
+from solaris.models import plans, vpngate
 from solaris.models.credentials import (
     CredentialError,
     CredentialStore,
@@ -99,6 +101,7 @@ from solaris.models.subscription import (
     decode_config,
     read_config_file,
 )
+from solaris.models.vpngate import ServerList
 
 _log = logging.getLogger(__name__)
 
@@ -128,6 +131,7 @@ class Routing:
     report: CompositionReport | None
     inspections: Mapping[str, SourceInspection]  # by profile id; missing until read
     warp: WarpAccount | None = None  # this device's WARP account; None until read, or none
+    vpngate: ServerList = field(default_factory=ServerList)  # this device's VPN Gate list
 
     @property
     def mode(self) -> str | None:
@@ -216,9 +220,14 @@ class ProfileLibrary:
         self._accounts = WarpAccounts(credentials or KeyringCredentials())
         self._warp: WarpAccount | None = None
         self._warp_read = False
+        self._vpngate = vpngate.load(store.database)
         # None until the first import picks the mode (routing.md §5.1).
         self._state = self._routing_store.state()
         self._plans = self._routing_store.plans()
+
+    def now(self) -> float:
+        """The library's clock, which dates what it stores."""
+        return self._clock()
 
     def snapshot(self) -> ProfileList:
         """The profiles as loaded; call before the asyncio thread starts using the library."""
@@ -241,6 +250,7 @@ class ProfileLibrary:
             self._report,
             dict(self._inspections),
             self._warp,
+            self._vpngate,
         )
 
     @property
@@ -842,16 +852,7 @@ class ProfileLibrary:
         device instead. The core registers through its running configuration, so the tunnel
         must run the plan. The account goes to the credential store, then into the tunnel."""
         async with self._lock:
-            plan = self._current_plan()
-            if self._state.mode != MODE_PLAN or plan is None:
-                raise ProfileError("not_routing_plan", "the tunnel does not route with a plan")
-            if await self._running() is None:
-                raise HostError("not_running", "the core is not running")
-            report = self._report or await self._validate_plan(plan, self._list)
-            if report is None:  # a composition always has one; for the type checker
-                raise ProfileError("not_routing_plan", "the plan was not composed")
-            self._report = report
-            via = _via_name(report, plans.warp_exit(plan).via)
+            via = await self._exit_via(plans.WARP, plans.warp_exit(self._current_plan()).via)
             existing = None if renew else await self._warp_account()
         # Outside the lock: Cloudflare may take a while, and plan edits need not wait for it.
         account = await self._host.register_warp(via, self._settings().warp_protocol, existing)
@@ -884,6 +885,99 @@ class ProfileLibrary:
         except CredentialError as error:
             _log.warning("cannot read the WARP account: %s", error.message)
             return None
+
+    # -- the VPN Gate exit (docs/exits.md §5.2) -------------------------------------------------
+    async def refresh_vpngate(self) -> Routing:
+        """Fetch VPN Gate's list through the via group of the plan in use, and pick the exit's
+        servers from it again. As with WARP, the core fetches through its running
+        configuration, so the tunnel must run the plan. A running tunnel reloads only when the
+        servers changed; its connections stay up."""
+        async with self._lock:
+            via = await self._exit_via(plans.VPNGATE, plans.vpngate_exit(self._current_plan()).via)
+        # Outside the lock: the list is over a megabyte, and plan edits need not wait for it.
+        servers = await self._host.list_vpngate(via)
+        async with self._lock:
+            self._vpngate = replace(self._vpngate, servers=tuple(servers), fetched_at=self._clock())
+            await self._repick_vpngate()
+            return self._routing()
+
+    async def check_vpngate(self) -> Routing:
+        """Read how the exit's servers did in their last delay test: one that failed is
+        skipped for an hour and its place goes to another; once fewer than half work, the
+        list is fetched again (docs/exits.md §5.2), at most every ten minutes."""
+        async with self._lock:
+            picked = self._vpngate.picked_servers()
+            plan = self._current_plan()
+            if (
+                not picked
+                or self._state.mode != MODE_PLAN
+                or not plans.vpngate_exit(plan).enabled
+                or await self._running() is None
+            ):
+                return self._routing()
+            hosts = {vpngate.outbound_name(s): s.host_name for s in picked}
+            delays: dict[str, int | None] = {}
+            for group in await self._host.list_groups():
+                for proxy in group.proxies:
+                    if proxy.name in hosts:
+                        delays[hosts[proxy.name]] = proxy.delay_ms
+            now = self._clock()
+            dead = [s.host_name for s in picked if delays.get(s.host_name) == 0]
+            failed = {**self._vpngate.failed, **dict.fromkeys(dead, now)}
+            self._vpngate = replace(self._vpngate, failed=failed, delays=delays)
+            refresh = (len(picked) - len(dead)) * 2 < len(picked) and (
+                now - self._vpngate.fetched_at >= vpngate.MIN_REFRESH_S
+            )
+            if dead and not refresh:
+                await self._repick_vpngate()
+        if refresh:
+            return await self.refresh_vpngate()
+        return self._routing()
+
+    async def _exit_via(self, exit_id: str, via: str) -> str:
+        """The name of an exit's via group in the running configuration, for the core to go
+        out through; the tunnel must run the plan in use."""
+        plan = self._current_plan()
+        if self._state.mode != MODE_PLAN or plan is None:
+            raise ProfileError("not_routing_plan", "the tunnel does not route with a plan")
+        if await self._running() is None:
+            raise HostError("not_running", "the core is not running")
+        report = self._report or await self._validate_plan(plan, self._list)
+        if report is None:  # a composition always has one; for the type checker
+            raise ProfileError("not_routing_plan", "the plan was not composed")
+        self._report = report
+        return _via_name(report, via, exit_id)
+
+    async def _repick_vpngate(self) -> None:
+        """Store the list, and bring the plan in use up to date when its servers changed."""
+        plan = self._current_plan()
+        before = self._vpngate.picked
+        if plan is not None and plans.vpngate_exit(plan).enabled:
+            chosen = self._vpngate_pick(plan)
+            if tuple(s.host_name for s in chosen) != before:
+                await self._recompose()
+        await asyncio.to_thread(vpngate.save, self._store.database, self._vpngate)
+
+    def _vpngate_pick(self, plan: Plan) -> tuple[VpnGateServer, ...]:
+        return vpngate.pick(
+            self._vpngate.servers,
+            plans.vpngate_exit(plan),
+            self._vpngate.picked,
+            self._vpngate.failing(self._clock()),
+        )
+
+    async def _vpngate_servers(self, plan: Plan) -> tuple[VpnGateServer, ...]:
+        """The servers a composition of ``plan`` takes; for the plan in use, they become the
+        exit's from now on, so the next pick keeps their positions."""
+        if not plans.vpngate_exit(plan).enabled:
+            return ()
+        chosen = self._vpngate_pick(plan)
+        current = self._current_plan()
+        picked = tuple(s.host_name for s in chosen)
+        if current is not None and current.id == plan.id and picked != self._vpngate.picked:
+            self._vpngate = replace(self._vpngate, picked=picked)
+            await asyncio.to_thread(vpngate.save, self._store.database, self._vpngate)
+        return chosen
 
     async def _recompose(self) -> None:
         """Bring the report and a tunnel that routes with the plan in use up to date with
@@ -958,9 +1052,10 @@ class ProfileLibrary:
             sources.append(CompositionSource(profile.id, profile.name, text))
         plan = plan or plans.default_plan()
         plan_json = plans.plan_json(plan, self._locale())
-        # A plan that turns the WARP exit off gets no account: its rules reject (D21).
+        # A plan that turns an exit off gets no account or servers: its rules reject (D21).
         warp = await self._read_warp() if plans.warp_exit(plan).enabled else None
-        return Composition(tuple(sources), plan_json, info, Egress(warp))
+        servers = await self._vpngate_servers(plan)
+        return Composition(tuple(sources), plan_json, info, Egress(warp, servers))
 
     # -- tunnel ------------------------------------------------------------------------------
     async def start_tunnel(self) -> None:
@@ -1155,9 +1250,9 @@ class ProfileLibrary:
 _UNKNOWN = SourceInspection((), True, 0, 0)
 
 
-def _via_name(report: CompositionReport, via: str) -> str:
+def _via_name(report: CompositionReport, via: str, exit_id: str) -> str:
     """The via group's name in the running configuration; 节点选择's when it has no members,
     as the exit itself goes through 节点选择 then (docs/exits.md §3.3)."""
     names = {group.id: group.name for group in report.groups}
-    empty = any(w.entry_id == plans.WARP and w.reason == "via_empty" for w in report.warnings)
+    empty = any(w.entry_id == exit_id and w.reason == "via_empty" for w in report.warnings)
     return names.get(plans.PROXY, "") if empty or via not in names else names[via]

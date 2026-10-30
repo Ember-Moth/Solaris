@@ -23,6 +23,7 @@ from solaris.host.base import (
     HostStatus,
     LogEntry,
     MeshOutbound,
+    OpenVpnOptions,
     PlanConversion,
     PoolNode,
     Proxy,
@@ -35,11 +36,12 @@ from solaris.host.base import (
     SourceNode,
     TrafficSample,
     TunnelConfig,
+    VpnGateServer,
     WarpAccount,
     bundled_geo_categories,
     taken_over,
 )
-from solaris.host.client import ControlClient
+from solaris.host.client import DEFAULT_TIMEOUT_S, ControlClient
 from solaris.host.transport import Opener
 from solaris.protocol import control_pb2
 
@@ -85,6 +87,8 @@ _READS = frozenset(
 # mean it is on its way back.
 _RESTARTING = frozenset({"service_restarting", "connection_closed", "service_unavailable"})
 CLAIM_TIMEOUT_S = 20.0
+# The core waits up to a minute for VPN Gate's list, which is over a megabyte.
+LIST_VPNGATE_TIMEOUT_S = 75.0
 CLAIM_RETRY_S = 0.5
 IDLE_STATUS = HostStatus("stopped", "rule", 0, 0, 0, False, False)
 
@@ -121,7 +125,8 @@ def _composition(composition: Composition) -> pb.Composition:
         info_filter=composition.info_filter,
         plan_json=composition.plan_json,
         egress=pb.Egress(
-            warp=_warp_account(composition.egress.warp) if composition.egress.warp else None
+            warp=_warp_account(composition.egress.warp) if composition.egress.warp else None,
+            vpn_gate=[_vpngate_server(server) for server in composition.egress.vpngate],
         ),
     )
 
@@ -154,6 +159,64 @@ def _warp_account_from(account: pb.WarpAccount) -> WarpAccount:
         address_v6=account.address_v6,
         client_id=account.client_id,
         registered_at_unix_ms=account.registered_at_unix_ms,
+    )
+
+
+def _vpngate_server(server: VpnGateServer) -> pb.VpnGateServer:
+    options = server.openvpn
+    return pb.VpnGateServer(
+        host_name=server.host_name,
+        ip=server.ip,
+        country=server.country,
+        score=server.score,
+        ping_ms=server.ping_ms,
+        speed_bps=server.speed_bps,
+        sessions=server.sessions,
+        uptime_ms=server.uptime_ms,
+        operator=server.operator,
+        openvpn=pb.OpenVpnOptions(
+            server=options.server,
+            port=options.port,
+            proto=options.proto,
+            cipher=options.cipher,
+            data_ciphers=list(options.data_ciphers),
+            auth=options.auth,
+            comp_lzo=options.comp_lzo,
+            ca=options.ca,
+            cert=options.cert,
+            key=options.key,
+            tls_auth=options.tls_auth,
+            key_direction=options.key_direction,
+        ),
+    )
+
+
+def _vpngate_server_from(server: pb.VpnGateServer) -> VpnGateServer:
+    options = server.openvpn
+    return VpnGateServer(
+        host_name=server.host_name,
+        ip=server.ip,
+        country=server.country,
+        score=server.score,
+        ping_ms=server.ping_ms,
+        speed_bps=server.speed_bps,
+        sessions=server.sessions,
+        uptime_ms=server.uptime_ms,
+        operator=server.operator,
+        openvpn=OpenVpnOptions(
+            server=options.server,
+            port=options.port,
+            proto=options.proto,
+            cipher=options.cipher,
+            data_ciphers=tuple(options.data_ciphers),
+            auth=options.auth,
+            comp_lzo=options.comp_lzo,
+            ca=options.ca,
+            cert=options.cert,
+            key=options.key,
+            tls_auth=options.tls_auth,
+            key_direction=options.key_direction,
+        ),
     )
 
 
@@ -260,14 +323,14 @@ class ServiceHost:
                 self._connections = []
             return self._client
 
-    async def _call(self, request: pb.Request) -> pb.Response:
+    async def _call(self, request: pb.Request, timeout: float = DEFAULT_TIMEOUT_S) -> pb.Response:
         try:
-            return await (await self._connected()).call(request)
+            return await (await self._connected()).call(request, timeout=timeout)
         except HostError as error:
             if error.code != "not_claimed" or request.WhichOneof("method") in _READS:
                 raise
         await self.claim()
-        return await (await self._connected()).call(request)
+        return await (await self._connected()).call(request, timeout=timeout)
 
     async def claim(self) -> None:
         """Become the service's owner: it is free, or ours already. A service that has to
@@ -426,6 +489,11 @@ class ServiceHost:
         )
         response = await self._call(pb.Request(register_warp=request))
         return _warp_account_from(response.register_warp.account)
+
+    async def list_vpngate(self, via: str) -> list[VpnGateServer]:
+        request = pb.Request(list_vpn_gate=pb.ListVpnGateRequest(via=via))
+        response = await self._call(request, LIST_VPNGATE_TIMEOUT_S)
+        return [_vpngate_server_from(server) for server in response.list_vpn_gate.servers]
 
     async def stop(self) -> None:
         await self._unclaimed(self._call(pb.Request(stop=pb.StopRequest())), None)

@@ -514,8 +514,10 @@ func (c *converter) target(name string) (string, bool) {
 	}
 	switch {
 	case name == warpName(localeZH) || name == warpName(localeEN):
-		// The name ExportPlan gives the exit.
+		// The names ExportPlan gives the exits.
 		return EgressWarp, true
+	case name == vpnGateName(localeZH) || name == vpnGateName(localeEN):
+		return EgressVpnGate, true
 	case c.options.SourceID != "" && slices.Contains(c.mesh, name):
 		return meshPrefix + c.options.SourceID + "/" + name, true
 	}

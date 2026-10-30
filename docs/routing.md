@@ -112,7 +112,7 @@
   的规则"。
 - 策略组标签分内置、地区、自建三段。自建组的名称是按钮，点击编辑；"更多"菜单是编辑…、复制…、删除。内置组和
   地区组的菜单在类型和显示 / 隐藏之后加"复制为自建策略组…"，从它的成员条件开始一个新组（地区组是这个地区）。
-- 链式出口一节只有 WARP 出口；目标下拉框里也只有它（Tor、VPN Gate 未实现）。
+- 链式出口一节是 WARP 出口和 VPN Gate 出口两行；目标下拉框里也是这两项（Tor 未实现）。
 
 ### 4.4 添加规则对话框
 
@@ -305,7 +305,9 @@
     条目本身不改，下一次拼装时目标可用就恢复。目标是不可用的链式出口或已经不存在的组网出站时，改写为 `REJECT`
     （D21，exits.md 3.3 节、mesh.md 第 3 节）。
   - **链式出口**：有规则指向 `egress:warp` 且 `Composition.egress` 带了 WARP 账户时，生成"WARP 出口"出站，
-    `dialer-proxy` 指向方案 `egress.warp.via` 的组（exits.md 3.3 节）。
+    `dialer-proxy` 指向方案 `egress.warp.via` 的组（exits.md 3.3 节）。有规则指向 `egress:vpngate` 且带了 VPN Gate
+    服务器时，每台服务器生成一个 `openvpn` 出站（`dialer-proxy` 指向 `egress.vpngate.via` 的组），再生成组
+    "VPN Gate 出口"，排在方案的组之后（exits.md 5.3 节）。这个组不在报告的组列表里。
 - **报告** `CompositionReport`：用 composition 的 Validate、Start、Reload 返回它（用 `config_yaml` 时仍是 Empty）：
   - 警告：条目 id（兜底是 `fallback`）、原因（`region_empty` / `group_empty`，以及链式出口与组网出站的 `egress_unavailable`、
     `mesh_missing`、`via_empty`、`mesh_restricted`，见 exits.md 3.3 节、mesh.md 第 3、4 节）、方案里写的目标；
@@ -477,21 +479,25 @@
     配置（`rule-providers`、`sub-rules`），方案没有地方保存它们，所以不接受，转换时也不带入（8.8 节）；
   - `value`：不能为空或换行；除 `AND`、`OR`、`NOT` 和三种 `-REGEX` 外不能有逗号（mihomo 按逗号切分规则）；
   - `no_resolve`：只对 `GEOIP`、`IP-CIDR`、`IP-CIDR6`、`IP-SUFFIX`、`IP-ASN`。
-- `target`：策略组 id、`region:代码`、`DIRECT`、`REJECT` 或 `REJECT-DROP`，还可以是 `egress:warp`
-  （exits.md）和 `mesh:<订阅 id>/<原名>`（mesh.md），`egress:tor`、`egress:vpngate` 随 M10、M12 加入。兜底目标
+- `target`：策略组 id、`region:代码`、`DIRECT`、`REJECT` 或 `REJECT-DROP`，还可以是 `egress:warp`、`egress:vpngate`
+  （exits.md）和 `mesh:<订阅 id>/<原名>`（mesh.md），`egress:tor` 随 M10 加入。兜底目标
   同样可以写这两种；策略组的 `others` 不能写。未知的 id 或地区代码是
   `invalid_config`；地区当前没有节点、自建组没有成员时改走节点选择并警告（8.1 节）。
 
 **链式出口**（`egress`）
 
 ```json
-"egress": {"warp": {"via": "region:JP"}}
+"egress": {"warp": {"via": "region:JP"},
+           "vpngate": {"via": "proxy", "countries": ["JP"], "count": 5, "mode": "per-site"}}
 ```
 
-- `warp.via`：WARP 出口经由的组，策略组 id（内置组、`region:代码` 或自建组），不填是 `proxy`。`DIRECT` 等内置出站、
-  `region:*`、不存在的组是 `invalid_config`。经由组没有成员（包括没有节点的地区）时改走节点选择，警告 `via_empty`。
-- 账户不在方案里，随 `Composition.egress` 传，属于本机（exits.md 3.2 节）。
-- `tor`、`vpngate` 现在写了也被忽略，随 M10、M12 加入。
+- `warp.via`、`vpngate.via`：出口经由的组，策略组 id（内置组、`region:代码` 或自建组），不填是 `proxy`。`DIRECT` 等
+  内置出站、`region:*`、不存在的组是 `invalid_config`。经由组没有成员（包括没有节点的地区）时改走节点选择，警告
+  `via_empty`（条目 id 是 `egress:warp` 或 `egress:vpngate`）。
+- `vpngate.mode`：`per-site`（按网站分配，默认）或 `single`（只用一台）；`count` 是 0 到 10，`countries` 是大写的
+  两位国家代码，别的值是 `invalid_config`。国家和数量由界面用来挑服务器，内核只校验。
+- WARP 账户和 VPN Gate 服务器不在方案里，随 `Composition.egress` 传，属于本机（exits.md 3.2、5.2 节）。
+- `tor` 现在写了也被忽略，随 M10 加入。
 
 **信息节点表达式**不在方案里，随 `Composition.info_filter` 传，属于节点池设置。内核按给出的表达式原样匹配
 （regexp2，区分大小写），空串表示不排除。所以 5.2 节的默认值带 `(?i)`，否则碰不到常见的 "Expire"。
@@ -558,8 +564,9 @@
 - 条目和组的 id 由位置和内容算出（`g-`、`r-` 加 12 位十六进制），同一份输入每次得到同一个方案。转换结果会按
   8.5 节再解析一遍，保证内核读得回来。
 
-**链式出口与组网出站**：分享导出的规则写"WARP 出口"（或"WARP exit"）和组网出站的名称，不论本机有没有
-WARP 账户；出站本身不导出，导入方的配置要自己定义。转换时，目标是这两个出口名称的规则转成 `egress:warp`；带来源
+**链式出口与组网出站**：分享导出的规则写"WARP 出口""VPN Gate 出口"（或"WARP exit""VPN Gate exit"）和组网出站
+的名称，不论本机有没有 WARP 账户或 VPN Gate 服务器；出站和出口的组本身不导出，导入方的配置要自己定义。转换时，
+目标是这些出口名称的规则转成 `egress:warp`、`egress:vpngate`；带来源
 订阅 id 时，目标是这份订阅里组网出站的规则转成 `mesh:` 目标，否则跳过（`target`）。
 
 **导出**（`ExportPlan` 的 `SHARE`）：写出与拼装结果相同的组和规则，但成员写成在别人的配置里也能算的条件：
@@ -580,8 +587,8 @@ WARP 账户；出站本身不导出，导入方的配置要自己定义。转换
     IP 段 / 原始）、内容（JSON）、目标，可软删除；
   - 软删除的方案、策略组和规则 90 天后清除，方案清除时连同它的策略组和规则（storage.md 第 2 节）；
   - `profiles` 有 `in_pool`（是否加入节点池）。
-- 目标存策略组 `id`、`DIRECT`、`REJECT`、`egress:warp` 或 `mesh:<订阅 id>/<原名>`；地区组的 `id` 由地区代码派生，
-  节点池变化后保持不变。
+- 目标存策略组 `id`、`DIRECT`、`REJECT`、`egress:warp`、`egress:vpngate` 或 `mesh:<订阅 id>/<原名>`；地区组的 `id`
+  由地区代码派生，节点池变化后保持不变。
 
 ## 10. 分期与验收
 

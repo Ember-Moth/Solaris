@@ -354,10 +354,10 @@ class MacExtensionHost(ServiceHost):
     def core_available(self) -> bool:
         return self._answered
 
-    async def _call(self, request: pb.Request) -> pb.Response:
+    async def _call(self, request: pb.Request, timeout: float = DEFAULT_TIMEOUT_S) -> pb.Response:
         request.protocol_version = PROTOCOL_VERSION
         request.id = next(self._ids)
-        send = partial(self._manager.send, request.SerializeToString(), DEFAULT_TIMEOUT_S)
+        send = partial(self._manager.send, request.SerializeToString(), timeout)
         try:
             payload = await _blocking(send)
         except ManagerError as error:
