@@ -21,12 +21,18 @@ class HostError(Exception):
         self.retryable = retryable
 
 
+# mihomo's TUN stacks (docs/architecture.md §3.4); gvisor and mixed need a core built with
+# with_gvisor.
+TUN_STACKS = ("system", "mips", "gvisor", "mixed")
+
+
 @dataclass(frozen=True)
 class RunOptions:
     tun_enabled: bool = False
     system_proxy_enabled: bool = False
     mixed_port: int = 0  # 0 keeps the profile's own port
     allow_lan: bool = False
+    tun_stack: str = ""  # one of TUN_STACKS; "" keeps the profile's own
 
 
 @dataclass(frozen=True)

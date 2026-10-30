@@ -23,6 +23,14 @@ class Ownership(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     OWNERSHIP_CALLER: _ClassVar[Ownership]
     OWNERSHIP_OTHER: _ClassVar[Ownership]
 
+class TunStack(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    TUN_STACK_UNSPECIFIED: _ClassVar[TunStack]
+    TUN_STACK_SYSTEM: _ClassVar[TunStack]
+    TUN_STACK_MIPS: _ClassVar[TunStack]
+    TUN_STACK_GVISOR: _ClassVar[TunStack]
+    TUN_STACK_MIXED: _ClassVar[TunStack]
+
 class WarpProtocol(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     WARP_PROTOCOL_UNSPECIFIED: _ClassVar[WarpProtocol]
@@ -79,6 +87,11 @@ OWNERSHIP_UNSPECIFIED: Ownership
 OWNERSHIP_AVAILABLE: Ownership
 OWNERSHIP_CALLER: Ownership
 OWNERSHIP_OTHER: Ownership
+TUN_STACK_UNSPECIFIED: TunStack
+TUN_STACK_SYSTEM: TunStack
+TUN_STACK_MIPS: TunStack
+TUN_STACK_GVISOR: TunStack
+TUN_STACK_MIXED: TunStack
 WARP_PROTOCOL_UNSPECIFIED: WarpProtocol
 WARP_PROTOCOL_MASQUE_H2: WarpProtocol
 WARP_PROTOCOL_MASQUE_H3: WarpProtocol
@@ -263,16 +276,18 @@ class ClaimRequest(_message.Message):
     def __init__(self) -> None: ...
 
 class RunOptions(_message.Message):
-    __slots__ = ("tun_enabled", "system_proxy_enabled", "mixed_port", "allow_lan")
+    __slots__ = ("tun_enabled", "system_proxy_enabled", "mixed_port", "allow_lan", "tun_stack")
     TUN_ENABLED_FIELD_NUMBER: _ClassVar[int]
     SYSTEM_PROXY_ENABLED_FIELD_NUMBER: _ClassVar[int]
     MIXED_PORT_FIELD_NUMBER: _ClassVar[int]
     ALLOW_LAN_FIELD_NUMBER: _ClassVar[int]
+    TUN_STACK_FIELD_NUMBER: _ClassVar[int]
     tun_enabled: bool
     system_proxy_enabled: bool
     mixed_port: int
     allow_lan: bool
-    def __init__(self, tun_enabled: _Optional[bool] = ..., system_proxy_enabled: _Optional[bool] = ..., mixed_port: _Optional[int] = ..., allow_lan: _Optional[bool] = ...) -> None: ...
+    tun_stack: TunStack
+    def __init__(self, tun_enabled: _Optional[bool] = ..., system_proxy_enabled: _Optional[bool] = ..., mixed_port: _Optional[int] = ..., allow_lan: _Optional[bool] = ..., tun_stack: _Optional[_Union[TunStack, str]] = ...) -> None: ...
 
 class ValidateRequest(_message.Message):
     __slots__ = ("config_yaml", "composition", "overrides")

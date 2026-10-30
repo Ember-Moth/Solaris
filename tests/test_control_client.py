@@ -203,7 +203,9 @@ def test_service_host_sends_the_config_with_validate_start_and_reload() -> None:
             return pb.Response(error=pb.Error(code="not_running", message="core is stopped"))
         return pb.Response(empty=pb.Empty())
 
-    options = RunOptions(tun_enabled=True, system_proxy_enabled=False, mixed_port=7890)
+    options = RunOptions(
+        tun_enabled=True, system_proxy_enabled=False, mixed_port=7890, tun_stack="mixed"
+    )
     overrides = ("mode: global\n", "prepend-rules: [MATCH,DIRECT]\n")
     config = TunnelConfig("proxies: []\n", overrides, options)
 
@@ -225,7 +227,9 @@ def test_service_host_sends_the_config_with_validate_start_and_reload() -> None:
     assert validate.validate == pb.ValidateRequest(
         config_yaml="proxies: []\n", overrides=list(overrides)
     )
-    expected_options = pb.RunOptions(tun_enabled=True, mixed_port=7890)
+    expected_options = pb.RunOptions(
+        tun_enabled=True, mixed_port=7890, tun_stack=pb.TUN_STACK_MIXED
+    )
     assert start.start.config_yaml == "proxies: []\n"
     assert start.start.options == expected_options
     assert list(start.start.overrides) == list(overrides)
