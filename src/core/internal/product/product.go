@@ -1,5 +1,5 @@
 // Package product holds the identifiers that carry the product name, Solaris
-// (docs/roadmap.md, decision D1); src/solaris/product.py mirrors these values.
+// (docs/decisions.md D1); src/solaris/product.py mirrors these values.
 package product
 
 const (
@@ -21,10 +21,11 @@ const (
 // FrameMagic opens every frame on the Windows pipe.
 var FrameMagic = [4]byte{'S', 'L', 'R', 'S'}
 
-// WindowsSigner is the Authenticode signer of release builds, the display name of the
-// certificate. It is a placeholder until Windows signing exists: the first releases are
-// unsigned (D29) and do not set SignedRelease. Signing then sets
-// src/solaris/update/signature.py's WINDOWS_SIGNER, empty until then, to the same value.
+// WindowsSigner is the Authenticode signer, the certificate's display name, that a service
+// linked with SignedRelease requires of the UI. Releases are unsigned (D29) and leave
+// SignedRelease off, so nothing checks it. Signing them means setting WindowsSigner to the
+// certificate's display name, and src/solaris/update/signature.py's WINDOWS_SIGNER, empty
+// while releases are unsigned, to the same value.
 const WindowsSigner = "Ember Moth"
 
 // Version is set at link time with -ldflags "-X <module>/internal/product.Version=<version>".

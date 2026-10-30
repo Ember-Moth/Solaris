@@ -406,8 +406,8 @@ func TestWatchLogsSeesParseErrors(t *testing.T) {
 	stop()
 }
 
-// The roadmap's M1 acceptance: after 50 start/stop cycles the goroutine and file
-// descriptor counts are back where they started.
+// After 50 start/stop cycles the goroutine and file descriptor counts are back where they
+// started.
 func TestStartStopDoesNotLeak(t *testing.T) {
 	if testing.Short() {
 		t.Skip("50 start/stop cycles")

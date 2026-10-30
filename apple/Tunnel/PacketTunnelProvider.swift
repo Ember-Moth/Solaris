@@ -19,7 +19,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     options: [String: NSObject]?, completionHandler: @escaping (Error?) -> Void
   ) {
     // The engine's configuration arrives later through Start and Reload messages, not in
-    // `options` (docs/roadmap.md D7).
+    // `options` (docs/decisions.md D7).
     let network: TunnelNetwork
     do {
       network = try Core.network()

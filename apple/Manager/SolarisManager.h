@@ -87,7 +87,7 @@ SolarisManagerResult solaris_manager_configure(bool include_all_networks, char *
 
 // Starts the tunnel, configuring first as solaris_manager_configure does, and waits until it is
 // connected. The engine's configuration does not travel here: once connected, the host sends
-// Start with solaris_manager_send (docs/roadmap.md D7).
+// Start with solaris_manager_send (docs/decisions.md D7).
 SolarisManagerResult solaris_manager_start(double timeout_seconds, bool include_all_networks,
                                            char **error);
 

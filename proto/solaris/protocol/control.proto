@@ -226,7 +226,7 @@ message EasyTierNetwork {
 }
 message Egress {
   WarpAccount warp = 1;
-  // 2: the Tor exit (M10).
+  // 2: kept for the Tor exit (D23).
   reserved 2;
   // The VPN Gate servers the UI picked from ListVpnGate, in the order the exit's group lists
   // them (docs/exits.md §5.2); none leaves the exit unavailable.
