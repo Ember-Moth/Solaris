@@ -11,9 +11,10 @@ from typing import Any
 import pytest
 
 from solaris.models.backup import BackupError, Backups, Snapshot
-from solaris.models.backup_auto import AutoBackup, BackupTargets, Changes, Target
+from solaris.models.backup_auto import AutoBackup, BackupTargets, Changes, Outcome, Target
 from solaris.models.backup_icloud import ICloudProvider
 from solaris.models.backup_providers import (
+    BackupEntry,
     BackupProvider,
     DirectoryProvider,
     MemoryProvider,
@@ -133,19 +134,42 @@ def test_a_directory_lists_only_its_own_snapshots(tmp_path: Path) -> None:
 
 
 # -- automatic backup --------------------------------------------------------------------------
+class Counting(MemoryProvider):
+    """Counts the uploads it was asked for, failed ones included."""
+
+    def __init__(self, account: str) -> None:
+        super().__init__(account)
+        self.attempts = 0
+
+    async def upload(self, snapshot: Snapshot) -> BackupEntry:
+        self.attempts += 1
+        return await super().upload(snapshot)
+
+
 class Scene:
     def __init__(self, directory: Path, *, targets: int = 1) -> None:
         self.clock = Clock()
         self.data = Data(directory, self.clock)
-        self.providers: dict[str, MemoryProvider] = {}
+        self.changes = Changes(self.data.store.database)
+        self.providers: dict[str, Counting] = {}
         for number in range(targets):
             target = self.data.targets.add("memory", f"user{number}@example.com")
-            self.providers[target.id] = MemoryProvider(target.account)
+            self.providers[target.id] = Counting(target.account)
         self.auto = AutoBackup(
-            self.data.backups, self.data.targets, self.provider, clock=self.clock
+            self.data.backups,
+            self.data.targets,
+            self.provider,
+            changes=self.changes,
+            clock=self.clock,
         )
 
-    def provider(self, target: Target) -> MemoryProvider | None:
+    def tick(self) -> list[Outcome]:
+        """What the settings page's timer does every few seconds."""
+        if self.changes.changed():
+            self.auto.changed()
+        return run(self.auto.run_due)
+
+    def provider(self, target: Target) -> Counting | None:
         return self.providers.get(target.id)
 
     def at(self, now: float) -> Scene:
@@ -246,21 +270,94 @@ def test_forgetting_what_a_target_took(tmp_path: Path) -> None:
     scene.data.change()
     run(scene.auto.backup)
     forgotten = scene.data.targets.forget(target.id)
+    assert forgotten is not None
     assert (forgotten.last_backup_at, forgotten.last_error) == (None, None)
     assert scene.data.targets.digest(target.id) is None
     (outcome,) = run(scene.auto.backup)  # the same data goes up again
     assert outcome.uploaded
 
 
-def test_changes_see_every_write(tmp_path: Path) -> None:
+def test_changes_see_every_write_but_the_backups_own(tmp_path: Path) -> None:
     data = Data(tmp_path, Clock())
     changes = Changes(data.store.database)
     assert not changes.changed()
     data.change()
     assert changes.changed()
     assert not changes.changed()
-    data.targets.add("memory", "user@example.com")
+    target = data.targets.add("memory", "user@example.com")
     assert changes.changed()
+
+    assert changes.own(lambda: data.targets.record(target.id, error=None, digest="a")) is not None
+    assert not changes.changed()
+    data.change()  # the user's change before the backup's own write still counts
+    changes.own(lambda: data.targets.record(target.id, error="cloud_full: full"))
+    assert changes.changed()
+
+
+def test_a_success_starts_no_further_upload(tmp_path: Path) -> None:
+    scene = Scene(tmp_path)
+    (provider,) = scene.providers.values()
+    scene.data.change()
+    assert scene.tick() == []
+    (outcome,) = scene.at(100_031).tick()
+    assert outcome.uploaded
+    for step in range(1, 20):
+        assert scene.at(100_031 + step * 31).tick() == []
+        assert scene.auto.due_at is None  # the upload's own record is no change
+    assert provider.attempts == 1
+
+
+def test_a_failing_target_waits_for_the_catch_up(tmp_path: Path) -> None:
+    scene = Scene(tmp_path, targets=2)
+    failing, healthy = scene.data.targets.targets()
+    scene.providers[failing.id].fail = BackupError("cloud_unreachable", "offline")
+    scene.data.change()
+    scene.tick()
+    outcomes = scene.at(100_031).tick()
+    assert [(o.target.id, o.uploaded) for o in outcomes] == [
+        (failing.id, False),
+        (healthy.id, True),
+    ]
+
+    # Neither its own record of the failure nor the user's next change tries it again.
+    for step in range(1, 30):
+        if step == 10:
+            scene.data.change()
+        scene.at(100_031 + step * 31).tick()
+    assert scene.providers[failing.id].attempts == 1
+    assert scene.providers[healthy.id].attempts == 2
+
+    scene.providers[failing.id].fail = None
+    (outcome,) = run(scene.at(100_031 + 3600).auto.catch_up)
+    assert (outcome.target.id, outcome.uploaded, outcome.target.last_error) == (
+        failing.id,
+        True,
+        None,
+    )
+
+
+def test_a_target_turned_off_during_an_upload_keeps_nothing(tmp_path: Path) -> None:
+    data = Data(tmp_path, Clock())
+    target = data.targets.add("memory", "user@example.com")
+    data.targets.remove(target.id)
+    assert data.targets.record(target.id, error=None, digest="a") is None
+    assert data.targets.record(target.id, error="cloud_full: full") is None
+    assert data.targets.digest(target.id) is None
+    assert data.targets.forget(target.id) is None
+    assert data.targets.targets() == ()
+
+    class Removing(MemoryProvider):
+        async def upload(self, snapshot: Snapshot) -> BackupEntry:
+            data.targets.remove(on.id)  # the user turned it off meanwhile
+            return await super().upload(snapshot)
+
+    on = data.targets.add("memory", "user@example.com")
+    provider = Removing()
+    auto = AutoBackup(data.backups, data.targets, lambda _: provider)
+    data.change()
+    (outcome,) = run(auto.backup)
+    assert (outcome.target.id, outcome.uploaded) == (on.id, True)
+    assert data.targets.digest(on.id) is None
 
 
 def test_keeps_the_newest_ten(tmp_path: Path) -> None:
@@ -296,13 +393,13 @@ def test_a_failing_target_does_not_stop_the_others(tmp_path: Path) -> None:
 
 
 def test_pruning_failures_keep_the_upload(tmp_path: Path) -> None:
-    class Unlistable(MemoryProvider):
+    class Unlistable(Counting):
         async def list(self) -> Any:
             raise BackupError("download_failed", "list failed")
 
     scene = Scene(tmp_path)
     (target,) = scene.data.targets.targets()
-    scene.providers[target.id] = Unlistable()
+    scene.providers[target.id] = Unlistable(target.account)
     scene.data.change()
     (outcome,) = run(scene.auto.backup)
     assert outcome.uploaded
