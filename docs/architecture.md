@@ -7,7 +7,8 @@ Solaris（决策 D1）；
 
 本文只讲系统层面的结构；界面各部分的设计见 [ui.md](ui.md)，存储与备份、分流、链式出口、组网出站和发布更新分别见
 [storage.md](storage.md)、[routing.md](routing.md)、[exits.md](exits.md)、[mesh.md](mesh.md)、
-[release.md](release.md)。各部分的完成情况、实测进度和决策见 [roadmap.md](roadmap.md)。
+[release.md](release.md)。文中的决策编号（D1 等）见 [decisions.md](decisions.md)，真机验收和已知问题见
+[maintenance.md](maintenance.md)。
 
 ## 1. 定位与原则
 
@@ -102,10 +103,10 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
   地址（198.18.0.2:53），宿主把它设为系统的 DNS 服务器（6.2 节）。栈取 `RunOptions.tun_stack`，没有指定时用
   配置里的，配置也没写时默认 gVisor（构建不带 `with_gvisor` 时为 mips）；扩展开启了 `includeAllNetworks` 时（D19，
   扩展在 attach 时告诉 engine，即 `engine.Options.IncludeAllNetworks`），不论栈来自哪里，`system` 和 `mixed` 都
-  换成这个默认栈，并记一条警告日志（3.4 节），解析后再核对一次，留下这两种栈就拒绝。打开 mihomo DNS；`allow_lan` 为 false 时，入站同样限制在回环地址。
-  准入最后核对 TUN 的地址和 MTU。用户关掉 `ipv6`，或者系统没有全局单播 IPv6 地址时，mihomo 不给 TUN 配 IPv6
-  地址；扩展的 utun 自带 fdfe:dcba:9876::1，所以在扩展里只有前一种情况。这时宿主仍把 IPv6 路由进隧道，这部分
-  流量被丢弃。
+  换成这个默认栈，并记一条警告日志（3.4 节），解析后再核对一次，留下这两种栈就拒绝。打开 mihomo DNS；
+  `allow_lan` 为 false 时，入站同样限制在回环地址。准入最后核对 TUN 的地址和 MTU。用户关掉 `ipv6`，或者系统没有
+  全局单播 IPv6 地址时，mihomo 不给 TUN 配 IPv6 地址；扩展的 utun 自带 fdfe:dcba:9876::1，所以在扩展里只有前一种
+  情况。这时宿主仍把 IPv6 路由进隧道，这部分流量被丢弃。
 - **fd 模式下描述符的归属**：sing-tun 在 mihomo 关闭或替换 TUN 时，会关掉 TUN 所用的描述符，所以 mihomo 拿到的
   不是宿主的描述符，而是 engine 复制的一份（`F_DUPFD_CLOEXEC`），在应用配置前填进 `tun.file-descriptor`。TUN
   设置与 mihomo 正在用的相同时沿用同一份副本，`Reload` 不重建 TUN；设置变了就给一份新的，旧的由 mihomo 关闭。
@@ -195,7 +196,8 @@ Windows 服务以 SYSTEM 身份运行内核，下面每一项都必须满足，�
 | 5 | 持久化节点选择（`profile.store-selected`） | 开机恢复后要回到用户上次选的节点 | 强制为 true；测试选择节点后重启内核，确认仍是该节点 |
 | 6 | 组网出站只用作出站（[mesh.md](mesh.md) 第 4 节）：`easytier` 的 `enable-exit-node` 强制 false、`no-listener` 强制 true，`proxy-networks`、`mapped-listeners`、`listeners` 清空 | 这些选项让组网里的其他设备把本机当出口、进入本机所在的子网，向它们公布监听地址，或在所有网卡上接受它们的连接；以 SYSTEM 身份运行时会把用户的网络暴露出去 | 改写顶层 `proxies` 和 provider 的 `payload`；远程 provider 和带 `override-expr` 的 provider 在 `override-expr` 末尾追加同样效果的表达式，mihomo 对下载来的每个出站最后执行它们。测试覆盖配置、覆写、内联和远程 provider，并用 mihomo 的表达式求值器核对；同时确认三种组网出站的 `state-dir` 越出 home 时被拒绝（Tailscale 只在 `with_gvisor` 构建里有，CI 另外带这个标签跑） |
 
-拼装时，第 6 项关闭的每个选项在报告里给出 `mesh_restricted` 警告。不监听时打洞是否可用仍待实测（mesh.md 第 8 节）。
+拼装时，第 6 项关闭的每个选项在报告里给出 `mesh_restricted` 警告。EasyTier 不监听时能否打洞还要实测
+（[mesh.md](mesh.md) 第 8 节）。
 
 流水线还在所有模式下强制两项：`iptables.enable: false`（仅 Linux，失败时 mihomo 会直接退出进程）和
 `ntp.write-to-system: false`（修改系统时间需要用户未必拥有的权限，不能由 SYSTEM 代劳）。
@@ -203,9 +205,10 @@ Windows 服务以 SYSTEM 身份运行内核，下面每一项都必须满足，�
 ### 3.4 构建标签
 
 mihomo 提供的可选标签有 `with_gvisor`、`with_low_memory`、`no_tailscale`、`no_zerotier`、
-`no_easytier`、`no_fake_tcp`。任何情况下都不带 `cmfa`。Windows 服务带 `with_gvisor` 构建，四种 TUN 栈都提供，由用户在设置里选择（决策 D3）；
-macOS NE 同样带 `with_gvisor` 构建（D3 在 macOS 上的决定，`scripts/build_apple.py` 的默认标签），fd 模式默认用
-gVisor 栈。M1 的实测数据如下（v1.19.33，Go 1.27.3，`-trimpath -ldflags "-s -w"`，`./service` 的二进制体积）：
+`no_easytier`、`no_fake_tcp`。任何情况下都不带 `cmfa`。Windows 服务带 `with_gvisor` 构建，四种 TUN 栈都提供，
+由用户在设置里选择（决策 D3）；macOS NE 同样带 `with_gvisor` 构建（D3 在 macOS 上的决定，`scripts/build_apple.py`
+的默认标签），fd 模式默认用 gVisor 栈。各标签组合下 `./service` 的二进制体积（v1.19.33，Go 1.27.3，
+`-trimpath -ldflags "-s -w"`）：
 
 | 标签 | Windows amd64 | macOS arm64 |
 | --- | --- | --- |
@@ -222,16 +225,16 @@ gVisor 栈。M1 的实测数据如下（v1.19.33，Go 1.27.3，`-trimpath -ldfla
   构建里编入，所以单独加 `no_tailscale` 没有效果；gVisor 栈本身约 3.8 MiB。
 - TUN 栈：`system` 和 `mips`（mihomo 的默认栈）总是可用；`gvisor` 和 `mixed` 需要 `with_gvisor`，否则要到创建
   TUN 时才报错，所以准入流水线在缺少该标签时直接以 `invalid_config` 拒绝这两种栈，不论它来自配置、覆写还是
-  `RunOptions.tun_stack`。用户在设置页的"TUN 协议栈"里选（D3，ui.md §8），默认"跟随配置"；两个平台各自的
-  默认值等实测后再定。
+  `RunOptions.tun_stack`。用户在设置页的"TUN 协议栈"里选（D3，ui.md §8），两个平台都默认"跟随配置"；各平台的
+  默认栈在真机验收后再定（[maintenance.md](maintenance.md) 2.1、2.2 节）。
 - macOS NE 开启 `includeAllNetworks` 时，`system` 和 `mixed` 栈不能工作，只剩 `mips` 和 `gvisor`。sing-tun 有
   对应的检查（`StackOptions.IncludeAllNetworks`），但 mihomo 不传这个选项，所以由 engine 在 fd 模式下把这两种栈
   换成 gVisor（3.1 节）。`includeAllNetworks` 默认关闭，用户可以在设置页打开（D19，ui.md §8），下次连接时生效；
   设置页同时把这两种栈置灰，已选的改成 gVisor。CI 的 fd 模式测试对这两种栈再各跑一次打开它的情形。
 - 系统扩展的可执行文件（Release，`with_gvisor`）由 Xcode 在签名前做 `strip -x`（`STRIP_STYLE: non-global`），
   从 73.3 MiB 减到 61.3 MiB，与上表的服务相当。
-- 各标签组合在两个平台上都能编译。真实 TUN 下，四种栈在 Linux 的自管模式里都能建立 TUN 并转发流量
-  （Lima 虚拟机内的网络命名空间实测，Ubuntu 26.04 aarch64，见第 11 节）；Windows 上的 wintun 待 M4 实测。
+- 各标签组合在两个平台上都能编译。真实 TUN 下，四种栈在 Linux 的自管模式里都能建立 TUN 并转发流量（CI 的
+  网络命名空间测试，见第 11 节）；Windows 上 wintun 的真机验收见 [maintenance.md](maintenance.md) 2.1 节。
 
 mihomo 的 GitHub 默认分支 `main` 是伪装项目，真正的代码在 `Alpha`（开发）和 `Meta`（稳定）分支。
 发布构建钉在 `Meta` 的 tag 上，当前为 v1.19.33（即 `Meta` 的 `3f27ef3`）。mihomo 的 go.mod 把
@@ -337,9 +340,9 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
   `includeAllNetworks`：它属于 macOS 的 VPN 配置，连接时才生效，由扩展在 attach 时告诉 engine（6.2 节）。
 - `ListRules` 的 `Rule.entry_id` 和连接快照的 `Connection.rule_entry_id` 是运行中的规则来自哪个规则条目
   （兜底是 `fallback`）；订阅自带的规则和覆写插入的规则为空。
-- `InspectSource`、`ListGeoCategories` 只读，不需要内核在运行，两种宿主都提供（macOS 上仍要隧道已连接，6.3 节）。`InspectSource` 读不了订阅时
-  返回 `invalid_config`；`ListGeoCategories` 在 home 里没有某个文件时那一类为空，`ServiceHost` 改用应用附带的
-  分类名清单。
+- `InspectSource`、`ListGeoCategories` 只读，不需要内核在运行，两种宿主都提供（macOS 上仍要隧道已连接，6.3 节）。
+  `InspectSource` 读不了订阅时返回 `invalid_config`；`ListGeoCategories` 在 home 里没有某个文件时那一类为空，
+  `ServiceHost` 改用应用附带的分类名清单。
 - `Stop` 对已停止的内核不做任何事。开发模式下 `Claim` 直接成功、`GetInfo` 报告调用者就是属主，因为开发 socket
   只接受运行服务的那个用户。
 - Windows 服务上，属主以外的调用者只能调用 `GetInfo` 和 `Claim`，其余方法得到 `not_claimed`（可以认领：服务没有
@@ -360,7 +363,7 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 | `invalid_request` | 请求本身不合法：缺少字段、未知枚举、不存在的组或节点、组不接受选择等 | 否 |
 | `unsupported_protocol_version` | 协议版本不一致 | 否 |
 | `unsupported_method` | 当前宿主不提供该方法或该能力（如开发服务上的 TUN 和系统代理） | 否 |
-| `not_implemented` | 方法已定义、尚未实现 | 否 |
+| `not_implemented` | 方法已定义，但当前宿主没有实现 | 否 |
 | `not_claimed` | Windows 服务不属于调用者，但可以认领（5.4 节） | 否 |
 | `owned_by_other_user` | Windows 服务属于另一个用户，他的隧道正在运行 | 否 |
 | `service_restarting` | 认领换了属主，服务要重启才能打开新属主的 home；稍后再认领 | 是 |
@@ -441,7 +444,7 @@ UI 必须使用 Nuitka standalone 模式。onefile 模式会解压到 `%TEMP%` �
 
 - 服务名 `SolarisService`，以 LocalSystem 身份运行，自动启动。
 - SCM 故障恢复：依次在 5 s、15 s、60 s 后重启。
-- 接受的控制事件：Stop、Shutdown、SessionChange（SessionLogon、SessionLogoff）。PowerEvent（唤醒后重置连接）还没有做。
+- 接受的控制事件：Stop、Shutdown、SessionChange（SessionLogon、SessionLogoff）。PowerEvent（唤醒后重置连接）未实现。
 - **一个进程只服务一个属主**：启动时读 `owner.json`，在属主的 home 里打开 engine；没有属主时不打开 engine，只回答
   `GetInfo` 和 `Claim`。认领换了属主时（包括第一次认领），服务写好新的 `owner.json`，回复 `service_restarting`，
   启动一个 `solaris-service.exe -restart` 辅助进程，然后退出；辅助进程等服务停下后再启动它，新进程打开新属主的
@@ -453,8 +456,8 @@ UI 必须使用 Nuitka standalone 模式。onefile 模式会解压到 `%TEMP%` �
   打开。服务启动时属主已经登录（服务重启、升级）就立即恢复；否则（开机）等属主的 SessionLogon。开机后先登录的
   其他用户因此不会走属主的隧道，与 D5 一致。
 - 服务停止（关机、升级）时还原属主的系统代理，`was_running` 保留，下次启动时一并恢复。
-- 超时逐层递减，参考 hypervpn：UI 请求超时 > 服务处理超时 > 内核启动或停止超时。
-  这样内核卡死时，服务的操作锁和 SCM 的停止流程不会被一并卡住。尚未实现。
+- 超时逐层递减未实现。设计参考 hypervpn：UI 请求超时 > 服务处理超时 > 内核启动或停止超时，这样内核卡死时，
+  服务的操作锁和 SCM 的停止流程不会被一并卡住。
 
 ### 5.3 管道与客户端校验
 
@@ -472,11 +475,11 @@ PID 来防止管道名被抢注。
    同样持有到连接结束，这期间文件不能被改写、改名或删除；
 3. 客户端必须在用户会话里（会话 ID 不为 0）；读取它 token 的用户 SID 和会话 ID，作为属主判断的身份；
 4. 签名的发布构建（链接时设 `product.SignedRelease=true`）还要求客户端的 Authenticode 签名为 Windows 信任、签名者
-   的显示名是 `product.WindowsSigner`。不检查吊销：那可能要联网，而且每条连接都要做。签名以后才有这样的构建，
-   `product.WindowsSigner` 在那之前是占位值；
+   的显示名是 `product.WindowsSigner`。不检查吊销：那可能要联网，而且每条连接都要做。目前没有这样的构建，
+   `product.WindowsSigner` 是占位值；
 5. 最后确认客户端进程仍在运行。
 
-**未签名的构建**：首发的 Windows 安装包不签名（D29），`scripts/build_windows.py` 链接服务时只注入版本，
+**未签名的构建**：Windows 安装包目前不签名（D29），`scripts/build_windows.py` 链接服务时只注入版本，
 `SignedRelease` 保持默认的 `"false"`，服务把空的签名者交给 `peer.PipeClientVerifier`，只跳过第 4 项。第 1、2、3、5 项
 照常：客户端必须就是服务旁边那个 `Solaris.exe` 文件本身（卷序列号和文件 ID 相同，连接期间锁住），复制到别处的同一个
 程序、同名的其他程序都会被断开。安装目录 `C:\Program Files\Solaris` 只有管理员能写，所以能换掉这个文件的人本来就
@@ -504,7 +507,8 @@ PID 来防止管道名被抢注。
   `not_claimed` 时按内核停止作答，不认领。两个用户同时开着界面时，各自的轮询因此不会把服务抢来抢去（每换一次
   属主都要重启服务）。其余请求遇到 `not_claimed` 就先认领，等过服务重启再发一次。遇到 `owned_by_other_user` 时，
   概览页标题栏提示"其他用户正在使用"，连接按钮不可用。
-- 内核运行中能否由管理员接管其他用户的隧道（D5b）还没定，没有实现；接管会加在 `owner.Service.Claim` 里。
+- 内核运行中由管理员接管其他用户的隧道未实现，做不做待定（决策 D5b，[decisions.md](decisions.md)）；要做的话加在
+  `owner.Service.Claim` 里。
 
 ### 5.5 系统代理
 
@@ -536,13 +540,15 @@ Solaris.app/Contents/
 
 - 源码、构建与签名见 [apple/README.md](../apple/README.md)：XcodeGen 工程 `apple/project.yml`，原生部分的构建
   脚本 `scripts/build_apple.py`，整个 app 的组装与签名 `scripts/build_app.py`。只构建 arm64（D2）；扩展和管理库的
-  最低系统版本是 macOS 15.0，app 取 bundle 里所有库要求的最高版本（PySide6 6.12.0 要求 26.0，见 apple/README.md）。
+  最低系统版本是 macOS 15.0，app 取 bundle 里所有库要求的最高版本（PySide6 6.12.0 要求 26.0，见 apple/README.md）；
+  支持的最低 macOS 待定（决策 D28）。
 - 需要 Developer ID 签名、公证，以及 `packet-tunnel-provider-systemextension` entitlement。可执行文件叫
   `SolarisUI`，因为卷不区分大小写，`MacOS/solaris/` 是 Python 包的数据目录。
 - 管理库用 `OSSystemExtensionRequest` 激活扩展（用户需在系统设置中批准；包内的扩展总是替换其他构建激活的
   扩展）、配置 `NETunnelProviderManager`、启停隧道、查询状态、收发 provider message。配置和启动时按设置写
-  `includeAllNetworks`（D19，默认关闭；`MacExtensionHost` 取自界面的 `RunOptions.include_all_networks`，这是 Python 侧的字段，不进协议）；打开它时同时设 `excludeLocalNetworks`，局域网流量（打印机、AirDrop、
-  Bonjour）照旧不进隧道。隧道连着时不改这两项：扩展只在 attach 时读一次，所以改动下次连接时生效。C 接口是
+  `includeAllNetworks`（D19，默认关闭；`MacExtensionHost` 取自界面的 `RunOptions.include_all_networks`，这是
+  Python 侧的字段，不进协议）；打开它时同时设 `excludeLocalNetworks`，局域网流量（打印机、AirDrop、Bonjour）照旧
+  不进隧道。隧道连着时不改这两项：扩展只在 attach 时读一次，所以改动下次连接时生效。C 接口是
   `apple/Manager/SolarisManager.h`：调用阻塞到完成或超时，要在后台线程调用；本库交出的字符串和缓冲区由
   调用方用 `solaris_manager_free` 释放。
 - hypervpn-desktop 的 `src/packet-engine/native/macos/SystemNetworkExtension/` 和它的 NE 管理库可以作为参考。
@@ -589,7 +595,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 - **方法**：除 `Claim`、`SetSystemProxy` 外与 Windows 相同。隧道的启停走管理库，配置经 `Start` / `Reload` 走
   provider message；没有 attach 的隧道时，消息得到 `not_running`。`MacExtensionHost` 发出的 `RunOptions` 总是开着
   TUN、关着系统代理，不论设置怎么写（ui.md 第 8 节"接管方式"）。
-- **消息大小**：单条 provider message 的上限需要实测，它决定 `Reload` 能否直接携带大配置。
+- **消息大小**：单条 provider message 的系统上限未知（待定，决策 D8），它决定 `Reload` 能否直接携带大配置。
+  上限不够时，大配置可以改经主应用和扩展共有的 App Group `group.dev.tschen.solaris` 传递，未实现。
 - 做法与 hypervpn 一致，见它的 `NetworkExtensionManager.swift`（`providerExchange`）和
   `PacketTunnelProvider.swift`（`handleAppMessage`）。
 
@@ -600,8 +607,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 - 控制客户端只依赖 protobuf：Windows 上是命名管道的一条长连接，macOS 上通过 ctypes 调用管理库。
 - 宿主抽象 `TunnelHost` 有 `ServiceHost`（Windows 服务；开发模式下走本地 socket）和 `MacExtensionHost`（macOS
   打包的 app，经管理库发 provider message，`src/solaris/host/extension.py`）两个实现；测试和预览用模拟宿主。
-- 计划中的 Tor 出口（M10）把 arti 做成 pyo3 扩展模块 `solaris_tor`，运行在界面进程里，不进服务和系统扩展
-  （[exits.md](exits.md) 第 4 节）。
+- Tor 出口未实现。设计是把 arti 做成 pyo3 扩展模块 `solaris_tor`，运行在界面进程里，不进服务和系统扩展
+  （D23，[exits.md](exits.md) 第 4 节）。
 
 界面各部分的设计见 [ui.md](ui.md)。
 
@@ -622,8 +629,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 | 其他用户的流量走属主的隧道 | 属主注销时停止隧道，只在属主登录时恢复（D5） |
 | 系统代理留在失效的端口上 | 停止、注销、服务停止时写回属主原来的设置；写不了就存着，等他下次登录 |
 | 局域网暴露 | `allow-lan` 和监听 `0.0.0.0` 的 listeners 默认关闭，由用户显式开启 |
-| 链式出口的回环端口被同一台机器的其他用户使用（M10） | 只监听回环地址，要求每次界面启动随机生成的账号密码 |
-| Tor 中继发来的数据攻击解析代码（M10） | arti 运行在普通用户权限的界面进程里，不进 SYSTEM 服务和系统扩展 |
+| Tor 出口的回环端口被同一台机器的其他用户使用 | 只监听回环地址，要求每次界面启动随机生成的账号密码（Tor 出口未实现） |
+| Tor 中继发来的数据攻击解析代码 | arti 运行在普通用户权限的界面进程里，不进 SYSTEM 服务和系统扩展（Tor 出口未实现） |
 | UI 与内核侧版本不一致 | 消息体（Windows 上还有帧头）携带协议版本，不一致时拒绝；Windows 安装器同时更新 UI 与服务，macOS 的 UI 与扩展在同一个包里 |
 
 ## 9. 安装、升级与卸载
@@ -657,10 +664,9 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   - 验证：CI 的 `windows-installer` job 在 `windows-latest` 上构建不签名的安装包，由 `package/windows/smoke-test.ps1`
     依次安装、打开界面、在界面运行时升级、在界面运行时卸载（保留数据）、再安装、以 `/PURGE` 卸载，核对文件、服务的
     路径、启动方式、账户、恢复策略与管道监听、注册表、快捷方式、计划任务，升级和卸载时界面自己退出（退出码 0，
-    没有留下 `ui.lock`），以及卸载后什么都没留下。不建 TUN，不连接。真机上
-    的 UAC、开机恢复和隧道实测要等 Windows 虚拟机（roadmap.md 的 M4）。
-- **macOS**：拖入"应用程序"文件夹完成安装，首次连接时激活系统扩展。卸载前停用扩展（`deactivationRequest`）还没做
-  （apple/README.md"尚未完成"）。
+    没有留下 `ui.lock`），以及卸载后什么都没留下。不建 TUN，不连接。真机上的 UAC、开机恢复和隧道见
+    [maintenance.md](maintenance.md) 2.1 节。
+- **macOS**：拖入"应用程序"文件夹完成安装，首次连接时激活系统扩展。卸载前停用扩展（`deactivationRequest`）未实现。
 
 ## 10. 构建与发布
 
@@ -678,14 +684,14 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   macOS 相同；Qt 的 OpenSSL 后端也不带，TLS 用 Schannel，CPython 自带的 libssl 和 libcrypto 留着给 `ssl` 模块），
   组装成 5.1 节的 `build/windows/Solaris/`，检查必需的文件都在、没有链接、每个 exe、dll、pyd 都是 x64，再生成只含
   这些文件的卸载清单并编译 `build/windows/Solaris-<版本>-windows-x64-setup.exe`。`--skip-installer` 停在安装目录，
-  `--installer-only` 只从已有的安装目录编译安装包，签名步骤将来插在两者之间。
-- 需要的证书：Apple Developer ID；Windows Authenticode 等签名以后（首发不签名，D29）。
+  `--installer-only` 只从已有的安装目录编译安装包，有了签名后，签名步骤插在两者之间。
+- 需要的证书：Apple Developer ID。Windows 安装包目前不签名（D29），还不需要 Authenticode 证书。
 - **发布工作流** `.github/workflows/release.yml`：`v*` 标签或手动触发，在 `release` Environment 里经审批后运行；
   macOS 上建临时钥匙串、签名、`notarytool` 公证、staple，产出 `Solaris-<版本>-macos-arm64.dmg` 和它的 `.sha256`；
-  Windows 上构建安装目录、（暂缺的）签名、编译安装包，用 `smoke-test.ps1` 在 runner 上装一遍、升级、卸载，产出
-  `Solaris-<版本>-windows-x64-setup.exe` 和它的 `.sha256`。首发不签名（D29），签名这一步只打一条警告；签名以后先给
-  安装目录里的 exe、dll、pyd 签名并在链接服务时打开 `SignedRelease`（服务要求界面与它同一签名者，5.3 节），再经
-  makensis 的 `!finalize`、`!uninstfinalize` 给安装器和卸载器签名。两个安装包存为 workflow artifact；对标签，最后一个
+  Windows 上构建安装目录、签名、编译安装包，用 `smoke-test.ps1` 在 runner 上装一遍、升级、卸载，产出
+  `Solaris-<版本>-windows-x64-setup.exe` 和它的 `.sha256`。Windows 目前不签名（D29），签名这一步只打一条警告；有了
+  签名后，先给安装目录里的 exe、dll、pyd 签名并在链接服务时打开 `SignedRelease`（服务要求界面与它同一签名者，5.3 节），
+  再经 makensis 的 `!finalize`、`!uninstfinalize` 给安装器和卸载器签名。两个安装包存为 workflow artifact；对标签，最后一个
   job 再经一次审批，核对两个安装包，打出含 vendor 依赖的源代码包，写 `SHA256SUMS`，把这四个文件放进一个**草稿**
   GitHub Release，由人试过安装包、写好说明后发布（release.md 第 1.1 节）。
 - 许可：本项目以 GPL-3.0-only 发布（[LICENSE](../LICENSE)）；服务和扩展链接的 mihomo 同为 GPL-3.0。
@@ -747,16 +753,18 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
     （`internal/owner`），分发器的放行和错误码见 `internal/control/host_test.go`；
   - Windows CI：客户端校验（真实的命名管道、文件 ID、锁住映像、签名者）、home 目录的 ACL 与拒绝链接、WinINet
     代理设置的读写与还原（只在 CI 上改代理）。服务的安装、升级与卸载由 `windows-installer` job 覆盖（第 9 节）；
-    模拟属主 token 和认领后的服务重启要 SYSTEM 身份和登录的用户，留到 Windows 虚拟机；
+    模拟属主 token 和认领后的服务重启要 SYSTEM 身份和登录的用户，CI 不覆盖；
   - Python：用模拟宿主测试 models 与 ViewModel；模拟宿主的配置检查、错误码和措辞跟着真实服务走，端到端测试
     核对两者一致。
 - **竞态检查**：`go test -race` 会报出 mihomo 自身在 `log.SetLevel` 上的竞态（见 3.2 节），所以 CI 不带
   `-race`；分发器的订阅代码可以单独用 `-race` 检查。
-- **需要真机验收**：真实 TUN 流量、系统代理模拟写入、安装与升级、系统扩展激活。
+- **真机验收**：CI 覆盖不到的部分（真实 TUN 流量、系统代理的模拟写入、真机上的安装与升级、系统扩展激活）见
+  [maintenance.md](maintenance.md) 第 2 节。
 
 ## 12. 待定事项
 
-待决策的事项、最晚何时决定以及已经做出的决策，统一记录在 [roadmap.md](roadmap.md) 的决策一节。
+决策都记录在 [decisions.md](decisions.md)。与本文有关的待定决策有三项：管理员接管运行中的隧道（D5b，5.4 节）、
+provider message 的大小上限（D8，6.3 节）和支持的最低 macOS（D28，6.1 节）。
 
 ## 13. 参考
 

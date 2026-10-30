@@ -7,7 +7,8 @@ Xcode 工程由 XcodeGen 从 `project.yml` 生成，包含两个 target（docs/a
 | SolarisManager | `SolarisManager.dylib`，C ABI | 激活和替换系统扩展、配置 `NETunnelProviderManager`、启停隧道、查询状态、用 `sendProviderMessage` 收发控制消息；iCloud 备份（CloudKit） |
 | SolarisTunnel | `dev.tschen.solaris.tunnel.systemextension` | `NEPacketTunnelProvider`：设置隧道网络和 DNS、取得 utun fd、运行内核；`handleAppMessage` 把消息交给 Go 分发器 |
 
-只构建 arm64（D2），最低系统版本 macOS 15.0（主应用实际要求的版本见“组装 Solaris.app”）。
+只构建 arm64（D2），扩展和管理库的最低系统版本是 macOS 15.0（主应用实际要求的版本见“组装 Solaris.app”）。决策
+编号见 docs/decisions.md，测试 Mac 上的验收见 docs/maintenance.md 2.2、2.3 节。
 
 ## 工程结构
 
@@ -143,7 +144,8 @@ uv run --with nuitka==4.2.2 python scripts/build_app.py --unsigned
   `ditto` 保留；hypervpn 同样的布局能通过公证。
 - **最低系统版本**：PySide6 6.12.0（`uv.lock` 锁定的版本）的 wheel 标着 macOS 14.0，绑定库实际的部署版本却是
   26.0，所以脚本把 app 的 `LSMinimumSystemVersion` 设为 bundle 里所有 Mach-O 要求的最高版本（现在是 26.0），
-  并打印警告；要支持 macOS 15，得把 PySide6 钉在 6.11.x（hypervpn 用的 6.11.2 是 15.0）。扩展和管理库仍是 15.0。
+  并打印警告；要支持 macOS 15，得把 PySide6 钉在 6.11.x（hypervpn 用的 6.11.2 是 15.0），见待决策的 D28。扩展和
+  管理库仍是 15.0。
 - **JIT**：主应用的 entitlement 带 `com.apple.security.cs.allow-jit`，Qt Quick 的 JavaScript 引擎在 hardened
   runtime 下要用（hypervpn 同样需要）；它不需要描述文件授权。
 - 脚本不运行、不安装 app，也不公证。
@@ -162,8 +164,8 @@ Environment，Ember-Moth 批准后才拿到机密。标签必须是 `v<pyproject
 5. 两个文件作为 workflow artifact `solaris-<版本>-macos-arm64` 上传，保留 30 天；
 6. 无论成败都删除钥匙串、描述文件和 API Key。
 
-公证由 `scripts/notarize.py` 完成，它只在 GitHub Actions 里运行。还不发布 GitHub Release（M6）。本机试过的
-部分：完整的签名构建和校验，以及做 DMG、签名、`hdiutil verify` 和校验和（49 MB）；公证和工作流本身没有运行过。
+公证由 `scripts/notarize.py` 完成，它只在 GitHub Actions 里运行。对 `v*` 标签，工作流最后的 release job 把两个平台的
+安装包放进一个草稿 GitHub Release（docs/release.md §1.1）；发布的步骤见 docs/maintenance.md 第 4 节。
 
 ## GEO 数据
 
@@ -265,24 +267,19 @@ mihomo home 在扩展容器的 `Application Support/Solaris/core`，`startTunnel
 - 每份快照是私有数据库默认 zone 里一条 `Snapshot` 类型的记录：字符串字段 `info`（Python 写的 JSON：时间、设备、
   版本、配置和方案的份数、大小），资源字段 `snapshot`（快照本身）。列出用 `CKQuery`（`TRUEPREDICATE`），只取 `info`。
 - 没有这个 container 的 entitlement 时（不签名或 ad hoc 签名的构建），CloudKit 会抛出结束进程的 Objective-C 异常，
-  所以 `CloudBackup` 先用 `SecTaskCopyValueForEntitlement` 读自己进程的 entitlement，没有就不创建 `CKContainer`。
-  这一点在开发机上用不签名的 dylib 试过：状态是 `UNSUPPORTED`，其余调用返回"not signed for iCloud"，进程不受影响。
+  所以 `CloudBackup` 先用 `SecTaskCopyValueForEntitlement` 读自己进程的 entitlement，没有就不创建 `CKContainer`：
+  状态是 `UNSUPPORTED`，其余调用返回"not signed for iCloud"，进程不受影响。
 - 操作用 `userInitiated` 的服务质量（更低的会被系统推迟），超时时取消操作。
 
-### 要在 CloudKit Console 里做的事（一次）
+### Schema
 
-Production 环境不能由应用自动建 schema，所以 record type 要先在 Development 里建好再部署：
+Production 环境不能由应用自动建 schema：`Snapshot` record type（`info` 为 String，`snapshot` 为 Asset，`recordName`
+带 Queryable 索引，列出快照的查询要用）要在 CloudKit Console 的 Development 环境里建好，再部署到 Production。
+Production 的 schema 之后只能加不能删，所以字段只加不改。步骤见 docs/maintenance.md 2.3 节。没部署时，列出快照报
+"The iCloud container has no Snapshot record type; deploy its schema"，保存报 CloudKit 的"Cannot create new type"，
+都会写在设置页 iCloud 一行。
 
-1. 打开 [CloudKit Console](https://icloud.developer.apple.com)，选 container `iCloud.dev.tschen.solaris`，
-   进 Development 环境的 Schema → Record Types，新建 `Snapshot`，加两个字段：`info`（String）、`snapshot`（Asset）。
-2. 同一 record type 的 Indexes 里给 `recordName` 加一个 Queryable 索引（列出快照的查询要用；不加会报
-   "Field 'recordName' is not marked queryable"）。
-3. Deploy Schema Changes，部署到 Production。Production 的 schema 之后只能加不能删。
-
-没部署时，列出快照报"The iCloud container has no Snapshot record type; deploy its schema"，保存报 CloudKit 的
-"Cannot create new type"，都会写在设置页 iCloud 一行。
-
-### 签名材料（不需要改，核对即可）
+### 签名材料
 
 App ID `dev.tschen.solaris` 已开 iCloud（CloudKit），container 已建（见“Apple Developer 配置”）。`Solaris Developer ID`
 描述文件要授权 `com.apple.developer.icloud-container-identifiers`（含 `iCloud.dev.tschen.solaris`）、
@@ -291,44 +288,13 @@ App ID `dev.tschen.solaris` 已开 iCloud（CloudKit），container 已建（见
 com.apple.developer.icloud-container-identifiers"，在开发者网站编辑 App ID 的 iCloud → Configure，勾上这个 container，
 重新生成 `Solaris Developer ID`，更新 `MACOS_APP_PROFILE_BASE64`。
 
-### 测试 Mac 上的验证
-
-用签名、公证过的 app，登录一个测试用的 Apple 账户：
-
-1. 设置页「备份与同步」有 iCloud 一行，写「未开启」。打开开关，确认框写明不加密、含订阅链接和配置原文；「开启」后
-   写「上次备份：刚刚 · 成功」。CloudKit Console 的 Production → Records（用同一个 Apple 账户登录，Private
-   Database，`Snapshot`）里有一条记录。
-2. 改一个设置或导入一份订阅，约 35 秒后多一条记录；什么都不改时不再多。「立即备份」每次都多一条；超过 10 条后
-   最旧的被删掉。
-3. 另一台 Mac（或删掉 `~/Library/Application Support/Solaris` 后）打开开关：不上传空数据；「从云端恢复…」列出快照，
-   恢复后订阅、方案、覆写、设置都回来，订阅重新下载。
-4. 「更多」→「删除云端备份」后 Console 里记录全部消失，iCloud 一行写「尚未备份」。
-5. 断网后「立即备份」：写「上次备份失败：无法连接，稍后会再试」；联网后一小时内（或下次启动）自动补上。
-6. 在系统设置里退出 iCloud：一行写「系统未登录 iCloud」，「打开系统设置」打开 Apple 账户那一页；重新登录后一分钟
-   内恢复。
-7. `build_app.py --unsigned` 的 app：一行写「仅签名的安装版可用」，打开设置页不崩溃。
-8. 账户的 iCloud 空间满时，失败原因是「储存空间已满」。
-
-## 尚未完成
-
-- **最低系统版本**：PySide6 6.12.0 让 app 要求 macOS 26（见“组装 Solaris.app”，roadmap 的 D28）。
-- **测试 Mac 上的实测**：激活、批准、连接；utun 描述符的查找、四种栈经过 utun 的流量、DNS 劫持、断开与
-  重连后描述符的归属；provider message 的大小上限（D8）；app 在 hardened runtime 下的启动；`includeAllNetworks`：
-  打开后系统默认绕开隧道的流量确实进入隧道、局域网流量不进，扩展自己（mihomo 的出站）的流量不被卷回隧道，
-  `mips` 和 `gvisor` 栈都能工作，保存配置时系统是否再次请用户允许；断开时导入订阅后连接，`Start` 之前读订阅
-  花多久。
-- **发布工作流**还没有运行过（要在 `release` Environment 里批准）；公证结果未知。
-- **iCloud 备份**没在真机上运行过：CloudKit 的 schema 还要部署（见“iCloud 备份”），之后按那里的步骤在测试 Mac 上验证。
-- 批准扩展、需要重启等新错误码的界面文案；卸载前停用扩展（`deactivationRequest`）、扩展说明文字的
-  本地化。
-
 ## Apple Developer 配置
 
 分发方式是 Developer ID（不上 App Store），系统扩展是 PacketTunnel。参照 hypervpn-desktop 已跑通的做法。
 
 **Team ID**：`GY9ZKZMAZA`
 
-### 已建好（2026-10-29）
+### 标识
 
 | 类型 | 标识 | 能力 |
 | --- | --- | --- |
@@ -337,7 +303,7 @@ com.apple.developer.icloud-container-identifiers"，在开发者网站编辑 App
 | App Group | `group.dev.tschen.solaris` | 留给大配置的共享容器（D8） |
 | iCloud Container | `iCloud.dev.tschen.solaris` | iCloud 备份（storage.md 第 5 节） |
 
-### 签名材料（2026-10-30 已齐）
+### 证书与描述文件
 
 - **证书**：Developer ID Application，G2 签发，2027-11-29 到期。证书每年要续：续期后重新生成两份描述文件，再更新
   `MACOS_CERTIFICATE_*` 和两个描述文件机密。新建证书要在开发者网站上选 G2 Sub-CA；G1 签发的证书只能用到
@@ -346,12 +312,10 @@ com.apple.developer.icloud-container-identifiers"，在开发者网站编辑 App
   `group.dev.tschen.solaris`。
 - **公证**：Herta Network LLC 的 Team Key `2QSRW72GKA`（Developer 权限）。
 
-### 还要准备（M5 开始前）
+### 测试机与调试签名
 
-- **测试机**：一台单独的 Apple Silicon Mac 或 macOS 虚拟机。系统扩展会创建 utun，不在开发机上运行。
-- **调试签名**（可选）：登记测试 Mac 的 Provisioning UDID，用 Apple Development 证书建两份 macOS App Development
-  描述文件，调试时就不必每次公证。
-- **最低系统版本**：工程暂定 macOS 15.0（PySide6 绑定库实际的部署版本是 15.0），待确认。
+系统扩展会创建 utun，只在单独的 Apple Silicon 测试 Mac 或 macOS 虚拟机上运行，不在开发机上运行。调试时可以登记
+测试 Mac 的 Provisioning UDID，用 Apple Development 证书建两份 macOS App Development 描述文件，就不必每次公证。
 
 ### entitlement
 
@@ -367,16 +331,16 @@ com.apple.developer.icloud-container-identifiers"，在开发者网站编辑 App
 证书的 `.p12` 及其密码、两份描述文件、`.p8` 私钥都不进仓库，也不贴到对话里。发布 CI 从 GitHub 的 `release`
 Environment 读取它们；这个 Environment 只允许 `main` 分支和 `v*` 标签部署，每次部署都要 Ember-Moth 批准。
 
-| 名称 | 类型 | 状态 |
+| 名称 | 类型 | 内容 |
 | --- | --- | --- |
-| `APPLE_TEAM_ID` | 变量 | 已配置：`GY9ZKZMAZA` |
-| `MACOS_CERTIFICATE_NAME` | 变量 | 已配置：`Developer ID Application: Herta Network LLC (GY9ZKZMAZA)`，证书建好后核对 |
-| `APP_STORE_CONNECT_KEY_ID` | 变量 | 已配置：`2QSRW72GKA`（Herta Network LLC 的 Team Key，Developer 权限） |
-| `APP_STORE_CONNECT_ISSUER_ID` | 变量 | 已配置 |
-| `APP_STORE_CONNECT_API_KEY` | 机密 | 已配置 |
-| `KEYCHAIN_PASSWORD` | 机密 | 已配置（随机生成） |
-| `MACOS_CERTIFICATE_BASE64`、`MACOS_CERTIFICATE_PASSWORD` | 机密 | 已配置：G2 证书，SHA-1 `F462D4E8…FC33`，2027-11-29 到期 |
-| `MACOS_APP_PROFILE_BASE64`、`MACOS_NETWORK_EXTENSION_PROFILE_BASE64` | 机密 | 已配置：`Solaris Developer ID`、`Solaris Tunnel Developer ID`（2026-10-30），都授权上面这张证书 |
+| `APPLE_TEAM_ID` | 变量 | `GY9ZKZMAZA` |
+| `MACOS_CERTIFICATE_NAME` | 变量 | `Developer ID Application: Herta Network LLC (GY9ZKZMAZA)` |
+| `APP_STORE_CONNECT_KEY_ID` | 变量 | `2QSRW72GKA`（Herta Network LLC 的 Team Key，Developer 权限） |
+| `APP_STORE_CONNECT_ISSUER_ID` | 变量 | API Key 的 Issuer ID |
+| `APP_STORE_CONNECT_API_KEY` | 机密 | API Key 的 `.p8` 私钥 |
+| `KEYCHAIN_PASSWORD` | 机密 | 临时钥匙串的密码（随机生成） |
+| `MACOS_CERTIFICATE_BASE64`、`MACOS_CERTIFICATE_PASSWORD` | 机密 | G2 证书的 `.p12` 及其密码，SHA-1 `F462D4E8…FC33`，2027-11-29 到期 |
+| `MACOS_APP_PROFILE_BASE64`、`MACOS_NETWORK_EXTENSION_PROFILE_BASE64` | 机密 | `Solaris Developer ID`、`Solaris Tunnel Developer ID`，都授权上面这张证书 |
 
 `.github/workflows/release.yml` 读取它们（见“发布工作流”）。它和 `build_app.py` 一起校验证书、Team、有效期，
 以及两份描述文件的权限：主应用必须有 `system-extension.install`，扩展必须有

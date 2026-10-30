@@ -1,15 +1,13 @@
 # 数据存储与云备份
 
-本文描述界面侧用户数据的持久化方式（SQLite），以及如何把这些数据备份到 Google Drive 和 iCloud。
-相关决策是 [roadmap.md](roadmap.md) 中的 D13 和 D14，实施计划见 roadmap 的 M7。
-
-状态：存储层、不依赖云服务的备份、iCloud 提供方（第 5 节，还没在测试 Mac 上实测）和自动备份已实现；Google Drive
-（第 4 节）还没有实现，进度见 roadmap 的 M7。存储层的实现细节（线程、迁移）见 [ui.md](ui.md) §2，界面见 ui.md §8。
+本文描述界面侧用户数据的持久化方式（SQLite），以及如何把这些数据备份到文件、iCloud 和 Google Drive（未实现，
+第 4 节）。相关决策是 [decisions.md](decisions.md) 中的 D13 和 D14。存储层的实现细节（线程、迁移）见 [ui.md](ui.md) §2，
+界面见 ui.md §8。
 
 ## 1. 范围
 
 - **存储内容**：配置（订阅和本地文件，以及是否加入节点池）、覆写（全局一份，每个配置各一份）、分流方式与分流方案
-  （策略组和规则，见 [routing.md](routing.md)）、设置。
+  （策略组和规则，见 [routing.md](routing.md)）、应用内添加的组网网络、设置。
 - **不在本文范围内**：
   - Windows 服务在 `C:\ProgramData\Solaris\` 下保存的运行副本（architecture.md §5.1），它只用于开机恢复；
   - mihomo 自己的 provider 缓存和 `cache.db`；
@@ -23,17 +21,18 @@
 - **位置**：用户数据目录下的 `solaris.db`。macOS 为 `~/Library/Application Support/Solaris/`，Windows 为 `%LOCALAPPDATA%\Solaris\`。
 - **实现**：使用标准库 `sqlite3`，开启 WAL 模式。schema 版本记在 `PRAGMA user_version` 里，启动时按版本依次迁移。
 - **写入**：每次写入都在一个事务里完成。界面是单实例，所以同一时间只有一个进程打开数据库。
-- **主键**：配置、方案、规则条目和备份目标用 UUID 作主键；覆写、设置和本机状态以 `scope`、`key` 这样的自然键为主键，
-  这样两台设备上的"全局覆写"或同一个设置项是同一条记录；策略组的 `id` 只在所属方案内唯一（地区组的 `id` 由地区代码派生，
-  routing.md 第 9 节）。每行都记 `updated_at`；可以删除的记录采用软删除，记 `deleted_at`。备份恢复时靠这几项按记录合并；
-  将来如果改成多设备双向同步，也不需要改表结构。
-- **约束**：表都是 `STRICT`；`in_pool`、`hidden`、`enabled` 只能是 0 或 1；`plan_groups`、`plan_rules` 以外键指向
-  `plans`，方案被清除（见下）时一并删除。种类、方式这类取值由代码检查，不写成 `CHECK`，以后加一种取值不必重建表。
+- **主键**：配置、方案、规则条目、组网网络和备份目标用 UUID 作主键；覆写、设置和本机状态以 `scope`、`key` 这样的
+  自然键为主键，这样两台设备上的"全局覆写"或同一个设置项是同一条记录；策略组的 `id` 只在所属方案内唯一（地区组的
+  `id` 由地区代码派生，routing.md 第 9 节）。每行都记 `updated_at`；可以删除的记录采用软删除，记 `deleted_at`。
+  备份恢复时靠这几项按记录合并；将来如果改成多设备双向同步，也不需要改表结构。
+- **约束**：表都是 `STRICT`；`in_pool`、`unread`、`hidden`、`enabled` 只能是 0 或 1，`has_rules` 另可为 NULL；
+  `plan_groups`、`plan_rules` 以外键指向 `plans`，方案被清除（见下）时一并删除。种类、方式这类取值由代码检查，不写成
+  `CHECK`，以后加一种取值不必重建表。
 - **墓碑的保留**：软删除的记录（墓碑）保留 90 天（`database.TOMBSTONE_DAYS`）。每次启动时 `store.open_database`
   在单实例锁之内删掉 `deleted_at` 早于 90 天前的记录，涉及 `profiles`、`overrides`、`plans`、`plan_groups`、
-  `plan_rules` 和 `backup_targets`；被清除的方案连同它的策略组和规则一起删除。这样删掉的订阅链接、覆写原文不会
-  一直留在本机，快照里的墓碑也不会越积越多。清除改变快照内容，下一次自动备份会上传新的一份。`backup_targets`
-  不进快照，它的墓碑只为和其他表一致。
+  `plan_rules`、`mesh_networks` 和 `backup_targets`；被清除的方案连同它的策略组和规则一起删除。这样删掉的订阅链接、
+  覆写原文不会一直留在本机，快照里的墓碑也不会越积越多。清除改变快照内容，下一次自动备份会上传新的一份。
+  `backup_targets` 不进快照，它的墓碑只为和其他表一致。
 - **清除对合并的影响**：合并靠墓碑判断"本机删除得更晚"。墓碑清除后，本机分不出一条记录是"这里删过"还是"这里
   从来没有"，一律按后者处理，把快照里的记录当作新记录加回来：
   - 删除之前拍下的快照，在删除后 90 天之内合并，删除仍然生效；过了 90 天再合并，删掉的记录会回来，要再删一次；
@@ -60,7 +59,10 @@
 
 当前使用的配置存在 `routing_state` 里，作为"订阅自带"时用的配置（routing.md 第 9 节），不在 `state` 里。
 
-**旧数据**：项目首个版本发布之前不做旧数据的导入或迁移；表结构直接修改，`user_version` 保持 1。
+**表结构的修改**：`database.py` 的 `MIGRATIONS` 是一串迁移函数，第 n 个把版本 n−1 升到 n（ui.md §2.3）；版本 1 是
+1.0.0 的表结构。改表结构就在 `MIGRATIONS` 末尾追加一个迁移并配上测试，已有的迁移不再改动，用户已有的数据库都要能
+升上来。存下来的格式同样要让以后的版本读得懂：配置、备份快照（第 3 节，格式变了就把 `version` 加一，旧的照样能
+恢复）和方案 JSON。这条工作规则也写在 [maintenance.md](maintenance.md) 第 5 节。
 
 ## 3. 备份快照
 
@@ -95,7 +97,7 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
 - **读取**：超过 64 MiB、不是 JSON、`format` 不对或字段类型不对的文件报 `not_a_backup`（或 `too_large`）；`version`
   比本程序认识的新报 `newer_backup`。所有记录都在写入数据库之前检查过。
 
-**不加密**（D13）：快照里的订阅链接是明文，安全性完全依赖 Google 或 Apple 账户本身。开启备份时，界面要明确告知用户
+**不加密**（D13）：快照里的订阅链接是明文，安全性完全依赖云端账户（Apple 账户）本身。开启备份时，界面要明确告知用户
 "备份中包含订阅链接，任何能访问该云端账户的人都能看到"。本地文件配置的 YAML 原文也在快照里，其中可能有组网出站的
 凭据（[mesh.md](mesh.md) 第 7 节），提示里一并说明。
 
@@ -117,7 +119,7 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
 `backup_targets.last_error`，不记摘要，下一次 `catch_up()` 重试，也不影响其他目标。`BackupTargets` 读写
 `backup_targets` 表，关掉的目标标记删除；上传途中被关掉的目标什么也不记（`record()` 返回 None，不写摘要，也不清理
 旧快照）。删除了一个目标的全部云端快照后，`forget()` 清掉它的摘要和上次备份时间，开着的目标在下一次数据变化或
-下一个小时的 `catch_up()` 时重新上传。提供方此刻用不了的目标原样等着，不尝试、不记失败：这一版没有这个提供方
+下一个小时的 `catch_up()` 时重新上传。提供方此刻用不了的目标原样等着，不尝试、不记失败：这个构建没有这个提供方
 （例如从源码运行），或者 iCloud 的系统账户不可用（没登录、受限、暂时不可用）。
 
 接到界面上的是 `BackupViewModel`（有云端提供方时才运行）：
@@ -162,7 +164,9 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
   最后，隧道在运行就按恢复后的分流重新加载；重新加载失败时，数据仍是恢复后的，界面说明隧道没有切换。设置存储
   随后 `reload()`，各页重新读取。
 
-## 4. Google Drive
+## 4. Google Drive（未实现）
+
+本节是一份未实现的设计：代码里没有 Google Drive 提供方，界面上也没有它的一行。
 
 - **登录**：在应用内登录（D13），采用 OAuth 2.0 的已安装应用流程。在系统浏览器里打开授权页，回调到
   `127.0.0.1` 上的一个随机端口（loopback），并使用 PKCE。
@@ -174,7 +178,7 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
 - **退出登录**：撤销令牌，并删除本机保存的令牌。云端的快照保留不动；界面另外提供"删除云端备份"。
 - **前置条件**：
   - 在 Google Cloud 建一个项目，配置 OAuth 同意屏幕，并创建一个"桌面应用"类型的 OAuth 客户端；
-  - 正式发布前，按 Google 的要求完成同意屏幕的审核。
+  - 开放给用户之前，按 Google 的要求完成同意屏幕的审核。
 
   桌面应用的 client secret 本来就无法保密，可以随源码一起发布。
 
@@ -185,9 +189,10 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
   去系统设置登录。CloudKit 不告诉应用账户名，所以备份目标的账户名就写"iCloud"；换了 Apple 账户之后，快照进的是
   新账户的私有数据库。
 - **依赖条件**：需要 Developer ID 签名、iCloud（CloudKit）entitlement、container（`iCloud.<bundle id>`）以及对应的
-  provisioning profile。因此这部分依赖 M5 的 Xcode 工程和签名流程；container 是 `iCloud.dev.tschen.solaris`，
-  环境是 Production（Developer ID 只能用它）。CloudKit 的 schema 要在 CloudKit Console 里建好并部署到 Production，
-  步骤见 [apple/README.md](../apple/README.md)「iCloud 备份」。
+  provisioning profile，所以只有 `apple/` 的 Xcode 工程签名打包的 app 才有 iCloud 备份；container 是
+  `iCloud.dev.tschen.solaris`，环境是 Production（Developer ID 只能用它），签名的细节见
+  [apple/README.md](../apple/README.md)「iCloud 备份」。CloudKit 的 schema 要在 CloudKit Console 里建好并部署到
+  Production；这一步和在测试 Mac 上对真实 CloudKit 的验收见 [maintenance.md](maintenance.md) 2.3 节。
 - **管理库**（`apple/Manager/CloudBackup.swift`）：`solaris_manager_icloud_status`、`_save`、`_list`、`_download`、
   `_delete` 五个函数，和其他函数一样阻塞到完成或超时，在后台线程调用。每份快照是默认 zone 里一条 `Snapshot` 类型的
   记录：记录名由 Python 给出，快照内容放在 `CKAsset`（字段 `snapshot`），`SnapshotInfo` 和大小作为 JSON 放在
@@ -201,7 +206,7 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
   命名、`info` 读得出来的记录。错误变成 `BackupError`：`not_signed_in`、`backup_missing`、`cloud_full`、
   `cloud_unreachable`、`cloud_failed`。`sign_in()` 只检查系统账户可用，`sign_out()` 什么也不做。打包的 app 里
   （`Contents/Frameworks` 有管理库）才有这个提供方；从源码运行时没有，设置页写「仅签名的安装版可用」。
-- **Windows**：不提供 iCloud 备份，只能用 Google Drive。
+- **Windows**：不提供 iCloud 备份。Windows 上的云端备份是 Google Drive（第 4 节，未实现），所以只能导出到文件。
 
 ## 6. 提供方接口
 
@@ -209,13 +214,14 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
   `list()`、`download(id)` 和 `delete(id)`，都是协程，由各实现决定放到哪个线程上执行。`kind` 是存进
   `backup_targets.provider` 的名字。`list()` 返回 `BackupEntry`（`id`、`info`、`size`），按时间从新到旧；`info` 是
   `SnapshotInfo`：时间、设备名、版本和配置、方案的份数，供"从云端恢复"的列表显示。`download` 不认识的 id 报
-  `backup_missing`，`delete` 删除已经不在的快照不报错。提供方只在应用自己的空间里存快照（appDataFolder、CloudKit
-  容器、一个目录），所以列出的都是本应用的快照。
-- CloudKit 的实现见第 5 节，Google Drive 的还没做。另有两个不访问云服务的实现：
+  `backup_missing`，`delete` 删除已经不在的快照不报错。提供方只在应用自己的空间里存快照（CloudKit 容器、一个
+  目录；未实现的 Google Drive 按设计用 appDataFolder），所以列出的都是本应用的快照。
+- CloudKit 的实现见第 5 节；Google Drive 的未实现（第 4 节）。另有两个不访问云服务的实现：
   - `MemoryProvider`：快照放在内存里，测试用；可以模拟退出登录和失败；
   - `DirectoryProvider`：快照存成目录里的文件，`solaris-backup-<UTC 时间>-<摘要前 12 位>.json`，原子写入。只列出
     这样命名、能读成快照的文件，别的文件不碰；id 只接受这种文件名，到不了目录之外。
-- 可以同时开启多个备份目标，例如在 macOS 上同时用 iCloud 和 Google Drive，每个目标各自上传、各自保留快照。
+- 可以同时开启多个备份目标，每个目标各自上传、各自保留快照；按设计 macOS 上可以同时用 iCloud 和 Google Drive
+  （未实现）。
 - 设置页"备份与同步"分组：导出到文件、从文件恢复，macOS 上还有 iCloud 一行（开关、上次备份的时间和结果、删除云端
-  备份），分组下方是对所有目标的"立即备份"和"从云端恢复"（ui.md §8）。Google Drive 一行（已登录的账户、退出登录）
-  随它的提供方再加。
+  备份），分组下方是对所有目标的"立即备份"和"从云端恢复"（ui.md §8）。设计中的 Google Drive 一行（已登录的账户、
+  退出登录）未实现。
