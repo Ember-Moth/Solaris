@@ -159,7 +159,7 @@ FunctionEnd
 Section
   InitPluginsDir
   File "/oname=$PLUGINSDIR\setup.ps1" "${SETUP_SCRIPT}"
-  ; The UI has no command to quit, so setup.ps1 ends it; the tunnel runs in the service.
+  ; setup.ps1 asks the UI to quit, and ends it when it does not; the tunnel runs in the service.
   DetailPrint "$(ClosingUI)"
   !insertmacro Setup close-ui
   DetailPrint "$(StoppingService)"

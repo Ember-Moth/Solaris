@@ -7,12 +7,12 @@ import sys
 from functools import partial
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import QCoreApplication, QEvent, Qt, QUrl
 from PySide6.QtGui import QGuiApplication, QIcon
 from PySide6.QtQml import QQmlApplicationEngine
 
 from solaris import __version__
-from solaris.desktop.instance import SingleInstance
+from solaris.desktop.instance import SingleInstance, ask_to_quit
 from solaris.desktop.links import LinkReceiver, from_arguments
 from solaris.desktop.login import BACKGROUND_ARG, LoginItem, default_login_item
 from solaris.desktop.tray import tray_supported
@@ -30,6 +30,21 @@ from solaris.viewmodels.composition import ViewModels, compose
 
 MAIN_QML = Path(__file__).resolve().parent / "ui" / "Main.qml"
 DEV_SOCKET_ENV = "SOLARIS_DEV_SOCKET"
+# Ask the UI already running to quit and wait for it, as the Windows installer does before
+# it replaces the files (docs/ui.md §8); exits 0 once no UI runs.
+QUIT_ARG = "--quit"
+
+
+class Application(QGuiApplication):
+    """Every request to quit leaves the event loop: the tray's, ``--quit``'s, ⌘Q and the
+    system's at logout. Qt would first close the windows and give up when one refuses, as
+    the main window does while it hides in the tray (Main.qml)."""
+
+    def event(self, event: QEvent) -> bool:
+        if event.type() == QEvent.Type.Quit:
+            self.exit(0)
+            return True
+        return super().event(event)
 
 
 def default_opener() -> Opener:
@@ -97,8 +112,13 @@ def main(
     ``light`` or ``dark`` and likewise wins over the settings; empty follows the settings,
     then SOLARIS_APPEARANCE, then the system. The settings live in the profiles'
     database, and the lock that keeps one UI per user beside it; the lock is taken before
-    the database is opened, so only one UI migrates it. The store is closed on exit."""
-    app = QGuiApplication(sys.argv)
+    the database is opened, so only one UI migrates it, and let go after the store is
+    closed on exit. With ``--quit`` it asks the UI already running to quit instead."""
+    directory = store.directory if store else default_data_dir()
+    if QUIT_ARG in sys.argv[1:]:
+        _core = QCoreApplication.instance() or QCoreApplication(sys.argv)
+        return 0 if ask_to_quit(directory) else 1
+    app = Application(sys.argv)
     app.setApplicationName(DISPLAY_NAME)
     app.setApplicationVersion(__version__)
     # The bundle's icon covers the packaged macOS app; this one covers Windows' taskbar and
@@ -112,7 +132,6 @@ def main(
     # macOS sends install links as Apple Events, which can come before the window does.
     receiver = LinkReceiver(app)
     link = from_arguments(sys.argv[1:])
-    directory = store.directory if store else default_data_dir()
     instance = SingleInstance(directory)
     if not instance.claim(link):
         return 0  # the UI already running shows its window, or opens the link
@@ -133,14 +152,15 @@ def main(
     )
     engine = QQmlApplicationEngine()
     if not load_ui(engine, view_models):
-        instance.release()
         store.close()
+        instance.release()
         return 1
     # Queued: the switch happens once the control that asked for it has handled its click.
     switch = partial(switch_language, translations, engine, view_models)
     view_models.settings.languageChanged.connect(switch, Qt.ConnectionType.QueuedConnection)
     view_models.desktop.quitRequested.connect(app.quit)
     instance.activated.connect(view_models.desktop.showWindow)
+    instance.quit_requested.connect(view_models.desktop.quit)
     instance.received.connect(receiver.deliver)
     receiver.received.connect(view_models.open_link)
     if link is not None:
@@ -149,8 +169,8 @@ def main(
     receiver.ready()
     app.aboutToQuit.connect(view_models.shutdown)
     code = app.exec()
-    instance.release()
     view_models.settings.languageChanged.disconnect(switch)
     del switch, engine  # tear down QML before the ViewModels it binds to
     store.close()
+    instance.release()  # last: ask_to_quit takes the lock let go as the UI gone
     return code

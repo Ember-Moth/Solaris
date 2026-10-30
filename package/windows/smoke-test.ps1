@@ -6,10 +6,12 @@
 #
 # 1. A fresh install: files, service (LocalSystem, automatic, restarts on failure, listening),
 #    the uninstall entry, the solaris: and clash: schemes, the Start menu shortcut.
-# 2. The installed UI starts and opens its window.
-# 3. The same installer again, over the running UI: an upgrade closes the UI and restarts the
-#    service from the new files.
-# 4. Uninstall: no service, task, registration, shortcut or file left; the user data stays.
+# 2. Solaris.exe --quit with no UI running does nothing; the installed UI starts and opens its
+#    window.
+# 3. The same installer again, over the running UI: the UI quits when asked (not ended), and
+#    the upgrade restarts the service from the new files.
+# 4. Uninstall over the running UI, which quits likewise: no service, task, registration,
+#    shortcut or file left; the user data stays.
 # 5. Install again and uninstall with /PURGE: the user data goes too.
 [CmdletBinding()]
 param([Parameter(Mandatory = $true)][string] $Installer)
@@ -34,6 +36,7 @@ $Pipe = 'ProtectedPrefix\Administrators\solaris'
 $LinkCommand = "`"$Client`" `"%1`""
 $ServiceData = Join-Path $env:ProgramData 'Solaris'
 $UserData = Join-Path $env:LOCALAPPDATA 'Solaris'
+$UiLock = Join-Path $UserData 'ui.lock'  # src/solaris/desktop/instance.py
 # src/solaris/desktop/login.py's name for this user's task, and one of the same form that
 # starts something else.
 $Task = "Solaris ($($env:USERDOMAIN)_$($env:USERNAME))"
@@ -143,6 +146,34 @@ function Assert-Removed {
     Remove-Item -LiteralPath $Root -Recurse -Force
 }
 
+# Starts the installed UI as the user and waits for its window; the process is $ui.
+function Start-UI {
+    $script:ui = Start-Process -FilePath $Client -PassThru
+    $null = $ui.Handle  # keeps the exit code readable after the process exits
+    $deadline = [DateTime]::UtcNow.AddSeconds(60)
+    do {
+        Start-Sleep -Milliseconds 500
+        $ui.Refresh()
+    } while (-not $ui.HasExited -and $ui.MainWindowHandle -eq 0 -and [DateTime]::UtcNow -lt $deadline)
+    if ($ui.HasExited) {
+        Expect $false "Solaris.exe exited with $($ui.ExitCode) while starting"
+    } else {
+        Expect ($ui.MainWindowHandle -ne 0) 'Solaris.exe opened no window in 60 seconds'
+        Write-Output "Solaris.exe ($($ui.Id)) is running; its window: '$($ui.MainWindowTitle)'"
+    }
+}
+
+# setup.ps1 asks the UI to quit before it ends it: one that quit exits with 0 and lets go of
+# its lock; one that was ended exits with -1 and leaves the lock file behind.
+function Assert-QuitByItself([string] $During) {
+    if (-not ($ui.HasExited -or $ui.WaitForExit(1000))) {
+        Expect $false "$During left the UI running"
+        return
+    }
+    Expect ($ui.ExitCode -eq 0) "The UI was ended during $During (exit code $($ui.ExitCode)) rather than quitting"
+    Expect (-not (Test-Path -LiteralPath $UiLock)) "The UI left $UiLock behind during $During"
+}
+
 function Register-Task([string] $Name, [string] $Program) {
     $user = "$($env:USERDOMAIN)\$($env:USERNAME)"
     $action = New-ScheduledTaskAction -Execute $Program -Argument '--background'
@@ -162,29 +193,27 @@ try {
     Assert-Installed
 
     Write-Output '2. The UI'
-    $ui = Start-Process -FilePath $Client -PassThru
-    $null = $ui.Handle
-    $deadline = [DateTime]::UtcNow.AddSeconds(60)
-    do {
-        Start-Sleep -Milliseconds 500
-        $ui.Refresh()
-    } while (-not $ui.HasExited -and $ui.MainWindowHandle -eq 0 -and [DateTime]::UtcNow -lt $deadline)
-    if ($ui.HasExited) {
-        Expect $false "Solaris.exe exited with $($ui.ExitCode) while starting"
+    $quit = Start-Process -FilePath $Client -ArgumentList '--quit' -PassThru
+    $null = $quit.Handle
+    if ($quit.WaitForExit(30000)) {
+        Expect ($quit.ExitCode -eq 0) "Solaris.exe --quit exited with $($quit.ExitCode) with no UI running"
     } else {
-        Expect ($ui.MainWindowHandle -ne 0) 'Solaris.exe opened no window in 60 seconds'
-        Write-Output "Solaris.exe ($($ui.Id)) is running; its window: '$($ui.MainWindowTitle)'"
+        $quit.Kill()
+        Expect $false 'Solaris.exe --quit took more than 30 seconds with no UI running'
     }
+    Expect (-not (Test-Path -LiteralPath $UserData)) "Solaris.exe --quit made $UserData"
+    Start-UI
     Expect (Test-Path -LiteralPath $UserData) "The UI made no $UserData"
 
     Write-Output '3. Upgrade over the running UI'
     $before = (Get-SolarisService).ProcessId
     Invoke-Setup $Installer '/S'
-    Expect ($ui.HasExited -or $ui.WaitForExit(1000)) 'The upgrade left the UI running'
+    Assert-QuitByItself 'the upgrade'
     Assert-Installed
     Expect ((Get-SolarisService).ProcessId -ne $before) "$ServiceName was not restarted"
 
-    Write-Output '4. Uninstall, keeping the user data'
+    Write-Output '4. Uninstall over the running UI, keeping the user data'
+    Start-UI
     Register-Task $Task $Client
     Register-Task $OtherTask (Join-Path $env:SystemRoot 'System32\notepad.exe')
     # Whatever the service and the UI have written so far, each data directory has a file.
@@ -195,6 +224,7 @@ try {
         $marker
     }
     Invoke-Setup $Uninstaller "/S _?=$Root"
+    Assert-QuitByItself 'the uninstall'
     Assert-Removed
     foreach ($marker in $markers) {
         Expect (Test-Path -LiteralPath $marker) "Uninstalling removed $marker"

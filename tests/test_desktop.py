@@ -11,7 +11,13 @@ import pytest
 from PySide6.QtCore import QCoreApplication
 from pytestqt.qtbot import QtBot
 
-from solaris.desktop.instance import CONNECT_TIMEOUT_MS, SingleInstance, server_name
+from solaris.desktop.instance import (
+    CONNECT_TIMEOUT_MS,
+    LOCK_NAME,
+    SingleInstance,
+    ask_to_quit,
+    server_name,
+)
 from solaris.desktop.login import (
     ENABLED,
     NOT_FOUND,
@@ -184,6 +190,83 @@ def test_second_instance_shows_the_first(qtbot: QtBot, tmp_path: Path) -> None:
         assert third.claim()
     finally:
         third.release()
+
+
+# ``--quit`` in a process of its own: it waits for the first UI to let go of the lock,
+# which the test does in this thread.
+QUITTER = """
+import sys
+from pathlib import Path
+from PySide6.QtCore import QCoreApplication
+from solaris.desktop.instance import ask_to_quit
+app = QCoreApplication(sys.argv)
+sys.exit(0 if ask_to_quit(Path(sys.argv[1]), int(sys.argv[2])) else 1)
+"""
+
+
+def _quitter(directory: Path, timeout_ms: int) -> subprocess.Popen[str]:
+    return subprocess.Popen(
+        [sys.executable, "-c", QUITTER, str(directory), str(timeout_ms)], text=True
+    )
+
+
+def test_quit_asks_the_first_and_waits_until_it_is_gone(qtbot: QtBot, tmp_path: Path) -> None:
+    first = SingleInstance(tmp_path)
+    assert first.claim()
+    quitter = _quitter(tmp_path, 30_000)
+    try:
+        with qtbot.waitSignal(first.quit_requested, timeout=10_000):
+            pass
+        time.sleep(0.5)
+        assert quitter.poll() is None  # the first still holds the lock
+        first.release()  # as the UI does last when it exits
+        assert quitter.wait(timeout=10) == 0
+    finally:
+        quitter.kill()
+        quitter.wait()
+        first.release()
+    assert not (tmp_path / LOCK_NAME).exists()
+
+
+def test_quit_gives_up_on_a_ui_that_stays(qtbot: QtBot, tmp_path: Path) -> None:
+    first = SingleInstance(tmp_path)
+    assert first.claim()
+    quitter = _quitter(tmp_path, 1500)
+    try:
+        with qtbot.waitSignal(first.quit_requested, timeout=10_000):
+            pass
+        assert quitter.wait(timeout=10) == 1
+    finally:
+        quitter.kill()
+        quitter.wait()
+        first.release()
+
+
+# A UI that took the lock and died without letting go of it.
+CRASHED_UI = """
+import os
+import sys
+from pathlib import Path
+from PySide6.QtCore import QCoreApplication
+from solaris.desktop.instance import SingleInstance
+app = QCoreApplication(sys.argv)
+instance = SingleInstance(Path(sys.argv[1]))  # kept: QLockFile unlocks when collected
+assert instance.claim()
+os._exit(0)
+"""
+
+
+def test_quit_without_a_ui_returns_at_once(tmp_path: Path) -> None:
+    never = tmp_path / "never"
+    assert ask_to_quit(never, 0)
+    assert not never.exists()  # nothing created for a UI that never ran
+
+    subprocess.run([sys.executable, "-c", CRASHED_UI, str(tmp_path)], check=True)
+    assert (tmp_path / LOCK_NAME).exists()
+    started = time.monotonic()
+    assert ask_to_quit(tmp_path)
+    assert time.monotonic() - started < CONNECT_TIMEOUT_MS / 1000  # it asked nobody
+    assert not (tmp_path / LOCK_NAME).exists()
 
 
 def test_instances_are_per_user_and_directory(tmp_path: Path) -> None:
