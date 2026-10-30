@@ -119,7 +119,7 @@ B1、B2 的结果与遗留：
 | --- | --- | --- |
 | Windows 测试机或虚拟机 | B3 开始前 | M4 的安装、wintun、DNS 泄漏测试 |
 | Google Cloud 项目与"桌面应用"类型的 OAuth 客户端 | C2 开始前（同意屏幕审核要时间，越早越好） | Google Drive 备份 |
-| Apple Developer 账号、NE entitlement、单独的测试 Mac | 阶段 D 的 M5 开始前 | macOS 系统扩展、iCloud |
+| Developer ID Application 证书、两份 Developer ID 描述文件、公证 API Key、单独的测试 Mac（App ID、App Group、iCloud 容器已建好，见 apple/README.md） | 阶段 D 的 M5 开始前 | macOS 系统扩展、iCloud |
 | D5b、D8 | 见第 5 节 | — |
 
 ## 3. 里程碑
@@ -197,7 +197,7 @@ B1、B2 的结果与遗留：
 
 范围：
 
-- **前置条件**：Apple Developer 账号、Team ID、NE entitlement，以及一台单独的测试 Mac 或 macOS 虚拟机。系统扩展会创建 utun，不在开发机上运行。
+- **前置条件**：Team ID 和标识已就绪（apple/README.md）；还差 Developer ID 证书、描述文件、公证 API Key，以及一台单独的测试 Mac 或 macOS 虚拟机。系统扩展会创建 utun，不在开发机上运行。
 - **Xcode 工程**：管理库（C ABI）和 PacketTunnel 系统扩展；xcframework 由 `src/core/apple` 编出，包含 engine 的 fd 模式和控制分发器。
 - **架构**：先只做 arm64（D2）。
 - **扩展内部**：获取 utun fd，设置隧道网络和 DNS，建立 provider message 通道。配置和 Windows 一样经 `Start` /
