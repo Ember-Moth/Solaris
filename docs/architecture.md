@@ -9,8 +9,8 @@ sing-box，后来因为官方 sing-box for Desktop 已经发布，改为基于 m
 [routing.md](routing.md)，进度、计划与决策见 [roadmap.md](roadmap.md)。
 
 状态：engine（三种 TUN 模式）、控制协议和开发模式服务已实现；Windows 服务的属主、开机恢复、系统代理和客户端
-校验已实现，只在 CI 的 Windows 机器上测过，待 Windows 虚拟机实测；macOS 的 `Solaris.app` 已能组装、签名，发布
-工作流负责公证，待测试 Mac 实测（roadmap.md 的 M4、M5）。
+校验已实现，Windows 安装器已写好，都只在 CI 的 Windows 机器上测过、装卸过，未签名，待 Windows 虚拟机实测；macOS 的
+`Solaris.app` 已能组装、签名，发布工作流负责公证，待测试 Mac 实测（roadmap.md 的 M4、M5）。
 
 ## 1. 定位与原则
 
@@ -406,9 +406,12 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 ### 5.1 安装布局
 
 ```text
-C:\Program Files\Solaris\            管理员所有，用户只读
+C:\Program Files\Solaris\            管理员所有，用户只读；安装器固定装在这里
 ├── Solaris.exe                      Nuitka standalone UI
-├── solaris-service.exe              Go 服务
+├── solaris-service.exe              Go 服务；wintun.dll（0.14.1）由 sing-tun 嵌在里面，从内存加载
+├── geodata\                         随安装包附带的 GeoSite.dat、GeoIP.dat（D18），供服务种进 home
+├── LICENSE、solaris\licenses\        许可证与第三方声明（release.md 第 5 节）
+├── uninstall.exe
 └── …                                  Python / Qt 运行依赖
 
 C:\ProgramData\Solaris\              仅 SYSTEM 与 Administrators 可访问
@@ -612,28 +615,58 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 
 ## 9. 安装、升级与卸载
 
-- **Windows**：使用 NSIS 安装器，它是唯一的 UAC 点。
-  - 安装：写入程序文件、注册服务和故障恢复策略、注册 URL scheme。
-  - 升级：先请运行中的 UI 退出（维护退出），再停止服务、替换文件、启动服务。
-  - 卸载：停止并删除服务；保留用户的订阅与偏好，不递归删除未知文件。
-  - 流程参考 hypervpn 的 `packaging/windows/`。
+- **Windows**：NSIS 安装器 `package/windows/installer.nsi`，由 `scripts/build_windows.py` 编译（第 10 节），是唯一的
+  UAC 点：安装器和卸载器以管理员身份运行，界面从不提权。界面有中英两种语言，按系统的显示语言选择。关闭界面和处理
+  服务的几步在 `package/windows/setup.ps1` 里，由安装器和卸载器以 64 位 Windows PowerShell 运行。流程参考 hypervpn 的
+  `packaging/windows/`。
+  - 安装：位置固定为 `C:\Program Files\Solaris`（`/D=` 不起作用，服务只认这个只有管理员能写的目录里的界面）；复制
+    文件；用 `sc.exe` 注册 `SolarisService`（LocalSystem、自动启动，5.2 节的故障恢复，`failureflag 1` 让服务带错误
+    退出时也重启）并启动；在 HKLM 下注册 `solaris:` 和 `clash:`，命令是 `"<安装目录>\Solaris.exe" "%1"`；所有用户的
+    开始菜单快捷方式；"应用"里的卸载信息。安装器以管理员身份运行，可能不是使用者本人，所以 scheme 写在 HKLM 而不是
+    HKCU；用户自己的 HKCU 里如有其他客户端注册的 `clash:`，对这个用户仍是它优先。完成页的"运行 Solaris"经 Explorer
+    以登录用户的身份打开界面，不继承安装器的管理员权限。
+  - 升级：注册表里已有安装时，先结束正在运行的界面（界面还没有退出命令，`setup.ps1` 直接结束各个会话里从安装目录
+    运行的 `Solaris.exe`；隧道在服务里，不受影响），停止服务并等它的进程退出，再以 `/UPGRADE` 静默运行旧版本的
+    卸载器：它只按自己的清单删除装过的文件，服务、计划任务和注册都留着。然后复制新文件，把服务指向新文件并启动，
+    服务按 `was_running` 恢复隧道（5.2 节）。已装在别的目录时拒绝安装，请用户先卸载。
+  - 卸载：结束界面；停止并删除服务；删除每个用户指向本安装的"登录时打开"计划任务（`Solaris (<域>_<用户>)`，
+    `src/solaris/desktop/login.py`）、开始菜单快捷方式和卸载信息；两个 scheme 只在仍指向本安装时删除；按清单逐个
+    删除装过的文件，安装目录只在空了时删除，不递归删除未知文件。
+  - 用户数据：卸载器的组件页有一项默认不勾选的"订阅、设置和日志"，勾选（静默卸载时加 `/PURGE`）才删除
+    `C:\ProgramData\Solaris`（服务一侧，所有用户的配置、覆写与缓存）和运行卸载器的用户的 `%LOCALAPPDATA%\Solaris`。
+    其他用户的界面数据和系统凭据库里的 WARP 账户卸载器够不着，留着。
+  - 失败时弹出原因并停止，静默运行时原因写进 `%TEMP%\Solaris-setup-error.log`；退出码沿用 Windows Installer 的：
+    1603 一般失败、1633 不是 64 位的 Windows 10 及以上、1638 已装在别的目录。
+  - 验证：CI 的 `windows-installer` job 在 `windows-latest` 上构建不签名的安装包，由 `package/windows/smoke-test.ps1`
+    依次安装、打开界面、在界面运行时升级、卸载（保留数据）、再安装、以 `/PURGE` 卸载，核对文件、服务的路径、启动
+    方式、账户、恢复策略与管道监听、注册表、快捷方式、计划任务，以及卸载后什么都没留下。不建 TUN，不连接。真机上
+    的 UAC、开机恢复和隧道实测要等 Windows 虚拟机（roadmap.md 的 M4）。
 - **macOS**：拖入"应用程序"文件夹完成安装，首次连接时激活系统扩展。卸载时先停用扩展。
 
 ## 10. 构建与发布
 
 | 产物 | 构建方式 |
 | --- | --- |
-| Windows 服务 | `go build`，按 3.4 节的标签，用 `-ldflags -X` 注入版本 |
+| Windows 服务 | `go build -trimpath`，windows/amd64，不用 cgo，按 3.4 节的标签（`with_gvisor`），`-ldflags "-s -w -X …"` 注入版本 |
 | macOS xcframework | 本仓库 Go 模块的 c-archive 构建，包含 engine 与控制分发器，导出供 `handleAppMessage` 调用的 C 函数 |
 | 协议绑定 | 由 `control.proto` 生成 Go 与 Python 代码 |
-| UI | Nuitka standalone（macOS 上是 `--mode=app`） |
-| Windows 安装包 | NSIS |
+| UI | Nuitka standalone（Windows 上是 `--mode=standalone` 的 `Solaris.exe`，用 MSVC；macOS 上是 `--mode=app`） |
+| Windows 安装包 | `scripts/build_windows.py` 构建服务和界面、组装安装目录，用 NSIS 3 编译 `package/windows/installer.nsi` |
 | macOS 包 | `scripts/build_app.py` 组装并签名 `Solaris.app`；发布工作流公证后做成 `.dmg` |
 
-- 需要的证书：Windows Authenticode（发布构建）、Apple Developer ID。
+- **Windows 构建**（`scripts/build_windows.py`，在 Windows 上运行，`uv run --with nuitka==4.2.2`）：拉取 GEO 数据
+  （`scripts/fetch_geodata.py`）、构建服务、Nuitka 构建界面（不带界面用不到的 Qt 模块、QML 目录和图片格式插件，与
+  macOS 相同；Qt 的 OpenSSL 后端也不带，TLS 用 Schannel，CPython 自带的 libssl 和 libcrypto 留着给 `ssl` 模块），
+  组装成 5.1 节的 `build/windows/Solaris/`，检查必需的文件都在、没有链接、每个 exe、dll、pyd 都是 x64，再生成只含
+  这些文件的卸载清单并编译 `build/windows/Solaris-<版本>-windows-x64-setup.exe`。`--skip-installer` 停在安装目录，
+  `--installer-only` 只从已有的安装目录编译安装包，签名步骤将来插在两者之间。
+- 需要的证书：Windows Authenticode（发布构建，方案未定）、Apple Developer ID。
 - **发布工作流** `.github/workflows/release.yml`：`v*` 标签或手动触发，在 `release` Environment 里经审批后运行；
-  macOS 上建临时钥匙串、签名、`notarytool` 公证、staple，产出 `Solaris-<版本>-macos-arm64.dmg` 和它的 `.sha256`，
-  作为 workflow artifact 保存。发布 GitHub Release 和 Windows 部分在 M6、M4 加入。
+  macOS 上建临时钥匙串、签名、`notarytool` 公证、staple，产出 `Solaris-<版本>-macos-arm64.dmg` 和它的 `.sha256`；
+  Windows 上构建安装目录、（待定的）签名、编译安装包，用 `smoke-test.ps1` 在 runner 上装一遍、升级、卸载，产出
+  `Solaris-<版本>-windows-x64-setup.exe` 和它的 `.sha256`。Windows 签名方案定下之前这一步只打一条警告，安装包不签名；
+  定下后先给安装目录里的 exe、dll、pyd 签名（服务要求界面与它同一签名者，5.3 节），再经 makensis 的 `!finalize`、
+  `!uninstfinalize` 给安装器和卸载器签名。两个安装包都作为 workflow artifact 保存，发布 GitHub Release 在 M6 加入。
 - 许可：本项目以 GPL-3.0-only 发布（[LICENSE](../LICENSE)）；服务和扩展链接的 mihomo 同为 GPL-3.0。
   发布二进制时须同时提供对应的源代码；新增依赖须与 GPL-3.0 兼容。
 

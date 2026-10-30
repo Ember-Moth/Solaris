@@ -1,9 +1,11 @@
 name: Release
 
 # The signed and notarized macOS build (apple/README.md): Solaris.app from scripts/build_app.py,
-# notarized and stapled, in a notarized disk image with its SHA-256. Runs for v* tags and by
-# hand, in the release environment: its reviewers approve each run before the job gets the
-# signing secrets. The image stays a workflow artifact; publishing releases comes with M6.
+# notarized and stapled, in a notarized disk image with its SHA-256. And the Windows installer
+# from scripts/build_windows.py with its SHA-256, unsigned until the Windows signing scheme is
+# chosen (docs/roadmap.md). Runs for v* tags and by hand, in the release environment: its
+# reviewers approve each run before the jobs get the signing secrets. The installers stay
+# workflow artifacts; publishing releases comes with M6.
 on:
   workflow_dispatch:
   push:
@@ -186,3 +188,78 @@ jobs:
             while IFS= read -r profile; do rm -f "$profile"; done < "$signing/profiles"
           fi
           rm -rf "$signing"
+
+  windows:
+    name: Windows x64 (unsigned until the signing scheme is chosen)
+    runs-on: windows-latest
+    environment: release
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: src/core/go.mod
+          cache-dependency-path: src/core/go.sum
+      - name: NSIS
+        run: choco install nsis --yes --no-progress
+      - name: Install (locked)
+        run: uv sync --frozen
+      - uses: actions/cache@v6
+        with:
+          path: build/geodata
+          key: geodata-${{ hashFiles('scripts/fetch_geodata.py') }}
+      - name: Version
+        id: version
+        shell: bash
+        run: |
+          version="$(uv run --no-project python -c \
+            'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          if [[ "$GITHUB_REF_TYPE" == tag && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match version $version in pyproject.toml"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "installer=Solaris-$version-windows-x64-setup.exe" >> "$GITHUB_OUTPUT"
+
+      - name: Build Solaris.exe and the service
+        run: uv run --frozen --with nuitka==4.2.2 python scripts/build_windows.py --skip-installer
+
+      # Pending: the Windows signing scheme is not chosen (docs/roadmap.md, the release
+      # checklist). Once it is, this step signs Solaris.exe, solaris-service.exe and the other
+      # executables, DLLs and .pyd files in build/windows/Solaris with a timestamp; the service
+      # checks that the UI has its own signer (docs/architecture.md §5.3). The next step then
+      # signs the installer and its uninstaller through makensis' !finalize and !uninstfinalize,
+      # and src/solaris/update/signature.WINDOWS_SIGNER becomes the certificate's subject.
+      - name: Sign the programs (pending)
+        run: echo "::warning::Windows code signing is pending; this installer is unsigned."
+
+      - name: Installer
+        run: uv run --frozen python scripts/build_windows.py --installer-only
+
+      - name: Install, upgrade and uninstall
+        env:
+          INSTALLER: build/windows/${{ steps.version.outputs.installer }}
+        run: ./package/windows/smoke-test.ps1 -Installer $env:INSTALLER
+
+      - name: Checksum
+        shell: bash
+        env:
+          INSTALLER: ${{ steps.version.outputs.installer }}
+        run: |
+          mkdir -p build/release
+          cp "build/windows/$INSTALLER" build/release/
+          cd build/release
+          sha256sum "$INSTALLER" > "$INSTALLER.sha256"
+          cat "$INSTALLER.sha256"
+          ls -l
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: solaris-${{ steps.version.outputs.version }}-windows-x64
+          path: build/release/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30

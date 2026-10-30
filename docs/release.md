@@ -5,8 +5,8 @@
 [architecture.md](architecture.md) 第 9 节（M4）。界面放在设置页的「关于」分组（[ui.md](ui.md) 第 8 节）。
 
 状态：四项已实现（2026-10-30，阶段 D 第一轮）。现在还没有任何 Release，检查更新只用本机的假服务器测过；Windows
-的签名方案未定，签名者是一个占位常量；向系统注册 `solaris:` 和 `clash:` 两个 scheme 随打包（macOS 的 Info.plist
-由 M5，Windows 的注册表由 M4 的安装器）；许可证清单还缺的几项见第 5 节。
+的签名方案未定，签名者是一个占位常量，Windows 安装包暂不签名；`solaris:` 和 `clash:` 两个 scheme 由打包向系统
+注册（macOS 的 Info.plist，Windows 安装器写在 HKLM，第 6 节）；许可证清单还缺的几项见第 5 节。
 
 ## 1. 发布物
 
@@ -17,7 +17,7 @@
 | --- | --- |
 | 标签 | `v<版本>`，版本即 `pyproject.toml` 的 `version`，形如 `0.2.0`（三段数字）。预发布和草稿不提供给更新 |
 | macOS 安装包 | `Solaris-<版本>-macos-arm64.dmg`：内含 `Solaris.app`；磁盘映像用 Developer ID（Team `GY9ZKZMAZA`）签名、公证并 staple |
-| Windows 安装包 | `Solaris-<版本>-windows-x64-setup.exe`：NSIS 安装器，Authenticode 签名 |
+| Windows 安装包 | `Solaris-<版本>-windows-x64-setup.exe`：NSIS 安装器（architecture.md 第 9 节），Authenticode 签名。签名方案定下之前发布工作流产出的安装包不签名，更新时会在第 3 节第 4 步被拒 |
 | 校验和 | `SHA256SUMS`：`sha256sum` 的输出格式，每行 `<64 位小写十六进制>  <文件名>`，覆盖本次发布的每个安装包 |
 | 源代码 | `Solaris-<版本>-source.tar.gz`：本仓库在这个标签的代码，加上 `go mod vendor` 得到的全部 Go 依赖（第 4 节） |
 
@@ -158,9 +158,12 @@
 - Nuitka 打包时，`package/entry.py` 的 `nuitka-project` 选项把 `src/solaris/licenses/` 复制到
   `solaris/licenses/`，把仓库根目录的 `LICENSE` 复制到程序目录；还要带上 `solaris` 的包元数据
   （`--include-distribution-metadata=solaris`），否则 `__version__` 是 `0.0.0`，每个 Release 都会被当成新版本。
+- Windows 的界面由 `scripts/build_windows.py` 用同一个 `package/entry.py` 构建（architecture.md 第 10 节），这些选项
+  两个平台共用。
 - `solaris:` 和 `clash:` 两个 scheme 由打包注册：macOS 在 `Info.plist` 的 `CFBundleURLTypes` 里（M5），Windows
-  由安装器写在 `Software\Classes\solaris` 和 `Software\Classes\clash` 下，命令是 `"<安装目录>\Solaris.exe" "%1"`
-  （M4 决定写在 HKLM 还是 HKCU）。`clash:` 可能已被其他客户端注册：卸载时只删除仍指向本程序的键。
+  由安装器写在 HKLM 的 `Software\Classes\solaris` 和 `Software\Classes\clash` 下，命令是
+  `"<安装目录>\Solaris.exe" "%1"`。写在 HKLM 而不是 HKCU：安装器以管理员身份运行，这个管理员不一定是使用者本人。
+  `clash:` 可能已被其他客户端注册：安装时覆盖 HKLM 里的（用户自己 HKCU 里的仍优先），卸载时只删除仍指向本程序的键。
 
 ## 7. 一键导入
 

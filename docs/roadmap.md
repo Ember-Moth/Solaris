@@ -20,7 +20,7 @@
 | 自定义分流 | 完成（M8a：B2、C1；M8b） | 分流方式、节点池、地区组、默认模板、41 个服务、规则编辑与撤销、立即生效；策略组编辑器与实时预览、规则测试、搜索与按目标筛选、以此创建方案、导入导出、查看生成的配置 |
 | 链式出口与组网 | 部分 | 设计见 exits.md、mesh.md。WARP 出口（M9）内核与界面都已完成（第二轮），只对假服务器和模拟宿主验证过，真实节点的验收未做；组网出站的单独处理（D24）随它完成。Tor 出口（M10，首发后）、VPN Gate 出口（M12）、应用内组网（M11）未实现 |
 | macOS 原生部分 | 部分（M5） | Xcode 工程、管理库 C 接口；系统扩展用 utun 以 fd 模式运行内核（`with_gvisor`），带 GEO 数据；`MacExtensionHost`；"包含所有网络"（D19）；测试 Mac 实测未做 |
-| 打包与安装 | macOS 部分 | `scripts/build_app.py` 组装并签名 `Solaris.app`；发布工作流（签名、公证、.dmg）已写好，未运行；Windows 未开始 |
+| 打包与安装 | 两个平台已写好，未实测 | `scripts/build_app.py` 组装并签名 `Solaris.app`；发布工作流（签名、公证、.dmg）已写好，未运行。Windows：`scripts/build_windows.py` 和 NSIS 安装器（第三轮 A），CI 构建不签名的安装包并在 runner 上安装、升级、卸载一遍；签名待定，真机未测 |
 | 发布准备（M6） | 部分 | 检查更新与下载、诊断信息导出、第三方许可证清单、一键导入链接的处理已做（release.md）；macOS 的 scheme 已由 `Solaris.app` 的 Info.plist 注册；Windows 签名方案、发布全流程、Windows 的 scheme 注册（随 M4 安装器）未做 |
 | CI | 全绿 | Python（macOS、Windows）、Go（macOS、Windows、Linux）、网络命名空间 TUN 测试（四种栈和 fd 模式）、macOS 上的 e2e |
 
@@ -152,13 +152,13 @@ B1、B2 的结果与遗留：
 
 | 项 | 状态 |
 | --- | --- |
-| Windows 服务、安装器、实测（M4） | 第三轮 A 写代码，实测等虚拟机 |
+| Windows 服务、安装器、实测（M4） | 第三轮 A 写代码（安装器已在 CI 上装卸验证），实测等虚拟机 |
 | macOS 在全新 Mac 上的验收（M5），第一次公证 | 等测试 Mac |
 | "TUN 协议栈"与"包含所有网络"设置 | 代码完成（第三轮 A）：设置项、`RunOptions.tun_stack`、内核与系统扩展的处理、设置页。四种栈和 `includeAllNetworks` 的实测、各平台的默认栈，等 Windows 虚拟机和测试 Mac |
 | 隐藏系统标题栏，自绘顶部区域（DESIGN.md「顶部区域」） | 第三轮 A 合并后 |
-| 应用图标（macOS .icns、Windows .ico）与品牌素材 | 已定为"日冕"（2026-10-30，DESIGN.md "Shapes"）：`scripts/gen_icons.py` 生成全部尺寸，`.icns` 已接入 `Solaris.app`；Windows 的 `.ico` 随 M4 打包接入 Nuitka 和安装器 |
+| 应用图标（macOS .icns、Windows .ico）与品牌素材 | 已定为"日冕"（2026-10-30，DESIGN.md "Shapes"）：`scripts/gen_icons.py` 生成全部尺寸，`.icns` 已接入 `Solaris.app`；Windows 的 `.ico` 已接入 Nuitka 和安装器 |
 | Windows 代码签名，签名者常量替换占位值（`update/signature.py` 与 `internal/product`），发布构建链接时打开 `SignedRelease` | 等签名方案 |
-| 发布工作流：两个平台的安装包、发布到 GitHub Releases、SHA256SUMS；"检查更新"对真实 Release 验证 | M6 收尾 |
+| 发布工作流：两个平台的安装包、发布到 GitHub Releases、SHA256SUMS；"检查更新"对真实 Release 验证 | 两个平台的安装包和各自的 `.sha256` 已在 `release.yml` 里（未运行过，Windows 不签名）；发布到 Releases、SHA256SUMS 在 M6 收尾 |
 | WARP 出口的真实验收（M9） | 等真实节点 |
 | 真实网络测试：真实订阅、DNS 泄漏、IPv6、睡眠唤醒、切换网络 | 两个平台实测时一起做 |
 | 用户可见的材料：下载页或 README、发布说明、隐私说明（WARP 经过 Cloudflare、诊断导出的内容） | 待写 |
@@ -264,6 +264,14 @@ token 写 HKCU 并让浏览器生效、开机后登录时恢复、ACL 在真实 
   Reload 已在第三轮 A 完成，默认先是"跟随配置"。
 - **实测**：wintun、strict-route、DNS 泄漏，四种栈逐一验证；登录时打开的计划任务。
 - **打包**：Nuitka standalone 构建脚本（包括 QML 目录、字体、翻译）；NSIS 安装器负责安装、升级、卸载，参考 hypervpn 的 `packaging/windows/`。
+
+打包的状态（第三轮 A，2026-10-30）：`scripts/build_windows.py` 构建服务和界面、组装安装目录、编译
+`package/windows/installer.nsi`（中英两种语言）；安装器注册并启动服务、注册 `solaris:` 和 `clash:`，升级时结束界面、
+停服务、由旧卸载器按清单删除旧文件，卸载时删除服务、计划任务和注册，用户数据由用户选择是否删除（architecture.md
+第 9 节）。CI 的 `windows-installer` job 构建不签名的安装包，在 runner 上安装、打开界面、升级、卸载、再以 `/PURGE`
+卸载；`release.yml` 的 Windows job 产出安装包和 `.sha256`，签名步骤留空。没做的：签名（等方案）；界面没有退出命令，
+安装器直接结束界面进程；UAC 提示、开机恢复、升级后恢复隧道都要在虚拟机上验收；wintun 由 sing-tun 嵌在服务里，它的
+预编译 DLL 许可证还没进许可证清单。
 
 验收：在全新的 Windows 虚拟机上依次完成以下步骤，并且 DNS 泄漏测试通过：
 1. 安装后连接；
