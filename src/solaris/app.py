@@ -31,9 +31,7 @@ DEV_SOCKET_ENV = "SOLARIS_DEV_SOCKET"
 
 
 def default_opener() -> Opener:
-    """The installed service on Windows; elsewhere the development socket, if one is set.
-
-    The macOS extension host is not built yet (docs/architecture.md §6)."""
+    """The installed service on Windows; elsewhere the development socket, if one is set."""
     if sys.platform == "win32":
         from solaris.host.transport import pipe_opener
 
@@ -48,6 +46,18 @@ def default_opener() -> Opener:
         raise HostError("service_unavailable", f"set {DEV_SOCKET_ENV} to a development socket")
 
     return unavailable
+
+
+def default_host() -> TunnelHost:
+    """The system extension in a packaged Solaris.app on macOS, unless a development socket is
+    set (docs/architecture.md §6); otherwise the service over default_opener."""
+    if sys.platform == "darwin" and not os.environ.get(DEV_SOCKET_ENV):
+        from solaris.host.extension import bundled_host
+
+        host = bundled_host()
+        if host is not None:
+            return host
+    return ServiceHost(default_opener())
 
 
 def load_ui(engine: QQmlApplicationEngine, view_models: ViewModels) -> bool:
@@ -99,7 +109,7 @@ def main(
     translations = Translations(app)
     translations.apply(resolve_language(language or settings.current.language))
     view_models = compose(
-        host or ServiceHost(default_opener()),
+        host or default_host(),
         store,
         fetcher or UrlFetcher(),
         appearance=Appearance(resolve_mode(appearance or stored_appearance(settings))),
