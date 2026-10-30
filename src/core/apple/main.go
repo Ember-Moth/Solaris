@@ -29,13 +29,14 @@ func solaris_tunnel_network(length *C.size_t) unsafe.Pointer {
 
 // solaris_attach_tun opens the engine in fd mode on the utun descriptor, with home as
 // mihomo's home directory, and the dispatcher that answers solaris_handle_message; the
-// core runs once a Start message brings its configuration. The descriptor stays the
-// caller's: Go never closes it, and mihomo runs on duplicates of it that Go closes. It
-// returns NULL, or an error the caller releases with solaris_free.
+// core runs once a Start message brings its configuration. Before that, it copies the GEO
+// data in resources, the extension's resource directory, into home where home lacks it.
+// The descriptor stays the caller's: Go never closes it, and mihomo runs on duplicates of
+// it that Go closes. It returns NULL, or an error the caller releases with solaris_free.
 //
 //export solaris_attach_tun
-func solaris_attach_tun(fd C.int, home *C.char) *C.char {
-	if err := attach(int(fd), C.GoString(home)); err != nil {
+func solaris_attach_tun(fd C.int, home *C.char, resources *C.char) *C.char {
+	if err := attach(int(fd), C.GoString(home), C.GoString(resources)); err != nil {
 		return C.CString(err.Error())
 	}
 	return nil

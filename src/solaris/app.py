@@ -13,6 +13,7 @@ from PySide6.QtQml import QQmlApplicationEngine
 
 from solaris import __version__
 from solaris.desktop.instance import SingleInstance
+from solaris.desktop.links import LinkReceiver, from_arguments
 from solaris.desktop.login import BACKGROUND_ARG, LoginItem, default_login_item
 from solaris.desktop.tray import tray_supported
 from solaris.host.base import HostError, TunnelHost
@@ -23,6 +24,7 @@ from solaris.models.settings import DatabaseSettingsStore, SettingsStore
 from solaris.models.store import ProfileStore, default_data_dir
 from solaris.models.subscription import Fetcher, UrlFetcher
 from solaris.product import DISPLAY_NAME, PIPE_NAME
+from solaris.update.updater import Updater
 from solaris.viewmodels.appearance import Appearance, resolve_mode
 from solaris.viewmodels.composition import ViewModels, compose
 
@@ -31,9 +33,7 @@ DEV_SOCKET_ENV = "SOLARIS_DEV_SOCKET"
 
 
 def default_opener() -> Opener:
-    """The installed service on Windows; elsewhere the development socket, if one is set.
-
-    The macOS extension host is not built yet (docs/architecture.md §6)."""
+    """The installed service on Windows; elsewhere the development socket, if one is set."""
     if sys.platform == "win32":
         from solaris.host.transport import pipe_opener
 
@@ -48,6 +48,18 @@ def default_opener() -> Opener:
         raise HostError("service_unavailable", f"set {DEV_SOCKET_ENV} to a development socket")
 
     return unavailable
+
+
+def default_host() -> TunnelHost:
+    """The system extension in a packaged Solaris.app on macOS, unless a development socket is
+    set (docs/architecture.md §6); otherwise the service over default_opener."""
+    if sys.platform == "darwin" and not os.environ.get(DEV_SOCKET_ENV):
+        from solaris.host.extension import bundled_host
+
+        host = bundled_host()
+        if host is not None:
+            return host
+    return ServiceHost(default_opener())
 
 
 def load_ui(engine: QQmlApplicationEngine, view_models: ViewModels) -> bool:
@@ -78,6 +90,7 @@ def main(
     language: str = "",
     appearance: str = "",
     login_item: LoginItem | None = None,
+    updater: Updater | None = None,
 ) -> int:
     """``language`` is ``zh`` or ``en`` and wins over the settings at startup; empty follows
     the settings, then SOLARIS_LANG, then the system. ``appearance`` is ``system``,
@@ -90,16 +103,19 @@ def main(
     app.setApplicationVersion(__version__)
     # Closing the window hides it in the tray or quits explicitly (DesktopViewModel).
     app.setQuitOnLastWindowClosed(False)
+    # macOS sends install links as Apple Events, which can come before the window does.
+    receiver = LinkReceiver(app)
+    link = from_arguments(sys.argv[1:])
     directory = store.directory if store else default_data_dir()
     instance = SingleInstance(directory)
-    if not instance.claim():
-        return 0  # the UI already running shows its window
+    if not instance.claim(link):
+        return 0  # the UI already running shows its window, or opens the link
     store = store or ProfileStore(directory)
     settings = DatabaseSettingsStore(store.database)
     translations = Translations(app)
     translations.apply(resolve_language(language or settings.current.language))
     view_models = compose(
-        host or ServiceHost(default_opener()),
+        host or default_host(),
         store,
         fetcher or UrlFetcher(),
         appearance=Appearance(resolve_mode(appearance or stored_appearance(settings))),
@@ -107,6 +123,7 @@ def main(
         login_item=login_item or default_login_item(),
         tray_available=tray_supported(app.platformName()),
         start_hidden=BACKGROUND_ARG in sys.argv[1:],
+        updater=updater,
     )
     engine = QQmlApplicationEngine()
     if not load_ui(engine, view_models):
@@ -118,7 +135,12 @@ def main(
     view_models.settings.languageChanged.connect(switch, Qt.ConnectionType.QueuedConnection)
     view_models.desktop.quitRequested.connect(app.quit)
     instance.activated.connect(view_models.desktop.showWindow)
+    instance.received.connect(receiver.deliver)
+    receiver.received.connect(view_models.open_link)
+    if link is not None:
+        receiver.deliver(link)
     view_models.start()
+    receiver.ready()
     app.aboutToQuit.connect(view_models.shutdown)
     code = app.exec()
     instance.release()

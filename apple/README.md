@@ -7,14 +7,14 @@ Xcode 工程由 XcodeGen 从 `project.yml` 生成，包含两个 target（docs/a
 | SolarisManager | `SolarisManager.dylib`，C ABI | 激活和替换系统扩展、配置 `NETunnelProviderManager`、启停隧道、查询状态、用 `sendProviderMessage` 收发控制消息 |
 | SolarisTunnel | `dev.tschen.solaris.tunnel.systemextension` | `NEPacketTunnelProvider`：设置隧道网络和 DNS、取得 utun fd、运行内核；`handleAppMessage` 把消息交给 Go 分发器 |
 
-只构建 arm64（D2），最低系统版本 macOS 15.0。
+只构建 arm64（D2），最低系统版本 macOS 15.0（主应用实际要求的版本见“组装 Solaris.app”）。
 
 ## 工程结构
 
 ```text
 apple/
 ├── project.yml                      XcodeGen 定义；生成的 Solaris.xcodeproj 不提交
-├── App/Solaris.entitlements         主应用（Nuitka 产出的 .app）的 entitlement，由脚本签上
+├── App/Solaris.entitlements         主应用（Nuitka 产出的 .app）的 entitlement，由 build_app.py 签上
 ├── Manager/                         SolarisManager.dylib
 │   ├── SolarisManager.h             C 接口，见下文
 │   ├── module.modulemap             让 Swift 导入头文件，逐个检查导出函数的签名
@@ -38,7 +38,8 @@ apple/
 
 ## 构建
 
-需要 Xcode、XcodeGen（`brew install xcodegen`）和 Go，在仓库根目录运行：
+需要 Xcode、XcodeGen（`brew install xcodegen`）和 Go，在仓库根目录运行（只构建原生部分；整个 app 见
+“组装 Solaris.app”）：
 
 ```bash
 uv run python scripts/build_apple.py
@@ -51,12 +52,15 @@ uv run python scripts/build_apple.py --sign
 不带参数是不签名构建（`CODE_SIGNING_ALLOWED=NO`），给 CI 和没有证书的机器用；`--sign` 用本机钥匙串里的
 Developer ID 证书签名并校验。脚本依次：
 
-1. 把 `src/core/apple` 编成 arm64 的 C archive（`GOPROXY=https://goproxy.cn,direct`），连同 cgo 生成的
-   `libsolaris.h` 和一份 module map 包成 `SolarisCore.xcframework`。module map 把模块命名为 `SolarisCore`，
-   并自动链接 Go 的 `net` 包要用的 `libresolv`；
-2. 用 XcodeGen 生成工程，`xcodebuild` 构建 Release；
-3. 检查产物：只含 arm64，dylib 导出的函数与头文件一致，扩展的 Info.plist 正确；
-4. 组装一个检查用的 `Solaris.app`（见“签名”），`--sign` 时签名并校验。
+1. 用 `scripts/fetch_geodata.py` 取得钉住的 `GeoSite.dat`、`GeoIP.dat`（缓存在 `build/geodata/`），
+   `project.yml` 把它们放进扩展的 `Contents/Resources`（见“GEO 数据”）；
+2. 把 `src/core/apple` 编成 arm64 的 C archive（`GOPROXY=https://goproxy.cn,direct`），`-ldflags -X` 把版本号写进
+   `product.Version`（`GetInfo` 的服务版本），连同 cgo 生成的 `libsolaris.h` 和一份 module map 包成
+   `SolarisCore.xcframework`。module map 把模块命名为 `SolarisCore`，并自动链接 Go 的 `net` 包要用的 `libresolv`；
+3. 用 XcodeGen 生成工程，`xcodebuild` 构建 Release。扩展的可执行文件在签名前由 Xcode 做 `strip -x`
+   （`STRIP_STYLE: non-global`），73.3 MiB 减到 61.3 MiB；
+4. 检查产物：只含 arm64，dylib 导出的函数与头文件一致，扩展的 Info.plist 正确，扩展带的 GEO 数据就是钉住的那份；
+5. 组装一个检查用的 `Solaris.app`（见“签名”），`--sign` 时签名并校验。
 
 产物都在 `build/apple/`（已被 git 忽略）：
 
@@ -86,8 +90,8 @@ Developer ID 证书签名并校验。脚本依次：
 | 系统扩展 | Xcode | `Solaris Tunnel Developer ID`，按名称指定 | `Tunnel/SolarisTunnel.entitlements` |
 | 主应用 | 脚本（`codesign`） | `Solaris Developer ID` | `App/Solaris.entitlements` |
 
-主应用最终是 Nuitka 产出的 .app，签名放在 M5 的“组装 .app”一步。在那之前，脚本用检查用的
-`check/Solaris.app` 验证同一条路径：把 dylib 放进 `Contents/Frameworks`、扩展放进
+主应用是 Nuitka 产出的 .app，由 `scripts/build_app.py` 签名（见“组装 Solaris.app”）。`build_apple.py` 另用
+检查用的 `check/Solaris.app` 验证同一条路径：把 dylib 放进 `Contents/Frameworks`、扩展放进
 `Contents/Library/SystemExtensions`，可执行文件是一个链接了头文件里全部函数的桩程序（从不运行）。
 
 `--sign` 时脚本：
@@ -103,6 +107,69 @@ Developer ID 证书签名并校验。脚本依次：
 
 脚本不公证，不安装也不激活系统扩展。两份 entitlement 文件都写明了 `com.apple.application-identifier`
 和 `com.apple.developer.team-identifier`，这样签上的内容与文件逐字一致。
+
+## 组装 Solaris.app
+
+```bash
+uv run --with nuitka==4.2.2 python scripts/build_app.py
+```
+
+```bash
+uv run --with nuitka==4.2.2 python scripts/build_app.py --unsigned
+```
+
+脚本先按 `build_apple.py` 的步骤构建原生部分（带签名，或 `--unsigned` 时不签名），再：
+
+1. 用 Nuitka 4.2.2 把 `package/entry.py` 编成 app（`--mode=app`），带上 `src/solaris/ui`（QML、托盘图标、
+   字体）和编译好的翻译。`--include-qt-plugins=qml` 会带进全部 QML 模块，脚本按清单排除界面用不到的
+   （3D、图表、多媒体、WebEngine、其他控件样式等），app 从 428 MiB 减到 201 MiB；Qt 的 TLS 只留 Secure Transport。
+   编译用 Xcode 的 clang，不用 ccache（ccache 要求 PATH 里同名的 clang 就是所用的那个）；
+2. 检查 UI 的每个 Mach-O：只含 arm64，只加载 bundle 内和系统的库；install name 和 rpath 里残留的构建机
+   路径（uv 的 Python 的 `libpython`）改成 `@rpath` 或删掉；
+3. 组装 `build/app/Solaris.app`：Nuitka 产物在 `Contents/MacOS`，管理库在 `Contents/Frameworks`，扩展在
+   `Contents/Library/SystemExtensions`。Info.plist：bundle id `dev.tschen.solaris`，版本与扩展相同，注册
+   URL scheme `solaris` 和 `clash`（D6，链接由界面处理），`SolarisCoreVersion` 是 mihomo 的版本（隧道未连接时
+   `MacExtensionHost` 用它回答 `GetInfo`）；
+4. 签名：UI 的 Mach-O 逐个用 Developer ID 签（hardened runtime、时间戳），再嵌入 `Solaris Developer ID`
+   描述文件，用 `App/Solaris.entitlements` 签整个 app；dylib 和扩展保留 Xcode 的签名。`--unsigned` 时整个 app
+   做 ad hoc 签名，只供查看，不能激活扩展；
+5. 校验：除 `build_apple.py` 的各项外，`Contents/MacOS` 里每个 Mach-O 都由这个 Team 签名、带 hardened runtime
+   和时间戳。
+
+- **可执行文件叫 `SolarisUI`**：卷不区分大小写，而 `Contents/MacOS/solaris/` 是 Python 包的数据目录（`ui/`、
+  `translations/`），编译后的模块在那里找它们。程序坞、菜单栏和“登录项”显示的是 `CFBundleName`（Solaris）。
+- `Contents/MacOS` 里的数据文件（QML、字体、翻译）带 Nuitka 的 ad hoc 签名，签名存在扩展属性里，复制时要用
+  `ditto` 保留；hypervpn 同样的布局能通过公证。
+- **最低系统版本**：PySide6 6.12.0（`uv.lock` 锁定的版本）的 wheel 标着 macOS 14.0，绑定库实际的部署版本却是
+  26.0，所以脚本把 app 的 `LSMinimumSystemVersion` 设为 bundle 里所有 Mach-O 要求的最高版本（现在是 26.0），
+  并打印警告；要支持 macOS 15，得把 PySide6 钉在 6.11.x（hypervpn 用的 6.11.2 是 15.0）。扩展和管理库仍是 15.0。
+- **JIT**：主应用的 entitlement 带 `com.apple.security.cs.allow-jit`，Qt Quick 的 JavaScript 引擎在 hardened
+  runtime 下要用（hypervpn 同样需要）；它不需要描述文件授权。
+- 脚本不运行、不安装 app，也不公证。
+
+## 发布工作流
+
+`.github/workflows/release.yml` 由 `v*` 标签和手动触发（`workflow_dispatch`），job 使用 `release`
+Environment，Ember-Moth 批准后才拿到机密。标签必须是 `v<pyproject.toml 的版本>`。步骤：
+
+1. 建临时钥匙串，导入证书（核对 `MACOS_CERTIFICATE_NAME` 属于 `APPLE_TEAM_ID`，且是有效的身份）；两份描述文件
+   装进 `~/Library/Developer/Xcode/UserData/Provisioning Profiles`，Xcode 和 `build_apple.py` 按名称找；
+2. `scripts/build_app.py` 构建、签名、校验；
+3. 用 `notarytool`（App Store Connect API Key）公证 app 并 staple，`spctl` 评估；
+4. 做 HFS+、LZMA 压缩的 `Solaris-<版本>-macos-arm64.dmg`（内含 Solaris.app 和“应用程序”的快捷方式），签名、
+   公证、staple，生成 `Solaris-<版本>-macos-arm64.dmg.sha256`；
+5. 两个文件作为 workflow artifact `solaris-<版本>-macos-arm64` 上传，保留 30 天；
+6. 无论成败都删除钥匙串、描述文件和 API Key。
+
+公证由 `scripts/notarize.py` 完成，它只在 GitHub Actions 里运行。还不发布 GitHub Release（M6）。本机试过的
+部分：完整的签名构建和校验，以及做 DMG、签名、`hdiutil verify` 和校验和（49 MB）；公证和工作流本身没有运行过。
+
+## GEO 数据
+
+安装包附带的 `GeoSite.dat`、`GeoIP.dat`（docs/routing.md §8.4）在扩展的 `Contents/Resources` 里。扩展的
+mihomo home 在扩展容器的 `Application Support/Solaris/core`，`startTunnel` 把资源目录交给
+`solaris_attach_tun`，Go 在打开 engine 前把 home 里缺少的文件复制过去（先写临时文件再改名，不会留下半个
+文件）；已有的文件不动，engine 的 GEO 自动更新会替换它们。复制失败时 attach 失败，隧道不启动。
 
 ## C 接口（`Manager/SolarisManager.h`）
 
@@ -143,7 +210,7 @@ Developer ID 证书签名并校验。脚本依次：
 | 函数 | 作用 |
 | --- | --- |
 | `solaris_tunnel_network(&length)` | 隧道的网络（`engine.FDNetwork`）的 JSON：IPv4 地址和掩码、IPv6 地址和前缀长度、DNS 服务器、MTU |
-| `solaris_attach_tun(fd, home)` | 以 fd 模式打开 engine 和分发器；返回 NULL 或错误字符串 |
+| `solaris_attach_tun(fd, home, resources)` | 把 `resources` 里的 GEO 数据复制进 `home`（缺少时），再以 fd 模式打开 engine 和分发器；返回 NULL 或错误字符串 |
 | `solaris_detach_tun()` | 取消在途消息并等它们结束，停止内核，关闭分发器和 Go 的描述符副本 |
 | `solaris_handle_message(request, length, &response_length)` | 处理一条编码好的 Request，返回 Response；没有 attach 时返回 `not_running` |
 | `solaris_free(pointer)` | 释放上面几个函数返回的缓冲区和字符串 |
@@ -156,16 +223,35 @@ Developer ID 证书签名并校验。脚本依次：
   描述符。attach 和 detach 在扩展的一个串行队列上按序执行。
 - 消息在并发队列上分发，状态变化由分发器内部的操作锁串行。Swift 只转发字节，不解析消息。
 
+## Python 宿主
+
+`src/solaris/host/extension.py` 的 `MacExtensionHost` 是 macOS 正式版的宿主：`ManagerLibrary` 经 ctypes 绑定
+`SolarisManager.dylib`，每个 Request 用一次 `solaris_manager_send` 发给扩展，请求和响应的映射沿用
+`ServiceHost`。阻塞调用各在一个 daemon 线程里执行：NetworkExtension 在主队列上完成回调，app 退出时没人处理
+主队列，进行中的调用要等到超时，daemon 线程不会拖住退出。
+
+- **启动**：本次运行第一次连接时 `activate`（要用户批准时报 `extension_needs_approval`，需要重启时报
+  `extension_needs_reboot`），再 `start`，然后 `send(Start)`；内核拒绝配置时把隧道停掉，不让流量进入没有内核的
+  隧道。**停止**：`stop`，扩展 detach 时停止内核。关闭宿主不动隧道。
+- **隧道未连接**（`NOT_CONNECTED`、`NOT_CONFIGURED`，或扩展回答没有 attach）：`get_status` 按隧道状态报
+  stopped / starting / stopping，`get_info` 用 Info.plist 里的内核版本，列表和轮询返回空，GEO 分类用安装包的清单，
+  其余需要内核的方法报 `not_running`；订阅随扩展一起消失，之后重新订阅。
+- 其他结果：`TIMED_OUT` → `timeout`；`send` 的 `FAILED` → `connection_closed`，启停的 `FAILED` → `tunnel_failed`。
+- 选宿主：打包的 app 里（`Contents/Frameworks` 有管理库）用 `MacExtensionHost`，除非设了
+  `SOLARIS_DEV_SOCKET`；从源码运行时照旧用开发服务。
+- 单元测试用 Python 写的假管理库，以及用真实头文件编出的假 dylib（检查 ctypes 签名和每块缓冲区都被释放），
+  不碰 NetworkExtension。
+
 ## 尚未完成
 
-- **Python 侧的 `MacExtensionHost`**：通过 ctypes 调用管理库。
-- **组装 .app**：把 Nuitka 产物、管理库和扩展装进 `Solaris.app`，按上面的方式签名。
-- **公证**和发布 CI。
+- **隧道未连接时的校验和读取订阅**：扩展只在隧道连接时运行，`Validate` 和 `InspectSource` 这时得到
+  `not_running`，界面在断开时导入订阅会失败。需要决定做法，例如把 Go 内核的无 TUN 只读部分也链进管理库。
+- **最低系统版本**：PySide6 6.12.0 让 app 要求 macOS 26（见“组装 Solaris.app”）。
 - **测试 Mac 上的实测**：激活、批准、连接；utun 描述符的查找、四种栈经过 utun 的流量、DNS 劫持、断开与
-  重连后描述符的归属；provider message 的大小上限（D8）。
-- **GEO 数据**：扩展的 mihomo home 在扩展容器里，还没有放入应用附带的 GEO 数据。
-- **体积**：扩展的可执行文件未裁剪符号（73.3 MiB，`strip -x` 后 61.3 MiB），组装 .app 时裁剪。
-- 卸载前停用扩展（`deactivationRequest`）、扩展说明文字的本地化。
+  重连后描述符的归属；provider message 的大小上限（D8）；app 在 hardened runtime 下的启动。
+- **发布工作流**还没有运行过（要在 `release` Environment 里批准）；公证结果未知。
+- 批准扩展、需要重启等新错误码的界面文案；app 图标；卸载前停用扩展（`deactivationRequest`）、扩展说明文字的
+  本地化。
 
 ## Apple Developer 配置
 
@@ -202,7 +288,7 @@ Developer ID 证书签名并校验。脚本依次：
 
 | 目标 | entitlement |
 | --- | --- |
-| 主应用 | `com.apple.developer.system-extension.install`；`com.apple.developer.networking.networkextension` 含 `packet-tunnel-provider-systemextension`；`com.apple.security.application-groups` 含 `group.dev.tschen.solaris`；iCloud 的 CloudKit 容器 `iCloud.dev.tschen.solaris` |
+| 主应用 | `com.apple.developer.system-extension.install`；`com.apple.developer.networking.networkextension` 含 `packet-tunnel-provider-systemextension`；`com.apple.security.application-groups` 含 `group.dev.tschen.solaris`；iCloud 的 CloudKit 容器 `iCloud.dev.tschen.solaris`；`com.apple.security.cs.allow-jit`（Qt Quick） |
 | 系统扩展 | `com.apple.developer.networking.networkextension` 含 `packet-tunnel-provider-systemextension`；App Sandbox；`network.client` / `network.server`；同一个 App Group |
 
 两份描述文件分别嵌入为主应用和扩展的 `embedded.provisionprofile`，签名时启用 hardened runtime。
@@ -223,5 +309,6 @@ Environment 读取它们；这个 Environment 只允许 `main` 分支和 `v*` �
 | `MACOS_CERTIFICATE_BASE64`、`MACOS_CERTIFICATE_PASSWORD` | 机密 | 已配置：G2 证书，SHA-1 `F462D4E8…FC33`，2027-11-29 到期 |
 | `MACOS_APP_PROFILE_BASE64`、`MACOS_NETWORK_EXTENSION_PROFILE_BASE64` | 机密 | 已配置：`Solaris Developer ID`、`Solaris Tunnel Developer ID`（2026-10-30），都授权上面这张证书 |
 
-签名任务校验证书、Team、有效期，以及两份描述文件的权限：主应用必须有 `system-extension.install`，扩展必须有
+`.github/workflows/release.yml` 读取它们（见“发布工作流”）。它和 `build_app.py` 一起校验证书、Team、有效期，
+以及两份描述文件的权限：主应用必须有 `system-extension.install`，扩展必须有
 `packet-tunnel-provider-systemextension`。

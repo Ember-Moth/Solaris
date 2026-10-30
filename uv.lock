@@ -266,6 +266,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "packaging" },
     { name = "pyright" },
     { name = "pytest" },
     { name = "pytest-qt" },
@@ -281,6 +282,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "packaging", specifier = ">=26.3" },
     { name = "pyright", specifier = ">=1.1.414" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-qt", specifier = ">=4.5.0" },

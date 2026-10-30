@@ -9,7 +9,7 @@
 
 | 部分 | 状态 | 说明 |
 | --- | --- | --- |
-| 架构与视觉规范 | 完成 | architecture.md、ui.md、DESIGN.md；原型在 Claude Design 画布上（第 21 版，含深色画板、分流 v2 与隐私出口） |
+| 架构与视觉规范 | 完成 | architecture.md、ui.md、DESIGN.md；原型在 Claude Design 画布上（第 23 版，含深色画板、分流 v2 与链式出口） |
 | 控制协议 | v1 | 消息、方法表、帧编解码已定；Go 与 Python 共用样本测试；配置来源可以是订阅原文或拼装（`Composition`）；`InspectSource`、`ListGeoCategories`、`PreviewGroup`、`MatchRule`、`ConvertToPlan`、`ExportPlan` |
 | engine（内嵌 mihomo） | 完成（M1、M5） | mihomo v1.19.33；无 TUN、自管 TUN 和 fd 三种模式，覆写、§3.3 安全项、开发模式护栏 |
 | Go 分发器与服务入口 | 部分 | 全部内核方法、Start / Stop / Reload / Validate、`PollEvents`；`Claim`、系统代理、Authenticode 校验留到 M4 |
@@ -18,9 +18,10 @@
 | 端到端联调 | 完成（A2） | 界面连真实开发服务跑通 M1、M2 的验收步骤；`tests/e2e` 自动化，CI 的 `e2e` job 在 macOS 上运行 |
 | 数据存储与云备份 | 存储层完成（B1） | 界面数据在 SQLite；云备份未做 |
 | 自定义分流 | 完成（M8a：B2、C1；M8b） | 分流方式、节点池、地区组、默认模板、41 个服务、规则编辑与撤销、立即生效；策略组编辑器与实时预览、规则测试、搜索与按目标筛选、以此创建方案、导入导出、查看生成的配置 |
-| 隐私出口 | 设计完成 | WARP 出口（M9）和 Tor 出口（M10，首发后）的设计见 privacy.md，未实现 |
-| macOS 原生部分 | 部分（M5） | Xcode 工程、管理库 C 接口；系统扩展用 utun 以 fd 模式运行内核（`with_gvisor`）；Developer ID 签名与校验通过；`MacExtensionHost`、组装 .app、公证、测试 Mac 实测未做 |
-| 打包与安装 | 未开始 | 只有 Nuitka 入口文件和资源复制规则 |
+| 链式出口 | 设计完成 | WARP 出口（M9）、Tor 出口（M10，首发后）、VPN Gate 出口（M12）的设计见 exits.md，未实现 |
+| macOS 原生部分 | 部分（M5） | Xcode 工程、管理库 C 接口；系统扩展用 utun 以 fd 模式运行内核（`with_gvisor`），带 GEO 数据；`MacExtensionHost`；测试 Mac 实测未做 |
+| 打包与安装 | macOS 部分 | `scripts/build_app.py` 组装并签名 `Solaris.app`；发布工作流（签名、公证、.dmg）已写好，未运行；Windows 未开始 |
+| 发布准备（M6） | 部分 | 检查更新与下载、诊断信息导出、第三方许可证清单、一键导入链接的处理已做（release.md）；macOS 的 scheme 已由 `Solaris.app` 的 Info.plist 注册；Windows 签名方案、发布全流程、Windows 的 scheme 注册（随 M4 安装器）未做 |
 | CI | 全绿 | Python（macOS、Windows）、Go（macOS、Windows、Linux）、网络命名空间 TUN 测试（四种栈和 fd 模式）、macOS 上的 e2e |
 
 ## 2. 下一步开发计划
@@ -118,7 +119,11 @@ B1、B2 的结果与遗留：
 **第二轮**（第一轮合并后）：
 
 - **M9 WARP 出口**：内核（注册、`RegisterWarp`、拼装）和界面两个会话并行。放在第二轮，是因为它和 M8b 都改拼装、
-  控制协议和分流页（[privacy.md](privacy.md) 第 9 节）。
+  控制协议和分流页（[exits.md](exits.md) 第 10 节）。
+- **M12 VPN Gate 出口**（D25）：M9 合并之后做，复用它的链式出口框架；开工前先核实 VPN Gate 的使用条款
+  （[exits.md](exits.md) 第 5 节）。
+- **组网出站单独处理**（D24）：节点池分出组网出站、`mesh:` 目标、安全项、分流页的组网一节（[mesh.md](mesh.md)
+  第 9 节）。改的地方和 M9 相同，所以由 M9 的内核会话和界面会话各加一份。
 - **M7 备份的本地部分**：快照的导出、导入与合并，`BackupProvider` 接口，本地目录提供方。Google Cloud 项目建好后
   接上 Google Drive（C2）。
 
@@ -130,7 +135,9 @@ B1、B2 的结果与遗留：
 
 ### 首发之后
 
-- **M10 Tor 出口**（实验功能）：arti 经 pyo3 运行在界面进程，见 [privacy.md](privacy.md)。
+- **M10 Tor 出口**（实验功能）：arti 经 pyo3 运行在界面进程，见 [exits.md](exits.md)。
+- **M11 应用内组网**：在应用里添加 Tailscale、ZeroTier、EasyTier 网络，凭据存系统凭据库，Tailscale 交互式登录，
+  组网状态，见 [mesh.md](mesh.md) 第 9 节。
 
 ### 需要你提供或决定的
 
@@ -222,9 +229,13 @@ Apple 的签名材料（证书、两份描述文件、公证 API Key）已齐，
 PacketTunnel 系统扩展骨架、`scripts/build_apple.py`（签名与不签名两种模式）、CI 的不签名构建；签名材料齐全，
 本机签名校验通过。第二步 fd 模式已完成（2026-10-30）：engine 的 fd 模式、扩展找到 utun 描述符后交给 Go
 （`solaris_attach_tun` / `solaris_detach_tun`）、扩展带 `with_gvisor` 构建、CI 在网络命名空间里测 fd 模式。
-剩下：`MacExtensionHost`、"包含所有网络"设置（D19）、把 GEO 数据放进扩展的数据目录、组装 .app、公证与发布
-工作流、测试 Mac 实测（找 utun 描述符、四种栈、重连时描述符的归属、`includeAllNetworks`、D8）。
-部署目标暂定 macOS 15.0。
+第三步（阶段 D 第一轮，2026-10-30）：`MacExtensionHost`（ctypes 调用管理库，隧道未连接时按停止处理）；扩展
+带 GEO 数据，attach 时复制进 home；`scripts/build_app.py` 把 Nuitka 产物、管理库和扩展组装成 `Solaris.app` 并签名
+（本机签名校验通过，扩展 `strip -x`）；发布工作流 `release.yml`（临时钥匙串、签名、公证、staple、.dmg 和 sha256）。
+剩下："包含所有网络"设置（D19）、测试 Mac 实测（找 utun 描述符、四种栈、重连时描述符的归属、`includeAllNetworks`、
+D8、app 在 hardened runtime 下的启动）、第一次运行发布工作流（公证）。待决定：隧道未连接时 `Validate` 和
+`InspectSource` 没有内核可用，断开时导入订阅会失败；PySide6 6.12.0 的绑定库要求 macOS 26，要支持 15 得钉在 6.11.x
+（apple/README.md）。部署目标暂定 macOS 15.0。
 
 范围：
 
@@ -241,6 +252,12 @@ PacketTunnel 系统扩展骨架、`scripts/build_apple.py`（签名与不签名�
 验收：在全新的 Mac 上安装公证后的 .app → 批准系统扩展 → 连接 → 退出 App 后隧道仍在 → 重新打开 App 能读到状态。
 
 ### M6 发布准备
+
+**状态**：先行项已完成（2026-10-30，阶段 D 第一轮），设计见 [release.md](release.md)：检查更新与下载（GitHub
+Releases、SHA256SUMS、macOS 的 codesign / spctl 与 Team ID、Windows 的 WinVerifyTrust，确认后才打开安装包）、
+诊断信息导出（按白名单脱敏）、`scripts/gen_licenses.py` 生成的第三方许可证清单、`solaris://` 与 `clash://`
+一键导入链接的解析与转发。还没有任何 Release，更新只对本机的假服务器测过；Windows 的签名者是占位常量。
+许可证清单还缺 Qt Image Formats 两项的全文和 CPython 自带库的逐项列表。
 
 - **命名**：产品名已定为 Solaris（D1），代码里的标识已全部替换（2026-10-30）。
 - **签名与发布**：准备 Windows Authenticode 和 Apple Developer ID 证书；建立发布 CI，负责构建、签名和生成校验和。
@@ -312,13 +329,13 @@ fake-ip 下的一致性留到 M5 / M4 实测（routing.md 第 12 节）。
 ### M9 WARP 出口
 
 目标：流量经用户的节点再进入 Cloudflare WARP，机场看不到访问的网站，网站看不到节点 IP。设计见
-[privacy.md](privacy.md) 第 3 节（D22）。
+[exits.md](exits.md) 第 3 节（D22）。
 
 范围：
 
 - **内核**：`internal/warp` 经"经由"组注册账户（`RegisterWarp`）；拼装 MASQUE 或 WireGuard 出站，`dialer-proxy`
   指向经由组；出口不可用时拒绝连接，并给出 `egress_unavailable`、`via_empty` 警告。
-- **界面**：分流页的"隐私出口"一节、出口设置对话框、规则目标、账户存进系统凭据库、模拟宿主。
+- **界面**：分流页的"链式出口"一节、出口设置对话框、规则目标、账户存进系统凭据库、模拟宿主。
 
 验收：
 1. 经一个只有 TCP 的真实节点打开 WARP 出口，注册成功；
@@ -328,7 +345,7 @@ fake-ip 下的一致性留到 M5 / M4 实测（routing.md 第 12 节）。
 
 ### M10 Tor 出口（首发后，实验功能）
 
-目标：流量经用户的节点进入 Tor 网络，不需要网桥，可以访问 `.onion`。设计见 [privacy.md](privacy.md) 第 4 节（D23）。
+目标：流量经用户的节点进入 Tor 网络，不需要网桥，可以访问 `.onion`。设计见 [exits.md](exits.md) 第 4 节（D23）。
 
 范围：
 
@@ -384,9 +401,11 @@ fake-ip 下的一致性留到 M5 / M4 实测（routing.md 第 12 节）。
 | D11 | 内置检查更新与下载：安装包来自 GitHub Releases，校验签名，由用户确认安装 | 本文 M6 |
 | D19 | macOS 扩展的 `includeAllNetworks` 默认关闭，用户可在设置页打开；打开后 `system`、`mixed` 栈换成 gVisor | architecture.md §3.4、ui.md §8 |
 | D20 | fd 模式的 `dns.fake-ip-range` 固定为 `198.18.0.1/16`（TUN 地址由它得出）；用户关掉 `ipv6` 时，进入隧道的 IPv6 流量被丢弃 | architecture.md §3.1 |
-| D21 | 隐私出口只在"我的方案"下提供；出口不可用时，指向它的规则拒绝连接，不改走普通代理 | privacy.md 第 1 节 |
-| D22 | WARP 出口放在内核：mihomo 的 MASQUE 或 WireGuard 出站，`dialer-proxy` 经用户的节点，默认 MASQUE over HTTP/2；内核经节点注册账户，账户存系统凭据库、不进备份；首发前做（M9） | privacy.md 第 3 节 |
-| D23 | Tor 出口用 arti-client，经 pyo3 运行在界面进程；首发后作为实验功能（M10）；退出界面后 Tor 不可用，连接被拒绝 | privacy.md 第 4 节 |
+| D21 | 链式出口只在"我的方案"下提供；出口不可用时，指向它的规则拒绝连接，不改走普通代理 | exits.md 第 1 节 |
+| D22 | WARP 出口放在内核：mihomo 的 MASQUE 或 WireGuard 出站，`dialer-proxy` 经用户的节点，默认 MASQUE over HTTP/2；内核经节点注册账户，账户存系统凭据库、不进备份；首发前做（M9） | exits.md 第 3 节 |
+| D25 | VPN Gate 作为第三种链式出口（"隐私出口"随之改名"链式出口"）：经节点拉列表，只用 TCP 的 OpenVPN 服务器，按国家和评分挑选；默认负载均衡组按网站分配服务器并跳过失效的，也可选只用一台；定位是换 IP 和住宅 IP，不宣传隐私；排在 M9 之后，开工前先核实使用条款 | exits.md 第 5 节 |
+| D24 | 保留 Tailscale、ZeroTier、EasyTier 出站；它们不进节点池和任何策略组，作为"组网"出站单独列出、供规则引用；只用作出站，安全项关闭 EasyTier 对外提供出口和子网的选项 | mesh.md |
+| D23 | Tor 出口用 arti-client，经 pyo3 运行在界面进程；首发后作为实验功能（M10）；退出界面后 Tor 不可用，连接被拒绝 | exits.md 第 4 节 |
 
 ## 6. 风险
 
@@ -405,6 +424,7 @@ fake-ip 下的一致性留到 M5 / M4 实测（routing.md 第 12 节）。
 | CloudKit 依赖签名、entitlement 和 M5 的管理库 | iCloud 放在 M7 的最后，与 M5 一起验证 |
 | WARP 的注册接口不是官方的，Cloudflare 可能改动或限流 | 常量集中在 `internal/warp`；失败时拒绝连接，不退回普通代理；功能默认关闭 |
 | arti-client 每月发一个不兼容版本；Rust 工具链进入构建 | Tor 放到首发后，作为实验功能；钉住版本，每季度升级 |
+| VPN Gate 的使用条款未核实；出口由志愿者运营 | 开工前核实，不允许就不做；只宣传换 IP，不说隐私 |
 
 ## 7. DESIGN.md 待补规则
 
@@ -418,6 +438,8 @@ fake-ip 下的一致性留到 M5 / M4 实测（routing.md 第 12 节）。
 | [ui.md](ui.md) | Python 界面：宿主接口、配置存储、订阅、覆写、多语言、外观、连接与日志、设置与桌面行为 |
 | [storage.md](storage.md) | 计划中的 SQLite 存储与云备份（M7） |
 | [routing.md](routing.md) | 计划中的自定义分流（M8） |
-| [privacy.md](privacy.md) | 计划中的隐私出口：WARP（M9）和 Tor（M10） |
+| [exits.md](exits.md) | 计划中的链式出口：WARP（M9）、Tor（M10）和 VPN Gate（M12） |
+| [mesh.md](mesh.md) | 计划中的组网出站：Tailscale、ZeroTier、EasyTier 的单独处理（第二轮）和应用内组网（M11） |
+| [release.md](release.md) | 发布物约定、检查更新与下载、诊断信息、第三方许可证、一键导入（M6） |
 | [DESIGN.md](../DESIGN.md) | 视觉规范，Theme.qml 由它生成 |
 | roadmap.md（本文） | 进度、计划、决策与风险 |
