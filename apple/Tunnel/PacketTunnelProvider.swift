@@ -46,8 +46,12 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     guard let tunnel = TunnelDescriptor.find() else {
       return TunnelError("Could not find the tunnel's utun descriptor")
     }
+    // GeoSite.dat and GeoIP.dat, which the build copies into the extension's resources.
+    guard let resources = Bundle.main.resourceURL else {
+      return TunnelError("The extension has no resource directory")
+    }
     do {
-      try Core.attach(tunnel.fileDescriptor, home: try Self.coreHome())
+      try Core.attach(tunnel.fileDescriptor, home: try Self.coreHome(), resources: resources)
     } catch {
       logger.error("attaching the core failed: \(error.localizedDescription, privacy: .public)")
       return error

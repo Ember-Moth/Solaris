@@ -17,11 +17,16 @@ enum Core {
     return try decoder.decode(TunnelNetwork.self, from: Data(bytes: buffer, count: length))
   }
 
-  /// Opens the engine in fd mode on the utun descriptor. Go runs mihomo on duplicates of
-  /// it and never closes the descriptor itself.
-  static func attach(_ fileDescriptor: Int32, home: URL) throws {
-    let failure = home.path.withCString {
-      solaris_attach_tun(fileDescriptor, UnsafeMutablePointer(mutating: $0))
+  /// Opens the engine in fd mode on the utun descriptor, after copying the GEO data in
+  /// `resources` into `home` where it is missing. Go runs mihomo on duplicates of the
+  /// descriptor and never closes the descriptor itself.
+  static func attach(_ fileDescriptor: Int32, home: URL, resources: URL) throws {
+    let failure = home.path.withCString { home in
+      resources.path.withCString { resources in
+        solaris_attach_tun(
+          fileDescriptor, UnsafeMutablePointer(mutating: home),
+          UnsafeMutablePointer(mutating: resources))
+      }
     }
     if let failure {
       defer { solaris_free(failure) }

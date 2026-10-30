@@ -32,7 +32,9 @@ var (
 	current *session
 )
 
-func attach(fd int, home string) error {
+// attach seeds home with the GEO data in resources, unless resources is empty, then opens
+// the engine and the dispatcher on the descriptor.
+func attach(fd int, home, resources string) error {
 	lifecycle.Lock()
 	defer lifecycle.Unlock()
 	mu.RLock()
@@ -40,6 +42,11 @@ func attach(fd int, home string) error {
 	mu.RUnlock()
 	if attached {
 		return errors.New("a tunnel is already attached")
+	}
+	if resources != "" {
+		if err := seedGeoData(resources, home); err != nil {
+			return err
+		}
 	}
 	core, err := engine.New(engine.Options{HomeDir: home, Tun: engine.TunFD, TunFD: fd})
 	if err != nil {

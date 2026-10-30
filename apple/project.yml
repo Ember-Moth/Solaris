@@ -51,6 +51,12 @@ targets:
     platform: macOS
     sources:
       - path: Tunnel
+      # The GEO data the core copies into its home on attach (docs/routing.md §8.4), fetched
+      # into build/geodata by scripts/build_apple.py.
+      - path: ../build/geodata/GeoSite.dat
+        buildPhase: resources
+      - path: ../build/geodata/GeoIP.dat
+        buildPhase: resources
     dependencies:
       # Built from src/core/apple by scripts/build_apple.py.
       - framework: ../build/apple/SolarisCore.xcframework

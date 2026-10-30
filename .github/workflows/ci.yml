@@ -130,6 +130,11 @@ jobs:
         run: |
           xcodebuild -version
           brew install xcodegen
+      # The GEO data the extension carries in its resources; the pin is in the script.
+      - uses: actions/cache@v6
+        with:
+          path: build/geodata
+          key: geodata-${{ hashFiles('scripts/fetch_geodata.py') }}
       # The script needs only the standard library, so skip installing the project. It builds
       # the Go archive with the extension's tags, with_gvisor.
       - name: Build (unsigned)
