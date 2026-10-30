@@ -1,7 +1,7 @@
-"""Roadmap M8b: the acceptance of docs/routing.md §10 through the UI on the development
-service. A subscription of 400 rules becomes a plan whose summary is accurate; a group that
-leaves out the 0.1x nodes previews the members the proxies page shows once connected; and
-the rule test names, for 20 sample hosts, the rule actual connections match.
+"""Plans through the UI on the development service. A subscription of 400 rules becomes a
+plan whose summary is accurate; a group that leaves out the 0.1x nodes previews the members
+the proxies page shows once connected; and the rule test names, for 20 sample hosts, the
+rule actual connections match.
 
 The pool's nodes are the local HTTP proxies of tests/e2e/servers.py, and the core reads the
 GEO data the installers ship (scripts/fetch_geodata.py, cached in build/geodata).

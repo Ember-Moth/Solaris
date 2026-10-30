@@ -15,7 +15,7 @@ Button {
     property string accessibleName
     readonly property string currentLabel: options.find(option => option.value === current)?.label ?? ""
     // What the button shows: the current option's label, or a caller's for a current value
-    // the list does not offer (a region that has no nodes for now).
+    // the list does not offer (a region without nodes at the moment).
     property string displayText: currentLabel
     // The list it opens: its options, or a caller's menu with other items besides.
     property AppMenu menu: list

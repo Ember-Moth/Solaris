@@ -5,9 +5,10 @@ from a pinned MetaCubeX/meta-rules-dat release, checked against pinned SHA-256 d
     uv run python scripts/fetch_geodata.py --categories  # regenerate the category list
     uv run python scripts/fetch_geodata.py --check       # the committed list matches the data
 
-The files keep mihomo's names, so M4 and M5 copy them into the core's home as they are. The
-category list (src/solaris/host/geo_categories.py) is what the category picker offers
-while the core has no GEO data to list. Moving the pin means new digests and a new list.
+The files keep mihomo's names, so the Windows service and the macOS extension copy them into
+the core's home as they are. The category list (src/solaris/host/geo_categories.py) is what
+the category picker offers while the core has no GEO data to list. Moving the pin means new
+digests and a new list.
 """
 
 from __future__ import annotations

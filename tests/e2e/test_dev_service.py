@@ -1,5 +1,5 @@
-"""Roadmap A2: the UI on the development service, step by step through the acceptance of
-M1 and M2 (docs/roadmap.md §3)."""
+"""The UI on the development service, step by step: import and connect, the pages that show
+the core, modes and nodes, reloads, reconnecting, and the run options."""
 
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ def connected_on_nodes(app: App) -> None:
 
 
 def test_import_check_connect_and_proxy(app: App) -> None:
-    """M1 and M2: import a file and a subscription, the service checks them, connect, and
+    """Import a file and a subscription, the service checks them, connect, and
     curl goes through the mixed port. The development service clears what would reach
     beyond this machine's loopback."""
     vm, network = app.view_models, app.network

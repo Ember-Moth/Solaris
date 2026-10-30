@@ -44,7 +44,6 @@ MATCH_MODES = {
     "regex": QT_TRANSLATE_NOOP("GroupEditor", "正则"),
 }
 STRATEGIES = ("consistent-hashing", "round-robin", "sticky-sessions")
-DEFAULT_INTERVAL = 300
 
 
 @dataclass(frozen=True)

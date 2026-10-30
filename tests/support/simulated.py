@@ -1,5 +1,4 @@
-"""An in-process TunnelHost, subscription fetcher and profiles with the prototype's
-sample data.
+"""An in-process TunnelHost, subscription fetcher and profiles with sample data.
 
 Used by the tests and scripts/preview.py so the UI runs without the service, the system
 extension or the network. Traffic follows a seeded random walk; connections open and close
@@ -825,7 +824,7 @@ class _Connection:
     rate_share: float = 0.0  # this second's fraction, a walk around ``share``
 
 
-# The prototype's connections, open when the host starts and until something closes them:
+# The sample connections, open when the host starts and until something closes them:
 # host, address, port, network, rule, target, process, share, seconds since they opened.
 LASTING = (
     (
@@ -1444,9 +1443,6 @@ class SimulatedHost:
             raise HostError("invalid_request", f"unknown mode {mode}")
         self._mode = mode
 
-    async def set_tun(self, enabled: bool) -> None:
-        self._tun = enabled
-
     async def set_system_proxy(self, enabled: bool) -> None:
         if enabled and self._development:
             raise HostError(
@@ -1744,7 +1740,7 @@ class SimulatedFetcher:
 
 
 def seed_profiles(store: ProfileStore, now: float) -> ProfileList:
-    """The prototype's three profiles, with "示例订阅 A" in use: its own rules route, as the
+    """Three sample profiles, with "示例订阅 A" in use: its own rules route, as the
     first import of a profile with rules decides (docs/routing.md §5.1)."""
     local = store.directory / "config.yaml"
     local.parent.mkdir(parents=True, exist_ok=True)

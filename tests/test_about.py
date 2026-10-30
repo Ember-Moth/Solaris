@@ -19,7 +19,7 @@ import pytest
 from PySide6.QtCore import QObject
 from pytestqt.qtbot import QtBot
 
-from solaris import diagnostics
+from solaris import __version__, diagnostics
 from solaris.host.base import HostError, HostInfo, HostStatus, LogEntry
 from solaris.models.routing import Plan, PlanRule, RoutingStore
 from solaris.models.settings import Settings
@@ -33,8 +33,8 @@ from tests.support.releases import FakeGitHub, FakeVerifier, fake_github, offlin
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
 
 NOW = datetime(2026, 10, 30, 9).timestamp()
-DMG = "Solaris-0.2.0-macos-arm64.dmg"
-EXE = "Solaris-0.2.0-windows-x64-setup.exe"
+DMG = "Solaris-1.1.0-macos-arm64.dmg"
+EXE = "Solaris-1.1.0-windows-x64-setup.exe"
 SECRET_OVERRIDE = "prepend-rules:\n  - DOMAIN,override-secret.example.net,DIRECT\n"
 SECRET_RULE = "plan-secret.example.net"
 
@@ -103,7 +103,7 @@ def updater_for(
     tmp_path: Path,
     verifier: FakeVerifier | None = None,
     *,
-    current: str = "0.1.0",
+    current: str = "1.0.0",
     system: str = "darwin",
     machine: str = "arm64",
 ) -> Updater:
@@ -129,7 +129,7 @@ def test_update_from_check_to_install(
 ) -> None:
     opened = Opened()
     about = about_for(built, updater_for(github, tmp_path), opened)
-    assert prop(about, "version") == "0.1.0"
+    assert prop(about, "version") == "1.0.0"
     assert prop(about, "updateButton") == "检查更新"
     assert prop(about, "updateStatus") == ""
 
@@ -137,20 +137,20 @@ def test_update_from_check_to_install(
     assert prop(about, "updateButton") == "正在检查…"
     assert not prop(about, "updateButtonEnabled")
     settle(qtbot, about, "available")
-    assert prop(about, "updateStatus") == "有新版本 0.2.0"
+    assert prop(about, "updateStatus") == "有新版本 1.1.0"
     assert prop(about, "updateButton") == "下载"
-    assert prop(about, "releaseUrl").endswith("/releases/tag/v0.2.0")
+    assert prop(about, "releaseUrl").endswith("/releases/tag/v1.1.0")
 
     about.runUpdateAction()
     settle(qtbot, about, "ready")
-    assert prop(about, "updateStatus") == "0.2.0 已下载并通过校验"
+    assert prop(about, "updateStatus") == "1.1.0 已下载并通过校验"
     assert prop(about, "updateButton") == "打开安装包…"
     assert prop(about, "downloadProgress") == 1.0
 
     with qtbot.waitSignal(about.installRequested):
         about.runUpdateAction()
     assert opened.paths == []  # nothing opens before the user confirms
-    assert prop(about, "installTitle") == "打开 Solaris 0.2.0 的安装包？"
+    assert prop(about, "installTitle") == "打开 Solaris 1.1.0 的安装包？"
     assert "磁盘映像" in prop(about, "installMessage")
     about.confirmInstall()
     qtbot.waitUntil(lambda: bool(opened.paths))
@@ -179,7 +179,7 @@ def test_windows_says_what_its_installer_does(
 def test_already_current(
     qtbot: QtBot, built: ViewModels, github: FakeGitHub, tmp_path: Path
 ) -> None:
-    about = about_for(built, updater_for(github, tmp_path, current="0.2.0"))
+    about = about_for(built, updater_for(github, tmp_path, current="1.1.0"))
     about.checkForUpdates()
     settle(qtbot, about, "latest")
     assert prop(about, "updateStatus") == "已是最新版本 · 刚刚检查"
@@ -203,7 +203,7 @@ def test_no_installer_for_this_machine(
     about = about_for(built, updater_for(github, tmp_path, system="linux", machine="x86_64"))
     about.checkForUpdates()
     settle(qtbot, about, "unavailable")
-    assert prop(about, "updateStatus") == "有新版本 0.2.0 · 这个版本没有适合本机的安装包"
+    assert prop(about, "updateStatus") == "有新版本 1.1.0 · 这个版本没有适合本机的安装包"
     assert prop(about, "updateButton") == "检查更新"
     assert prop(about, "releaseUrl")  # the notes are still worth reading
 
@@ -317,7 +317,7 @@ def test_cancel_a_download(
         tmp_path,
         ReleaseSource(github.latest_url),
         FakeVerifier(),
-        current="0.1.0",
+        current="1.0.0",
         system="darwin",
         machine="arm64",
     )
@@ -335,7 +335,7 @@ def test_cancel_a_download(
 def test_start_clears_old_downloads(qtbot: QtBot, built: ViewModels, tmp_path: Path) -> None:
     update = offline_updater(tmp_path / "data")
     update.directory.mkdir(parents=True)
-    (update.directory / "Solaris-0.1.0-macos-arm64.dmg").write_bytes(b"old")
+    (update.directory / "Solaris-1.0.0-macos-arm64.dmg").write_bytes(b"old")
     built.settings_store.update(update_check=False)
     about = about_for(built, update)
     about.start()
@@ -455,7 +455,7 @@ def test_export_diagnostics(qtbot: QtBot, tmp_path: Path) -> None:
     files = read_archive(target)
     assert sorted(files) == ["about.json", "host.json", "mihomo.log", "settings.json"]
     info = json.loads(files["about.json"])
-    assert info["version"] == "0.1.0"
+    assert info["version"] == __version__
     assert info["language"] == "zh"
     assert info["exported_at"] == datetime.fromtimestamp(NOW, UTC).isoformat(timespec="seconds")
     host = json.loads(files["host.json"])

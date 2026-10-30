@@ -1,2 +1,0 @@
-prepend-rules:
-  - DOMAIN-SUFFIX,example.org,DIRECT

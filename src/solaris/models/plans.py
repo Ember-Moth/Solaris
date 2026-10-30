@@ -33,7 +33,7 @@ from PySide6.QtCore import QCoreApplication
 from solaris.i18n import current_language
 from solaris.models import services
 from solaris.models.regions import region_id
-from solaris.models.routing import DIRECT, REJECT, Plan, PlanGroup, PlanRule
+from solaris.models.routing import Plan, PlanGroup, PlanRule
 
 PLAN_VERSION = 1
 PROXY = "proxy"  # 节点选择
@@ -447,7 +447,3 @@ def parse_cidrs(text: str) -> Parsed:
         if cidr not in items:
             items.append(cidr)
     return Parsed(tuple(items), tuple(invalid))
-
-
-# Outbounds a rule may name besides the plan's groups, its exits and the mesh outbounds.
-OUTBOUNDS = (DIRECT, REJECT)

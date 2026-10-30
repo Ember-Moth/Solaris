@@ -1,8 +1,8 @@
 """Run the UI against the development service, with profiles and settings in a directory
 of their own instead of the user data directory.
 
-    uv run python scripts/dev.py                    # a fresh temporary directory
-    uv run python scripts/dev.py --data ~/md-dev    # keep the profiles between runs
+    uv run python scripts/dev.py                         # a fresh temporary directory
+    uv run python scripts/dev.py --data ~/solaris-dev    # keep the profiles between runs
     uv run python scripts/dev.py --lang en --appearance dark
 
 The script builds the service (go build), starts it as a child process on a socket in a
@@ -95,7 +95,7 @@ class DevService:
 @contextlib.contextmanager
 def short_directory() -> Iterator[Path]:
     """A temporary directory for the socket: a Unix socket path holds about 100 bytes."""
-    with tempfile.TemporaryDirectory(prefix="md-") as directory:
+    with tempfile.TemporaryDirectory(prefix="solaris-dev-") as directory:
         yield Path(directory)
 
 
@@ -118,7 +118,9 @@ def main() -> int:
     args, qt_args = parser.parse_known_args()
     sys.argv[1:] = qt_args
     with contextlib.ExitStack() as stack:
-        data = args.data or Path(stack.enter_context(tempfile.TemporaryDirectory(prefix="md-")))
+        data = args.data or Path(
+            stack.enter_context(tempfile.TemporaryDirectory(prefix="solaris-dev-"))
+        )
         data.mkdir(parents=True, exist_ok=True)
         run = stack.enter_context(short_directory())
         binary = build_service(run / "service")

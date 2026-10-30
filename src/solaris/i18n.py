@@ -43,7 +43,7 @@ def resolve_language(
     environ: Mapping[str, str] = os.environ,
     ui_languages: Sequence[str] | None = None,
 ) -> str:
-    """The language to show: ``preference`` (the settings page, roadmap M3), then
+    """The language to show: ``preference`` (the settings page), then
     ``SOLARIS_LANG``, then the system's. Anything but ``zh`` or ``en`` falls through."""
     for choice in (preference, environ.get(LANG_ENV, "")):
         if choice.strip().lower() in LANGUAGES:

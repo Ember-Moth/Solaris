@@ -1,7 +1,7 @@
-"""Roadmap C1: the acceptance of M8a through the UI on the development service
-(docs/routing.md §10). A subscription with only nodes routes with the default plan; a rule
-added from the routing page sends a domain to a region's node and the connections page names
-it; switching to a subscription's own rules routes as that subscription says.
+"""Routing through the UI on the development service. A subscription with only nodes routes
+with the default plan; a rule added from the routing page sends a domain to a region's node
+and the connections page names it; switching to a subscription's own rules routes as that
+subscription says.
 
 The pool's nodes are the local HTTP proxies of tests/e2e/servers.py, and the core reads the
 GEO data the installers ship (scripts/fetch_geodata.py, cached in build/geodata).
@@ -31,7 +31,7 @@ def tunnels(node: ProxyNode, server: WebServer) -> int:
 
 def local_delay_tests(app: App, health: WebServer) -> None:
     """Point the plan's automatic groups at a local server for their delay tests, so that
-    nothing leaves the machine. The routing page has no setting for it (M8b)."""
+    nothing leaves the machine. The plan is written directly, not through the routing page."""
     library, runner = app.view_models.library, app.view_models.runner
     routing = library.routing_snapshot()
     plan = routing.plan()

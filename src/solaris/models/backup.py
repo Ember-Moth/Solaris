@@ -41,6 +41,7 @@ from solaris.models.routing import GROUP_KINDS, MODES, RULE_KINDS
 from solaris.models.settings import SYNCED, Settings, accepted, scope
 
 FORMAT = "solaris-backup"
+# A change of the document raises it; decode keeps reading every earlier version.
 VERSION = 1
 REPLACE = "replace"  # the local data becomes the snapshot's
 MERGE = "merge"  # record by record, the later change wins

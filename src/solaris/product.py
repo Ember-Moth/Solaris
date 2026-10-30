@@ -1,4 +1,4 @@
-"""Identifiers that carry the product name, Solaris (docs/roadmap.md, decision D1).
+"""Identifiers that carry the product name, Solaris (docs/decisions.md D1).
 
 src/core/internal/product/product.go mirrors these values.
 """

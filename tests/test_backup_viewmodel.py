@@ -1,6 +1,6 @@
 """The settings page's 备份与同步 group: exporting a backup file and restoring one, and iCloud
 over a stand-in library, through the ViewModels with the simulated host and subscriptions
-served on this machine (the M7 acceptance of docs/roadmap.md, without a real cloud)."""
+served on this machine, without a real cloud."""
 
 # The UI copy asserted here uses fullwidth punctuation, as the ViewModels write it.
 # ruff: noqa: RUF001
@@ -675,7 +675,7 @@ def test_the_group_and_the_restore_dialog(qtbot: QtBot, loaded: Loaded, tmp_path
     loaded.view_models.shell.setPage("settings")
     shown = shown_texts(loaded.window.contentItem())
     assert {"备份与同步", "导出到文件", "从文件恢复", "不加密，其中有订阅链接"} <= shown
-    assert "Google Drive" not in shown  # not until its provider comes
+    assert "Google Drive" not in shown  # there is no Google Drive provider
     if sys.platform == "darwin":
         assert {"iCloud", "仅签名的安装版可用", "立即备份", "从云端恢复…"} <= shown
     else:

@@ -75,7 +75,7 @@ class Machine:
         self.store = ProfileStore(directory, clock=self.clock)
         self.routing = RoutingStore(self.store.database)
         self.settings = DatabaseSettingsStore(self.store.database)
-        self.backups = Backups(self.store.database, device=device, app_version="0.1.0")
+        self.backups = Backups(self.store.database, device=device, app_version="1.0.0")
         self.directory = directory
 
     def at(self, now: float) -> Machine:
@@ -150,7 +150,7 @@ def test_a_snapshot_holds_the_users_data(tmp_path: Path) -> None:
     assert document["format"] == "solaris-backup"
     assert document["version"] == 1
     assert document["created_at"] == 1_234.5
-    assert (document["device"], document["app_version"]) == ("laptop", "0.1.0")
+    assert (document["device"], document["app_version"]) == ("laptop", "1.0.0")
     a, b, c = document["profiles"]
     assert (a["id"], a["url"], a["auto_update_hours"], a["in_pool"]) == ("a", LINK_A, 12, True)
     assert (b["id"], b["in_pool"]) == ("b", False)
@@ -246,7 +246,7 @@ def test_the_digest_follows_the_content_only(tmp_path: Path) -> None:
     later = machine.at(9_000).snapshot()
     assert first.document != later.document  # created_at
     assert first.digest == later.digest
-    other = Backups(machine.store.database, device="desktop", app_version="0.2.0").snapshot()
+    other = Backups(machine.store.database, device="desktop", app_version="1.1.0").snapshot()
     assert other.digest == first.digest
 
     # A subscription downloaded again changes this machine's cache, not the user's data.

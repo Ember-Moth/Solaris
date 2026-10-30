@@ -1,4 +1,4 @@
-"""The UI against the real development service (roadmap A2).
+"""The UI against the real development service.
 
 Every test starts the service as a child process with its own socket and mihomo home, keeps
 the profiles and settings in a temporary directory and drives the real ViewModels with the
@@ -64,7 +64,7 @@ def service_binary(tmp_path_factory: pytest.TempPathFactory) -> Path:
 @pytest.fixture
 def service(service_binary: Path, tmp_path: Path) -> Iterator[DevService]:
     # tmp_path is too long for a Unix socket on macOS.
-    with tempfile.TemporaryDirectory(prefix="md-e2e-") as run:
+    with tempfile.TemporaryDirectory(prefix="solaris-e2e-") as run:
         socket = Path(run) / "control.sock"
         with DevService(
             service_binary, socket, tmp_path / "dev-core", tmp_path / "service.log"
