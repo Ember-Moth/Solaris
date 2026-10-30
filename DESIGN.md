@@ -31,6 +31,9 @@ colors:
   info: "#1846C7"
   chart-upload: "#C2410C"
   scrim: "#15171C33"
+  caption-hover: "#15171C0F"
+  caption-pressed: "#15171C0A"
+  caption-close: "#C42B1C"
   shadow-overlay: "#15171C1F"
   shadow-segment: "#15171C1F"
   shadow-nav: "#15171C14"
@@ -63,6 +66,9 @@ colors:
     info: "#8AAEFF"
     chart-upload: "#F28A4B"
     scrim: "#00000080"
+    caption-hover: "#FFFFFF0F"
+    caption-pressed: "#FFFFFF0A"
+    caption-close: "#C42B1C"
     shadow-overlay: "#00000066"
     shadow-segment: "#00000052"
     shadow-nav: "#0000003D"
@@ -146,6 +152,11 @@ spacing:
   window-default-height: 800px
   window-min-width: 960px
   window-min-height: 640px
+  titlebar-height: 48px
+  titlebar-page-top: 6px
+  caption-button-width: 46px
+  sidebar-top-macos: 52px
+  sidebar-top-windows: 9px
   control-sm: 32px
   control-md: 36px
   row-single: 44px
@@ -538,9 +549,12 @@ Solaris 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 PySide6 
 这份方向来自 Claude Design 原型的第二版（[画布](https://claude.ai/artifact/DVBcxqL7s2aX96F9enjwfj)）。第一版因为"AI 味太重"被否决，被删掉的做法列在 [Do's and Don'ts](#dos-and-donts) 里，是这份契约最重要的约束。
 
 - **平台**：Qt Quick。文中 `px` 指 Qt 的设备无关像素，高分屏由 Qt 缩放。
-- **窗口**：使用系统原生标题栏，不做无边框自绘窗口。
+- **窗口**：不显示系统标题栏，侧栏和页面标题栏一直延伸到窗口上沿（见 Layout「顶部区域」）。macOS 保留系统的红绿灯；
+  Windows 自己画最小化、最大化、关闭三个按钮。窗口的边框、阴影、贴靠和边缘缩放仍交给系统，不做完全无边框的窗口。
+  这条在第三轮 A 合并后实现，实现之前界面仍是系统标题栏加 `page-top`。
 - **语言**：界面提供简体中文和英文。简体中文是源语言，英文是它的译文；默认跟随系统，系统首选语言是中文时用中文，其他一律用英文。内核日志、协议名、规则，以及配置里的组名和节点名保持原文，不翻译。英文的写法见 [英文文案](#英文文案)。
-- **外观**：浅色和深色两套。默认跟随系统，系统在运行中切换外观时界面立即跟着变；也可以在设置里固定为浅色或深色。两套外观共用同一组语义角色和这份契约的全部规则，只换颜色取值（见 [深色](#深色)）；字体、间距、圆角和动效不变。原生标题栏随外观切换。
+- **外观**：浅色和深色两套。默认跟随系统，系统在运行中切换外观时界面立即跟着变；也可以在设置里固定为浅色或深色。两套外观共用同一组语义角色和这份契约的全部规则，只换颜色取值（见 [深色](#深色)）；字体、间距、圆角和动效不变。窗口按钮随外观切换：macOS 的红绿灯由系统绘制，
+  Windows 的三个按钮用 `caption-*` 颜色。
 
 ## Colors
 
@@ -636,6 +650,17 @@ Solaris 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 PySide6 
 窗口默认 `window-default-width` × `window-default-height`（1280 × 800），最小 `window-min-width` × `window-min-height`（960 × 640）。
 
 - **整体结构**：左侧固定宽度 `sidebar-width`（216px）侧栏，右侧内容区。内容区内边距上 `page-top` 20px、左右 `page-x` 32px、下 `page-bottom` 40px。
+- **顶部区域**：窗口最上面 `titlebar-height` 48px 是标题带，侧栏和内容区都从窗口上沿开始，没有单独的标题栏底色或分隔线。
+  - 页面标题栏的垂直中线落在标题带中线（距上沿 24px）：内容区上内边距改为 `titlebar-page-top` 6px，36px 高的标题栏正好居中。
+  - **macOS**：系统的红绿灯在侧栏左上角，由系统绘制和定位。侧栏上内边距 `sidebar-top-macos` 52px，标记和应用名排在红绿灯下面。
+    红绿灯的位置以窗口的安全边距为准，不写死。
+  - **Windows**：右上角三个按钮，各宽 `caption-button-width` 46px、高 48px，从右到左依次是关闭、最大化（窗口最大化时换成"还原"图形）、
+    最小化；图形是 10px 的 1px 线条，颜色 `text`。悬停底色 `caption-hover`，按下 `caption-pressed`；关闭按钮悬停时底色
+    `caption-close`、图形改白。页面标题栏右侧给三个按钮让出 138px 再加 8px 间隔。侧栏上内边距 `sidebar-top-windows` 9px，标记和应用名
+    在标题带里垂直居中，与 Windows 应用在标题栏左侧显示图标和名称的习惯一致。
+  - **拖动**：标题带里没有控件的地方都能拖动窗口，包括页面标题栏的空白处和侧栏顶部；双击按系统的设置缩放（macOS 遵循"连按窗口标题栏"）
+    或最大化（Windows）。Windows 上最大化按钮要让系统识别为最大化按钮，悬停时才会弹出贴靠布局；Alt+空格的窗口菜单照常可用。
+  - 读屏：窗口标题仍是应用名，三个按钮报作按钮，名称为"最小化""最大化"（或"还原"）"关闭"。
 - **页面标题栏**：一行，左侧是 `title` 加一段 13px 的状态文字（`header-status`，如「已运行 2:14:36」「5 个代理组」），右侧依次是本页的筛选控件（搜索框、分段控件）和操作按钮。下方一条 `header-rule`，再隔 20px 开始内容。
   - 状态文字平时用 `text-muted`；操作失败时改写成错误原因，用 `danger`（`header-status-error`）；需要留意的状态用 `warning`（`header-status-warning`，如日志的「已暂停」）。不另弹横幅。
   - 宽度不够时，标题和状态文字至少留 280px。放不下「标题 + 状态 + 筛选控件 + 按钮」时，筛选控件整组移到 `header-rule` 下方单独一行，左对齐，与上下内容各隔 20px；按钮留在标题栏。
@@ -854,3 +879,4 @@ Solaris 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 PySide6 
 - 不要用反相、调暗或叠加透明度从浅色值推导深色；深色值只取 `colors.dark`。不要用纯黑做底色。
 - 不要在实现中临时发明这份契约以外的颜色、圆角或间距；确有需要时先更新 DESIGN.md。
 - 不要让焦点在列表刷新、删除一行或关闭浮层后掉回窗口，也不要用整行重建的方式刷新列表。
+- 不要做完全无边框的窗口，也不要自己画窗口阴影、边框或红绿灯；贴靠、缩放和窗口菜单必须保持系统原样。
