@@ -7,8 +7,9 @@ install directory (docs/architecture.md §5.1).
 
 # Compiled translations; i18n.py looks for them beside the package (docs/ui.md §5).
 # nuitka-project: --include-data-files={MAIN_DIRECTORY}/../src/solaris/translations/*.qm=solaris/translations/
-# Bundled Inter and JetBrains Mono with their OFL.txt; Fonts.qml loads them from ui/fonts/.
-# nuitka-project: --include-data-dir={MAIN_DIRECTORY}/../src/solaris/ui/fonts=solaris/ui/fonts
+# The QML that app.py loads from ui/, the tray icons, and Inter and JetBrains Mono with their
+# OFL.txt, which Fonts.qml loads from ui/fonts/.
+# nuitka-project: --include-data-dir={MAIN_DIRECTORY}/../src/solaris/ui=solaris/ui
 
 from solaris.app import main
 
