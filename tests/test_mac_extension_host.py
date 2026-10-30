@@ -205,6 +205,30 @@ def test_a_config_the_core_refuses_takes_the_tunnel_down_again() -> None:
     assert manager.tunnel == extension.TUNNEL_DISCONNECTED
 
 
+def test_prepare_start_brings_the_tunnel_up_for_the_core_to_answer() -> None:
+    """Profiles stored while the tunnel was down are read between the two (D27)."""
+    manager = FakeManager(lambda _: pb.Response(empty=pb.Empty()))
+    host = MacExtensionHost(manager)
+    config = TunnelConfig("proxies: []\n", options=RunOptions(include_all_networks=True))
+
+    async def scenario() -> list[bool]:
+        available = [host.core_available]
+        await host.prepare_start(config.options)
+        available.append(host.core_available)
+        await host.validate(config)
+        await host.start(config)
+        available.append(host.core_available)
+        await host.stop()
+        available.append(host.core_available)
+        return available
+
+    assert asyncio.run(scenario()) == [False, True, True, False]
+    # The tunnel comes up once; Start follows the reading.
+    assert [call for call in manager.calls if call != "send"] == ["activate", "start", "stop"]
+    assert manager.methods() == ["validate", "start"]
+    assert manager.include_all_networks == [True]
+
+
 def test_activation_waiting_for_approval_is_asked_again_on_the_next_start() -> None:
     manager = FakeManager(lambda _: pb.Response(empty=pb.Empty()))
     manager.failures["activate"] = ManagerError(extension.NEEDS_APPROVAL, "Allow the extension")

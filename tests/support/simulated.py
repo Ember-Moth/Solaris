@@ -51,6 +51,7 @@ from solaris.host.base import (
     ProxyGroup,
     Rule,
     RuleMatch,
+    RunOptions,
     SkippedRule,
     SourceInspection,
     SourceNode,
@@ -955,10 +956,12 @@ class SimulatedHost:
         health_check_s: float = 0.0,
         crowd: int = 0,
         development: bool = False,
+        core_needs_tunnel: bool = False,
     ) -> None:
         """``crowd`` adds that many quiet connections, to try the UI with a busy core.
         ``development`` refuses TUN and the system proxy as the development service
-        does (docs/architecture.md §11)."""
+        does (docs/architecture.md §11). ``core_needs_tunnel``: like the macOS extension, no
+        core answers while the tunnel is down; prepare_start brings it up."""
         self._random = random.Random(seed)
         # Connections and logs draw from their own generator, so traffic stays the same.
         self._churn = random.Random(seed + 1)
@@ -971,6 +974,9 @@ class SimulatedHost:
         # Whether the core has GEO data to list; without it the installer's list stands in.
         self.has_geodata = True
         self._running = True
+        self.core_needs_tunnel = core_needs_tunnel
+        self.prepared = 0  # prepare_start's calls
+        self._tunnel_up = False  # prepared, Start not sent yet
         self._failed = False  # the last start could not open its port
         self.config: TunnelConfig | None = None  # the last config started or reloaded
         self.effective: dict[str, Any] | None = None  # that config after the pipeline
@@ -1033,6 +1039,18 @@ class SimulatedHost:
         )
 
     # -- TunnelHost --------------------------------------------------------------------------
+    @property
+    def core_available(self) -> bool:
+        return not self.core_needs_tunnel or self._running or self._tunnel_up
+
+    def _need_core(self) -> None:
+        if not self.core_available:
+            raise HostError("not_running", "the tunnel is not connected")
+
+    async def prepare_start(self, options: RunOptions) -> None:
+        self.prepared += 1
+        self._tunnel_up = True
+
     async def get_info(self) -> HostInfo:
         return HostInfo(1, "simulated", "mihomo v1.19.33", self._state(), "available")
 
@@ -1048,6 +1066,7 @@ class SimulatedHost:
         )
 
     async def validate(self, config: TunnelConfig) -> CompositionReport | None:
+        self._need_core()
         check_config(config)
         return compose(config.composition)[1] if config.composition is not None else None
 
@@ -1062,6 +1081,7 @@ class SimulatedHost:
             self._failed = error.code == "apply_failed"
             raise
         self._running = True
+        self._tunnel_up = False
         self._failed = False
         self._started_at = self._clock()
         self._last_poll = self._last_advance = self._clock()
@@ -1077,11 +1097,12 @@ class SimulatedHost:
         return self.report
 
     async def inspect_source(self, yaml: str, info_filter: str = "") -> SourceInspection:
+        self._need_core()
         return inspect(yaml, info_filter)
 
     async def list_geo_categories(self) -> GeoCategories:
         bundled = bundled_geo_categories()
-        if not self.has_geodata:
+        if not self.has_geodata or not self.core_available:
             return bundled
         at = int(self._clock() * 1000)
         return GeoCategories(
@@ -1090,11 +1111,13 @@ class SimulatedHost:
         )
 
     async def preview_group(self, composition: Composition, group_id: str) -> GroupPreview:
+        self._need_core()
         return preview(composition, group_id)
 
     async def match_rule(
         self, host: str, port: int = 0, network: str = "tcp", config: TunnelConfig | None = None
     ) -> RuleMatch:
+        self._need_core()
         if not host.strip() or re.search(r"[\s/,]", host.strip()):
             raise HostError("invalid_request", f"{host!r} is neither a domain nor an IP address")
         if config is None:
@@ -1121,10 +1144,12 @@ class SimulatedHost:
     async def convert_to_plan(
         self, yaml: str, *, source_id: str = "", locale: str = "zh", info_filter: str = ""
     ) -> PlanConversion:
+        self._need_core()
         _info(info_filter)
         return convert(yaml, source_id, locale)
 
     async def export_plan(self, config: TunnelConfig, export: str = EXPORT_SHARE) -> str:
+        self._need_core()
         if config.composition is None:
             raise ValueError("export_plan needs a composition")
         return export_yaml(config, export)
@@ -1157,6 +1182,7 @@ class SimulatedHost:
 
     async def stop(self) -> None:
         self._running = False
+        self._tunnel_up = False
         self._failed = False
         self._connections.clear()
 

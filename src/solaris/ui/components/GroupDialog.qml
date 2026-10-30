@@ -193,7 +193,7 @@ AppDialog {
                             visible: dialog.editor.manualOpen
                             model: dialog.editor.nodes
                             accessibleName: qsTr("手动挑选")
-                            emptyText: qsTr("没有匹配的节点")
+                            emptyText: dialog.editor.coreNote || qsTr("没有匹配的节点")
                             empty: dialog.editor.nodesEmpty
                             onToggled: id => dialog.editor.toggleNode(id)
                         }
@@ -347,7 +347,7 @@ AppDialog {
 
                 AccessibleText {
                     Layout.fillWidth: true
-                    text: dialog.editor.previewTitle
+                    text: dialog.editor.coreNote === "" ? dialog.editor.previewTitle : ""
                     role: Theme.type.caption
                     color: Theme.textMuted
                     horizontalAlignment: Text.AlignRight
@@ -368,6 +368,7 @@ AppDialog {
 
                     anchors.fill: parent
                     anchors.margins: 1
+                    visible: dialog.editor.coreNote === ""
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
                     model: dialog.editor.preview
@@ -433,13 +434,13 @@ AppDialog {
                 }
 
                 UiText {
-                    visible: dialog.editor.previewEmpty || dialog.editor.previewError !== ""
+                    visible: dialog.editor.coreNote !== "" || dialog.editor.previewEmpty || dialog.editor.previewError !== ""
                     x: 10
                     y: 10
                     width: parent.width - 20
-                    text: dialog.editor.previewError !== "" ? dialog.editor.previewError : qsTr("没有匹配的节点")
+                    text: dialog.editor.coreNote || (dialog.editor.previewError !== "" ? dialog.editor.previewError : qsTr("没有匹配的节点"))
                     role: Theme.type.bodySm
-                    color: dialog.editor.previewError !== "" ? Theme.danger : Theme.textMuted
+                    color: dialog.editor.previewError !== "" && dialog.editor.coreNote === "" ? Theme.danger : Theme.textMuted
                     wrapMode: Text.Wrap
                 }
             }

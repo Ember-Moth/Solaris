@@ -331,7 +331,8 @@
 | `ExportPlan` | 把方案生成为 YAML 片段，或写出生成的完整配置 | 54 |
 
 - 这些方法在 Windows 服务和 macOS 扩展里都提供；只读，不改变运行状态，也不需要内核在运行（`MatchRule` 不带配置
-  来源时除外，见 8.3 节）。
+  来源时除外，见 8.3 节）。但 macOS 的扩展只在隧道连接时运行：断开时它们和 `Validate` 都得不到回答，界面隐藏
+  依赖它们的部分，断开时导入的订阅留到连接时再读（D27，ui.md 第 3、9 节）。
 - `InspectSource` 读不了订阅时返回 `invalid_config`。节点类型与 `Proxy.type` 相同（`Shadowsocks`、`Vless`……）。
 - `ListGeoCategories` 在 home 里没有某个文件时，那一类的结果为空；`ServiceHost` 这时用应用附带的清单代替，
   并标为 `bundled`（8.4 节）。

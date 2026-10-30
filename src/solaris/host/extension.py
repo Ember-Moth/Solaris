@@ -34,6 +34,7 @@ from solaris.host.base import (
     LogEntry,
     ProxyGroup,
     Rule,
+    RunOptions,
     TrafficSample,
     TunnelConfig,
     bundled_geo_categories,
@@ -263,6 +264,12 @@ class MacExtensionHost(ServiceHost):
         self._core_version = core_version
         self._ids = itertools.count(1)
         self._activated = False
+        self._answered = False  # the extension answered the last request
+        self._prepared = False  # the tunnel is up for a Start to follow
+
+    @property
+    def core_available(self) -> bool:
+        return self._answered
 
     async def _call(self, request: pb.Request) -> pb.Response:
         request.protocol_version = PROTOCOL_VERSION
@@ -275,6 +282,7 @@ class MacExtensionHost(ServiceHost):
             if isinstance(failure, TunnelDownError):
                 self._forget_extension()
             raise failure from error
+        self._answered = True
         try:
             response = pb.Response.FromString(payload)
         except DecodeError as error:
@@ -297,6 +305,7 @@ class MacExtensionHost(ServiceHost):
 
     def _forget_extension(self) -> None:
         """Drop what lived in an extension that is gone: its subscriptions and connections."""
+        self._answered = False
         self._subscriptions.clear()
         self._connections = []
 
@@ -328,15 +337,23 @@ class MacExtensionHost(ServiceHost):
         except TunnelDownError:
             return HostStatus(await self._down_state(), "rule", 0, 0, 0, False, False)
 
-    async def start(self, config: TunnelConfig) -> CompositionReport | None:
-        """Bring the tunnel up, with the VPN configuration including all networks or not as the
-        options say (D19), and send it the configuration. When the core refuses it, the tunnel
-        goes down again: traffic must not enter a tunnel with no core behind it."""
+    async def prepare_start(self, options: RunOptions) -> None:
+        """Bring the tunnel up, with the VPN configuration including all networks or not as
+        the options say (D19), so that the extension answers before Start."""
         if not self._activated:
             await self._manage(partial(self._manager.activate, ACTIVATE_TIMEOUT_S))
             self._activated = True
-        include_all_networks = config.options.include_all_networks
+        include_all_networks = options.include_all_networks
         await self._manage(partial(self._manager.start, START_TIMEOUT_S, include_all_networks))
+        self._prepared = self._answered = True
+
+    async def start(self, config: TunnelConfig) -> CompositionReport | None:
+        """Bring the tunnel up unless prepare_start did, and send it the configuration. When
+        the core refuses it, the tunnel goes down again: traffic must not enter a tunnel with
+        no core behind it."""
+        if not self._prepared:
+            await self.prepare_start(config.options)
+        self._prepared = False
         try:
             return await super().start(config)
         except HostError as error:
@@ -347,6 +364,7 @@ class MacExtensionHost(ServiceHost):
 
     async def stop(self) -> None:
         """Take the tunnel down; the extension stops the core as it detaches."""
+        self._prepared = False
         await self._manage(partial(self._manager.stop, STOP_TIMEOUT_S))
         self._forget_extension()
 

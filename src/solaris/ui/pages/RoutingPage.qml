@@ -197,7 +197,7 @@ ScrollView {
                 AppButton {
                     id: convertButton
 
-                    visible: page.routing.profileId !== ""
+                    visible: page.routing.profileId !== "" && page.routing.coreAvailable
                     text: qsTr("以此创建我的方案")
                     enabled: !page.routing.busy && !page.routing.transfer.busy
                     onClicked: {
@@ -605,9 +605,11 @@ ScrollView {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 200
                         implicitHeight: Theme.controlSm
-                        placeholderText: qsTr("输入域名或 IP 测试")
+                        // MatchRule needs a core: on macOS, while the tunnel runs.
+                        enabled: page.routing.coreAvailable
+                        placeholderText: enabled ? qsTr("输入域名或 IP 测试") : qsTr("连接后可测试域名或 IP")
                         accessibleName: qsTr("测试域名或 IP")
-                        text: page.routing.testText
+                        text: enabled ? page.routing.testText : ""
                         onTextEdited: page.routing.setTestText(text)
                         onAccepted: page.routing.runTest()
                     }
@@ -1344,8 +1346,10 @@ ScrollView {
             }
         }
 
+        // Importing and exporting a plan go through the core (ConvertToPlan, ExportPlan).
         AppMenuItem {
             text: qsTr("导入…")
+            visible: page.routing.coreAvailable
             enabled: !page.routing.transfer.busy
             onTriggered: {
                 page.dialogTrigger = planMenu.trigger
@@ -1356,6 +1360,7 @@ ScrollView {
 
         AppMenuItem {
             text: qsTr("导出…")
+            visible: page.routing.coreAvailable
             enabled: !page.routing.transfer.busy
             onTriggered: {
                 page.dialogTrigger = planMenu.trigger
@@ -1379,6 +1384,7 @@ ScrollView {
 
         AppMenuItem {
             text: qsTr("查看生成的配置…")
+            visible: page.routing.coreAvailable
             enabled: !page.routing.transfer.busy
             onTriggered: {
                 page.dialogTrigger = moreMenu.trigger

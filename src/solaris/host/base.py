@@ -327,9 +327,22 @@ class LogEntry:
 
 
 class TunnelHost(Protocol):
+    @property
+    def core_available(self) -> bool:
+        """A core answers now, so the methods that need one work (docs/architecture.md §6.3).
+        The Windows service and the development service always have one; the macOS system
+        extension runs only while the tunnel is connected."""
+        ...
+
     async def get_info(self) -> HostInfo: ...
 
     async def get_status(self) -> HostStatus: ...
+
+    async def prepare_start(self, options: RunOptions) -> None:
+        """Have a core answer before Start, to read what was stored while none could (D27):
+        on macOS bring the tunnel up without a configuration; Start or stop must follow.
+        Nothing to do where a core always answers."""
+        ...
 
     async def validate(self, config: TunnelConfig) -> CompositionReport | None:
         """Run the config through the core's pipeline without applying it; raises

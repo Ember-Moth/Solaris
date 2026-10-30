@@ -342,6 +342,39 @@ def test_switching_back_uses_the_profiles_rules(qtbot: QtBot, planned: ViewModel
     assert planned.connections._entries == {}
 
 
+def test_without_a_core_the_page_leaves_out_what_needs_one(
+    qtbot: QtBot, planned: ViewModels
+) -> None:
+    """On macOS no core answers while the tunnel is down (D27): no rule test, no group
+    preview, and a subscription imported meanwhile waits to be read at connect."""
+    routing, profiles, overview, host = (
+        planned.routing,
+        planned.profiles,
+        planned.overview,
+        planned.host,
+    )
+    assert isinstance(host, SimulatedHost)
+    groups = routing._group_editor  # QML reads the property; Python has no converter
+    assert prop(routing, "coreAvailable")
+    assert prop(groups, "coreNote") == ""
+    host.core_needs_tunnel = True
+    overview.toggleConnection()
+    qtbot.waitUntil(lambda: not prop(routing, "coreAvailable"))
+    assert prop(groups, "coreNote") == "连接后显示"
+    routing.setTestText("example.com")
+    routing.runTest()
+    assert prop(routing, "testResult") == ""
+    assert not prop(routing, "testing")
+
+    profiles.importUrl("https://new.example.com/sub", "新订阅", True)
+    qtbot.waitUntil(lambda: len(rows(profiles, "model")) == 4)
+    assert rows(profiles, "model")[3].note == "连接后读取"
+    overview.toggleConnection()
+    qtbot.waitUntil(lambda: prop(routing, "coreAvailable"))
+    qtbot.waitUntil(lambda: rows(profiles, "model")[3].note == "")
+    assert host.prepared == 1
+
+
 def test_region_groups_fold_on_the_proxies_page(qtbot: QtBot, view_models: ViewModels) -> None:
     """With a plan, the region groups go into a section of their own, folded (§4.6)."""
     proxies = view_models.proxies

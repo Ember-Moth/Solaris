@@ -461,6 +461,11 @@ class GroupEditor(QObject):
     def previewError(self) -> str:
         return self._preview_error
 
+    @Property(str, notify=changed)
+    def coreNote(self) -> str:
+        """Where the preview and the pool's nodes come from while no core answers."""
+        return "" if self._routing.core_available() else self.tr("连接后显示")
+
     def _changed(self) -> None:
         """A condition changed: the form at once, the preview once it settles."""
         self.changed.emit()
@@ -468,7 +473,7 @@ class GroupEditor(QObject):
 
     def _refresh_preview(self) -> None:
         plan = self._routing.plan()
-        if plan is None:
+        if plan is None or not self._routing.core_available():
             return
         if self._previewing:
             self._pending = True

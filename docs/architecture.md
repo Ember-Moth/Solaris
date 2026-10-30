@@ -334,7 +334,7 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
   `includeAllNetworks`：它属于 macOS 的 VPN 配置，连接时才生效，由扩展在 attach 时告诉 engine（6.2 节）。
 - `ListRules` 的 `Rule.entry_id` 和连接快照的 `Connection.rule_entry_id` 是运行中的规则来自哪个规则条目
   （兜底是 `fallback`）；订阅自带的规则和覆写插入的规则为空。
-- `InspectSource`、`ListGeoCategories` 只读，不需要内核在运行，两种宿主都提供。`InspectSource` 读不了订阅时
+- `InspectSource`、`ListGeoCategories` 只读，不需要内核在运行，两种宿主都提供（macOS 上仍要隧道已连接，6.3 节）。`InspectSource` 读不了订阅时
   返回 `invalid_config`；`ListGeoCategories` 在 home 里没有某个文件时那一类为空，`ServiceHost` 改用应用附带的
   分类名清单。
 - `Stop` 对已停止的内核不做任何事。开发模式下 `Claim` 直接成功、`GetInfo` 报告调用者就是属主，因为开发 socket
@@ -572,6 +572,9 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 - **只有隧道已连接时可用**：扩展进程只在隧道连接期间运行。未连接时发送函数返回 `NOT_CONNECTED`，UI 只能
   通过管理库查看连接状态。`MacExtensionHost` 这时按隧道状态报告运行状态，列表和轮询为空，GEO 分类用安装包的
   清单，其余需要内核的方法（包括 `Validate`、`InspectSource`）报 `not_running`（apple/README.md“Python 宿主”）。
+- **断开时的订阅与改动**（D27）：宿主的 `core_available` 这时为假。导入的订阅存为未读，改动不经校验存储，分流页
+  隐藏要内核的部分（ui.md 第 3、9 节）。连接分两步：`prepare_start` 让隧道起来、扩展能回答，界面读未读的订阅、
+  定下分流，再发 `Start`；读不了正要使用的那份或 `Start` 被拒绝时，隧道断开。
 - **方法**：除 `Claim`、`SetSystemProxy` 外与 Windows 相同。隧道的启停走管理库，配置经 `Start` / `Reload` 走
   provider message；没有 attach 的隧道时，消息得到 `not_running`。
 - **消息大小**：单条 provider message 的上限需要实测，它决定 `Reload` 能否直接携带大配置。

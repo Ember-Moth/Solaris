@@ -10,6 +10,10 @@ back for eight seconds, or until the next change.
 The rule test asks the core which rule a domain or an IP matches in the plan as shown
 (MatchRule, routing.md §8.3); the search and the target filter only narrow the list.
 
+What only the core can work out (the rule test, the group preview, conversion and export,
+the pool's counts) is left out while no core answers: on macOS, while the tunnel is down
+(``coreAvailable``, D27).
+
 The groups tab also lists the mesh outbounds the pool brought (docs/mesh.md §5) and the
 chained exits (routing_exits.py).
 """
@@ -154,6 +158,7 @@ class RoutingViewModel(QObject):
         super().__init__(parent)
         self._library = library
         self._runner = runner
+        self._core = library.core_available
         self._routing: Routing = library.routing_snapshot()
         self._list: ProfileList = library.snapshot()
         self._draft: Plan | None = None  # shown, not stored yet
@@ -505,8 +510,27 @@ class RoutingViewModel(QObject):
         return self._routing.mode == MODE_PLAN
 
     def tunnel_running(self, running: bool) -> None:
-        """The overview saw the tunnel start or stop; the WARP exit may have waited for it."""
+        """The overview saw the tunnel start or stop; the WARP exit may have waited for it.
+        On macOS a core answers only while the tunnel runs: the page reads what it shows
+        again, and the subscriptions page what the connection read (D27)."""
         self._warp.set_running(running)
+        core = self._library.core_available
+        if core == self._core:
+            return
+        self._core = core
+        self._test_timer.stop()
+        self._test, self._test_error = None, ""
+        self.changed.emit()
+        self.testChanged.emit()
+        self.routingChanged.emit()
+        self.refresh()
+
+    def core_available(self) -> bool:
+        return self._core
+
+    @Property(bool, notify=changed)
+    def coreAvailable(self) -> bool:
+        return self._core
 
     def adopt(self, routing: Routing) -> None:
         """Take up what a library action outside the plan changed, such as the WARP account:
@@ -797,7 +821,7 @@ class RoutingViewModel(QObject):
     def _run_test(self) -> None:
         plan = self._plan()
         written = self._test_text
-        if plan is None or not written.strip():
+        if plan is None or not written.strip() or not self._core:
             return
         target = plans.match_target(written)
         if target is None:

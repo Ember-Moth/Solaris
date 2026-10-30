@@ -45,6 +45,9 @@ class Profile:
     proxy_count: int | None = None  # inline proxies; None when not countable
     has_override: bool = False  # it has an override of its own; read from the overrides
     in_pool: bool = True  # its nodes join the node pool of the user's plans (routing.md §5.2)
+    # Stored while no core could read it (macOS, tunnel down; D27): the core reads it at the
+    # next connect. Until then it has no node count and may or may not bring rules.
+    unread: bool = False
 
     @property
     def is_subscription(self) -> bool:
