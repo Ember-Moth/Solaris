@@ -96,7 +96,7 @@ def test_download_failure_is_reported(tmp_path: Path) -> None:
 def test_import_file(tmp_path: Path) -> None:
     scene = Scene(tmp_path / "data", seeded=False)
     source = tmp_path / "work.yaml"
-    source.write_text(OTHER_CONFIG, encoding="utf-8")
+    source.write_bytes(OTHER_CONFIG.encode())  # Windows would write \r\n
 
     (profile,) = run(lambda: scene.library.import_file(source)).profiles
 
@@ -170,7 +170,7 @@ def test_updating_another_profile_does_not_reload(tmp_path: Path) -> None:
     scene = Scene(tmp_path)
     run(lambda: scene.library.update("sample-b"))
     local = tmp_path / "config.yaml"
-    local.write_text(OTHER_CONFIG, encoding="utf-8")
+    local.write_bytes(OTHER_CONFIG.encode())  # Windows would write \r\n
     profiles = run(lambda: scene.library.update("sample-c"))  # re-reads the file
     assert profiles.get("sample-c").proxy_count == 1
     assert scene.store.read_config("sample-c") == OTHER_CONFIG
