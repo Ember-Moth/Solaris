@@ -328,8 +328,8 @@ TUN 与系统代理开关、托盘和关闭窗口的行为都只依赖这个接�
 | `appearance` | `system`、`light`、`dark` | `system` | 同步 | 外观；主题按它取色 |
 | `close_action` | `tray`、`quit` | `tray` | 本机 | 关闭主窗口时留在托盘，还是退出界面；隧道都不受影响 |
 | `launch_at_login` | 布尔 | `false` | 本机 | 登录时打开界面。以系统里的登录项为准，界面每次读到系统的状态就写回这里 |
-| `tun` | 布尔 | `false` | 本机 | 概览页的 TUN 开关：下一次连接是否开启 TUN |
-| `system_proxy` | 布尔 | `false` | 本机 | 概览页的系统代理开关：下一次连接是否设置系统代理 |
+| `tun` | 布尔 | `true` | 本机 | 设置页「接管方式」：连接时是否开启 TUN。macOS 上不列出，总是开启 |
+| `system_proxy` | 布尔 | `true` | 本机 | 设置页「接管方式」：连接时是否设置系统代理 |
 | `mixed_port` | 1024–65535 | 7890 | 本机 | 混合端口，总是覆盖配置里的 `mixed-port` |
 | `allow_lan` | 布尔 | `false` | 本机 | 允许局域网连接（architecture.md §8"局域网暴露"） |
 | `tun_stack` | `profile`、`system`、`mips`、`gvisor`、`mixed` | `profile` | 本机 | "TUN 协议栈"（D3）：`profile` 是"跟随配置"，用配置里的 `tun.stack`；其余写进 `RunOptions.tun_stack`，盖过配置和覆写（architecture.md §3.1、§3.4）。各平台的默认值等实测后再定 |
@@ -341,7 +341,7 @@ TUN 与系统代理开关、托盘和关闭窗口的行为都只依赖这个接�
 
 - **映射到 `RunOptions`**（第 1 节）：Start 用 `Settings.run_options()` 的各项（`tun_stack` 为 `profile` 时传空串）；
   Reload 的 TUN 和系统代理取自 `GetStatus`，其余取自设置。
-  - **TUN 与系统代理**：开关在概览页，设置页显示同一个 ViewModel 的同一对开关，所以两页总是一致。隧道运行时，
+  - **TUN 与系统代理**（D26）：开关只在设置页「接管方式」，概览页只有「连接」一个开关。隧道运行时，
     显示内核报告的状态，拨动开关先改变隧道（TUN 是带新 `RunOptions` 的 Reload，系统代理是
     `SetSystemProxy`），宿主接受后才记入设置；隧道停止时，显示设置里的选择，拨动只改设置，下一次连接生效。
   - **端口、局域网连接与 TUN 协议栈**：隧道运行时先带新值 Reload，成功后才写入设置；内核拒绝（如端口被占用，

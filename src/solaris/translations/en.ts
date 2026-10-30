@@ -120,8 +120,8 @@
         <translation>The installer asks for administrator permission and closes the app before it upgrades.</translation>
     </message>
     <message>
-        <source>会在访达中打开磁盘映像，把 Solaris 拖到“应用程序”文件夹完成升级。替换前先退出界面，隧道继续运行。</source>
-        <translation>The disk image opens in Finder; drag Solaris to the Applications folder to upgrade. Quit the app before you replace it; the tunnel keeps running.</translation>
+        <source>将打开磁盘映像，把 Solaris 拖到“应用程序”文件夹即可升级。</source>
+        <translation>The disk image will open. Drag Solaris to the Applications folder to upgrade.</translation>
     </message>
     <message>
         <source>无法打开安装包：{name}</source>
@@ -690,8 +690,8 @@
         <translation>A keyword or a regex in the name</translation>
     </message>
     <message>
-        <source>地区、来源订阅、名称包含三者取并集，再减去排除；手动挑选和其他成员不受排除影响</source>
-        <translation>Nodes from the regions, the subscriptions and the name match add up, less the excluded ones; picked nodes and other members are never excluded</translation>
+        <source>满足任一条件即加入，再去掉排除的节点；手动挑选和其他成员不受排除影响</source>
+        <translation>Nodes matching any condition join, minus the excluded ones; manual picks and other members are never excluded</translation>
     </message>
     <message>
         <source>高级</source>
@@ -836,8 +836,8 @@
         <translation>Node pool settings</translation>
     </message>
     <message>
-        <source>名称匹配这个正则表达式的节点是信息节点（如剩余流量、到期时间），不加入节点池。留空则不排除任何节点。</source>
-        <translation>Nodes whose names match this regular expression carry information, such as the data left or the expiry date, and stay out of the node pool. Leave it empty to keep every node.</translation>
+        <source>名称匹配此正则表达式的节点（如剩余流量、到期时间）不加入节点池。留空则不排除。</source>
+        <translation>Nodes whose names match this regular expression, such as remaining traffic or expiry, stay out of the pool. Leave empty to keep all.</translation>
     </message>
     <message>
         <source>信息节点</source>
@@ -874,8 +874,8 @@
         <translation>Open-source licenses</translation>
     </message>
     <message>
-        <source>Solaris 以 GPL-3.0-only 发布，并使用了下列第三方组件。每个版本的发布页附有对应的源代码。</source>
-        <translation>Solaris is released under GPL-3.0-only and uses the third-party components below. Each version’s release page has the corresponding source code.</translation>
+        <source>Solaris 以 GPL-3.0-only 发布，使用了下列第三方组件。源代码见各版本的发布页。</source>
+        <translation>Solaris is released under GPL-3.0-only and uses the components below. Each release page links its source code.</translation>
     </message>
     <message>
         <source>搜索组件或许可证</source>
@@ -1357,12 +1357,12 @@ prepend-rules:
         <translation>Generated configuration</translation>
     </message>
     <message>
-        <source>mihomo 兼容的 proxy-groups 和 rules 片段，节点按订阅里的名称列出，不含节点本身。暂时没有节点的地区，规则已改写为节点选择。</source>
-        <translation>mihomo-compatible proxy-groups and rules. Nodes are listed by the names their subscriptions give them; the nodes themselves aren’t included. Rules for regions without nodes now go to Proxy.</translation>
+        <source>mihomo 格式的策略组和规则，不含节点。</source>
+        <translation>Groups and rules in mihomo’s format, without the nodes.</translation>
     </message>
     <message>
-        <source>交给内核的完整配置：方案、基础段、全局覆写、平台补丁和安全项都已应用。节点只显示名称、类型、地址和端口。</source>
-        <translation>The whole configuration the core gets, with the plan, the base section, the global override, the platform patches and the security items applied. Nodes show only their name, type, server and port.</translation>
+        <source>交给内核的完整配置，节点的认证信息已隐去。</source>
+        <translation>The full configuration given to the core, with the nodes’ credentials hidden.</translation>
     </message>
     <message>
         <source>已复制</source>
@@ -1625,12 +1625,12 @@ prepend-rules:
         <translation>Applies with “Subscription rules” and with “My plan”.</translation>
     </message>
     <message>
-        <source>只在“订阅自带”方式下使用这份订阅的规则时生效，现在正在生效。</source>
-        <translation>Applies only while routing with this subscription’s own rules. It applies now.</translation>
+        <source>使用这份订阅的规则时生效，当前生效。</source>
+        <translation>Applies while this subscription’s rules are in use. In effect now.</translation>
     </message>
     <message>
-        <source>只在“订阅自带”方式下使用这份订阅的规则时生效，现在不生效。</source>
-        <translation>Applies only while routing with this subscription’s own rules. It doesn’t apply now.</translation>
+        <source>使用这份订阅的规则时生效，当前未生效。</source>
+        <translation>Applies while this subscription’s rules are in use. Not in effect now.</translation>
     </message>
     <message>
         <source>编辑全局覆写</source>
@@ -2852,8 +2852,8 @@ prepend-rules:
         <translation>Export a backup file?</translation>
     </message>
     <message>
-        <source>备份文件不加密，其中有订阅链接，本地文件配置的原文里还可能有组网出站的凭据。拿到这个文件的人都能看到这些内容。</source>
-        <translation>The backup file isn’t encrypted. It holds your subscription links, and local configuration files in it may hold credentials for mesh outbounds. Anyone with the file can read them.</translation>
+        <source>备份文件不加密，含订阅链接和配置原文，请妥善保管。</source>
+        <translation>The backup isn’t encrypted and holds your subscription links and configurations. Keep it safe.</translation>
     </message>
     <message>
         <source>继续</source>
@@ -3037,8 +3037,8 @@ Protocol v{protocol}</translation>
 <context>
     <name>WarpDialog</name>
     <message>
-        <source>Cloudflare 能看到你访问的网站；机场节点看不到</source>
-        <translation>Cloudflare sees the sites you visit; your nodes don’t</translation>
+        <source>Cloudflare 能看到访问的网站，代理节点看不到</source>
+        <translation>Cloudflare can see the sites you visit; the proxy node can’t</translation>
     </message>
     <message>
         <source>启用</source>

@@ -24,7 +24,7 @@ AppDialog {
 
     AccessibleText {
         Layout.fillWidth: true
-        text: qsTr("Solaris 以 GPL-3.0-only 发布，并使用了下列第三方组件。每个版本的发布页附有对应的源代码。")
+        text: qsTr("Solaris 以 GPL-3.0-only 发布，使用了下列第三方组件。源代码见各版本的发布页。")
         role: Theme.type.bodySm
         color: Theme.textSecondary
         wrapMode: Text.Wrap
