@@ -11,6 +11,7 @@ AppDialog {
 
     required property RoutingViewModel routing
     property bool renaming
+    property bool copying  // a copy of the plan in use
     property string base  // "" for the template, otherwise the plan copied
 
     function save() {
@@ -22,14 +23,14 @@ AppDialog {
             routing.createPlan(nameField.text, base)
     }
 
-    title: renaming ? qsTr("重命名「%1」").arg(routing.planName) : qsTr("新建方案")
+    title: renaming ? qsTr("重命名「%1」").arg(routing.planName) : copying ? qsTr("复制「%1」").arg(routing.planName) : qsTr("新建方案")
     defaultButton: saveButton
     initialFocus: nameField
 
     onAboutToShow: {
         routing.clearPlanError()
-        base = ""
-        nameField.text = renaming ? routing.planName : routing.newPlanName
+        base = copying ? routing.planId : ""
+        nameField.text = renaming ? routing.planName : copying ? routing.copyPlanName : routing.newPlanName
         nameField.selectAll()
     }
 
@@ -59,7 +60,7 @@ AppDialog {
 
         ColumnLayout {
             Layout.fillWidth: true
-            visible: !dialog.renaming
+            visible: !dialog.renaming && !dialog.copying
             spacing: 0
             Accessible.role: Accessible.Grouping
             Accessible.name: qsTr("基于")

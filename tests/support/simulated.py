@@ -376,7 +376,7 @@ def compose(composition: Composition) -> tuple[dict[str, Any], CompositionReport
         if count:
             groups.append(ComposedGroup(f"region:{code}", f"{flag} {name}", "region", code, count))
     custom = [g for g in plan.get("groups") or [] if g.get("kind") == "custom"]
-    groups.extend(ComposedGroup(g["id"], g["name"], "custom", "", 0) for g in custom)
+    groups.extend(ComposedGroup(g["id"], g.get("name", ""), "custom", "", 0) for g in custom)
     members = {g["id"]: _members(g, nodes, groups) for g in custom}
     groups = [
         replace(g, node_count=len(members[g.id][0])) if g.id in members else g for g in groups

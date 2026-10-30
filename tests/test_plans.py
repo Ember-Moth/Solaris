@@ -127,3 +127,91 @@ def test_ip_ranges_are_read_a_line_each() -> None:
     parsed = parse_cidrs("10.0.0.0/8\n192.168.1.7/24\n2001:db8::/32\n1.2.3.4\n10.0.0.0/33\nnope")
     assert parsed.items == ("10.0.0.0/8", "192.168.1.0/24", "2001:db8::/32", "1.2.3.4/32")
     assert parsed.invalid == ((5, "10.0.0.0/33"), (6, "nope"))
+
+
+def test_a_plan_the_core_converted_reads_back() -> None:
+    converted = json.dumps(
+        {
+            "version": 1,
+            "locale": "zh",
+            "groups": [
+                {
+                    "id": "g-1",
+                    "kind": "custom",
+                    "name": "媒体",
+                    "type": "url-test",
+                    "members": {"regions": ["HK"], "others": ["proxy"]},
+                    "options": {"interval": 600},
+                }
+            ],
+            "rules": [
+                {
+                    "id": "r-1",
+                    "kind": "domain",
+                    "items": [
+                        {"type": "DOMAIN-SUFFIX", "value": "a.example"},
+                        {"type": "DOMAIN", "value": "b.example"},
+                        {"type": "DOMAIN-KEYWORD", "value": "tracker"},
+                    ],
+                    "target": "g-1",
+                },
+                {
+                    "id": "r-2",
+                    "kind": "ip",
+                    "items": [{"type": "IP-CIDR", "value": "10.0.0.0/8"}],
+                    "target": "DIRECT",
+                },
+                {
+                    "id": "r-3",
+                    "kind": "category",
+                    "items": [{"type": "GEOIP", "value": "cn"}],
+                    "target": "DIRECT",
+                },
+                {
+                    "id": "r-4",
+                    "kind": "raw",
+                    "items": [{"type": "PROCESS-NAME", "value": "ssh"}],
+                    "target": "DIRECT",
+                },
+            ],
+            "fallback": "g-1",
+        }
+    )
+    plan = plans.plan_from_json(converted, "p-1", "导入")
+    assert (plan.id, plan.name, plan.fallback) == ("p-1", "导入", "g-1")
+    assert [(g.id, g.kind) for g in plan.groups] == [
+        ("proxy", "builtin"),
+        ("auto", "builtin"),
+        ("g-1", "custom"),
+    ]
+    assert plan.groups[2].conditions == {"regions": ["HK"], "others": ["proxy"]}
+    assert [(r.kind, r.content) for r in plan.rules] == [
+        ("domain", {"items": ["a.example", "=b.example", "~tracker"]}),
+        ("ip", {"items": ["10.0.0.0/8"], "no_resolve": False}),
+        ("category", {"type": "GEOIP", "value": "cn", "no_resolve": False}),
+        ("raw", {"items": [{"type": "PROCESS-NAME", "value": "ssh"}]}),
+    ]
+    # The items go back to the core as they came: the GEOIP rule still resolves names.
+    document = json.loads(plans.plan_json(plan, "zh"))
+    assert [r["items"] for r in document["rules"]] == [
+        [
+            {"type": "DOMAIN-SUFFIX", "value": "a.example"},
+            {"type": "DOMAIN", "value": "b.example"},
+            {"type": "DOMAIN-KEYWORD", "value": "tracker"},
+        ],
+        [{"type": "IP-CIDR", "value": "10.0.0.0/8"}],
+        [{"type": "GEOIP", "value": "cn"}],
+        [{"type": "PROCESS-NAME", "value": "ssh"}],
+    ]
+
+
+def test_what_the_rule_test_reads() -> None:
+    assert plans.match_target("Web.Telegram.org.") == ("web.telegram.org", 0)
+    assert plans.match_target("example.com:8443") == ("example.com", 8443)
+    assert plans.match_target("https://chat.openai.com/c/1") == ("chat.openai.com", 0)
+    assert plans.match_target("http://example.com:8080/x") == ("example.com", 8080)
+    assert plans.match_target("10.1.2.3") == ("10.1.2.3", 0)
+    assert plans.match_target("2001:db8::1") == ("2001:db8::1", 0)
+    assert plans.match_target("[2001:db8::1]:443") == ("2001:db8::1", 443)
+    for bad in ("", "not a host", "example.com:99999", "a,b.example", "[::1]x"):
+        assert plans.match_target(bad) is None, bad

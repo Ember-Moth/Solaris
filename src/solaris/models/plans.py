@@ -6,9 +6,11 @@ A rule entry's ``content`` depends on its kind:
     category   {"type": "GEOSITE", "value": "cn"}      GEOIP categories do not resolve names
     domain     {"items": ["example.com", "=www.example.org", "~tracker"]}
     ip         {"items": ["10.0.0.0/8", "2001:db8::/32"], "no_resolve": true}
-    raw        {"items": [{"type": "PROCESS-NAME", "value": "ssh"}]}   M8b; passed through
+    raw        {"items": [{"type": "PROCESS-NAME", "value": "ssh"}]}   passed through
 
-A domain is a suffix match as written, ``=`` makes it a full match and ``~`` a keyword.
+A domain is a suffix match as written, ``=`` makes it a full match and ``~`` a keyword. A
+category converted from a subscription's ``GEOIP`` rule without ``no-resolve`` keeps
+``"no_resolve": false``; the ones the dialog adds never resolve names.
 """
 
 from __future__ import annotations
@@ -20,6 +22,7 @@ import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from typing import Any
+from urllib.parse import urlsplit
 
 from PySide6.QtCore import QCoreApplication
 
@@ -107,7 +110,7 @@ def rule_items(rule: PlanRule) -> list[dict[str, Any]]:
             return [match.item() for match in found.matches] if found else []
         case "category":
             item: dict[str, Any] = {"type": content["type"], "value": content["value"]}
-            if content["type"] == services.GEOIP:
+            if content["type"] == services.GEOIP and content.get("no_resolve", True):
                 item["no_resolve"] = True
             return [item]
         case "domain":
@@ -152,6 +155,94 @@ def plan_json(plan: Plan, locale: str) -> str:
         "fallback": plan.fallback,
     }
     return json.dumps(document, ensure_ascii=False, separators=(",", ":"))
+
+
+def _content(kind: str, items: list[dict[str, Any]]) -> dict[str, Any]:
+    """What an entry the core wrote holds, as the routing page stores its kind."""
+    match kind:
+        case "domain":
+            prefixes = {"DOMAIN": FULL_PREFIX, "DOMAIN-KEYWORD": KEYWORD_PREFIX}
+            return {"items": [prefixes.get(i["type"], "") + str(i["value"]) for i in items]}
+        case "ip":
+            no_resolve = bool(items[0].get("no_resolve")) if items else True
+            return {"items": [str(i["value"]) for i in items], "no_resolve": no_resolve}
+        case "category":
+            (item,) = items
+            content: dict[str, Any] = {"type": item["type"], "value": item["value"]}
+            if item["type"] == services.GEOIP and not item.get("no_resolve"):
+                content["no_resolve"] = False
+            return content
+        case _:
+            return {"items": [dict(i) for i in items]}
+
+
+def plan_from_json(text: str, plan_id: str, name: str) -> Plan:
+    """A plan the core wrote, from a subscription's or a configuration's groups and rules
+    (routing.md §4.7), as the routing page stores plans."""
+    document = json.loads(text)
+    groups = list(builtin_groups())
+    for group in document.get("groups") or ():
+        planned = PlanGroup(
+            id=group["id"],
+            kind=group["kind"],
+            type=group.get("type") or "select",
+            name=group.get("name", "") if group["kind"] == "custom" else "",
+            conditions=group.get("members") or {},
+            options=group.get("options") or {},
+            hidden=bool(group.get("hidden")),
+        )
+        index = next((i for i, g in enumerate(groups) if g.id == planned.id), None)
+        if index is None:
+            groups.append(planned)
+        else:
+            groups[index] = planned
+    rules = []
+    for entry in document.get("rules") or ():
+        kind = entry.get("kind") if entry.get("kind") in ("domain", "ip", "category") else "raw"
+        rules.append(
+            PlanRule(
+                id=entry["id"],
+                kind=kind,
+                content=_content(kind, list(entry["items"])),
+                target=entry["target"],
+                enabled=entry.get("enabled", True),
+            )
+        )
+    return Plan(plan_id, name, document.get("fallback") or PROXY, tuple(groups), tuple(rules))
+
+
+def match_target(text: str) -> tuple[str, int] | None:
+    """What the rule test box names: a domain or an IP address, with an optional port, also
+    when pasted as a link. None for anything else."""
+    written = text.strip()
+    if "://" in written:
+        link = urlsplit(written)
+        if not link.hostname:
+            return None
+        try:
+            port = link.port or 0
+        except ValueError:
+            return None
+        written = link.hostname + (f":{port}" if port else "")
+    host, port = written, 0
+    if written.startswith("["):  # [2001:db8::1]:443
+        host, _, rest = written[1:].partition("]")
+        if rest and not (rest.startswith(":") and rest[1:].isdigit()):
+            return None
+        port = int(rest[1:]) if rest else 0
+    elif written.count(":") == 1:
+        host, _, number = written.partition(":")
+        if not number.isdigit():
+            return None
+        port = int(number)
+    host = host.strip().rstrip(".").lower()
+    if not host or port > 65535:
+        return None
+    try:
+        return str(ipaddress.ip_address(host)), port
+    except ValueError:
+        pass
+    return (host, port) if _DOMAIN.fullmatch(host) else None
 
 
 def services_in(plan: Plan) -> set[str]:

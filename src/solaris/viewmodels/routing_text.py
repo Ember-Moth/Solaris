@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QCoreApplication
 
-from solaris.host.base import CompositionReport
+from solaris.host.base import CompositionReport, Rule
 from solaris.i18n import QT_TRANSLATE_NOOP, current_language
 from solaris.models import plans, services
 from solaris.models.regions import region_code, region_id, region_name
@@ -140,6 +140,18 @@ def rule_caption(rule: PlanRule) -> str:
             caption=text
         )
     return text
+
+
+def outbound_label(name: str) -> str:
+    """A name in the core's chain: mihomo's outbounds translated, groups and nodes as named."""
+    if name == "REJECT-DROP":
+        name = REJECT
+    return tr(OUTBOUND_NAMES[name]) if name in OUTBOUND_NAMES else name
+
+
+def rule_line(rule: Rule) -> str:
+    """A rule as the configuration writes it, without its target: GEOSITE,telegram."""
+    return rule.type if not rule.payload else f"{rule.type},{rule.payload}"
 
 
 def warning_text(reason: str) -> str:
