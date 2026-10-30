@@ -20,7 +20,9 @@ from solaris.host.base import TAKEOVER_NONE, TAKEOVER_SETTINGS, HostError, Tunne
 from solaris.host.service import ServiceHost
 from solaris.host.transport import Opener, Streams
 from solaris.i18n import Translations, resolve_language
+from solaris.models.backup_google import GoogleDriveProvider, configured_provider
 from solaris.models.backup_icloud import bundled_provider
+from solaris.models.credentials import KeyringCredentials
 from solaris.models.settings import DatabaseSettingsStore, SettingsStore
 from solaris.models.store import ProfileStore, default_data_dir
 from solaris.models.subscription import Fetcher, UrlFetcher
@@ -109,6 +111,7 @@ def main(
     appearance: str = "",
     login_item: LoginItem | None = None,
     updater: Updater | None = None,
+    google: GoogleDriveProvider | None = None,
 ) -> int:
     """``language`` is ``zh`` or ``en`` and wins over the settings at startup; empty follows
     the settings, then SOLARIS_LANG, then the system. ``appearance`` is ``system``,
@@ -153,6 +156,7 @@ def main(
         start_hidden=BACKGROUND_ARG in sys.argv[1:],
         updater=updater,
         icloud=bundled_provider(),
+        google=google or configured_provider(KeyringCredentials()),
     )
     engine = QQmlApplicationEngine()
     if not load_ui(engine, view_models):

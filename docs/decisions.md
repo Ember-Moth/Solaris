@@ -1,6 +1,6 @@
 # 决策
 
-本文记录 Solaris 的设计决策。代码注释和其他文档按编号引用它们（如"D19"），所以编号不变、不重用；新的决策从 D30
+本文记录 Solaris 的设计决策。代码注释和其他文档按编号引用它们（如"D19"），所以编号不变、不重用；新的决策从 D31
 接着编号。每条只写结论，理由和细节在"详见"一栏的文档里。
 
 ## 待决策
@@ -26,7 +26,7 @@
 | D10 | 许可证：GPL-3.0-only | [LICENSE](../LICENSE) |
 | D11 | 内置检查更新与下载：安装包来自 GitHub Releases，校验后由用户确认安装 | [release.md](release.md) §2、§3 |
 | D12 | 界面提供简体中文和英文，中文为源语言 | [ui.md](ui.md) §5 |
-| D13 | 本地用 SQLite；云端只做备份与恢复，不做双向同步；快照不加密。iCloud 用 CloudKit，仅 macOS；Google Drive 在应用内登录、用 appDataFolder（未实现） | [storage.md](storage.md) |
+| D13 | 本地用 SQLite；云端只做备份与恢复，不做双向同步；快照不加密。iCloud 用 CloudKit，仅 macOS；Google Drive 在应用内登录、用 appDataFolder，只申请 `drive.appdata` | [storage.md](storage.md) |
 | D14 | Google 令牌存放在系统凭据库（macOS 钥匙串、Windows 凭据管理器），用 `keyring`。WARP 账户和应用内组网的凭据也这样存放，都不进数据库和备份 | [storage.md](storage.md) §4、[exits.md](exits.md) §3.2、[mesh.md](mesh.md) §10.2 |
 | D15 | 自定义分流：全局开关"订阅自带 / 我的方案"，首次导入时自动选择；"我的方案"下所有订阅组成节点池，可单独排除；可以有多套方案；规则条目按意图记录，默认按服务添加；规则类型为 GEOSITE / GEOIP、域名、IP 段 | [routing.md](routing.md) |
 | D16 | 分流配置在内核里拼装，节点筛选和规则匹配都用 mihomo 自己的逻辑 | [routing.md](routing.md) §8.1 |
@@ -42,3 +42,4 @@
 | D26 | 界面上只有一个连接开关（概览页出站分组第一行）；连接时怎样接管流量由设置页"接管方式"决定，TUN 和系统代理默认都开；macOS 上 TUN 是必选的 | [DESIGN.md](../DESIGN.md)"连接开关"、[ui.md](ui.md) §8 |
 | D27 | 订阅由 Python 下载、Go 内核解析和校验，只此一份解析。没有内核能应答时（macOS 隧道断开）先存下原文，连接后、`Start` 之前再解析和校验；界面在没有内核时隐藏需要它的部分 | [ui.md](ui.md) §3 |
 | D29 | Windows 安装包不签名：服务对客户端只做文件身份校验，检查更新只核对 SHA-256；签名方案定下后再接上签名者常量和 `SignedRelease` | [release.md](release.md) §3、[architecture.md](architecture.md) §5.3 |
+| D30 | 设置页不为备份不加密单独提示：导出、开启 iCloud、登录 Google Drive 都不弹确认框，各行的说明里也不写"不加密"；备份不加密这一事实写在隐私说明里 | [storage.md](storage.md) §3、[ui.md](ui.md) §8、[PRIVACY.md](../PRIVACY.md) |

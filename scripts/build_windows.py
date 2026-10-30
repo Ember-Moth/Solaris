@@ -21,6 +21,7 @@ scheme is chosen, the release workflow signs the executables and DLLs in Solaris
 --skip-installer and --installer-only (the service checks that the UI has its signer), and the
 installer and its uninstaller through makensis' !finalize and !uninstfinalize. Nothing here
 installs or runs anything; package/windows/smoke-test.ps1 does that on a disposable CI runner.
+The Google OAuth client comes from the environment as for scripts/build_app.py.
 """
 
 from __future__ import annotations
@@ -140,6 +141,7 @@ def build_ui(version: str) -> Path:
         "--assume-yes-for-downloads",
         *(f"--noinclude-dlls={pattern}" for pattern in EXCLUDED),
         *(f"--noinclude-data-files={pattern}" for pattern in EXCLUDED),
+        *build_app.google_client(BUILD),
         ENTRY,
     ]
     build_apple._run(command)

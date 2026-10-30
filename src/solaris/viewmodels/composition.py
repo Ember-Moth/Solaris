@@ -11,6 +11,7 @@ from solaris.desktop.login import LoginItem, UnavailableLoginItem
 from solaris.host.base import TunnelHost
 from solaris.models.backup import Backups
 from solaris.models.backup_auto import BackupTargets, Changes
+from solaris.models.backup_google import GoogleDriveProvider
 from solaris.models.backup_icloud import ICloudProvider
 from solaris.models.credentials import CredentialStore
 from solaris.models.library import ProfileLibrary
@@ -132,13 +133,15 @@ def compose(
     updater: Updater | None = None,
     credentials: CredentialStore | None = None,
     icloud: ICloudProvider | None = None,
+    google: GoogleDriveProvider | None = None,
 ) -> ViewModels:
     """``clock`` dates profile updates and subscription expiry. The settings live in the
     profiles' database unless given. ``tray_available`` and ``start_hidden``: see DesktopViewModel.
     ``appearance`` defaults to the stored choice; the settings page changes it from then on.
     ``updater`` defaults to GitHub's releases, downloaded into the profiles' directory.
     ``credentials`` keeps the WARP account; the system's credential store by default.
-    ``icloud`` is the iCloud backup of a packaged macOS app; automatic backup runs with it."""
+    ``icloud`` is the iCloud backup of a packaged macOS app, ``google`` the Google Drive backup
+    of a build with a Google OAuth client; automatic backup runs with either."""
     runner = AsyncRunner()
     settings_store = settings or DatabaseSettingsStore(store.database)
     library = ProfileLibrary(
@@ -174,6 +177,7 @@ def compose(
         targets=BackupTargets(store.database),
         changes=Changes(store.database),
         icloud=icloud,
+        google=google,
     )
 
     def page_shown() -> None:
