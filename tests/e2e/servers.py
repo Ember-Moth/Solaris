@@ -7,6 +7,7 @@ Each records what reached it, so a test can tell which way a request went.
 from __future__ import annotations
 
 import http.server
+import random
 import select
 import socket
 import socketserver
@@ -166,6 +167,18 @@ def listening_port() -> tuple[socket.socket, int]:
 
 
 def free_port() -> int:
-    holder, port = listening_port()
-    holder.close()
-    return port
+    """A port on 127.0.0.1 free for both TCP and UDP, as the mixed port needs. It lies below
+    the systems' ephemeral ranges (49152 up on macOS, 32768 up on Linux), where every
+    outgoing socket takes its port and can take this one before the core binds it."""
+    for port in random.sample(range(20000, 32768), 100):
+        with (
+            socket.socket(socket.AF_INET, socket.SOCK_STREAM) as tcp,
+            socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp,
+        ):
+            try:
+                tcp.bind(("127.0.0.1", port))
+                udp.bind(("127.0.0.1", port))
+            except OSError:
+                continue
+            return port
+    raise RuntimeError("no free port on 127.0.0.1")

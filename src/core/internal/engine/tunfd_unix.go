@@ -47,6 +47,13 @@ func (h *hostTUN) prepare(tun *LC.Tun, running LC.Tun) error {
 	if err != nil {
 		return fmt.Errorf("duplicate the TUN descriptor: %w", err)
 	}
+	// sing-tun makes a given descriptor non-blocking on macOS but not on Linux. Go closes a
+	// blocking file only once its pending Read returns, so a replaced TUN would keep its
+	// duplicate, and the TUN, until the next packet arrives.
+	if err := unix.SetNonblock(dup, true); err != nil {
+		_ = unix.Close(dup)
+		return fmt.Errorf("make the TUN descriptor non-blocking: %w", err)
+	}
 	h.dup = dup
 	tun.FileDescriptor = dup
 	return nil

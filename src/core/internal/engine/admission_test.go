@@ -310,7 +310,15 @@ func TestAdmissionRejectsBrokenInput(t *testing.T) {
 // fd mode (docs/architecture.md §3.1): the macOS extension owns the TUN, its addresses,
 // routes and DNS; mihomo's TUN only reads and writes packets on the network FDNetwork names.
 
+// extensionHasIPv6 stands in for the utun's own address. mihomo gives the TUN an IPv6
+// address only when the system has a global one; in the extension the utun carries
+// FDNetwork.Inet6, while CI runners have no IPv6 at all.
+func extensionHasIPv6(t *testing.T) {
+	t.Setenv("SKIP_SYSTEM_IPV6_CHECK", "true")
+}
+
 func TestFDModeWritesTheTunSection(t *testing.T) {
+	extensionHasIPv6(t)
 	profile := profileOf(minimal + `
 tun:
   enable: false
@@ -363,6 +371,7 @@ func TestFDModeDefaultsTheStack(t *testing.T) {
 }
 
 func TestOverrideCannotMoveTheFDNetwork(t *testing.T) {
+	extensionHasIPv6(t)
 	profile := profileOf(minimal)
 	profile.Overrides = [][]byte{[]byte(`
 tun: {auto-route: true, strict-route: true, mtu: 1400, inet6-address: ['fd00::1/126']}
