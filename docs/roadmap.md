@@ -9,7 +9,7 @@
 
 | 部分 | 状态 | 说明 |
 | --- | --- | --- |
-| 架构与视觉规范 | 完成 | architecture.md、ui.md、DESIGN.md；原型在 Claude Design 画布上（第 23 版，含深色画板、分流 v2 与链式出口） |
+| 架构与视觉规范 | 完成 | architecture.md、ui.md、DESIGN.md；原型在 Claude Design 画布上（第 28 版，含深色画板、分流 v2、链式出口、应用图标与顶部区域） |
 | 控制协议 | v1 | 消息、方法表、帧编解码已定；Go 与 Python 共用样本测试；配置来源可以是订阅原文或拼装（`Composition`）；`InspectSource`、`ListGeoCategories`、`PreviewGroup`、`MatchRule`、`ConvertToPlan`、`ExportPlan`、`RegisterWarp`；链式出口与组网出站的字段 |
 | engine（内嵌 mihomo） | 完成（M1、M5） | mihomo v1.19.33；无 TUN、自管 TUN 和 fd 三种模式，覆写、§3.3 安全项、开发模式护栏 |
 | Go 分发器与服务入口 | 完成，待实测 | 全部内核方法、Start / Stop / Reload / Validate、`PollEvents`；Windows 服务的认领与属主、注销停止与登录恢复、系统代理、客户端校验（第三轮 A），只在 CI 的 Windows 机器上测过，服务本身待 Windows 虚拟机实测 |
@@ -135,6 +135,10 @@ B1、B2 的结果与遗留：
 | M4 打包 | Windows 的 Nuitka 构建脚本、NSIS 安装器（安装、升级、卸载服务；注册 `solaris://`、`clash://`）、发布工作流加 Windows job（签名步骤留空，等签名方案） |
 | 两个设置 | "TUN 协议栈"（D3，两个平台）和"包含所有网络"（D19，仅 macOS）：设置项、`RunOptions` 新字段、内核与系统扩展的处理、设置页。本轮只有它改控制协议 |
 
+**第三轮 A 合并后**：隐藏系统标题栏、自绘顶部区域（DESIGN.md「顶部区域」，原型"顶部区域 · 两个平台"）；连接从标题栏的按钮
+改为概览页出站分组第一行的开关（DESIGN.md「连接开关」）。macOS 在开发机上做和
+验收；Windows 的窗口按钮、拖动和贴靠要在 Windows 虚拟机上验收。
+
 **第三轮 B**（等环境）：
 
 - **M4 实测**：wintun、strict-route、DNS 泄漏、四种栈、安装升级卸载；服务的认领与换属主重启、注销停止与登录
@@ -151,7 +155,8 @@ B1、B2 的结果与遗留：
 | Windows 服务、安装器、实测（M4） | 第三轮 A 写代码，实测等虚拟机 |
 | macOS 在全新 Mac 上的验收（M5），第一次公证 | 等测试 Mac |
 | "TUN 协议栈"与"包含所有网络"设置 | 第三轮 A |
-| 应用图标（macOS .icns、Windows .ico）与品牌素材 | 待讨论 |
+| 隐藏系统标题栏，自绘顶部区域（DESIGN.md「顶部区域」） | 第三轮 A 合并后 |
+| 应用图标（macOS .icns、Windows .ico）与品牌素材 | 已定为"日冕"（2026-10-30，DESIGN.md "Shapes"）：`scripts/gen_icons.py` 生成全部尺寸，`.icns` 已接入 `Solaris.app`；Windows 的 `.ico` 随 M4 打包接入 Nuitka 和安装器 |
 | Windows 代码签名，签名者常量替换占位值（`update/signature.py` 与 `internal/product`），发布构建链接时打开 `SignedRelease` | 等签名方案 |
 | 发布工作流：两个平台的安装包、发布到 GitHub Releases、SHA256SUMS；"检查更新"对真实 Release 验证 | M6 收尾 |
 | WARP 出口的真实验收（M9） | 等真实节点 |

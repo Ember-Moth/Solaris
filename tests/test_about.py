@@ -151,7 +151,7 @@ def test_update_from_check_to_install(
         about.runUpdateAction()
     assert opened.paths == []  # nothing opens before the user confirms
     assert prop(about, "installTitle") == "打开 Solaris 0.2.0 的安装包？"
-    assert "访达" in prop(about, "installMessage")
+    assert "磁盘映像" in prop(about, "installMessage")
     about.confirmInstall()
     qtbot.waitUntil(lambda: bool(opened.paths))
     assert opened.paths == [tmp_path / "data" / "updates" / DMG]

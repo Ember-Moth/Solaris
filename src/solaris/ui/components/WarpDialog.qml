@@ -26,7 +26,7 @@ AppDialog {
 
     AccessibleText {
         Layout.fillWidth: true
-        text: qsTr("Cloudflare 能看到你访问的网站；机场节点看不到")
+        text: qsTr("Cloudflare 能看到访问的网站，代理节点看不到")
         role: Theme.type.bodySm
         color: Theme.textSecondary
         wrapMode: Text.Wrap

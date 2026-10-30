@@ -25,7 +25,7 @@ AppDialog {
 
     AccessibleText {
         Layout.fillWidth: true
-        text: qsTr("名称匹配这个正则表达式的节点是信息节点（如剩余流量、到期时间），不加入节点池。留空则不排除任何节点。")
+        text: qsTr("名称匹配此正则表达式的节点（如剩余流量、到期时间）不加入节点池。留空则不排除。")
         role: Theme.type.bodySm
         color: Theme.textSecondary
         wrapMode: Text.Wrap

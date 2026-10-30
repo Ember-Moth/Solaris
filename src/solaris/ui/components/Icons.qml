@@ -1,7 +1,8 @@
 pragma Singleton
 import QtQuick
 
-// Stroke icons on a 24-unit grid, drawn by Icon.qml (DESIGN.md "Shapes").
+// Stroke icons on a 24-unit grid, drawn by Icon.qml (DESIGN.md "Shapes"). `fills` holds the
+// filled parts of the few that have one: the corona mark's core.
 QtObject {
     readonly property var paths: ({
         "overview": "M4.5 3h4A1.5 1.5 0 0 1 10 4.5v4A1.5 1.5 0 0 1 8.5 10h-4A1.5 1.5 0 0 1 3 8.5v-4A1.5 1.5 0 0 1 4.5 3zM15.5 3h4A1.5 1.5 0 0 1 21 4.5v4A1.5 1.5 0 0 1 19.5 10h-4A1.5 1.5 0 0 1 14 8.5v-4A1.5 1.5 0 0 1 15.5 3zM4.5 14h4A1.5 1.5 0 0 1 10 15.5v4A1.5 1.5 0 0 1 8.5 21h-4A1.5 1.5 0 0 1 3 19.5v-4A1.5 1.5 0 0 1 4.5 14zM15.5 14h4A1.5 1.5 0 0 1 21 15.5v4A1.5 1.5 0 0 1 19.5 21h-4A1.5 1.5 0 0 1 14 19.5v-4A1.5 1.5 0 0 1 15.5 14z",
@@ -12,7 +13,7 @@ QtObject {
         "connections": "M4 8h14l-4-4M20 16H6l4 4",
         "logs": "M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01",
         "settings": "M4 7h9M17 7h3M4 17h3M11 17h9M17 7a2 2 0 1 1-4 0a2 2 0 1 1 4 0zM11 17a2 2 0 1 1-4 0a2 2 0 1 1 4 0z",
-        "mark": "M3 17l5-9 4 6 3-4 6 7",
+        "mark": "M18.13 6.86A8 8 0 1 1 9.26 4.48",
         "chevron": "M9 6l6 6-6 6",
         "chevronDown": "M6 9l6 6 6-6",
         "check": "M5 12l5 5 9-10",
@@ -21,5 +22,8 @@ QtObject {
         "close": "M6 6l12 12M18 6L6 18",
         "arrowDown": "M12 5v14M19 12l-7 7-7-7",
         "arrowUp": "M12 19V5M5 12l7-7 7 7"
+    })
+    readonly property var fills: ({
+        "mark": "M15.6 12a3.6 3.6 0 1 1-7.2 0a3.6 3.6 0 1 1 7.2 0z"
     })
 }
