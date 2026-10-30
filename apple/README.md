@@ -27,9 +27,9 @@ apple/
     ├── SolarisTunnel.entitlements
     ├── main.swift                   NEProvider.startSystemExtensionMode()
     ├── PacketTunnelProvider.swift   startTunnel、stopTunnel、handleAppMessage
-    ├── TunnelAddresses.swift        隧道地址、路由、DNS、MTU
+    ├── TunnelNetwork.swift          Go 给出的隧道网络 → NEPacketTunnelNetworkSettings
     ├── TunnelDescriptor.swift       在打开的描述符里找 utun
-    └── ControlDispatcher.swift      调 solaris_handle_message
+    └── Core.swift                   调 Go 归档导出的函数
 ```
 
 生成的 `Solaris.xcodeproj` 不提交（已在 .gitignore）。`project.yml` 是唯一的来源：pbxproj 是生成物，
@@ -70,7 +70,7 @@ Developer ID 证书签名并校验。脚本依次：
 
 - 版本号取自 `pyproject.toml`；`CFBundleVersion` 默认是构建时的 UTC 时间（`--build-number` 可改）。
   系统只会用不同版本的扩展替换已激活的扩展，这样测试 Mac 上每次构建都能替换上去。
-- `--tags` 传 Go 构建标签；扩展用哪组标签在 M5 定（docs/architecture.md §3.4），默认不带。
+- Go 构建标签默认 `with_gvisor`（D3 在 macOS 上的决定，docs/architecture.md §3.4），`--tags` 可以改。
 - 想在 Xcode 里打开工程，先跑一次脚本（生成 xcframework 和工程），再打开 `apple/Solaris.xcodeproj`；
   改了 `project.yml` 后重跑脚本，或者 `xcodegen generate --spec apple/project.yml --project apple`。
 
@@ -138,19 +138,33 @@ Developer ID 证书签名并校验。脚本依次：
 
 ## Go 归档
 
-`src/core/apple` 导出两个函数（cgo 生成 `libsolaris.h`）：`solaris_handle_message` 处理一条编码好的 Request
-并返回 Response，返回的缓冲区由调用方用 `solaris_free` 释放。扩展在并发队列上调用它，状态变化由分发器内部
-的操作锁串行。Swift 只转发字节，不解析消息。
+`src/core/apple` 导出的函数（cgo 生成 `libsolaris.h`），扩展在 `Tunnel/Core.swift` 里调用：
+
+| 函数 | 作用 |
+| --- | --- |
+| `solaris_tunnel_network(&length)` | 隧道的网络（`engine.FDNetwork`）的 JSON：IPv4 地址和掩码、IPv6 地址和前缀长度、DNS 服务器、MTU |
+| `solaris_attach_tun(fd, home)` | 以 fd 模式打开 engine 和分发器；返回 NULL 或错误字符串 |
+| `solaris_detach_tun()` | 取消在途消息并等它们结束，停止内核，关闭分发器和 Go 的描述符副本 |
+| `solaris_handle_message(request, length, &response_length)` | 处理一条编码好的 Request，返回 Response；没有 attach 时返回 `not_running` |
+| `solaris_free(pointer)` | 释放上面几个函数返回的缓冲区和字符串 |
+
+- **地址只定义一处**：隧道的地址、DNS 服务器和 MTU 都在 Go 的 `engine.FDNetwork` 里，扩展从
+  `solaris_tunnel_network` 读来设置 utun，engine 的 fd 补丁也用它；Go 的测试核对补丁解析出的 TUN 与它一致。
+- **描述符归 NE**：`startTunnel` 在网络设置完成后找到 utun 的描述符（与 hypervpn 的
+  `AppleRawTunFileDescriptor.locate` 相同的做法），交给 `solaris_attach_tun`。Go 从不关闭它，mihomo 只用它的
+  副本。`stopTunnel` 先 `solaris_detach_tun`（Go 关掉自己的副本），再调用 completion handler，之后 NE 关闭
+  描述符。attach 和 detach 在扩展的一个串行队列上按序执行。
+- 消息在并发队列上分发，状态变化由分发器内部的操作锁串行。Swift 只转发字节，不解析消息。
 
 ## 尚未完成
 
-- **engine 的 fd 模式**（Go）：`startTunnel` 设好网络、找到 utun fd 后，目前以“fd 模式尚未实现”失败，
-  `PacketTunnelProvider.swift` 里留了 TODO。实现时要从 `src/core/apple` 再导出一个接收 fd 的函数，
-  engine 的 TUN 地址要与 `TunnelAddresses.swift` 一致。
 - **Python 侧的 `MacExtensionHost`**：通过 ctypes 调用管理库。
 - **组装 .app**：把 Nuitka 产物、管理库和扩展装进 `Solaris.app`，按上面的方式签名。
 - **公证**和发布 CI。
-- **测试 Mac 上的实测**：激活、批准、连接、provider message 的大小上限（D8）。
+- **测试 Mac 上的实测**：激活、批准、连接；utun 描述符的查找、四种栈经过 utun 的流量、DNS 劫持、断开与
+  重连后描述符的归属；provider message 的大小上限（D8）。
+- **GEO 数据**：扩展的 mihomo home 在扩展容器里，还没有放入应用附带的 GEO 数据。
+- **体积**：扩展的可执行文件未裁剪符号（73.3 MiB，`strip -x` 后 61.3 MiB），组装 .app 时裁剪。
 - 卸载前停用扩展（`deactivationRequest`）、扩展说明文字的本地化。
 
 ## Apple Developer 配置

@@ -8,8 +8,8 @@ sing-box，后来因为官方 sing-box for Desktop 已经发布，改为基于 m
 本文只讲系统层面的结构；界面各部分的设计见 [ui.md](ui.md)，计划中的存储与分流见 [storage.md](storage.md) 和
 [routing.md](routing.md)，进度、计划与决策见 [roadmap.md](roadmap.md)。
 
-状态：engine、控制协议和开发模式服务已实现；Windows 服务的属主、系统代理和安装，以及 macOS 扩展尚未实现
-（roadmap.md 的 M4、M5）。
+状态：engine（三种 TUN 模式）、控制协议和开发模式服务已实现；Windows 服务的属主、系统代理和安装尚未实现，
+macOS 扩展已能构建和签名，待测试 Mac 实测（roadmap.md 的 M4、M5）。
 
 ## 1. 定位与原则
 
@@ -83,7 +83,7 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
 
 | 模式 | 使用场景 | 路由 | TUN 来源 |
 | --- | --- | --- | --- |
-| fd 模式 | macOS NE | 宿主负责，`auto-route: false` | 宿主传入 fd（`tun.file-descriptor`） |
+| fd 模式 | macOS NE | 宿主负责，`auto-route: false` | 宿主传入 fd，mihomo 用它的副本（`tun.file-descriptor`） |
 | 自管模式 | Windows 服务；CI 与测试虚拟机里的 TUN 测试 | mihomo 负责，开启 `auto-route`、`auto-detect-interface`、`strict-route` | mihomo 自建 wintun 网卡或 utun |
 | 无 TUN 模式 | 本机开发 | 不改路由 | 不创建 TUN，只开放回环地址上的混合端口 |
 
@@ -95,7 +95,20 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
 - **自管模式**按 `RunOptions.tun_enabled` 写 `tun.enable`，强制 `auto-route`、`auto-detect-interface`、
   `strict-route` 为 true，`auto-redirect` 为 false，`file-descriptor` 为 0；保留用户的栈、设备名、MTU 和排除项。
   TUN 打开时同时打开 mihomo DNS，因为 dns-hijack 要交给它解析。`allow_lan` 为 false 时，入站同样限制在回环地址。
-- **fd 模式**的接口已经留好，准入时返回"M5 实现"的 `ErrUnsupported`。届时宿主传入 fd，并关闭自动路由。
+- **fd 模式**（`engine.Options.TunFD` 是宿主的 utun 描述符）：TUN 总是开着，因为扩展只在隧道连接时运行；
+  关闭 `auto-route`、`auto-redirect`、`auto-detect-interface`、`strict-route`，`dns-mode` 设为 `disabled`，
+  路由和系统 DNS 都由宿主设置；去掉 `device`，接口由描述符决定。TUN 的网络是 `engine.FDNetwork`，也就是
+  mihomo 的默认值：mihomo 从 fake-ip 段取 TUN 的 IPv4 地址（段首地址的 /30），所以 `dns.fake-ip-range` 固定为
+  `198.18.0.1/16`，得到 198.18.0.1/30；IPv6 是 fdfe:dcba:9876::1/126，MTU 9000。mihomo 总会劫持 TUN 地址的下一个
+  地址（198.18.0.2:53），宿主把它设为系统的 DNS 服务器（6.2 节）。栈默认 gVisor（构建不带 `with_gvisor` 时为
+  mips），用户设了就保留。打开 mihomo DNS；`allow_lan` 为 false 时，入站同样限制在回环地址。准入最后核对 TUN
+  的地址和 MTU；用户关掉 `ipv6` 时 mihomo 不给 TUN 配 IPv6 地址，宿主仍把 IPv6 路由进隧道，这部分流量被丢弃。
+- **fd 模式下描述符的归属**：sing-tun 在 mihomo 关闭或替换 TUN 时，会关掉 TUN 所用的描述符，所以 mihomo 拿到的
+  不是宿主的描述符，而是 engine 复制的一份（`F_DUPFD_CLOEXEC`），在应用配置前填进 `tun.file-descriptor`。TUN
+  设置与 mihomo 正在用的相同时沿用同一份副本，`Reload` 不重建 TUN；设置变了就给一份新的，旧的由 mihomo 关闭。
+  每次应用和停止之后，engine 放掉 mihomo 不再使用的副本：mihomo 没能打开 TUN 时副本仍开着，engine 确认这个
+  号码仍指向那个 TUN（比对接口名）后才关掉它，因为号码可能已经属于别的文件。宿主的描述符 engine 从不关闭，
+  `Close` 返回后由宿主关闭。
 - 三种模式都会从 `listeners` 里删掉 `tun`、`redir`、`tproxy` 类型的入站：TUN 只能由 `tun` 段描述。
 - "限制在回环地址"包括：`allow-lan: false`、`bind-address: 127.0.0.1`；`listeners` 的 `listen`、`tunnels` 的
   监听地址、`dns.listen`、`tuic-server.listen`、`ss-config` 和 `vmess-config` 的地址都改为 `127.0.0.1`，端口不变。
@@ -181,7 +194,8 @@ Windows 服务以 SYSTEM 身份运行内核，下面每一项都必须满足，�
 
 mihomo 提供的可选标签有 `with_gvisor`、`with_low_memory`、`no_tailscale`、`no_zerotier`、
 `no_easytier`、`no_fake_tcp`。任何情况下都不带 `cmfa`。Windows 服务带 `with_gvisor` 构建，四种 TUN 栈都提供，由用户在设置里选择（决策 D3）；
-macOS NE 的组合在 M5 确定。M1 的实测数据如下（v1.19.33，Go 1.27.3，`-trimpath -ldflags "-s -w"`，`./service` 的二进制体积）：
+macOS NE 同样带 `with_gvisor` 构建（D3 在 macOS 上的决定，`scripts/build_apple.py` 的默认标签），fd 模式默认用
+gVisor 栈。M1 的实测数据如下（v1.19.33，Go 1.27.3，`-trimpath -ldflags "-s -w"`，`./service` 的二进制体积）：
 
 | 标签 | Windows amd64 | macOS arm64 |
 | --- | --- | --- |
@@ -198,7 +212,10 @@ macOS NE 的组合在 M5 确定。M1 的实测数据如下（v1.19.33，Go 1.27.
   构建里编入，所以单独加 `no_tailscale` 没有效果；gVisor 栈本身约 3.8 MiB。
 - TUN 栈：`system` 和 `mips`（mihomo 的默认栈）总是可用；`gvisor` 和 `mixed` 需要 `with_gvisor`，否则要到创建
   TUN 时才报错，所以准入流水线在缺少该标签时直接以 `invalid_config` 拒绝这两种栈。
-- macOS NE 开启 `includeAllNetworks` 时，sing-tun 拒绝 `system` 和 `mixed` 栈，只剩 `mips` 和 `gvisor`。
+- macOS NE 开启 `includeAllNetworks` 时，sing-tun 拒绝 `system` 和 `mixed` 栈，只剩 `mips` 和 `gvisor`；扩展目前
+  没有开启它，所以 fd 模式保留用户选的栈，只在没选时用 gVisor。
+- 系统扩展的可执行文件（Release，`with_gvisor`）是 73.3 MiB，`xcodebuild build` 不裁剪符号；`strip -x` 后
+  61.3 MiB，与上表的服务相当。裁剪放在组装 .app 一步。
 - 各标签组合在两个平台上都能编译。真实 TUN 下，四种栈在 Linux 的自管模式里都能建立 TUN 并转发流量
   （Lima 虚拟机内的网络命名空间实测，Ubuntu 26.04 aarch64，见第 11 节）；Windows 上的 wintun 待 M4 实测。
 
@@ -252,16 +269,17 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 
 ### 4.3 方法表
 
-宿主方法负责生命周期和属主，只在 Windows 服务上提供。macOS 的启停走 `NETunnelProviderManager`。
+`Claim` 和 `SetSystemProxy` 只在 Windows 服务上提供。`Validate`、`Start`、`Reload`、`Stop` 两种宿主都有：macOS 的
+配置也经 `Start` / `Reload` 传入（D7），隧道本身的启停走 `NETunnelProviderManager`。
 
 | 方法 | 平台 | 说明 |
 | --- | --- | --- |
 | `GetInfo` | 两者 | 协议版本、服务版本、mihomo 版本、运行状态；Windows 上还返回属主状态（空闲 / 调用者 / 其他用户） |
 | `Claim` | Windows | 服务空闲或调用者已是属主时认领 |
-| `Validate` | Windows | 配置只经过流水线解析，不应用 |
-| `Start` | Windows | 提交配置（YAML 或拼装来源）、覆写和运行选项，然后准入、应用、持久化 |
+| `Validate` | 两者 | 配置只经过流水线解析，不应用 |
+| `Start` | 两者 | 提交配置（YAML 或拼装来源）、覆写和运行选项，然后准入、应用；Windows 上还要持久化 |
 | `Reload` | 两者 | 运行中替换配置，由 `hub.ApplyConfig` 原地应用 |
-| `Stop` | Windows | 停止内核并清除 `was_running` |
+| `Stop` | 两者 | 停止内核；Windows 上还清除 `was_running` |
 | `SetSystemProxy` | Windows | 开启或关闭属主的系统代理 |
 
 内核方法两个平台都有，直接调用 engine：
@@ -301,8 +319,8 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 - `Stop` 对已停止的内核不做任何事。开发模式下 `Claim` 直接成功，因为开发 socket 只接受运行服务的那个用户。
 - 内核未运行时，列表类查询（代理组、provider、规则）返回空列表，改变状态的内核方法返回 `not_running`；
   `GetStatus` 和订阅随时可用。
-- 宿主方法只在 `HostMethods` 打开时提供（Windows 服务和开发服务），其余宿主返回 `unsupported_method`；
-  `Reload` 和内核方法在两种宿主上都有。
+- `Claim` 和 `SetSystemProxy` 只在 `HostMethods` 打开时提供（Windows 服务和开发服务），其余宿主返回
+  `unsupported_method`，`RunOptions.system_proxy_enabled` 也是；其余方法在所有宿主上都有。
 - 系统代理：开发服务对开启请求（`SetSystemProxy`，以及 `RunOptions.system_proxy_enabled`）返回
   `unsupported_method`，关闭请求直接成功；Windows 服务在 M4 实现之前返回 `not_implemented`。
 
@@ -439,13 +457,20 @@ Solaris.app/Contents/
 
 ### 6.2 扩展内的运行流程
 
-1. 用 `setTunnelNetworkSettings` 设置路由、地址和 DNS：地址用 mihomo 的 TUN 默认值（198.18.0.1/30、
-   fdfe:dcba:9876::1/126，MTU 9000），IPv4 和 IPv6 的默认路由都进隧道；DNS 服务器是 /30 里的另一个地址
-   198.18.0.2，查询进入隧道后由 mihomo 的 dns-hijack 应答。fd 模式下 engine 必须用同样的地址；
-2. 在打开的描述符里找到 utun 的控制 socket，以 fd 模式启动 engine。fd 模式尚未实现，目前 `startTunnel`
-   在这一步以错误结束，不建立隧道；
-3. 初始化 Go 分发器，配置和 Windows 一样由界面经控制协议的 `Start` / `Reload` 传入（决策 D7），不经
-   `startVPNTunnel(options:)`。不监听任何 socket，mihomo 的 HTTP 控制器也不启动。
+1. 从 Go 读出隧道的网络（`solaris_tunnel_network`，即 `engine.FDNetwork`），用 `setTunnelNetworkSettings`
+   设置：地址 198.18.0.1/30 和 fdfe:dcba:9876::1/126，MTU 9000，IPv4 和 IPv6 的默认路由都进隧道；DNS 服务器
+   198.18.0.2，查询进入隧道后由 mihomo 劫持应答（3.1 节）。地址只在 Go 里定义这一处，扩展的网络设置和 engine
+   的 fd 补丁都从这里取，Go 的测试核对补丁解析出的 TUN 与它一致；
+2. 网络设置完成后 NE 才打开 utun。扩展在 0 到 1024 号描述符里找
+   `getsockopt(SYSPROTO_CONTROL, UTUN_OPT_IFNAME)` 返回 utun 名字的那个（与 hypervpn 的
+   `AppleRawTunFileDescriptor.locate` 相同），用 `solaris_attach_tun` 交给 Go：Go 以 fd 模式打开 engine
+   （home 在扩展容器的 `Application Support/Solaris/core`）和分发器，mihomo 此时还不运行；
+3. 配置和 Windows 一样由界面经控制协议的 `Start` / `Reload` 传入（决策 D7），不经
+   `startVPNTunnel(options:)`；mihomo 在描述符的副本上运行 TUN（3.1 节）。不监听任何 socket，mihomo 的 HTTP
+   控制器也不启动；
+4. 停止时，`stopTunnel` 先调 `solaris_detach_tun`：取消在途的消息并等它们结束，停止内核，关闭 Go 的副本；
+   然后才调用 completion handler，NE 随后拆掉 utun、关闭它自己的描述符。描述符始终归 NE，Go 从不关闭它。
+   attach 和 detach 在同一个串行队列上按序执行；还在等网络设置时就被停止的启动，不再 attach。
 
 扩展自身发出的流量本来就不进入隧道，因此不用设置 socket 保护回调。
 
@@ -463,7 +488,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   `NETunnelProviderManager` 并取得 session，扩展内不再做对端校验。
 - **只有隧道已连接时可用**：扩展进程只在隧道连接期间运行。未连接时发送函数返回 `NOT_CONNECTED`，UI 只能
   通过管理库查看连接状态。
-- **方法与 Windows 相同，但没有宿主方法**：启停走管理库；`GetInfo`、`Reload` 和内核方法走 provider message。
+- **方法**：除 `Claim`、`SetSystemProxy` 外与 Windows 相同。隧道的启停走管理库，配置经 `Start` / `Reload` 走
+  provider message；没有 attach 的隧道时，消息得到 `not_running`。
 - **消息大小**：单条 provider message 的上限需要实测，它决定 `Reload` 能否直接携带大配置。
 - 做法与 hypervpn 一致，见它的 `NetworkExtensionManager.swift`（`providerExchange`）和
   `PacketTunnelProvider.swift`（`handleAppMessage`）。
@@ -551,6 +577,9 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
     测试用自管模式启动 TUN，经 TUN 访问 `md-srv`，并用 mihomo 的流量统计确认流量确实经过内核；再验证
     TUN 配置不变时 Reload 不重建网卡，关闭 TUN 或 Stop 后链路、策略路由和各路由表都恢复原样。
     矩阵覆盖 `system`、`mips` 栈，以及带 `with_gvisor` 的 `gvisor`、`mixed` 栈。
+    同一个 job 还跑 fd 模式的测试（`tun_fd_linux_test.go`）：测试扮演扩展，自己建 TUN、配上 `FDNetwork` 的地址和
+    到服务的路由，把描述符交给 fd 模式的 engine，检查流量经过内核、TUN 的 DNS 地址由 mihomo 应答、TUN 设置
+    不变时 Reload 沿用副本，并数 `/dev/net/tun` 的描述符：运行时两个，Stop 和 Close 后只剩宿主的一个。
 - **端到端测试**（`tests/e2e`，标记 `e2e`）：界面连真实的开发服务。每个测试起一个开发服务子进程，用
   `ServiceHost`、临时数据目录和真实的 ViewModel 组装界面，离屏加载 QML，通过 ViewModel 的槽操作，再用
   `curl -x` 经混合端口访问本机的 HTTP 服务；配置里的节点是本机的 HTTP 代理，它们记下经过的请求，所以能看出
