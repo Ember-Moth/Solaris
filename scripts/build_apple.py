@@ -51,6 +51,8 @@ TUNNEL_PROFILE = "Solaris Tunnel Developer ID"
 ARCH = "arm64"  # D2
 DEPLOYMENT_TARGET = "15.0"  # as in apple/project.yml
 GOPROXY = "https://goproxy.cn,direct"
+# All four TUN stacks, as on Windows (D3); fd mode defaults to gVisor (docs/architecture.md §3.4).
+GO_TAGS = "with_gvisor"
 PROFILE_DIRECTORIES = (
     Path.home() / "Library/Developer/Xcode/UserData/Provisioning Profiles",
     Path.home() / "Library/MobileDevice/Provisioning Profiles",
@@ -415,7 +417,11 @@ def main() -> None:
         default=dt.datetime.now(dt.UTC).strftime("%Y%m%d.%H%M%S"),
         help="CFBundleVersion (default: the UTC time)",
     )
-    parser.add_argument("--tags", default="", help="Go build tags (docs/architecture.md §3.4)")
+    parser.add_argument(
+        "--tags",
+        default=GO_TAGS,
+        help=f"Go build tags (default: {GO_TAGS}; docs/architecture.md §3.4)",
+    )
     arguments = parser.parse_args()
     if shutil.which("xcodegen") is None:
         sys.exit("build_apple: XcodeGen is missing (brew install xcodegen)")

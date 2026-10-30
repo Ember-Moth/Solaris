@@ -130,9 +130,10 @@ jobs:
         run: |
           xcodebuild -version
           brew install xcodegen
-      # The script needs only the standard library, so skip installing the project.
+      # The script needs only the standard library, so skip installing the project. It builds
+      # the Go archive with the extension's tags, with_gvisor.
       - name: Build (unsigned)
-        run: uv run --no-project python scripts/build_apple.py
+        run: uv run --no-project python scripts/build_apple.py --tags with_gvisor
 
   # The owned-TUN and fd-mode tests create a real TUN, so they run only here, inside network
   # namespaces (docs/architecture.md §11). md-tun holds the engine; md-srv, on the
