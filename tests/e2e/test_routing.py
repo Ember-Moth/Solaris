@@ -28,11 +28,11 @@ from mihomo_desktop.host.base import (
     bundled_geo_categories,
 )
 from mihomo_desktop.host.service import ServiceHost
-from mihomo_desktop.host.transport import unix_opener
 from scripts.dev import DevService
 from scripts.fetch_geodata import GEOIP, GEOSITE, seed
 from tests.e2e.app import Network, Stream
 from tests.e2e.servers import ProxyNode, WebServer, free_port
+from tests.e2e.unix import unix_opener
 
 pytestmark = pytest.mark.e2e
 

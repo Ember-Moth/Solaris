@@ -100,6 +100,9 @@ def main() -> int:
     sys.path.insert(0, str(ROOT))
     from mihomo_desktop.app import main as run_ui
     from mihomo_desktop.host.service import ServiceHost
+
+    if sys.platform == "win32":
+        raise SystemExit("scripts/dev.py talks to the development service over a Unix socket")
     from mihomo_desktop.host.transport import unix_opener
     from mihomo_desktop.models.store import ProfileStore
     from mihomo_desktop.viewmodels.appearance import MODES

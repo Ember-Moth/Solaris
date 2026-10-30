@@ -25,7 +25,6 @@ from pytestqt.qtbot import QtBot
 
 from mihomo_desktop.app import load_ui
 from mihomo_desktop.host.service import ServiceHost
-from mihomo_desktop.host.transport import unix_opener
 from mihomo_desktop.models.settings import DatabaseSettingsStore
 from mihomo_desktop.models.store import ProfileStore
 from mihomo_desktop.models.subscription import UrlFetcher
@@ -34,6 +33,7 @@ from mihomo_desktop.viewmodels.composition import compose
 from scripts.dev import DevService, build_service
 from tests.e2e.app import App, Network
 from tests.e2e.servers import ProxyNode, WebServer, free_port
+from tests.e2e.unix import unix_opener
 from tests.support.i18n import ui_language
 
 E2E_ENV = "MIHOMO_DESKTOP_E2E"

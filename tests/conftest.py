@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 from collections.abc import Iterator
 from pathlib import Path
@@ -18,6 +19,9 @@ from tests.support.appearance import SystemColorScheme
 from tests.support.i18n import ui_language
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
 from tests.support.window import Loaded
+
+# The end-to-end tests talk to the development service over a Unix socket.
+collect_ignore = ["e2e"] if sys.platform == "win32" else []
 
 # Qt renders headless in tests; set before PySide6 creates the application.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")

@@ -5,15 +5,16 @@ from __future__ import annotations
 
 import asyncio
 import subprocess
+import time
 
 import pytest
 
 from mihomo_desktop.host.base import HostError, TunnelConfig
 from mihomo_desktop.host.service import ServiceHost
-from mihomo_desktop.host.transport import unix_opener
 from scripts.dev import DevService
 from tests.e2e.app import DIRECT_PROFILE, App, nodes_profile
 from tests.e2e.servers import free_port, listening_port
+from tests.e2e.unix import unix_opener
 from tests.support.simulated import SAMPLE_CONFIG, SimulatedHost
 
 pytestmark = pytest.mark.e2e
@@ -293,8 +294,9 @@ def test_reloads_keep_connections(app: App) -> None:
     assert app.curl(network.proxied.url()) == "proxied"
     assert len(network.node_a.targets) + len(network.node_b.targets) == tunnels
 
-    # All three reloads left the first download alone.
-    assert stream.done.wait(10)
+    # All three reloads left the first download alone. It runs 8 s from its start.
+    finished = stream.done.wait(max(stream.started + 8 + 10 - time.monotonic(), 0))
+    assert finished, app.describe(stream, network.proxied)
     assert stream.error == ""
     assert stream.received > 80 * 1024  # 8 s of 1 KiB every 0.1 s, and the headers
     assert app.prop(vm.overview, "connected")

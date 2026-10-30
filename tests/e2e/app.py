@@ -7,6 +7,7 @@ import os
 import socket
 import subprocess
 import threading
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -85,6 +86,7 @@ class Stream:
         self.received = 0
         self.error = ""
         self.done = threading.Event()
+        self.started = time.monotonic()
         self._socket = socket.create_connection(("127.0.0.1", mixed_port), timeout=10)
         authority = url.split("/")[2]
         request = f"GET {url} HTTP/1.1\r\nHost: {authority}\r\nConnection: close\r\n\r\n"
@@ -188,6 +190,18 @@ class App:
         path = Path(directory) / f"{name}.png"
         path.parent.mkdir(parents=True, exist_ok=True)
         assert self.window.grabWindow().save(str(path))
+
+    def describe(self, stream: Stream, server: WebServer) -> str:
+        """How far a download got, for the message of a failed wait: a stall only CI has
+        shown is diagnosed from this alone."""
+        log = self.service.log.read_text(errors="replace").splitlines()[-40:]
+        network = self.network
+        return (
+            f"received {stream.received} B in {time.monotonic() - stream.started:.1f} s, "
+            f"the server sent {server.slow_sent} B, error {stream.error!r}; "
+            f"node-a tunnels {network.node_a.targets}, node-b tunnels {network.node_b.targets}\n"
+            "service log:\n" + "\n".join(log)
+        )
 
     def stream(self, seconds: float) -> Stream:
         return Stream(self.mixed_port, self.network.proxied.url(f"/slow?seconds={seconds}"))
