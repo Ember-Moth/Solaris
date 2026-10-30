@@ -158,6 +158,9 @@ QtObject {
     readonly property int popoverMaxWidth: 360  // spacing.popover-max-width
     readonly property int dialogWidth: 400  // spacing.dialog-width
     readonly property int dialogWidthWide: 640  // spacing.dialog-width-wide
+    readonly property int dialogWidthEditor: 840  // spacing.dialog-width-editor
+    readonly property int listHeaderHeight: 28  // spacing.list-header-height
+    readonly property int insertionLine: 2  // spacing.insertion-line
     readonly property int editorMinHeight: 240  // spacing.editor-min-height
 
     // ---- opacity ----

@@ -160,6 +160,9 @@ spacing:
   popover-max-width: 360px
   dialog-width: 400px
   dialog-width-wide: 640px
+  dialog-width-editor: 840px
+  list-header-height: 28px
+  insertion-line: 2px
   editor-min-height: 240px
 opacity:
   disabled: 0.4
@@ -365,6 +368,31 @@ components:
     textColor: "{colors.on-primary}"
     rounded: "{rounded.xs}"
     size: 16px
+  drag-handle:
+    textColor: "{colors.text-muted}"
+    size: 16px
+  insertion-line:
+    backgroundColor: "{colors.primary}"
+    height: "{spacing.insertion-line}"
+  list-section-header:
+    backgroundColor: "{colors.surface-subtle}"
+    textColor: "{colors.text-muted}"
+    typography: "{typography.section-label}"
+    height: "{spacing.list-header-height}"
+    padding: 10px
+  list-item-compact:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.text}"
+    typography: "{typography.body-sm}"
+    height: "{spacing.control-sm}"
+    padding: 10px
+  disclosure:
+    textColor: "{colors.text}"
+    typography: "{typography.label-sm}"
+    size: 14px
+  rule-match:
+    textColor: "{colors.text-secondary}"
+    typography: "{typography.data-sm}"
   status-dot-running:
     backgroundColor: "{colors.success}"
     rounded: "{rounded.full}"
@@ -472,6 +500,9 @@ components:
   menu-separator:
     backgroundColor: "{colors.divider}"
     height: 1px
+  menu-item-note:
+    textColor: "{colors.text-muted}"
+    typography: "{typography.caption}"
   popover:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.text}"
@@ -486,6 +517,8 @@ components:
     padding: "{spacing.5}"
   dialog-wide:
     width: "{spacing.dialog-width-wide}"
+  dialog-editor:
+    width: "{spacing.dialog-width-editor}"
   dialog-title:
     textColor: "{colors.text}"
     typography: "{typography.body-md-strong}"
@@ -516,7 +549,7 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
 色彩分三层：窗口底色 `background` `#F3F4F6`，侧栏 `sidebar` `#E9EBEF`，内容容器 `surface` `#FFFFFF`。层级靠底色差和 1px 线条表达，不靠阴影。
 
 - **强调色** `primary` `#1F5EFF`：开关开启、主按钮、焦点环、当前导航项图标、下载速率的线与箭头。悬停 `primary-hover` `#1B53E0`，按下 `primary-pressed` `#1749CC`；三者上的白字对比度分别为 5.1、6.3、7.3。每个页面、每个对话框最多一个主色按钮。
-- **链接** `link` `#1846C7`，悬停 `link-hover` `#123A9E`。只用于跳转到其他页面的文字链接（如「管理」「全部 37 个」）。
+- **链接** `link` `#1846C7`，悬停 `link-hover` `#123A9E`。只用于跳转到其他页面的文字链接（如「管理」「全部 37 个」），以及跳到另一页同一操作的快捷方式（如概览页的「改用我的方案」）。唯一的例外是标题栏撤销提示里的「撤销」（见 Layout）。
 - **文字**四级：`text` `#15171C` 正文与标题；`text-secondary` `#3D4350` 侧栏导航、等宽数值；`text-tertiary` `#4B5260` 未选中的分段项、次要数值；`text-muted` `#5F6673` 分组标题、说明文字、表头。`text-muted` 在最深的侧栏底色上仍有 4.8:1。
 - **选中与悬停**：`surface-subtle` `#F7F8FA` 用于行悬停和表头；`surface-selected` `#ECEEF1` 用于选中行；`sidebar-hover` `#E0E3E8` 用于导航项悬停；`control-track` `#E3E5E9` 是分段控件的底槽。
 - **线条**四种，按用途选，不混用：
@@ -607,6 +640,8 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
   - 状态文字平时用 `text-muted`；操作失败时改写成错误原因，用 `danger`（`header-status-error`）；需要留意的状态用 `warning`（`header-status-warning`，如日志的「已暂停」）。不另弹横幅。
   - 宽度不够时，标题和状态文字至少留 280px。放不下「标题 + 状态 + 筛选控件 + 按钮」时，筛选控件整组移到 `header-rule` 下方单独一行，左对齐，与上下内容各隔 20px；按钮留在标题栏。
   - 状态文字放不下时用省略号截断；标题、按钮和分段控件的文字不截断，也不换行。
+  - **页面级开关**：决定整页显示什么的二选一（如分流页的「订阅自带 / 我的方案」）是一个分段控件，放在标题栏最右侧，不和筛选控件放在一起，窄窗口下也不移到下一行。它改的是全局状态，所以切换立即生效；页面里的其他控件都随它变化。每页最多一个。
+  - **撤销提示**：删除列表里的条目后，状态文字的位置改写成「已删除「Telegram」 · 撤销」，持续 8 秒，或者到下一次改动为止，然后恢复原来的状态文字。文字用 `text-secondary`，「撤销」是 `link` 色的文字按钮（`link` 只用于跳转的例外），报作按钮，名称「撤销删除「Telegram」」；整段报作状态（`role=status`），出现时读屏读出。不另弹浮层或横幅。
 - **分组**：分组标题与分组间隔 8px；分组之间上下 20px、左右 24px。宽度足够时分组排成两列，每列不窄于 `group-column-min`（400px）；内容区放不下两列时退为一列，不出现横向滚动。
 - **行高**：单行行 `row-single` 44px，双行行（主文字加说明）`row-double` 52px，表头 `row-header` 32px。行内左右内边距 16px。
 - **控件高度**：标准 `control-md` 36px（标题栏按钮、表单输入），紧凑 `control-sm` 32px（行内按钮、分段控件、设置里的下拉框和数字框）。
@@ -617,7 +652,7 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
   - 菜单和弹出层在触发控件下方打开，间隔 `overlay-gap` 4px。「更多」菜单的右边缘与触发按钮对齐；下拉菜单左对齐，宽度不小于下拉框。下方放不下时改到上方；上下都放不下时放在空间较大的一侧，再按下一条限制在窗口内，内容在浮层里滚动。
   - 任何浮层与窗口边缘至少相距 `overlay-margin` 8px，不超出窗口。
   - 菜单宽度不小于 `menu-min-width` 180px，随最长的项变宽；弹出层宽度在 `popover-min-width` 240px 到 `popover-max-width` 360px 之间。
-  - 对话框在窗口内水平、垂直居中，宽度 `dialog-width` 400px；含编辑框的对话框用 `dialog-width-wide` 640px。高度随内容，最多为窗口高度减去上下各 40px，超出时只滚动正文，标题和按钮行不动。
+  - 对话框在窗口内水平、垂直居中。宽度分三档：普通的 `dialog-width` 400px；含编辑框或一个列表的 `dialog-width-wide` 640px（如覆写编辑、添加规则）；左边编辑、右边实时预览并排的 `dialog-width-editor` 840px（`dialog-editor`，如策略组编辑器）。840px 的对话框在窗口放不下两栏时把预览移到条件下方，宽度仍不超过窗口减去两侧 `overlay-margin`。高度随内容，最多为窗口高度减去上下各 40px，超出时只滚动正文，标题和按钮行不动。
 
 ## Elevation & Depth
 
@@ -653,6 +688,8 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
 ## Components
 
 - **侧栏导航**：
+  - 页面依次是概览、代理、订阅、分流、连接、日志、设置（英文 "Overview"、"Proxies"、"Subscriptions"、"Routing"、"Connections"、"Logs"、"Settings"）。「订阅」只管来源，「分流」决定用哪套规则。
+  - 应用名下面一行 `caption` 写当前在用什么：「「日常」方案」或「「示例订阅 A」的规则」，与概览页「当前使用」一致。
   - 导航项默认没有自己的底色（与侧栏同色），悬停 `nav-item-hover`。
   - 当前项使用白底、600 字重，图标改为 `primary`，并带 Elevation 中规定的轻阴影。
   - 侧栏底部用 8px 圆角的浅底块显示服务状态：状态圆点、一行状态文字、内核与协议版本（中文一行，英文分两行，见「英文文案」）。
@@ -677,8 +714,12 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
   - 破坏性操作放进「更多」菜单（`menu-item-destructive`），执行前弹出破坏性确认框；不做红色实心按钮。
   - 破坏性确认框里的确认按钮用 `button-destructive`：白底、`border-button` 外框、`danger` 文字，悬停和按下的底色与次要按钮相同。它只出现在确认框里。
 - **分段控件**：用于 2–4 个互斥选项（出站模式、排序、日志级别、TCP / UDP 筛选）。选中项用白底加 600 字重，不只靠底色区分。超过 4 个选项改用下拉框。键盘上每一段是一个 Tab 停靠点，空格选中。
+  - 作为页面级开关时放在标题栏最右侧（见 Layout）。
+  - 切换同一块内容的两三个视图时（如方案的「规则 / 策略组」）也用它，放在这块内容上方的控件行里；读屏报作标签栏，每一段是标签页。
 - **开关**：40 × 24 的轨道，开启用 `switch-on`，关闭用 `switch-off`；圆钮 18px，内缩 3px。开关只用于立即生效的布尔设置，并通过 `aria-checked` 表达状态。
 - **复选框**：用于表单里提交时才生效的选择，如导入表单的「每 12 小时自动更新」；立即生效的设置用开关。16px 方框、4px 圆角：未勾选时 `checkbox`（`surface` 底、1.5px `border-control` 外框），勾选时 `checkbox-checked`（`primary` 底、12px `on-primary` 勾，无外框）。文字在方框右侧 8px，`body-sm`、`text-secondary`，点击文字也能切换。
+  - **列表行里的启用复选框**是例外：规则列表每行行首的方框表示「启用」，勾选立即生效（与 macOS 的列表一致，一行一个开关太重）。它不带文字，读屏名称写「启用「Telegram」」；停用的行主文字改为 `text-muted`，说明末尾加「 · 已停用」，目标列照常显示。
+  - **多选列表**里每项前面是复选框，整行可点（见「可搜索列表」）。
 - **输入框**：`surface` 底（浅色下为白底）加 `border-control` 外框。设置行里用 `input-compact`，表单里用 `input`。错误状态：外框改为 `danger`，下方用 `input-error`（`caption`、`danger`）原样写出错误，不加图标。选中的文字用 `primary` 底、`on-primary` 字，输入框和 YAML 编辑框相同。
 - **搜索框** `search-field`：36px 的输入框，左侧 10px 处是 14px 的放大镜（`search-glyph`，`text-muted`），文字从 30px 处开始。
   - 占位文字写明搜什么，如「搜索主机、进程或规则」，它同时是搜索框的无障碍名称；宽度至少放得下占位文字（连接页不窄于 220px，日志页不窄于 200px）。
@@ -688,6 +729,14 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
   - 点击或空格打开它的下拉菜单（见「菜单」）：左对齐、不窄于下拉框，当前选项带勾；选中后菜单关闭，焦点回到下拉框。
   - 选项超过 4 个，或选项文字太长、放不进分段控件时用下拉框（如「关闭窗口时」）。
   - 读屏把它报作下拉框（combobox）：名称是所在行的标签，描述是当前选项。
+  - 选项可以带 `menu-item-note` 注记（见「菜单」），不可选的项禁用并写明原因，如订阅下拉框里的「只有节点」。
+- **目标下拉框**：规则和兜底「其他流量」选择流量去向的下拉框，选项分段固定，段之间用 `menu-separator` 隔开，空的段连同它前面的分隔线一起省略：
+  1. 内置：节点选择、自动选择；
+  2. 地区：节点池里有节点的地区，按地区表顺序，用本地化的地区名（不带旗帜）；隐藏的地区组不出现；
+  3. 自建策略组：按方案里的顺序；
+  4. 直连、拒绝。
+
+  当前目标是暂时没有节点的地区时，它仍显示在按钮上，但不出现在选项里；按钮下方或旁边用 `warning` 色的 `caption` 写「无节点，暂走节点选择」。超过 10 项时菜单内滚动（与下拉菜单相同）。
 - **YAML 编辑框** `code-editor`：多行等宽文本框，`data-md` 文字、`border-control` 外框、6px 圆角、10px 内边距，最小高度 `editor-min-height` 240px，内容更长时在框内滚动；不自动换行，长行横向滚动。错误状态与输入框相同。
 - **延迟**：用等宽文字显示数值，按阈值着色（`latency-good` < 150 ms、`latency-fair` 150–300 ms、`latency-poor` > 300 ms、`latency-timeout` 显示「超时」）。不用彩色药丸。
 - **流量**：
@@ -699,6 +748,30 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
   - **速率和流量**写成两行：上一行 ↓ 下载，下一行 ↑ 上传；箭头用 `rate-download-glyph` / `rate-upload-glyph` 的颜色，数值用 `data-sm`、`text-secondary`，箭头与数值相隔 4px，整列右对齐。这样的行用 `row-double`。概览等单行位置仍写成一行（见「流量」）。
   - **选中与键盘**：表格整体是一个 Tab 停靠点，焦点环画在表格容器上（8px 圆角）；行本身和行尾的图标按钮不进 Tab 顺序。↑ ↓ 移动选中行，Page Up / Page Down 翻一屏，Home / End 到首尾，选中行始终滚动到可见处；Enter 或空格打开选中行的详情弹出层；Delete（或 Backspace）执行行尾操作。可排序的表头按钮各是一个停靠点。
   - 选中行用 `row-selected`，主列文字改为 600 字重；鼠标点击一行即选中并打开详情。详情关闭后焦点回到表格。
+- **只读规则表**：显示订阅自带的规则，用在分流页的「订阅自带」。两列：匹配（`rule-match`：`data-sm`、`text-secondary`，原样写内核的规则，如 `GEOSITE,youtube`，带 `no-resolve` 时照写）和目标（`body-sm`、`text`，策略组名原文）。行高 36px，`divider` 分隔，没有悬停、选中和行内操作；放不下时省略号截断，不换行。上方的分组标题右侧写条数（「412 条」，搜索时「匹配 12 条」）；搜索框在页面的控件行里，不在表内。整张表是一个 Tab 停靠点（同「表格」的键盘规则，但没有选中行），读屏报作表格，每行读作「匹配，目标」。
+- **可排序列表**：规则列表这类由用户决定顺序的列表。
+  - 每行最左侧是 16px 的拖动手柄（`drag-handle`：六点图形，`text-muted`），按住手柄拖动整行；拖动时被拖的行降到 40% 不透明度，落点处画 2px 的插入线（`insertion-line`：`primary`，左右各缩进 12px），放开后移到插入线的位置。手柄只是鼠标的抓手，不进 Tab 顺序，读屏忽略。
+  - 键盘用每行「更多」菜单里的「上移」「下移」代替拖动，第一行的「上移」、最后一行的「下移」禁用。移动后焦点跟着这一行。
+  - 搜索或筛选时列表只显示一部分，拖动禁用：手柄降到 40% 不透明度，不能按住；「上移」「下移」仍按完整列表的顺序移动。
+  - 固定在末尾的行（如「其他流量」）没有手柄和复选框，不能拖动，也不能把别的行拖到它下面。
+  - 连续的拖动和上下移动停止约 1 秒后合并成一次生效，期间列表已经按新顺序显示。
+- **可搜索列表**：对话框里从几十到上千项中挑选的列表，如添加规则的「服务」「分类」。
+  - 上方是 36px 的搜索框，边输入边筛选，不区分大小写；下方是固定高度的列表容器（`border` 外框、6px 圆角），内容在容器里滚动。
+  - 列表项 `list-item-compact`：32px 高，复选框（多选）或勾（单选）在前，名称在后，右侧可以有 `caption` 注记；整行可点。
+  - 按类别分组时，类别标题 `list-section-header`（28px、`surface-subtle` 底、`section-label` 字）在滚动时吸顶，直到下一个标题把它推走。类别标题不能选，读屏报作标题。
+  - 已经在用的项禁用（40% 不透明度）、保持勾选，注记写「已添加」；编辑一条已有规则时，它自己的项照常可选。
+  - 列表下方用一行 `caption` 写已选的结果（「已选 2 个：YouTube、Twitch · 将添加 2 条规则」）或提示；没有匹配项时列表里写「没有匹配的服务」。
+  - 键盘：搜索框之后整个列表是一个 Tab 停靠点，↑ ↓ 移动高亮（跳过类别标题和禁用项），空格勾选或取消；在搜索框里按 ↓ 进入列表。
+- **条件编辑表单**：对话框里描述「匹配什么、去哪里」的表单，如添加规则、策略组编辑器。
+  - 从上到下：种类的分段控件（如「服务 / 分类 / 域名 / IP 段」，左对齐，不铺满）、该种类的输入区、附加选项（如「不解析域名（no-resolve）」复选框）、目标。行与行之间 16px。
+  - 标签在控件上方时用 `caption`、`text-tertiary`，相隔 6px；与控件同行时用 `body-sm`、`text-secondary`，在控件左侧 12px。
+  - 多行文本输入（域名、IP 段）用 `code-editor` 的样式，最小高度 168px；每行一项，前缀写在说明里（「直接写域名是后缀匹配，= 开头是完整匹配，~ 开头是关键字」）。编辑框下方实时写识别结果（「识别出 12 个，其中 1 行无效」），有无效行时编辑框进入错误状态，下方用 `input-error` 写第一处无效行（「第 3 行无效：exa mple.com」），确认按钮禁用。
+  - 切换种类时保留各种类已经输入的内容，直到对话框关闭。
+  - 确认按钮在什么都没选、没填时禁用；内核拒绝时（`validate` 失败）对话框不关闭，错误用 `input-error` 写在按钮行上方。
+- **可折叠区**：把进阶内容收起来的一段，如策略组编辑器的「更多条件」「高级」。
+  - 标题是一个 `disclosure` 文字按钮：14px 的向右箭头（展开时转向下，120ms），后接 `label-sm` 文字；已经设置过的内容写在标题里（「更多条件（已设置 2 项）」），收起时也看得到。标题上方用一条 `divider` 与前面的内容隔开，展开的内容与标题相隔 12px。
+  - 已经设置过内容的区默认展开，其余默认收起。读屏报作按钮，带展开状态；空格或 Enter 切换。
+  - **代理页的「地区」小节**用同一种按钮：「我的方案」下，策略组列表里自动生成的地区组收进一个「地区」行，默认收起，行右侧写地区组的个数；展开后地区组缩进 12px 列在它下面。当前选中的组在小节里时，小节自动展开。
 - **日志**：等宽 `log-line`，三列依次是时间、级别、消息。级别只用文字颜色区分（`log-level-*`），不加底色。
   - 暂停状态写在标题栏的状态文字里，用 `warning` 色（`header-status-warning`）：「已暂停」，暂停期间有新日志时写「已暂停 · 12 条新日志」。不弹出横幅；出错时状态文字改用 `danger`。
   - 日志面板是一个 Tab 停靠点，焦点环画在面板上：↑ ↓ 滚动一行，Page Up / Page Down 和空格翻一屏，Home / End 到首尾。滚到底部时跟随新日志，向上滚动后停在原处。
@@ -707,7 +780,9 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
   - 菜单项 `menu-item`：32px 高、4px 圆角、`body-sm` 文字，左右内边距 8px，左侧留 14px 的勾选位。可勾选的项勾上时显示 `menu-check`：14px 的 `primary` 勾。
   - 悬停和键盘高亮都用 `menu-item-highlighted`：`surface-selected` 浅灰底，文字不变色。不用强调色铺底。
   - 破坏性的项用 `menu-item-destructive`，高亮时仍是 `danger` 文字（`menu-item-destructive-highlighted`）。它放在菜单最后，前面用 `menu-separator` 隔开：1px `divider`，上下各留 4px。
-  - 菜单项只有文字：不加图标、快捷键提示或说明文字，不做多级子菜单。打开对话框继续输入的项以「…」结尾（如「编辑覆写…」）；只弹出确认框的项不加（如「删除」）。
+  - 菜单项只有文字：不加图标或快捷键提示，不做多级子菜单。打开对话框继续输入的项以「…」结尾（如「编辑覆写…」）；只弹出确认框的项不加（如「删除」）。
+  - **注记** `menu-item-note`：菜单项右侧可以有一段 `caption`、`text-muted` 的注记，与文字相隔至少 12px、右对齐，只写帮助选择的事实，如订阅下拉框里的「412 条规则」「只有节点」。注记不截断；菜单随它变宽。读屏把注记读作这一项的描述。
+  - **链接型菜单项**：跳到另一页的项（如订阅「更多」菜单里的「使用它的规则」）外观与普通项相同，不用 `link` 色，也不以「…」结尾；执行后菜单关闭、切到目标页，焦点交给目标页的标题栏控件。
   - 下拉菜单是下拉框的选项列表：当前值带勾；超过 10 项时只显示 10 项，其余在菜单内滚动。
 - **弹出层** `popover`：锚定在某个控件旁的少量非模态内容，如一段说明或一两个输入框。容器与菜单相同，内边距 12px，`body-sm` 文字，没有指向触发控件的箭头。点击外部、按 Esc 或再点一次触发控件即关闭，未提交的输入随之丢弃；需要确认或输入较多时改用对话框。
 - **对话框** `dialog`：参照 macOS 的 alert 与 Windows 11 的内容对话框。
