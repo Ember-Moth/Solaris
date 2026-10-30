@@ -254,7 +254,16 @@ def _subscription(text: str, label: str) -> tuple[list[dict[str, Any]], dict[str
     return list(named.values()), document
 
 
+def _info(pattern: str) -> re.Pattern[str] | None:
+    """The info-node expression; one the core cannot use is an invalid configuration."""
+    try:
+        return re.compile(pattern) if pattern else None
+    except re.error as error:
+        raise HostError("invalid_config", f"info filter: {error}") from error
+
+
 def inspect(text: str, info_filter: str = "") -> SourceInspection:
+    info = _info(info_filter)
     proxies, document = _subscription(text, "")
     rules = document.get("rules") or []
     return SourceInspection(
@@ -263,7 +272,7 @@ def inspect(text: str, info_filter: str = "") -> SourceInspection:
                 p["name"],
                 ADAPTER_TYPES.get(str(p.get("type")), str(p.get("type"))),
                 region_of(p["name"]),
-                bool(info_filter) and re.search(info_filter, p["name"]) is not None,
+                info is not None and info.search(p["name"]) is not None,
             )
             for p in proxies
         ),
@@ -285,13 +294,14 @@ def compose(composition: Composition) -> tuple[dict[str, Any], CompositionReport
         version = plan.get("version") if isinstance(plan, dict) else None
         message = f"plan: plan version {version} is not supported; this core reads version 1"
         raise HostError("invalid_config", message)
+    info = _info(composition.info_filter)
     nodes: list[PoolNode] = []
     proxies: list[dict[str, Any]] = []
     taken = set(BUILT_IN_PROXIES)
     for source in composition.sources:
         for proxy in _subscription(source.yaml, f"subscription {source.name!r}: ")[0]:
             original = proxy["name"]
-            if composition.info_filter and re.search(composition.info_filter, original):
+            if info is not None and info.search(original):
                 continue
             name = f"{original} · {source.name}" if original in taken else original
             taken.add(name)

@@ -359,3 +359,16 @@ def test_region_groups_fold_on_the_proxies_page(qtbot: QtBot, view_models: ViewM
     proxies.toggleRegions()
     assert "视频服务" in [g.name for g in rows(proxies, "groups")]
     assert rows(proxies, "nodes")[0].source == "示例订阅 A"
+
+
+def test_an_info_pattern_the_core_refuses_stays_in_the_dialog(
+    qtbot: QtBot, planned: ViewModels
+) -> None:
+    routing = planned.routing
+    routing.saveInfoPattern("(")
+    qtbot.waitUntil(lambda: prop(routing, "infoError") != "")
+    assert prop(routing, "infoError").startswith("配置无效：")  # noqa: RUF001
+    assert prop(routing, "infoPattern") == prop(routing, "defaultInfoPattern")
+    with qtbot.waitSignal(routing.infoPatternSaved):
+        routing.saveInfoPattern("香港")
+    assert prop(routing, "infoPattern") == "香港"
