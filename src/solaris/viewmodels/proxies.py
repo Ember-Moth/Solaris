@@ -249,7 +249,11 @@ class ProxiesViewModel(QObject):
         self._runner.submit(self._host.health_check(group.name), self._tested, self._failed)
 
     def _tested(self, _: object) -> None:
-        self._testing = False
-        self.changed.emit()
         self.selectionApplied.emit()
-        self.refresh()
+        # Testing ends once the new delays are read, not before: the rows never show the
+        # old delays after the indicator has gone.
+        self._runner.submit(self._host.list_groups(), self._tested_loaded, self._failed)
+
+    def _tested_loaded(self, groups: list[ProxyGroup]) -> None:
+        self._testing = False
+        self._loaded(groups)

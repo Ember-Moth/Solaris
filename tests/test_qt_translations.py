@@ -6,8 +6,7 @@ import subprocess
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-import PySide6
-from PySide6.QtCore import QCoreApplication, QUrl
+from PySide6.QtCore import QCoreApplication, QLibraryInfo, QUrl
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 from pytestqt.qtbot import QtBot
 
@@ -16,7 +15,8 @@ from solaris.i18n import QT_CATALOGS, TRANSLATIONS_DIR
 from tests.support.i18n import ui_language
 
 CATALOG = TRANSLATIONS_DIR / f"{QT_CATALOGS['zh']}.ts"
-QT_QML = Path(PySide6.__file__).parent / "Qt" / "qml" / "QtQuick" / "Controls"
+# Qt's own QML, wherever the wheel puts it (PySide6/Qt/qml on macOS, PySide6/qml on Windows).
+QT_QML = Path(QLibraryInfo.path(QLibraryInfo.LibraryPath.QmlImportsPath)) / "QtQuick" / "Controls"
 MENU = """
 import QtQuick
 import QtQuick.Controls.impl
