@@ -53,7 +53,7 @@ class PlanRule:
     kind: str  # one of RULE_KINDS
     content: Any  # what it matches; JSON
     # A group id of the plan, DIRECT, REJECT, a chained exit such as "egress:warp", or a
-    # mesh outbound as "mesh:<profile id>/<name in the profile>".
+    # mesh outbound as "mesh:<profile id>/<name in the profile>" or "mesh:<network id>".
     target: str
     enabled: bool = True
 

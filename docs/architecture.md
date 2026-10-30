@@ -320,9 +320,12 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 | `ConvertToPlan` | 把一份订阅或 mihomo 配置的策略组和规则转成方案，附摘要和没能转换的规则 |
 | `ExportPlan` | 把方案写成可分享的 `proxy-groups` 和 `rules`，或写出内核会运行的完整配置 |
 | `RegisterWarp` | 经运行中配置的一个组注册 WARP 设备，或为已有设备换另一种协议的密钥 |
+| `GetMeshStatus` | 运行中配置里每个组网出站的状态：是否在线、本机的组网地址、对等点数量、登录链接 |
+| `LoginMesh` | 为一个组网出站取登录链接（Tailscale 发起交互式登录，ZeroTier 给出 SSO 链接），界面在浏览器里打开 |
 
 `PreviewGroup` 到 `ExportPlan`（字段号 51 到 54）的约定见 routing.md 8.2、8.3、8.8 节；`RegisterWarp`（55）见
-[exits.md](exits.md) 3.2、7.2 节。计划中的 `ListVpnGate`（M12）用 56。
+[exits.md](exits.md) 3.2、7.2 节。计划中的 `ListVpnGate`（M12）用 56。`GetMeshStatus`（57）、`LoginMesh`（58）见
+[mesh.md](mesh.md) 10.5 节。
 
 方法的行为约定：
 

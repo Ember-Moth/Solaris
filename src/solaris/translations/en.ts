@@ -1013,7 +1013,7 @@
     </message>
     <message>
         <source>如：家里</source>
-        <translation>Such as: Home</translation>
+        <translation>e.g. Home</translation>
     </message>
     <message>
         <source>设备名</source>
@@ -1033,7 +1033,7 @@
     </message>
     <message>
         <source>如 10.144.144.2/24；留空由网络分配</source>
-        <translation>Such as 10.144.144.2/24; empty lets the network assign one</translation>
+        <translation>e.g. 10.144.144.2/24; empty lets the network assign one</translation>
     </message>
     <message>
         <source>本机地址</source>
@@ -1124,7 +1124,7 @@
     </message>
     <message>
         <source>需要登录</source>
-        <translation>Log in needed</translation>
+        <translation>Login needed</translation>
     </message>
     <message>
         <source>等待授权</source>

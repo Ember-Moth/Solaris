@@ -29,6 +29,7 @@ TABLES = {
     "plans",
     "plan_groups",
     "plan_rules",
+    "mesh_networks",
 }
 
 

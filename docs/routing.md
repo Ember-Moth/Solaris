@@ -477,7 +477,8 @@
   - `value`：不能为空或换行；除 `AND`、`OR`、`NOT` 和三种 `-REGEX` 外不能有逗号（mihomo 按逗号切分规则）；
   - `no_resolve`：只对 `GEOIP`、`IP-CIDR`、`IP-CIDR6`、`IP-SUFFIX`、`IP-ASN`。
 - `target`：策略组 id、`region:代码`、`DIRECT`、`REJECT` 或 `REJECT-DROP`，还可以是 `egress:warp`
-  （exits.md）和 `mesh:<订阅 id>/<原名>`（mesh.md），`egress:tor`、`egress:vpngate` 随 M10、M12 加入。兜底目标
+  （exits.md）、`mesh:<订阅 id>/<原名>` 和应用内网络的 `mesh:<网络 id>`（mesh.md），`egress:tor`、`egress:vpngate`
+  随 M10、M12 加入。兜底目标
   同样可以写这两种；策略组的 `others` 不能写。未知的 id 或地区代码是
   `invalid_config`；地区当前没有节点、自建组没有成员时改走节点选择并警告（8.1 节）。
 
@@ -577,7 +578,7 @@ WARP 账户；出站本身不导出，导入方的配置要自己定义。转换
     是否隐藏、位置，可软删除；
   - `plan_rules`：`id`、方案、位置、是否启用、种类（服务 / 分类 / 域名 / IP 段 / 原始）、内容（JSON）、目标，可软删除；
   - `profiles` 有 `in_pool`（是否加入节点池）。
-- 目标存策略组 `id`、`DIRECT`、`REJECT`、`egress:warp` 或 `mesh:<订阅 id>/<原名>`；地区组的 `id` 由地区代码派生，
+- 目标存策略组 `id`、`DIRECT`、`REJECT`、`egress:warp`、`mesh:<订阅 id>/<原名>` 或 `mesh:<网络 id>`；地区组的 `id` 由地区代码派生，
   节点池变化后保持不变。
 
 ## 10. 分期与验收

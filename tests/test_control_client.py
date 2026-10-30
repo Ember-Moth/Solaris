@@ -3,7 +3,19 @@ from collections.abc import Awaitable, Callable
 
 import pytest
 
-from solaris.host.base import HostError, HostInfo, HostStatus, RunOptions, TunnelConfig
+from solaris.host.base import (
+    Composition,
+    EasyTierSettings,
+    HostError,
+    HostInfo,
+    HostStatus,
+    MeshNetwork,
+    MeshStatus,
+    RunOptions,
+    TailscaleSettings,
+    TunnelConfig,
+    ZeroTierSettings,
+)
 from solaris.host.client import ControlClient
 from solaris.host.service import ServiceHost
 from solaris.host.transport import Opener, Streams
@@ -450,3 +462,86 @@ def test_service_host_gives_up_on_a_restart_that_does_not_end(
     with pytest.raises(HostError) as raised:
         asyncio.run(scenario())
     assert raised.value.code == "service_restarting"
+
+
+def test_service_host_sends_mesh_networks_and_reads_their_status() -> None:
+    pb = control_pb2
+    received: list[control_pb2.Request] = []
+
+    async def answer(request: control_pb2.Request) -> control_pb2.Response:
+        received.append(request)
+        match request.WhichOneof("method"):
+            case "get_mesh_status":
+                status = pb.MeshStatus(
+                    name="家里",
+                    id="mesh:net-home",
+                    type="Tailscale",
+                    state=pb.MESH_STATE_NEEDS_LOGIN,
+                    login_url="https://login.tailscale.com/a/1",
+                )
+                unknown = pb.MeshStatus(name="旧的", type="EasyTier")  # no state yet
+                return pb.Response(
+                    get_mesh_status=pb.GetMeshStatusResponse(networks=[status, unknown])
+                )
+            case "login_mesh":
+                return pb.Response(
+                    login_mesh=pb.LoginMeshResponse(login_url="https://login.tailscale.com/a/2")
+                )
+        return pb.Response(empty=pb.Empty())
+
+    networks = (
+        MeshNetwork(
+            "net-home", "家里", TailscaleSettings("tskey", "https://hs.example", "laptop"), "proxy"
+        ),
+        MeshNetwork("net-office", "公司", ZeroTierSettings("8056c2e21c000001", "identity")),
+        MeshNetwork(
+            "net-lab",
+            "实验室",
+            EasyTierSettings("lab", "s", ("tcp://a:1",), "10.144.144.2/24", "pc"),
+        ),
+    )
+    config = TunnelConfig(composition=Composition((), '{"version": 1}', mesh=networks))
+
+    async def scenario() -> tuple[list[MeshStatus], str]:
+        server, opener = await serve(answer)
+        async with server:
+            host = ServiceHost(opener)
+            try:
+                await host.validate(config)
+                return await host.get_mesh_status(), await host.login_mesh("家里")
+            finally:
+                await host.close()
+
+    statuses, url = asyncio.run(scenario())
+    validate, _, login = received
+    sent = validate.validate.composition.mesh
+    assert sent[0] == pb.MeshNetwork(
+        id="net-home",
+        name="家里",
+        via="proxy",
+        tailscale=pb.TailscaleNetwork(
+            auth_key="tskey", control_url="https://hs.example", hostname="laptop"
+        ),
+    )
+    assert sent[1].zerotier == pb.ZeroTierNetwork(
+        network_id="8056c2e21c000001", identity_secret="identity"
+    )
+    assert sent[2].easytier == pb.EasyTierNetwork(
+        network_name="lab",
+        network_secret="s",
+        peers=["tcp://a:1"],
+        ipv4="10.144.144.2/24",
+        hostname="pc",
+    )
+    assert statuses == [
+        MeshStatus(
+            "家里",
+            "mesh:net-home",
+            "Tailscale",
+            "needs_login",
+            login_url="https://login.tailscale.com/a/1",
+        ),
+        MeshStatus("旧的", "", "EasyTier", "starting"),
+    ]
+    assert login.login_mesh.name == "家里"
+    assert url == "https://login.tailscale.com/a/2"
