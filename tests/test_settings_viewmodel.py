@@ -9,10 +9,11 @@ from pytestqt.qtbot import QtBot
 
 from mihomo_desktop.desktop.login import LoginItemError, LoginItemStatus
 from mihomo_desktop.host.base import RunOptions
-from mihomo_desktop.models.settings import SETTINGS_NAME, JsonSettingsStore, Settings
-from mihomo_desktop.models.store import ProfileStore
+from mihomo_desktop.models.settings import DatabaseSettingsStore, Settings
+from mihomo_desktop.models.store import ProfileStore, open_database
 from mihomo_desktop.viewmodels.composition import ViewModels, compose
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
+from tests.support.storage import refuse_writes
 
 NOW = datetime(2026, 10, 29, 12).timestamp()
 
@@ -85,7 +86,7 @@ def test_choices_are_stored(qtbot: QtBot, view_models: ViewModels, tmp_path: Pat
 
     assert (prop(settings, "language"), prop(settings, "appearance")) == ("en", "dark")
     assert prop(settings, "closeAction") == "quit"
-    stored = JsonSettingsStore(tmp_path).current  # read back from the file
+    stored = DatabaseSettingsStore(open_database(tmp_path)).current  # read back
     assert (stored.language, stored.appearance, stored.close_action) == ("en", "dark", "quit")
 
 
@@ -107,7 +108,7 @@ def test_unwritable_settings_are_reported(
     qtbot: QtBot, view_models: ViewModels, tmp_path: Path
 ) -> None:
     settings = view_models.settings
-    (tmp_path / SETTINGS_NAME).mkdir()  # nothing can replace the settings file
+    refuse_writes(tmp_path, "settings")
     with qtbot.assertNotEmitted(settings.languageChanged):
         settings.setLanguage("en")
     assert prop(settings, "language") == "system"

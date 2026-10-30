@@ -43,51 +43,92 @@
 
 ## 2. 配置存储
 
-> M7 会把本节的文件存储迁移到 SQLite，并支持备份到 Google Drive 和 iCloud，设计见 [storage.md](storage.md)。
+界面的本地数据（配置、覆写、设置、分流方案）存在用户数据目录下的 SQLite 数据库 `mihomo-desktop.db` 里。用户数据
+目录在 Windows 上是 `%LOCALAPPDATA%\<Product>\`，在 macOS 上是 `~/Library/Application Support/<Product>/`，
+`<Product>` 取 `product.py` 的 `DISPLAY_NAME`。数据库的整体设计和云备份见 [storage.md](storage.md)。代码分布：
 
-`ProfileStore` 存放在用户数据目录：Windows 为 `%LOCALAPPDATA%\<Product>\`，macOS 为
-`~/Library/Application Support/<Product>/`，`<Product>` 取 `product.py` 的 `DISPLAY_NAME`。
+- `models/database.py`：连接、表结构、迁移；
+- `models/store.py`：配置和覆写（`ProfileStore`），以及打开数据库的 `open_database`；
+- `models/settings.py`：设置（第 8 节）；
+- `models/routing.py`：分流数据，界面在 C1 实现；
+- `models/file_import.py`：读取旧版本的文件存储（2.4 节）。
+
+### 2.1 表
+
+| 表 | 内容 |
+| --- | --- |
+| `profiles` | 每份配置一行，按 `position` 排序：`id`、`name`、`kind`、`url`、`path`、`auto_update_hours`、`in_pool` |
+| `profile_contents` | 配置原文 `yaml`，以及下载时一起得到的信息：`fetched_at`（界面上的"更新于"）、用量四项、`proxy_count`。这是本机缓存 |
+| `overrides` | `scope` 为 `global` 或某份配置的 `id`；`yaml` 是用户写的原文 |
+| `settings` | 见第 8 节 |
+| `state` | 本机状态。目前只有 `file_import`，即文件存储的导入记录 |
+| `routing_state` | 只有一行：分流方式、"订阅自带"用的配置（也就是当前配置）、"我的方案"用的方案、信息节点表达式 |
+| `plans`、`plan_groups`、`plan_rules` | 分流方案（routing.md 第 9 节），C1 开始使用 |
+| `backup_targets` | 备份目标，C2 开始使用 |
+
+- 时间都用 Unix 秒。每行有 `updated_at`，只在内容确实变化时更新。`profiles`、`overrides`、`plans`、`plan_groups`、
+  `plan_rules`、`backup_targets` 删除时只记 `deleted_at`（软删除），留给备份按记录合并；`profile_contents` 是缓存，
+  直接删除。
+- `ProfileStore` 的接口与文件存储时相同（`load`、`save`、`read_config`、`write_config`、`delete_config`、
+  `read_override`、`write_override`），每个方法是一个事务：
+  - `save(list)` 写入整个列表：新配置插入，有变化的更新，列表里没有的标记删除；当前配置写入
+    `routing_state.profile_id`。
+  - 调用顺序是先 `write_config` 再 `save`，所以列表不会指向没有原文的配置。`Profile.updated_at`、`usage`、
+    `proxy_count` 描述的是下载到的原文，因此和原文一起存在 `profile_contents`；还没有原文的配置，读出来时这三项为空。
+  - `delete_config` 删除原文，并把这份配置的覆写标记删除。清空覆写文本也是标记删除，再次写入时恢复。
+  - 原文不存在时报 `config_missing`；数据库读写失败时报 `storage_failed`，界面显示「操作失败：…」。
+  - 如果在写入原文之后、保存列表之前崩溃，留下的原文会在下次打开数据库时清掉。
+- `Profile.in_pool` 对应 `profiles.in_pool`，默认为真，目前只存取，C1 才会用到。
+- 更新失败的标记只在内存里，不写入数据库。
+
+### 2.2 线程
+
+数据库只开一个连接，所有线程共用，由一把锁（`threading.RLock`）保证同一时间只有一个线程在用。
+
+- 读写数据库的线程有三类：`ProfileLibrary` 在 asyncio 线程上用 `asyncio.to_thread` 读写，实际在默认线程池的
+  多个线程里执行；设置页在 Qt 线程上写设置；启动时 Qt 线程读取配置和设置。
+- 连接以 `check_same_thread=False`、`autocommit=True` 打开，事务都显式写成 `BEGIN IMMEDIATE … COMMIT`，出错时
+  `ROLLBACK`。`Database.transaction()` 持锁直到事务结束，所以别的线程看不到做了一半的事务；`Database.reading()`
+  只持锁，用于只读的语句。
+- 没有采用每个线程一个连接，原因是：线程池里的线程数量不固定，各自的连接很难关闭；每次写入都很小（毫秒级），
+  串行等待感觉不到；只有一个连接时，锁的边界就是事务的边界。
+- 设置变更的通知在锁外、在写入的线程上发出（第 8 节）。
+- `app.main` 先拿到单实例锁（第 8 节），再打开数据库，所以只有一个界面做迁移和导入。退出时关闭连接；没有显式
+  关闭的连接在对象回收时关闭。
+
+### 2.3 表结构版本与迁移
+
+- 表结构的版本记在 `PRAGMA user_version`。`database.py` 的 `MIGRATIONS` 是一串迁移函数，第 n 个把版本 n−1 升到 n。
+  打开数据库时从当前版本开始依次执行，每一步和版本号的修改在同一个事务里；某一步失败，数据库停在上一个版本，
+  下次启动重试。目前只有版本 1，一次建好全部表。
+- 增加版本时，在 `MIGRATIONS` 末尾追加一个函数，不改已有的。测试会检查：从每个旧版本迁移上来的数据库，表结构
+  与新建的完全相同。
+- 文件打不开（不是数据库，或已损坏），或者版本比本程序认识的还新（降级的情况），就把它连同 `-wal`、`-shm`
+  改名为 `mihomo-desktop.db.<时间戳>.bad` 保留，再新建一个空库。这和文件存储处理坏索引的方式一致。
+
+### 2.4 从文件存储导入
+
+M7 之前的版本把配置存成文件：
 
 ```text
 <data>/
-├── profiles.json           索引：格式版本、当前配置、每份配置的元数据
-├── profiles/<id>.yaml      配置原文，下载或导入时的内容，不做改写
-├── override.yaml           全局覆写，用户写的 YAML 原文
-└── overrides/<id>.yaml     这份配置自己的覆写
+├── profiles.json           索引：格式版本 1、当前配置、每份配置的元数据
+├── profiles/<id>.yaml      配置原文
+├── override.yaml           全局覆写
+├── overrides/<id>.yaml     这份配置自己的覆写
+└── settings.json           设置（原来的临时 JSON 实现）
 ```
 
-```json
-{
-  "version": 1,
-  "active": "3f9c…",
-  "profiles": [
-    {
-      "id": "3f9c…",
-      "name": "示例订阅 A",
-      "kind": "subscription",
-      "url": "https://sub.example.com/…",
-      "path": "",
-      "auto_update_hours": 12,
-      "updated_at": 1793277795.0,
-      "usage": {"upload": 1288490188, "download": 39728447488, "total": 214748364800, "expire": 1798646400},
-      "proxy_count": 48
-    }
-  ]
-}
-```
-
-- `id` 是随机 UUID 的十六进制串，也是 YAML 文件名。`kind` 为 `subscription` 或 `file`；本地文件记下原路径
-  `path`，供「重新读取」。`usage` 来自 `Subscription-Userinfo`，没有这个响应头时为 `null`。
-  `proxy_count` 只用于显示，是对顶层 `proxies:` 列表的计数，数不出来时为 `null`。
-- 覆写不进索引：文件存在就表示有覆写。保存是一次原子写入，清空文本就删除文件，删除配置时它的覆写随
-  配置文件一起删除。UI 不解析覆写，只存原文、传原文（第 4 节）。
-- 第一版索引的每一项带一个预留的 `"override": null`。读取时忽略它，之后写入不再带。格式版本仍是 1：
-  索引只少了一个没用过的键，旧版本读到新索引也不会把它当成损坏的索引。
-- 每个文件都原子替换：同目录临时文件 → fsync → rename。先写 YAML 再写索引；删除时先写索引再删 YAML，
-  所以索引不会指向写了一半的文件。
-- 读不了的索引（JSON 损坏、版本不认识）改名为 `profiles.json.<时间戳>.bad` 留存，然后从空列表开始，
-  不会被后续写入覆盖。
-- 更新失败的标记只在内存里，不写入索引。
+- 打开数据库时，如果 `state` 里没有 `file_import` 记录，就读取上面这些文件（`file_import.py`），然后在一个事务里
+  写入全部数据和 `file_import` 记录。
+- 读取规则与文件存储本身一致：文件不存在、JSON 损坏、索引版本不认识，都当作没有，不算失败。索引损坏时不导入
+  任何配置，覆写和设置照常导入。索引里有、原文文件却不在的配置照样导入，使用时报 `config_missing`。索引没有
+  列出的配置，它的原文和覆写都不导入。设置只导入与默认值不同的项。
+- 其他读取错误（如没有权限）或写入失败时，整个事务回滚，不留下一半的数据，文件保持原样，下次启动重试。如果
+  重试之前用户已经存了数据，这些数据保持不变：导入的配置排在后面，当前配置、覆写和设置都以库里已有的为准。
+- 导入提交后，读过的每个文件都改名加上 `.migrated` 后缀（这个名字已被占用时用 `.migrated.2`，依此类推），不删除。
+  改名失败（例如文件被占用）的文件记在 `file_import` 里，下次启动只重试改名，不再导入。
+- 有了 `file_import` 记录之后，数据目录里即使再出现文件存储的文件（例如降级到旧版本后又升级回来），也不会再次导入。
 
 ## 3. 订阅与切换
 
@@ -284,10 +325,11 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 `ValueError`，写不进去抛 `SettingsError`（`settings_unwritable`），这两种情况都不通知，设置页标题栏显示
 「无法保存设置：…」。
 
-**临时实现，待迁移到 SQLite**：本地数据（配置、订阅、覆写、设置）之后统一存进一个 SQLite 数据库，并支持备份到
-iCloud / Google Drive，数据库结构和迁移另行设计。在那之前，`JsonSettingsStore` 把设置存成用户数据目录里的
-`settings.json`：一个 JSON 对象，原子替换，缺少或不接受的值取默认，读不了的文件改名为
-`settings.json.<时间戳>.bad`。这个文件格式不打算保留，也没有版本号。
+**存储**：`DatabaseSettingsStore` 把设置存在数据库的 `settings` 表里（第 2 节）。每个改过的设置项占一行：`key` 是
+字段名，`value` 是 JSON，`scope` 是这一项的范围，`updated_at` 是修改时间。没有对应行或值不被接受的设置项取默认值。
+一次 `update` 只写有变化的项，在一个事务里完成，失败时一项都不写。应用里每个数据库只有一个设置存储；直接写
+`settings` 表的代码（例如将来的恢复备份）写完后调用 `reload()`，订阅者同样会收到改动前后的 `Settings`。原来临时
+实现的 `settings.json` 在第一次启动时导入（2.4 节）。
 
 每个设置项在字段元数据里标明范围（`settings.scope(name)`），供设计备份范围：`synced` 随账户同步，换一台设备
 恢复后照样适用；`local` 只在本机生效，恢复到别的设备上没有意义或有风险。
