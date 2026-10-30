@@ -16,7 +16,7 @@ from solaris.desktop.instance import SingleInstance, ask_to_quit
 from solaris.desktop.links import LinkReceiver, from_arguments
 from solaris.desktop.login import BACKGROUND_ARG, LoginItem, default_login_item
 from solaris.desktop.tray import tray_supported
-from solaris.host.base import HostError, TunnelHost
+from solaris.host.base import TAKEOVER_NONE, TAKEOVER_SETTINGS, HostError, TunnelHost
 from solaris.host.service import ServiceHost
 from solaris.host.transport import Opener, Streams
 from solaris.i18n import Translations, resolve_language
@@ -67,14 +67,16 @@ def default_opener() -> Opener:
 
 def default_host() -> TunnelHost:
     """The system extension in a packaged Solaris.app on macOS, unless a development socket is
-    set (docs/architecture.md §6); otherwise the service over default_opener."""
+    set (docs/architecture.md §6); otherwise the service over default_opener. Off Windows
+    that is the development service, which takes over nothing (§11)."""
     if sys.platform == "darwin" and not os.environ.get(DEV_SOCKET_ENV):
         from solaris.host.extension import bundled_host
 
         host = bundled_host()
         if host is not None:
             return host
-    return ServiceHost(default_opener())
+    takeover = TAKEOVER_SETTINGS if sys.platform == "win32" else TAKEOVER_NONE
+    return ServiceHost(default_opener(), takeover=takeover)
 
 
 def load_ui(engine: QQmlApplicationEngine, view_models: ViewModels) -> bool:

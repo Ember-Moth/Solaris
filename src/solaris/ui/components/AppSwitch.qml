@@ -15,6 +15,8 @@ Switch {
     padding: 0
     spacing: 0
     opacity: enabled ? 1 : Theme.disabledOpacity
+    // A switch, not a check box, to screen readers (DESIGN.md "开关").
+    Accessible.role: Accessible.Switch
     onToggled: {
         requested(checked)
         checked = Qt.binding(() => control.value)

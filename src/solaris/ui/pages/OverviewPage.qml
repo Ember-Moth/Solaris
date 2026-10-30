@@ -31,14 +31,6 @@ ScrollView {
             Layout.rightMargin: Theme.pageX
             title: page.overview.statusTitle
             detail: page.overview.statusDetail
-
-            AppButton {
-                text: page.overview.connectLabel
-                variant: page.overview.connected ? "secondary" : "primary"
-                // Another user's tunnel is theirs to disconnect (docs/architecture.md §5.4).
-                enabled: !page.overview.busy && !page.overview.ownedByOtherUser
-                onClicked: page.overview.toggleConnection()
-            }
         }
 
         GridLayout {
@@ -66,9 +58,42 @@ ScrollView {
                 Group {
                     Layout.fillWidth: true
 
+                    // The only connection control (D26, DESIGN.md "连接开关"); what connecting
+                    // takes over is the settings page's 接管方式.
                     GroupRow {
                         divider: false
+                        verticalPadding: Theme.space2
 
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 0
+
+                            UiText {
+                                Layout.fillWidth: true
+                                text: qsTr("连接")
+                            }
+
+                            AccessibleText {
+                                Layout.fillWidth: true
+                                visible: text !== ""
+                                text: page.overview.connectionDetail
+                                role: Theme.type.caption
+                                color: page.overview.connectionFailed ? Theme.danger : Theme.textMuted
+                                wrapMode: Text.Wrap
+                            }
+                        }
+
+                        AppSwitch {
+                            value: page.overview.connectionOn
+                            // Another user's tunnel is theirs to disconnect (docs/architecture.md §5.4).
+                            enabled: !page.overview.busy && !page.overview.connectionChanging && !page.overview.ownedByOtherUser
+                            Accessible.name: qsTr("连接")
+                            Accessible.description: page.overview.connectionDetail
+                            onRequested: on => page.overview.setConnected(on)
+                        }
+                    }
+
+                    GroupRow {
                         UiText {
                             Layout.fillWidth: true
                             text: qsTr("模式")
@@ -188,34 +213,6 @@ ScrollView {
                                     visible: nodeButton.visualFocus
                                 }
                             }
-                        }
-                    }
-
-                    GroupRow {
-                        UiText {
-                            Layout.fillWidth: true
-                            text: qsTr("TUN 模式")
-                        }
-
-                        AppSwitch {
-                            value: page.overview.tunEnabled
-                            enabled: !page.overview.busy
-                            Accessible.name: qsTr("TUN 模式")
-                            onRequested: on => page.overview.setTun(on)
-                        }
-                    }
-
-                    GroupRow {
-                        UiText {
-                            Layout.fillWidth: true
-                            text: qsTr("系统代理")
-                        }
-
-                        AppSwitch {
-                            value: page.overview.systemProxyEnabled
-                            enabled: !page.overview.busy
-                            Accessible.name: qsTr("系统代理")
-                            onRequested: on => page.overview.setSystemProxy(on)
                         }
                     }
                 }

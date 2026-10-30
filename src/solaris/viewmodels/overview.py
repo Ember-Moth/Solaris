@@ -1,4 +1,5 @@
-"""Overview ViewModel: tunnel state, outbound controls, traffic and the busiest connections."""
+"""Overview ViewModel: tunnel state, the connection switch, outbound controls, traffic and the
+busiest connections; and the settings page's TUN and system proxy switches."""
 
 from __future__ import annotations
 
@@ -68,9 +69,16 @@ class OverviewViewModel(QObject):
         self._snapshot: TunnelSnapshot | None = None
         self._groups: tuple[ProxyGroup, ...] = ()
         self._refreshing = False
+        # An action stays busy after it is done until a refresh shows what it did, so the
+        # controls do not go back to the state before it for a moment.
         self._busy = False
+        self._settling = False  # the action is done; the next refresh ends it
+        self._acted = 0  # actions done so far, so a refresh knows which one it settles
+        self._refresh_again = False  # a refresh was asked for while one was on its way
         self._ticks = 0
+        self._pending = ""  # "start" or "stop" while the connection switch's action runs
         self._error = ""  # the last action's failure, until the next action
+        self._connection_error = ""  # the last connect's or disconnect's failure
         self._refresh_error = ""  # the last refresh's failure, until one succeeds
         # Another user's tunnel runs (docs/architecture.md §5.4): only they can disconnect it.
         self._other_user = False
@@ -99,12 +107,18 @@ class OverviewViewModel(QObject):
     @Slot()
     def refresh(self) -> None:
         if self._refreshing:
+            # The one on its way may have started before the action it would settle.
+            self._refresh_again = self._refresh_again or self._settling
             return
         self._refreshing = True
+        self._refresh_again = False
         include_groups = self._ticks % GROUPS_EVERY_TICKS == 0
         self._ticks += 1
+        settles = self._acted if self._settling else 0
         self._runner.submit(
-            self._session.refresh(include_groups=include_groups), self._applied, self._failed
+            self._session.refresh(include_groups=include_groups),
+            lambda snapshot: self._applied(snapshot, settles),
+            lambda error: self._failed(error, settles),
         )
 
     @Slot()
@@ -112,21 +126,30 @@ class OverviewViewModel(QObject):
         self._ticks = 0
         self.refresh()
 
-    def _applied(self, snapshot: TunnelSnapshot) -> None:
+    def _applied(self, snapshot: TunnelSnapshot, settles: int) -> None:
         self._refreshing = False
         self._refresh_error = ""
         self._other_user = False
         self._snapshot = snapshot
         if snapshot.groups is not None:
             self._groups = snapshot.groups
-        self.changed.emit()
+        self._refreshed(settles)
 
-    def _failed(self, error: BaseException) -> None:
+    def _failed(self, error: BaseException, settles: int) -> None:
         self._refreshing = False
         self._snapshot = None
         self._refresh_error = failure_text(error)
         self._other_user = isinstance(error, HostError) and error.code == "owned_by_other_user"
+        self._refreshed(settles)
+
+    def _refreshed(self, settles: int) -> None:
+        """``settles`` is the action done before this refresh started; 0 for none."""
+        if self._settling and settles == self._acted:
+            self._settling = self._busy = False
+            self._pending = ""
         self.changed.emit()
+        if self._refresh_again:
+            self.refresh()
 
     def _act(
         self,
@@ -134,24 +157,33 @@ class OverviewViewModel(QObject):
         done: Callable[[], None] | None = None,
         *,
         switch: bool = False,
+        pending: str = "",
     ) -> None:
         """Run ``action``; ``done`` runs on the Qt thread once it succeeded. A failed
-        ``switch`` also shows beside the switches on the settings page."""
+        ``switch`` also shows beside the switches on the settings page. ``pending`` is the
+        connection switch's "start" or "stop": its failure shows in the switch's row."""
         self._busy = True
-        self._error = self._switch_error = ""
+        self._settling = False
+        self._pending = pending
+        self._error = self._switch_error = self._connection_error = ""
         self.changed.emit()
 
         def acted(_: object) -> None:
-            self._busy = False
             if done is not None:
                 done()
+            self._acted += 1
+            self._settling = True
             self.refreshGroups()
 
         def failed(error: BaseException) -> None:
             self._busy = False
-            self._error = failure_text(error)
+            self._pending = ""
+            if pending:
+                self._connection_error = failure_text(error)
+            else:
+                self._error = failure_text(error)
             if switch:
-                self._switch_error = self._error
+                self._switch_error = failure_text(error)
             self.changed.emit()
 
         self._runner.submit(action, acted, failed)
@@ -164,12 +196,21 @@ class OverviewViewModel(QObject):
             self._error = self._switch_error = failure_text(error)
 
     # -- actions -----------------------------------------------------------------------------
+    @Slot(bool)
+    def setConnected(self, on: bool) -> None:
+        """The connection switch (D26): connect with what the settings page's switches ask
+        for, as far as the host takes it over, or disconnect."""
+        if self._busy or on == self._connected():
+            return
+        if on:
+            self._act(self._library.start_tunnel(), pending="start")
+        else:
+            self._act(self._host.stop(), pending="stop")
+
     @Slot()
     def toggleConnection(self) -> None:
-        if self._connected():
-            self._act(self._host.stop())
-        else:
-            self._act(self._library.start_tunnel(), switch=True)
+        """The tray's 连接 / 断开."""
+        self.setConnected(not self._connected())
 
     @Slot(str)
     def setMode(self, mode: str) -> None:
@@ -192,8 +233,11 @@ class OverviewViewModel(QObject):
         )
 
     # -- status ------------------------------------------------------------------------------
+    def _state(self) -> str:
+        return self._snapshot.status.state if self._snapshot else ""
+
     def _connected(self) -> bool:
-        return self._snapshot is not None and self._snapshot.status.state == "running"
+        return self._state() == "running"
 
     @Property(bool, notify=changed)
     def connected(self) -> bool:
@@ -221,13 +265,58 @@ class OverviewViewModel(QObject):
         if self._error or self._refresh_error:
             return self._error or self._refresh_error
         if not self._connected() or self._snapshot is None:
-            return self.tr("隧道未运行")
+            return ""
         started = self._snapshot.status.started_at_unix_ms / 1000
-        return self.tr("已运行 {uptime}").format(uptime=fmt.uptime(int(self._clock() - started)))
+        return self.tr("{inbound} · 已运行 {uptime}").format(
+            inbound=self._inbound(), uptime=fmt.uptime(int(self._clock() - started))
+        )
+
+    def _inbound(self) -> str:
+        """What the running tunnel takes over; with neither, only the mixed port serves."""
+        assert self._snapshot is not None
+        status = self._snapshot.status
+        if status.tun_enabled and status.system_proxy_enabled:
+            return self.tr("TUN 与系统代理")
+        if status.tun_enabled:
+            return "TUN"
+        if status.system_proxy_enabled:
+            return self.tr("系统代理")
+        return self.tr("混合端口 {port}").format(port=self._settings.current.mixed_port)
 
     @Property(str, notify=changed)
     def connectLabel(self) -> str:
         return self.tr("断开") if self._connected() else self.tr("连接")
+
+    # -- the connection switch ---------------------------------------------------------------
+    def _changing(self) -> str:
+        """ "start" or "stop" while this switch or the host brings the tunnel up or down."""
+        if self._pending:
+            return self._pending
+        return {"starting": "start", "stopping": "stop"}.get(self._state(), "")
+
+    @Property(bool, notify=changed)
+    def connectionOn(self) -> bool:
+        """On while connected, and while connecting."""
+        changing = self._changing()
+        return changing == "start" if changing else self._connected()
+
+    @Property(bool, notify=changed)
+    def connectionChanging(self) -> bool:
+        return self._changing() != ""
+
+    @Property(str, notify=changed)
+    def connectionDetail(self) -> str:
+        """The switch's second line: what it is doing, or why it could not."""
+        changing = self._changing()
+        if changing == "start":
+            return self.tr("正在连接…")
+        if changing == "stop":
+            return self.tr("正在断开…")
+        return self._connection_error
+
+    @Property(bool, notify=changed)
+    def connectionFailed(self) -> bool:
+        return self._changing() == "" and self._connection_error != ""
 
     # -- outbound ----------------------------------------------------------------------------
     @Property("QVariantList", notify=modeOptionsChanged)  # pyright: ignore[reportArgumentType]
@@ -237,6 +326,13 @@ class OverviewViewModel(QObject):
     @Property(str, notify=changed)
     def mode(self) -> str:
         return self._snapshot.status.mode if self._snapshot else "rule"
+
+    # -- the settings page's TUN and system proxy -------------------------------------------
+    @Property(str, constant=True)
+    def takeover(self) -> str:
+        """TAKEOVER_SETTINGS shows both switches; the macOS extension always runs a TUN, and
+        the development service takes over nothing (TunnelHost.takeover)."""
+        return self._host.takeover
 
     # The switches show the running tunnel, or else what the next connection asks for.
     @Property(bool, notify=changed)
@@ -253,7 +349,7 @@ class OverviewViewModel(QObject):
 
     @Property(str, notify=changed)
     def switchError(self) -> str:
-        """Why the last change of TUN or the system proxy, or the last connection, failed."""
+        """Why the last change of TUN or the system proxy failed."""
         return self._switch_error
 
     @Property(str, notify=changed)

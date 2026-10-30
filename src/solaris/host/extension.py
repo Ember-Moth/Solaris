@@ -25,6 +25,7 @@ from google.protobuf.message import DecodeError
 
 from solaris import __version__
 from solaris.host.base import (
+    TAKEOVER_TUN,
     CompositionReport,
     Connection,
     GeoCategories,
@@ -256,10 +257,12 @@ async def _no_stream() -> Streams:
 class MacExtensionHost(ServiceHost):
     """ServiceHost's requests, each sent to the extension with one solaris_manager_send rather
     than over a framed stream; the tunnel's start and stop go through the manager, and the
-    configuration follows in Start and Reload (D7). Closing the host leaves the tunnel up."""
+    configuration follows in Start and Reload (D7). Closing the host leaves the tunnel up.
+    The extension only runs while its tunnel is up, so every config runs with TUN, and
+    without the system proxy, which only the Windows service sets (D26)."""
 
     def __init__(self, manager: Manager, *, core_version: str = "") -> None:
-        super().__init__(_no_stream)
+        super().__init__(_no_stream, takeover=TAKEOVER_TUN)
         self._manager = manager
         self._core_version = core_version
         self._ids = itertools.count(1)

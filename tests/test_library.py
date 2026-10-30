@@ -1,11 +1,19 @@
 import asyncio
 from collections.abc import Callable, Coroutine
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from solaris.host.base import HostError, RunOptions
+from solaris.host.base import (
+    TAKEOVER_NONE,
+    TAKEOVER_SETTINGS,
+    TAKEOVER_TUN,
+    HostError,
+    HostStatus,
+    RunOptions,
+)
 from solaris.models.library import RETRY_AFTER_S, ProfileLibrary
 from solaris.models.profiles import KIND_FILE, ProfileError, Usage
 from solaris.models.settings import Settings
@@ -27,13 +35,22 @@ OTHER_CONFIG = (
 
 
 class Scene:
-    def __init__(self, directory: Path, *, seeded: bool = True, development: bool = False) -> None:
+    def __init__(
+        self,
+        directory: Path,
+        *,
+        seeded: bool = True,
+        development: bool = False,
+        takeover: str = TAKEOVER_SETTINGS,
+    ) -> None:
         self.now = NOW
         self.settings = Settings()
         self.store = ProfileStore(directory)
         if seeded:
             seed_profiles(self.store, NOW)
-        self.host = SimulatedHost(clock=lambda: self.now, development=development)
+        self.host = SimulatedHost(
+            clock=lambda: self.now, development=development, takeover=takeover
+        )
         self.fetcher = SimulatedFetcher()
         self.library = ProfileLibrary(
             self.store,
@@ -260,7 +277,7 @@ def test_removal_states_what_removing_does(tmp_path: Path) -> None:
 
 def test_start_tunnel_uses_the_active_profile(tmp_path: Path) -> None:
     scene = Scene(tmp_path)
-    settings = Settings(system_proxy=True, mixed_port=7897, allow_lan=True)
+    settings = Settings(tun=False, mixed_port=7897, allow_lan=True)
     scene.settings = settings
 
     async def scenario() -> None:
@@ -306,9 +323,9 @@ def test_switches_reload_or_wait_for_the_next_start(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("settings", "code"),
     [
-        (Settings(tun=True), "tun_unsupported"),
-        (Settings(system_proxy=True), "system_proxy_unsupported"),
-        (Settings(tun=True, system_proxy=True), "tun_and_system_proxy_unsupported"),
+        (Settings(system_proxy=False), "tun_unsupported"),
+        (Settings(tun=False), "system_proxy_unsupported"),
+        (Settings(), "tun_and_system_proxy_unsupported"),
     ],
 )
 def test_development_service_refuses_the_switches(
@@ -324,6 +341,34 @@ def test_development_service_refuses_the_switches(
     with pytest.raises(ProfileError) as raised:
         run(start)
     assert raised.value.code == code
+
+
+@pytest.mark.parametrize(
+    ("takeover", "settings", "runs"),
+    [
+        # The app's development service takes over nothing: the mixed port serves (D26).
+        (TAKEOVER_NONE, Settings(), (False, False)),
+        # The macOS extension always runs a TUN, and never sets the system proxy.
+        (TAKEOVER_TUN, Settings(tun=False), (True, False)),
+        (TAKEOVER_TUN, Settings(), (True, False)),
+    ],
+)
+def test_connecting_takes_over_what_the_host_does(
+    tmp_path: Path, takeover: str, settings: Settings, runs: tuple[bool, bool]
+) -> None:
+    scene = Scene(tmp_path, development=takeover == TAKEOVER_NONE, takeover=takeover)
+    scene.settings = settings
+
+    async def scenario() -> HostStatus:
+        await scene.host.stop()
+        await scene.library.start_tunnel()
+        await scene.library.apply_settings(replace(settings, mixed_port=1080))
+        return await scene.host.get_status()
+
+    status = run(scenario)
+    assert (status.tun_enabled, status.system_proxy_enabled) == runs
+    assert scene.host.config is not None
+    assert scene.host.config.options == RunOptions(*runs, mixed_port=1080)
 
 
 def test_development_service_refuses_switching_on(tmp_path: Path) -> None:

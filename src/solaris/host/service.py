@@ -9,6 +9,7 @@ from collections.abc import Awaitable
 from solaris.host.base import (
     EXPORT_GENERATED,
     EXPORT_SHARE,
+    TAKEOVER_SETTINGS,
     ComposedGroup,
     Composition,
     CompositionReport,
@@ -36,6 +37,7 @@ from solaris.host.base import (
     TunnelConfig,
     WarpAccount,
     bundled_geo_categories,
+    taken_over,
 )
 from solaris.host.client import ControlClient
 from solaris.host.transport import Opener
@@ -237,13 +239,18 @@ def _connection(c: pb.Connection) -> Connection:
 class ServiceHost:
     core_available = True  # the service runs while the tunnel is stopped
 
-    def __init__(self, opener: Opener) -> None:
+    def __init__(self, opener: Opener, *, takeover: str = TAKEOVER_SETTINGS) -> None:
+        """``takeover`` is TAKEOVER_NONE for the development service."""
         self._opener = opener
+        self.takeover = takeover
         self._client: ControlClient | None = None
         self._connect_lock = asyncio.Lock()
         self._subscriptions: dict[str, int] = {}
         self._connections: list[Connection] = []  # the latest snapshot, shared by every poll
         self._log_level = ""  # the level of the logs subscription
+
+    def _options(self, options: RunOptions) -> pb.RunOptions:
+        return _options(taken_over(options, self.takeover))
 
     async def _connected(self) -> ControlClient:
         async with self._connect_lock:
@@ -321,16 +328,16 @@ class ServiceHost:
         return _report(await self._call(pb.Request(validate=request)))
 
     async def start(self, config: TunnelConfig) -> CompositionReport | None:
+        options = self._options(config.options)
         request = _with_source(
-            pb.StartRequest(overrides=list(config.overrides), options=_options(config.options)),
-            config,
+            pb.StartRequest(overrides=list(config.overrides), options=options), config
         )
         return _report(await self._call(pb.Request(start=request)))
 
     async def reload(self, config: TunnelConfig) -> CompositionReport | None:
+        options = self._options(config.options)
         request = _with_source(
-            pb.ReloadRequest(overrides=list(config.overrides), options=_options(config.options)),
-            config,
+            pb.ReloadRequest(overrides=list(config.overrides), options=options), config
         )
         return _report(await self._call(pb.Request(reload=request)))
 
@@ -404,7 +411,7 @@ class ServiceHost:
             composition=_composition(config.composition),
             format=EXPORT_FORMATS[export],
             overrides=list(config.overrides),
-            options=_options(config.options),
+            options=self._options(config.options),
         )
         return (await self._call(pb.Request(export_plan=request))).export_plan.yaml
 

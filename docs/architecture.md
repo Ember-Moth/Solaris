@@ -584,7 +584,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   隐藏要内核的部分（ui.md 第 3、9 节）。连接分两步：`prepare_start` 让隧道起来、扩展能回答，界面读未读的订阅、
   定下分流，再发 `Start`；读不了正要使用的那份或 `Start` 被拒绝时，隧道断开。
 - **方法**：除 `Claim`、`SetSystemProxy` 外与 Windows 相同。隧道的启停走管理库，配置经 `Start` / `Reload` 走
-  provider message；没有 attach 的隧道时，消息得到 `not_running`。
+  provider message；没有 attach 的隧道时，消息得到 `not_running`。`MacExtensionHost` 发出的 `RunOptions` 总是开着
+  TUN、关着系统代理，不论设置怎么写（ui.md 第 8 节"接管方式"）。
 - **消息大小**：单条 provider message 的上限需要实测，它决定 `Reload` 能否直接携带大配置。
 - 做法与 hypervpn 一致，见它的 `NetworkExtensionManager.swift`（`providerExchange`）和
   `PacketTunnelProvider.swift`（`handleAppMessage`）。

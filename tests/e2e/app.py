@@ -169,11 +169,17 @@ class App:
 
     # -- tunnel ------------------------------------------------------------------------------
     def connect(self) -> None:
+        """Turn the overview's connection switch on (D26)."""
         overview = self.view_models.overview
         self.until(lambda: self.prop(overview, "statusTitle") in ("未连接", "连接失败"))
-        overview.toggleConnection()
-        self.until(lambda: self.prop(overview, "connected") or self.prop(overview, "switchError"))
-        assert self.prop(overview, "connected"), self.prop(overview, "switchError")
+        overview.setConnected(True)
+        self.until(
+            lambda: (
+                (self.prop(overview, "connected") and not self.prop(overview, "busy"))
+                or self.prop(overview, "connectionFailed")
+            )
+        )
+        assert self.prop(overview, "connected"), self.prop(overview, "connectionDetail")
 
     def curl(self, url: str) -> str:
         """The body fetched through the mixed port, or curl's error."""

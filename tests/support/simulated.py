@@ -32,6 +32,7 @@ from solaris.host.base import (
     EXPORT_GENERATED,
     EXPORT_SHARE,
     LOG_LEVELS,
+    TAKEOVER_SETTINGS,
     TUN_STACKS,
     ComposedGroup,
     Composition,
@@ -59,6 +60,7 @@ from solaris.host.base import (
     TunnelConfig,
     WarpAccount,
     bundled_geo_categories,
+    taken_over,
 )
 from solaris.models.plans import GROUP_TYPES
 from solaris.models.profiles import (
@@ -957,11 +959,15 @@ class SimulatedHost:
         crowd: int = 0,
         development: bool = False,
         core_needs_tunnel: bool = False,
+        takeover: str = TAKEOVER_SETTINGS,
     ) -> None:
         """``crowd`` adds that many quiet connections, to try the UI with a busy core.
         ``development`` refuses TUN and the system proxy as the development service
         does (docs/architecture.md §11). ``core_needs_tunnel``: like the macOS extension, no
-        core answers while the tunnel is down; prepare_start brings it up."""
+        core answers while the tunnel is down; prepare_start brings it up. ``takeover`` is
+        what connecting takes over, as on the platform's host (TunnelHost.takeover); the
+        app's development service is ``development`` with TAKEOVER_NONE."""
+        self.takeover = takeover
         self._random = random.Random(seed)
         # Connections and logs draw from their own generator, so traffic stays the same.
         self._churn = random.Random(seed + 1)
@@ -987,8 +993,10 @@ class SimulatedHost:
         self.warp_calls: list[tuple[str, str, str]] = []
         self.warp_error: HostError | None = None
         self._mode = "rule"
-        self._tun = not development
-        self._system_proxy = False
+        # Running as the default settings ask for.
+        running = taken_over(RunOptions(not development, not development), takeover)
+        self._tun = running.tun_enabled
+        self._system_proxy = running.system_proxy_enabled
         self._started_at = clock() - 8076
         self._delays = {name: delay for name, (_, delay) in NODES.items()}
         self._groups = {
@@ -1398,6 +1406,7 @@ class SimulatedHost:
             self._log(level, text)
 
     def _apply(self, config: TunnelConfig) -> None:
+        config = replace(config, options=taken_over(config.options, self.takeover))
         if self._development and config.options.system_proxy_enabled:
             raise HostError(
                 "unsupported_method", "the development server never sets the system proxy"

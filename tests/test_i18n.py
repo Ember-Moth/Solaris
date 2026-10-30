@@ -114,7 +114,7 @@ def test_english_view_models(qtbot: QtBot, view_models: ViewModels) -> None:
 
     qtbot.waitUntil(lambda: prop(overview, "connected"))
     assert prop(overview, "statusTitle") == "Connected"
-    assert prop(overview, "statusDetail").startswith("Running for ")
+    assert prop(overview, "statusDetail").startswith("TUN and system proxy · running for ")
     assert prop(overview, "connectLabel") == "Disconnect"
     assert [mode["label"] for mode in prop(overview, "modeOptions")] == ["Rule", "Global", "Direct"]
     assert prop(overview, "connectionsLink").startswith("All ")
