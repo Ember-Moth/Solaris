@@ -3074,7 +3074,7 @@ Protocol v{protocol}</translation>
     </message>
     <message>
         <source>服务器数量</source>
-        <translation>Servers</translation>
+        <translation>Server count</translation>
     </message>
     <message>
         <source>国家</source>

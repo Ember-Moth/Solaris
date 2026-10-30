@@ -103,12 +103,21 @@ AppDialog {
             Layout.fillWidth: true
             spacing: 4
 
-            CheckGrid {
-                Layout.fillWidth: true
-                label: qsTr("国家")
-                model: dialog.vpngate.countries
+            UiText {
+                text: qsTr("国家")
+                role: Theme.type.caption
+                color: Theme.textTertiary
+            }
+
+            // A dropdown whose menu checks each country in use; picking one adds or removes it.
+            AppSelect {
+                id: countrySelect
+
+                Layout.preferredWidth: 316
+                displayText: dialog.vpngate.countriesLabel
+                accessibleName: qsTr("国家")
                 enabled: !dialog.vpngate.busy
-                onToggled: id => dialog.vpngate.toggleCountry(id)
+                menu: countryMenu
             }
 
             AccessibleText {
@@ -322,6 +331,35 @@ AppDialog {
             role: Theme.type.caption
             color: Theme.danger
             wrapMode: Text.Wrap
+        }
+    }
+
+    AppMenu {
+        id: countryMenu
+
+        minimumWidth: countrySelect.width
+
+        Instantiator {
+            model: dialog.vpngate.countryOptions
+            onObjectAdded: (index, object) => countryMenu.insertItem(index, object)
+            onObjectRemoved: (index, object) => countryMenu.removeItem(object)
+
+            delegate: AppMenuItem {
+                id: country
+
+                required property var modelData
+
+                text: country.modelData.label
+                note: country.modelData.note
+                enabled: country.modelData.enabled
+                checkable: true
+                checked: country.modelData.checked
+                onTriggered: {
+                    dialog.vpngate.toggleCountry(country.modelData.value)
+                    // Triggering toggled the check; the plan decides it again.
+                    checked = Qt.binding(() => country.modelData.checked)
+                }
+            }
         }
     }
 

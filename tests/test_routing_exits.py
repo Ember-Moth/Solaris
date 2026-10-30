@@ -405,8 +405,11 @@ def test_vpngate_fetches_the_list_through_the_node_and_its_rules_follow(
     servers = rows(exit_, "servers")
     assert [r.title for r in servers] == [f"日本 · {h}" for h in JP_HOSTS[:5]]
     assert (servers[0].detail, servers[0].delay) == ("DESKTOP-K7Q2's owner", "—")
-    countries = [(c.name, c.note, c.picked) for c in rows(exit_, "countries")]
+    countries = [(c["label"], c["note"], c["checked"]) for c in prop(exit_, "countryOptions")]
     assert countries[:3] == [("日本", "6", True), ("韩国", "2", False), ("俄罗斯", "1", False)]
+    # The last country chosen cannot be taken away.
+    assert not prop(exit_, "countryOptions")[0]["enabled"]
+    assert prop(exit_, "countriesLabel") == "日本"
     # A rule to the exit goes through the servers, best score first, each through the node.
     openai_to(qtbot, routing, plans.VPNGATE)
     openai = next(r for r in rows(routing, "rules") if r.name == "OpenAI")

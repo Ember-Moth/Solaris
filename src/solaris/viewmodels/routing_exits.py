@@ -30,7 +30,6 @@ from solaris.viewmodels import routing_text as text
 from solaris.viewmodels.common.async_runner import AsyncRunner
 from solaris.viewmodels.common.keyed_list import KeyedListModel
 from solaris.viewmodels.feedback import failure_text
-from solaris.viewmodels.routing_groups import ChoiceRow
 
 if TYPE_CHECKING:
     from solaris.viewmodels.routing import RoutingViewModel
@@ -403,8 +402,6 @@ class VpnGateExit(QObject):
         self._pending = False  # a refresh asked for while stopped
         self._error = ""  # why the last refresh failed
         self._change_error = ""
-        roles = ["itemId" if n == "id" else n for n in ChoiceRow.__dataclass_fields__]
-        self._countries = KeyedListModel(roles, self)
         self._servers = KeyedListModel(list(ServerRow.__dataclass_fields__), self)
         self._timer = QTimer(self)
         self._timer.setInterval(CHECK_MS)
@@ -435,7 +432,7 @@ class VpnGateExit(QObject):
         self._running = running
         if running:
             self._timer.start()
-            if self._pending or self._list().stale(self._clock()):
+            if self._exit().enabled and (self._pending or self._list().stale(self._clock())):
                 self._refresh()
         else:
             self._timer.stop()
@@ -562,14 +559,29 @@ class VpnGateExit(QObject):
         if group_id != vpngate.via:
             self._put(replace(vpngate, via=group_id))
 
-    @Property(QObject, constant=True)
-    def countries(self) -> KeyedListModel:
-        """The countries of the list with their server counts, and those the plan chose."""
-        return self._countries
+    @Property("QVariantList", notify=changed)  # pyright: ignore[reportArgumentType]
+    def countryOptions(self) -> list[dict[str, object]]:
+        """The countries of the list with their server counts, then those the plan chose that
+        the list lacks; checked when chosen. The last one chosen cannot be taken away."""
+        servers = self._list()
+        chosen = self._exit().countries
+        counts = dict(servers.countries())
+        codes = [code for code, _ in servers.countries()]
+        codes += [code for code in chosen if code not in counts]
+        return [
+            {
+                "value": code,
+                "label": region_name(code),
+                "note": str(counts.get(code, 0)),
+                "checked": code in chosen,
+                "enabled": chosen != (code,),
+            }
+            for code in codes
+        ]
 
-    @Property(bool, notify=changed)
-    def hasCountries(self) -> bool:
-        return self._countries.rowCount() > 0
+    @Property(str, notify=changed)
+    def countriesLabel(self) -> str:
+        return self._country_names(self._exit().countries)
 
     @Slot(str)
     def toggleCountry(self, code: str) -> None:
@@ -716,22 +728,6 @@ class VpnGateExit(QObject):
 
     def _sync_rows(self) -> None:
         servers = self._list()
-        chosen = self._exit().countries
-        counts = dict(servers.countries())
-        codes = [code for code, _ in servers.countries()]
-        codes += [code for code in chosen if code not in counts]
-        self._countries.sync(
-            [
-                ChoiceRow(
-                    code,
-                    region_name(code),
-                    str(counts[code]) if code in counts else "",
-                    code in chosen,
-                    False,
-                )
-                for code in codes
-            ]
-        )
         rows = []
         for server in self._picked():
             delay, level = fmt.latency(servers.delays.get(server.host_name))
