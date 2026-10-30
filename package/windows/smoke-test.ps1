@@ -40,6 +40,16 @@ $Task = "Solaris ($($env:USERDOMAIN)_$($env:USERNAME))"
 $OtherTask = 'Solaris (OTHER_someone)'
 $ErrorLog = Join-Path $env:TEMP 'Solaris-setup-error.log'
 
+# A check that fails is reported and the test goes on, so one run shows every problem; the
+# test fails at the end. What the later steps cannot do without still stops it at once.
+$Failures = [System.Collections.Generic.List[string]]::new()
+function Expect([bool] $Condition, [string] $Problem) {
+    if (-not $Condition) {
+        Write-Output "::error::$Problem"
+        $Failures.Add($Problem)
+    }
+}
+
 function Invoke-Setup([string] $Path, [string] $Arguments) {
     Write-Output "> $(Split-Path $Path -Leaf) $Arguments"
     # One string: the uninstaller's _?= must come last and unquoted, spaces and all.
@@ -56,6 +66,18 @@ function Get-SolarisService {
     Get-CimInstance Win32_Service -Filter "Name='$ServiceName'"
 }
 
+# Where shortcuts named Solaris*.lnk are, in every Start menu: tells a misplaced shortcut from
+# a missing one.
+function Find-Shortcuts {
+    $menus = @(
+        (Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu'),
+        (Join-Path $env:SystemDrive 'Users\*\AppData\Roaming\Microsoft\Windows\Start Menu'),
+        (Join-Path $env:SystemRoot 'System32\config\systemprofile\AppData\Roaming\Microsoft\Windows\Start Menu')
+    )
+    @(Get-ChildItem -Path $menus -Recurse -Filter 'Solaris*.lnk' -Force -ErrorAction SilentlyContinue |
+            ForEach-Object FullName)
+}
+
 function Assert-Installed {
     foreach ($name in @(
             'Solaris.exe', 'solaris-service.exe', 'uninstall.exe', 'LICENSE',
@@ -63,59 +85,61 @@ function Assert-Installed {
         if (-not (Test-Path -LiteralPath (Join-Path $Root $name) -PathType Leaf)) { throw "$name is missing" }
     }
     $product = (Get-Item -LiteralPath $Client).VersionInfo.ProductVersion
-    if ($product -notin @($Version, "$Version.0")) { throw "Solaris.exe is version $product, not $Version" }
+    Expect ($product -in @($Version, "$Version.0")) "Solaris.exe is version $product, not $Version"
 
     $service = Get-SolarisService
     if (-not $service) { throw "$ServiceName is not installed" }
     $expected = "`"$ServiceExecutable`""
-    if ($service.PathName -ne $expected) { throw "$ServiceName runs $($service.PathName), not $expected" }
-    if ($service.StartMode -ne 'Auto') { throw "$ServiceName starts $($service.StartMode)" }
-    if ($service.StartName -ne 'LocalSystem') { throw "$ServiceName runs as $($service.StartName)" }
-    if ($service.State -ne 'Running') { throw "$ServiceName is $($service.State)" }
+    Expect ($service.PathName -eq $expected) "$ServiceName runs $($service.PathName), not $expected"
+    Expect ($service.StartMode -eq 'Auto') "$ServiceName starts $($service.StartMode)"
+    Expect ($service.StartName -eq 'LocalSystem') "$ServiceName runs as $($service.StartName)"
+    Expect ($service.State -eq 'Running') "$ServiceName is $($service.State)"
     $recovery = (& sc.exe qfailure $ServiceName) -join "`n"
     foreach ($delay in 5000, 15000, 60000) {
-        if ($recovery -notmatch "RESTART -- Delay = $delay milliseconds") {
-            throw "$ServiceName does not restart after $delay ms:`n$recovery"
-        }
+        Expect ($recovery -match "RESTART -- Delay = $delay milliseconds") "$ServiceName does not restart after $delay ms:`n$recovery"
     }
     # Listening: the service accepts the connection, then drops it, as this is not its UI.
     $client = New-Object System.IO.Pipes.NamedPipeClientStream('.', $Pipe, [System.IO.Pipes.PipeDirection]::InOut)
-    try { $client.Connect(20000) } finally { $client.Dispose() }
+    try {
+        $client.Connect(20000)
+    } catch {
+        Expect $false "Nothing listens on \\.\pipe\${Pipe}: $($_.Exception.Message)"
+    } finally {
+        $client.Dispose()
+    }
 
     $entry = Get-ItemProperty -LiteralPath $UninstallKey
-    if ($entry.DisplayVersion -ne $Version -or $entry.InstallLocation -ne $Root) {
-        throw "The uninstall entry says $($entry.DisplayVersion) in $($entry.InstallLocation)"
-    }
+    Expect ($entry.DisplayVersion -eq $Version -and $entry.InstallLocation -eq $Root) "The uninstall entry says $($entry.DisplayVersion) in $($entry.InstallLocation)"
     foreach ($scheme in 'solaris', 'clash') {
         $key = "HKLM:\Software\Classes\$scheme"
         $command = (Get-ItemProperty -LiteralPath "$key\shell\open\command").'(default)'
-        if ($command -ne $LinkCommand) { throw "${scheme}: opens $command" }
-        if ($null -eq (Get-ItemProperty -LiteralPath $key).'URL Protocol') { throw "${scheme}: is no URL scheme" }
+        Expect ($command -eq $LinkCommand) "${scheme}: opens $command"
+        Expect ($null -ne (Get-ItemProperty -LiteralPath $key).'URL Protocol') "${scheme}: is no URL scheme"
     }
-    $shell = New-Object -ComObject WScript.Shell
-    if ($shell.CreateShortcut($Shortcut).TargetPath -ne $Client) { throw 'The Start menu shortcut is wrong' }
+    if (Test-Path -LiteralPath $Shortcut) {
+        $target = (New-Object -ComObject WScript.Shell).CreateShortcut($Shortcut).TargetPath
+        Expect ($target -eq $Client) "The Start menu shortcut opens '$target', not $Client"
+    } else {
+        Expect $false "No shortcut at $Shortcut; Solaris shortcuts found: $((Find-Shortcuts) -join ', ')"
+    }
     Write-Output "Installed $Version; $ServiceName running as process $($service.ProcessId)"
 }
 
 function Assert-Removed {
-    if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) { throw "$ServiceName is still there" }
-    if (Test-Path -LiteralPath $UninstallKey) { throw 'The uninstall entry is still there' }
+    Expect (-not (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue)) "$ServiceName is still there"
+    Expect (-not (Test-Path -LiteralPath $UninstallKey)) 'The uninstall entry is still there'
     foreach ($scheme in 'solaris', 'clash') {
-        if (Test-Path -LiteralPath "HKLM:\Software\Classes\$scheme") { throw "${scheme}: is still registered" }
+        Expect (-not (Test-Path -LiteralPath "HKLM:\Software\Classes\$scheme")) "${scheme}: is still registered"
     }
-    if (Test-Path -LiteralPath $Shortcut) { throw 'The Start menu shortcut is still there' }
-    if (Get-ScheduledTask -TaskName $Task -TaskPath '\' -ErrorAction SilentlyContinue) {
-        throw "The task $Task is still there"
-    }
-    if (-not (Get-ScheduledTask -TaskName $OtherTask -TaskPath '\' -ErrorAction SilentlyContinue)) {
-        throw "The task $OtherTask, which starts another program, was removed"
-    }
+    $shortcuts = Find-Shortcuts
+    Expect ($shortcuts.Count -eq 0) "Shortcuts are still there: $($shortcuts -join ', ')"
+    Expect (-not (Get-ScheduledTask -TaskName $Task -TaskPath '\' -ErrorAction SilentlyContinue)) "The task $Task is still there"
+    Expect ([bool](Get-ScheduledTask -TaskName $OtherTask -TaskPath '\' -ErrorAction SilentlyContinue)) "The task $OtherTask, which starts another program, was removed"
     # Run in place with _?=, the uninstaller cannot delete itself; anything else is left over.
     $left = @(Get-ChildItem -LiteralPath $Root -Recurse -Force -ErrorAction SilentlyContinue |
             ForEach-Object { $_.FullName.Substring($Root.Length + 1) })
-    if (($left -join '|') -ne 'uninstall.exe') { throw "Left behind in ${Root}: $($left -join ', ')" }
-    Remove-Item -LiteralPath $Uninstaller
-    Remove-Item -LiteralPath $Root
+    Expect (($left -join '|') -eq 'uninstall.exe') "Left behind in ${Root}: $($left -join ', ')"
+    Remove-Item -LiteralPath $Root -Recurse -Force
 }
 
 function Register-Task([string] $Name, [string] $Program) {
@@ -143,18 +167,21 @@ try {
     do {
         Start-Sleep -Milliseconds 500
         $ui.Refresh()
-        if ($ui.HasExited) { throw "Solaris.exe exited with $($ui.ExitCode) while starting" }
-    } while ($ui.MainWindowHandle -eq 0 -and [DateTime]::UtcNow -lt $deadline)
-    if ($ui.MainWindowHandle -eq 0) { throw 'Solaris.exe opened no window' }
-    Write-Output "Solaris.exe ($($ui.Id)) opened its window: $($ui.MainWindowTitle)"
-    if (-not (Test-Path -LiteralPath $UserData)) { throw "The UI made no $UserData" }
+    } while (-not $ui.HasExited -and $ui.MainWindowHandle -eq 0 -and [DateTime]::UtcNow -lt $deadline)
+    if ($ui.HasExited) {
+        Expect $false "Solaris.exe exited with $($ui.ExitCode) while starting"
+    } else {
+        Expect ($ui.MainWindowHandle -ne 0) 'Solaris.exe opened no window in 60 seconds'
+        Write-Output "Solaris.exe ($($ui.Id)) is running; its window: '$($ui.MainWindowTitle)'"
+    }
+    Expect (Test-Path -LiteralPath $UserData) "The UI made no $UserData"
 
     Write-Output '3. Upgrade over the running UI'
     $before = (Get-SolarisService).ProcessId
     Invoke-Setup $Installer '/S'
-    if (-not $ui.WaitForExit(1000)) { throw 'The upgrade left the UI running' }
+    Expect ($ui.HasExited -or $ui.WaitForExit(1000)) 'The upgrade left the UI running'
     Assert-Installed
-    if ((Get-SolarisService).ProcessId -eq $before) { throw "$ServiceName was not restarted" }
+    Expect ((Get-SolarisService).ProcessId -ne $before) "$ServiceName was not restarted"
 
     Write-Output '4. Uninstall, keeping the user data'
     Register-Task $Task $Client
@@ -169,7 +196,7 @@ try {
     Invoke-Setup $Uninstaller "/S _?=$Root"
     Assert-Removed
     foreach ($marker in $markers) {
-        if (-not (Test-Path -LiteralPath $marker)) { throw "Uninstalling removed $marker" }
+        Expect (Test-Path -LiteralPath $marker) "Uninstalling removed $marker"
     }
 
     Write-Output '5. Install again, then uninstall with /PURGE'
@@ -178,11 +205,14 @@ try {
     Invoke-Setup $Uninstaller "/S /PURGE _?=$Root"
     Assert-Removed
     foreach ($purged in $ServiceData, $UserData) {
-        if (Test-Path -LiteralPath $purged) { throw "/PURGE left $purged" }
+        Expect (-not (Test-Path -LiteralPath $purged)) "/PURGE left $purged"
     }
-    Write-Output 'Installed, upgraded and uninstalled cleanly.'
 } finally {
     if ($null -ne $ui -and -not $ui.HasExited) { $ui.Kill() }
     Unregister-ScheduledTask -TaskName $OtherTask -TaskPath '\' -Confirm:$false -ErrorAction SilentlyContinue
     Unregister-ScheduledTask -TaskName $Task -TaskPath '\' -Confirm:$false -ErrorAction SilentlyContinue
 }
+if ($Failures.Count -gt 0) {
+    throw "$($Failures.Count) checks failed:`n$($Failures -join "`n")"
+}
+Write-Output 'Installed, upgraded and uninstalled cleanly.'
