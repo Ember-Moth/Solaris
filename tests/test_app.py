@@ -1,3 +1,4 @@
+import sys
 from functools import partial
 
 import pytest
@@ -211,6 +212,16 @@ def test_settings_page_loads_without_qml_warnings(
     shown = texts(loaded.window.contentItem())
     assert set(labels) <= shown
     assert "mihomo v1.19.33" in shown
+    assert loaded.warnings == []
+
+
+def test_settings_page_offers_the_tun_stack(qtbot: QtBot, loaded: Loaded) -> None:
+    """The stack in every TUN group; "include all networks" only where macOS has it (D19)."""
+    loaded.view_models.shell.setPage("settings")
+    qtbot.waitUntil(lambda: "TUN 协议栈" in texts(loaded.window.contentItem()))
+    shown = texts(loaded.window.contentItem())
+    assert "跟随配置" in shown
+    assert ("包含所有网络" in shown) == (sys.platform == "darwin")
     assert loaded.warnings == []
 
 

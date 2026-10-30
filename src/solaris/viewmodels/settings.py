@@ -1,5 +1,5 @@
-"""Settings ViewModel: the mixed port and LAN access, the UI language and appearance, what
-the desktop does (closing the window, opening at login) and what is installed.
+"""Settings ViewModel: the mixed port, LAN access and TUN stack, the UI language and
+appearance, what the desktop does (closing the window, opening at login) and what is installed.
 
 TUN and the system proxy are the overview's switches; the settings page shows the same
 ones (OverviewViewModel), so both pages always agree.
@@ -21,11 +21,13 @@ from solaris.host.base import HostInfo, TunnelHost
 from solaris.i18n import QT_TRANSLATE_NOOP
 from solaris.models.library import ProfileLibrary
 from solaris.models.settings import (
+    ALL_NETWORKS_BREAKS,
     APPEARANCES,
     CLOSE_ACTIONS,
     LANGUAGES,
     MAX_MIXED_PORT,
     MIN_MIXED_PORT,
+    TUN_STACK_CHOICES,
     Settings,
     SettingsError,
     SettingsStore,
@@ -58,6 +60,16 @@ CLOSE_ACTION_LABELS = {
     else QT_TRANSLATE_NOOP("SettingsViewModel", "留在托盘"),
     "quit": QT_TRANSLATE_NOOP("SettingsViewModel", "退出界面"),
 }
+TUN_STACK_LABELS = {
+    "profile": QT_TRANSLATE_NOOP("SettingsViewModel", "跟随配置"),
+    # mihomo's names for its stacks.
+    "system": "System",
+    "mips": "Mips",
+    "gvisor": "gVisor",
+    "mixed": "Mixed",
+}
+# Only macOS's NetworkExtension has the setting (D19).
+INCLUDE_ALL_NETWORKS = sys.platform == "darwin"
 
 
 @QmlElement
@@ -94,6 +106,7 @@ class SettingsViewModel(QObject):
         self._applying = False
         self._port_error = ""
         self._lan_error = ""
+        self._stack_error = ""
         self._error = ""
         self._info: HostInfo | None = None
 
@@ -260,6 +273,36 @@ class SettingsViewModel(QObject):
     def applying(self) -> bool:
         return self._applying
 
+    @Property(str, notify=changed)
+    def tunStack(self) -> str:
+        return self._current().tun_stack
+
+    @Property("QVariantList", notify=changed)  # pyright: ignore[reportArgumentType]
+    def tunStackOptions(self) -> list[dict[str, object]]:
+        """The stacks, with the ones a tunnel that includes all networks cannot run disabled."""
+        options: list[dict[str, object]] = []
+        for value in TUN_STACK_CHOICES:
+            option: dict[str, object] = {"value": value, "label": self.tr(TUN_STACK_LABELS[value])}
+            if self._all_networks() and value in ALL_NETWORKS_BREAKS:
+                option.update(enabled=False, note=self.tr("包含所有网络时不可用"))
+            options.append(option)
+        return options
+
+    @Property(str, notify=changed)
+    def stackError(self) -> str:
+        return self._stack_error
+
+    @Property(bool, constant=True)
+    def includeAllNetworksAvailable(self) -> bool:
+        return INCLUDE_ALL_NETWORKS
+
+    @Property(bool, notify=changed)
+    def includeAllNetworks(self) -> bool:
+        return self._current().include_all_networks
+
+    def _all_networks(self) -> bool:
+        return INCLUDE_ALL_NETWORKS and self._current().include_all_networks
+
     @Slot(str)
     def setMixedPort(self, text: str) -> None:
         try:
@@ -276,35 +319,58 @@ class SettingsViewModel(QObject):
         if port == self._current().mixed_port:
             self.changed.emit()
             return
-        self._apply(replace(self._current(), mixed_port=port), "port")
+        self._apply("port", mixed_port=port)
 
     @Slot(bool)
     def setAllowLan(self, allowed: bool) -> None:
         if allowed != self._current().allow_lan:
-            self._apply(replace(self._current(), allow_lan=allowed), "lan")
+            self._apply("lan", allow_lan=allowed)
 
-    def _apply(self, settings: Settings, field: str) -> None:
-        """Reload the running tunnel with ``settings``, then store them; a refusal keeps
-        the stored ones and shows under the row that changed."""
+    @Slot(str)
+    def setTunStack(self, stack: str) -> None:
+        if stack not in TUN_STACK_CHOICES or stack == self._current().tun_stack:
+            return
+        if self._all_networks() and stack in ALL_NETWORKS_BREAKS:
+            return
+        self._apply("stack", tun_stack=stack)
+
+    @Slot(bool)
+    def setIncludeAllNetworks(self, included: bool) -> None:
+        """Stored for the next connection; a stack that cannot run with it becomes gVisor,
+        which the running tunnel takes at once."""
+        current = self._current()
+        if not INCLUDE_ALL_NETWORKS or included == current.include_all_networks:
+            return
+        if included and current.tun_stack in ALL_NETWORKS_BREAKS:
+            self._apply("stack", include_all_networks=True, tun_stack="gvisor")
+        else:
+            self._store(include_all_networks=included)
+
+    def _apply(self, field: str, **changes: Any) -> None:
+        """Reload the running tunnel with ``changes`` to the settings, then store them; a
+        refusal keeps the stored ones and shows under the ``field`` row."""
         if self._applying:
             return
         self._applying = True
-        self._port_error = self._lan_error = ""
+        self._port_error = self._lan_error = self._stack_error = ""
         self.changed.emit()
 
         def applied(_: object) -> None:
             self._applying = False
-            self._store(mixed_port=settings.mixed_port, allow_lan=settings.allow_lan)
+            self._store(**changes)
             self.changed.emit()
 
         def failed(error: BaseException) -> None:
             self._applying = False
             if field == "port":
                 self._port_error = failure_text(error)
-            else:
+            elif field == "lan":
                 self._lan_error = failure_text(error)
+            else:
+                self._stack_error = failure_text(error)
             self.changed.emit()
 
+        settings = replace(self._current(), **changes)
         self._runner.submit(self._library.apply_settings(settings), applied, failed)
 
     # -- about -------------------------------------------------------------------------------
