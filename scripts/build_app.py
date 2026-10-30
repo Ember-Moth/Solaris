@@ -210,7 +210,7 @@ def build_ui(version: str) -> Path:
         f"--macos-signed-app-name={build_apple.APP_ID}",
         f"--macos-app-version={version}",
         f"--macos-app-macos-min-version={build_apple.DEPLOYMENT_TARGET}",
-        "--macos-app-icon=none",
+        f"--macos-app-icon={ROOT / 'package' / 'icons' / 'solaris.icns'}",
         f"--output-filename={EXECUTABLE}",
         f"--output-dir={output}",
         # ccache, when installed, must find the compiler under its bare name; skip it.

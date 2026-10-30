@@ -30,5 +30,14 @@ Item {
                 path: Icons.paths[icon.name] ?? ""
             }
         }
+
+        ShapePath {
+            strokeColor: "transparent"
+            fillColor: icon.color
+
+            PathSvg {
+                path: Icons.fills[icon.name] ?? ""
+            }
+        }
     }
 }

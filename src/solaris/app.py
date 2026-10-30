@@ -8,7 +8,7 @@ from functools import partial
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QGuiApplication, QIcon
 from PySide6.QtQml import QQmlApplicationEngine
 
 from solaris import __version__
@@ -101,6 +101,12 @@ def main(
     app = QGuiApplication(sys.argv)
     app.setApplicationName(DISPLAY_NAME)
     app.setApplicationVersion(__version__)
+    # The bundle's icon covers the packaged macOS app; this one covers Windows' taskbar and
+    # runs from source (scripts/gen_icons.py).
+    brand = Path(__file__).resolve().parent / "ui" / "brand"
+    app.setWindowIcon(
+        QIcon(str(brand / ("app-icon-macos.svg" if sys.platform == "darwin" else "app-icon.svg")))
+    )
     # Closing the window hides it in the tray or quits explicitly (DesktopViewModel).
     app.setQuitOnLastWindowClosed(False)
     # macOS sends install links as Apple Events, which can come before the window does.
