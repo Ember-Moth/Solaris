@@ -9,11 +9,21 @@ import re
 from importlib.metadata import distribution
 from pathlib import Path
 
-from scripts.gen_licenses import classify, font_version, qt_license
+from scripts.gen_licenses import (
+    CPYTHON_INPUT,
+    QT_DOCS_ONLY,
+    QT_INPUT,
+    WINTUN_PACKAGE,
+    WINTUN_VERSION,
+    classify,
+    font_version,
+    qt_license,
+)
 from solaris import licenses
 
 ROOT = Path(__file__).resolve().parents[1]
 GO_MOD = ROOT / "src" / "core" / "go.mod"
+WINTUN = f"Wintun (wintun.dll in {WINTUN_PACKAGE[0]})"
 
 
 def go_requirements() -> dict[str, str]:
@@ -55,9 +65,29 @@ def test_python_components_match_the_environment() -> None:
     assert "PySide6_WebEngine" not in by_name  # never imported, so never shipped
 
 
+def test_cpython_lists_the_libraries_its_build_bundles() -> None:
+    data = json.loads(CPYTHON_INPUT.read_text("utf-8"))
+    by_name = {c.name: c for c in licenses.load() if c.kind == "python"}
+    cpython = by_name["CPython"]
+    assert cpython.version == data["python_version"]
+    assert len(cpython.notices) == 2  # its license, and the code incorporated in it
+    seen = set()
+    for item in data["libraries"]:
+        assert item["modules"], item["name"]
+        assert item["texts"], item["name"]
+        assert set(item["platforms"]) <= {"macOS", "Windows"}, item["name"]
+        for platform_ in item["platforms"]:
+            assert (item["name"], platform_) not in seen  # one version per platform
+            seen.add((item["name"], platform_))
+    for name in ("OpenSSL", "SQLite", "libffi", "Expat"):
+        assert {(name, "macOS"), (name, "Windows")} <= seen, name
+    assert len([name for name in by_name if " (CPython " in name]) == len(data["libraries"])
+
+
 def test_go_components_match_go_mod() -> None:
     required = go_requirements()
-    components = [c for c in licenses.load() if c.kind == "go" and c.name != "Go standard library"]
+    others = ("Go standard library", WINTUN)
+    components = [c for c in licenses.load() if c.kind == "go" and c.name not in others]
     assert any(c.name == "github.com/metacubex/mihomo" for c in components)
     for component in components:
         assert required.get(component.name) == component.version, component.name
@@ -67,10 +97,25 @@ def test_go_components_match_go_mod() -> None:
     assert stdlib.version == toolchain.group(1)
 
 
+def test_wintun_has_its_own_license() -> None:
+    # sing-tun embeds Wintun's prebuilt DLL in the Windows service.
+    wintun = next(c for c in licenses.load() if c.name == WINTUN)
+    assert wintun.version == WINTUN_VERSION
+    assert wintun.license == "LicenseRef-Wintun-Prebuilt-Binaries"
+    assert WINTUN_PACKAGE[0] in go_requirements()
+
+
 def test_qt_matches_pyside() -> None:
     qt = next(c for c in licenses.load() if c.kind == "qt" and c.name == "Qt")
     assert qt.version == distribution("PySide6").version
     assert qt.license == "LGPL-3.0-only"
+
+
+def test_qt_components_have_their_texts() -> None:
+    prefix = QT_DOCS_ONLY.split("{}")[0]
+    for item in json.loads(QT_INPUT.read_text("utf-8"))["components"]:
+        assert item["texts"], item["name"]
+        assert not any(text.startswith(prefix) for text in item["texts"]), item["name"]
 
 
 def test_fonts_match_the_bundled_files() -> None:

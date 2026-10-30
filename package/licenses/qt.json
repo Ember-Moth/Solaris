@@ -401,18 +401,18 @@
       "name": "TIFF Software Distribution (libtiff) (Qt Image Formats)",
       "version": "4.7.2",
       "license": "libtiff",
-      "url": "https://doc.qt.io/qt-6/qtimageformats-attribution-libtiff.html",
+      "url": "http://www.simplesystems.org/libtiff/",
       "texts": [
-        "The copyright and license of TIFF Software Distribution (libtiff), version 4.7.2 are in Qt's documentation: https://doc.qt.io/qt-6/qtimageformats-attribution-libtiff.html"
+        "Copyright (c) 1988-1997 Sam Leffler\nCopyright (c) 1991-1997 Silicon Graphics, Inc.\n\nCopyright (c) 1988-1997 Sam Leffler\nCopyright (c) 1991-1997 Silicon Graphics, Inc.\n\nPermission to use, copy, modify, distribute, and sell this software and \nits documentation for any purpose is hereby granted without fee, provided\nthat (i) the above copyright notices and this permission notice appear in\nall copies of the software and related documentation, and (ii) the names of\nSam Leffler and Silicon Graphics may not be used in any advertising or\npublicity relating to the software without the specific, prior written\npermission of Sam Leffler and Silicon Graphics.\n\nTHE SOFTWARE IS PROVIDED \"AS-IS\" AND WITHOUT WARRANTY OF ANY KIND, \nEXPRESS, IMPLIED OR OTHERWISE, INCLUDING WITHOUT LIMITATION, ANY \nWARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.  \n\nIN NO EVENT SHALL SAM LEFFLER OR SILICON GRAPHICS BE LIABLE FOR\nANY SPECIAL, INCIDENTAL, INDIRECT OR CONSEQUENTIAL DAMAGES OF ANY KIND,\nOR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,\nWHETHER OR NOT ADVISED OF THE POSSIBILITY OF DAMAGE, AND ON ANY THEORY OF \nLIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE \nOF THIS SOFTWARE."
       ]
     },
     {
       "name": "WebP (libwebp) (Qt Image Formats)",
       "version": "1.6.0",
       "license": "BSD-3-Clause",
-      "url": "https://doc.qt.io/qt-6/qtimageformats-attribution-libwebp.html",
+      "url": "https://developers.google.com/speed/webp/",
       "texts": [
-        "The copyright and license of WebP (libwebp), version 1.6.0 are in Qt's documentation: https://doc.qt.io/qt-6/qtimageformats-attribution-libwebp.html"
+        "Copyright (c) 2010, Google Inc. All rights reserved.\n\nCopyright (c) 2010, Google Inc. All rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are\nmet:\n\n  * Redistributions of source code must retain the above copyright\n    notice, this list of conditions and the following disclaimer.\n\n  * Redistributions in binary form must reproduce the above copyright\n    notice, this list of conditions and the following disclaimer in\n    the documentation and/or other materials provided with the\n    distribution.\n\n  * Neither the name of Google nor the names of its contributors may\n    be used to endorse or promote products derived from this software\n    without specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\nLIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\nA PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT\nHOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,\nSPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT\nLIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,\nDATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY\nTHEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
       ]
     },
     {

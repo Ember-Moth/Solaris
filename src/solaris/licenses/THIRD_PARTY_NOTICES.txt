@@ -19,206 +19,308 @@ Corresponding source code:
 Python
 ------
 
-protobuf 6.33.4 -- BSD-3-Clause -- https://developers.google.com/protocol-buffers/ [1]
-PySide6 6.12.0 -- LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only -- https://pyside.org [2]
-PySide6_Addons 6.12.0 -- LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only -- https://pyside.org [2]
-PySide6_Essentials 6.12.0 -- LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only -- https://pyside.org [2]
-shiboken6 6.12.0 -- LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only -- https://pyside.org [2]
-CPython 3.14.7 -- PSF-2.0 -- https://www.python.org/ [3]
+jaraco.classes 3.4.0 -- MIT -- https://github.com/jaraco/jaraco.classes [1]
+jaraco.context 6.1.2 -- MIT -- https://github.com/jaraco/jaraco.context [2]
+jaraco.functools 4.6.0 -- MIT -- https://github.com/jaraco/jaraco.functools [2]
+keyring 25.7.0 -- MIT -- https://github.com/jaraco/keyring [3]
+more-itertools 11.2.1 -- MIT -- https://github.com/more-itertools/more-itertools [4]
+protobuf 6.33.4 -- BSD-3-Clause -- https://developers.google.com/protocol-buffers/ [5]
+PySide6 6.12.0 -- LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only -- https://pyside.org [6]
+PySide6_Addons 6.12.0 -- LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only -- https://pyside.org [6]
+PySide6_Essentials 6.12.0 -- LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only -- https://pyside.org [6]
+shiboken6 6.12.0 -- LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only -- https://pyside.org [6]
+CPython 3.14.7 -- PSF-2.0 -- https://www.python.org/ [7], [8]
+OpenSSL (CPython _ssl, _hashlib) 3.5.8 -- Apache-2.0 -- https://openssl-library.org/ [9]
+SQLite (CPython _sqlite3) 3.53.1 -- LicenseRef-Public-Domain -- https://sqlite.org/ [10]
+libffi (CPython _ctypes, macOS) 3.4.8 -- MIT -- https://sourceware.org/libffi/ [11]
+libffi (CPython _ctypes, Windows) 3.4.7 -- MIT -- https://sourceware.org/libffi/ [11]
+bzip2 (CPython _bz2) 1.0.8 -- bzip2-1.0.6 -- https://sourceware.org/bzip2/ [12]
+XZ Utils (liblzma) (CPython _lzma) 5.8.3 -- 0BSD -- https://tukaani.org/xz/ [13]
+Zstandard (CPython _zstd) 1.5.7 -- BSD-3-Clause -- https://facebook.github.io/zstd/ [14]
+Expat (CPython pyexpat, macOS) 2.8.4 -- MIT -- https://libexpat.github.io/ [15]
+Expat (CPython pyexpat, Windows) 2.8.2 -- MIT -- https://libexpat.github.io/ [15]
+mpdecimal (CPython _decimal) 4.0.0 -- BSD-2-Clause -- https://www.bytereef.org/mpdecimal/ [16]
+libuuid (CPython _uuid, macOS) 1.0.3 -- BSD-3-Clause -- https://sourceforge.net/projects/libuuid/ [17]
+zlib-ng (CPython zlib, binascii, Windows) 2.2.4 -- Zlib -- https://github.com/zlib-ng/zlib-ng [18]
 
 Go
 --
 
-github.com/ajg/form v1.7.1 -- BSD-3-Clause -- https://github.com/ajg/form [4]
-github.com/andybalholm/brotli v1.1.1 -- MIT -- https://github.com/andybalholm/brotli [5]
-github.com/bahlo/generic-list-go v0.2.0 -- BSD-3-Clause -- https://github.com/bahlo/generic-list-go [6]
-github.com/bodgit/plumbing v1.3.0 -- BSD-3-Clause -- https://github.com/bodgit/plumbing [7]
-github.com/bodgit/windows v1.0.1 -- BSD-3-Clause -- https://github.com/bodgit/windows [8]
-github.com/dlclark/regexp2 v1.12.0 -- MIT -- https://github.com/dlclark/regexp2 [9]
-github.com/dunglas/httpsfv v1.0.2 -- BSD-3-Clause -- https://github.com/dunglas/httpsfv [10]
-github.com/easytier/easytier/easytier-go v0.0.0-20260910071355-3d0c9c3ca5e2 -- LGPL-3.0-only -- https://github.com/easytier/easytier [2]
-github.com/enfein/mieru/v3 v3.38.1 -- GPL-3.0-only -- https://github.com/enfein/mieru [11]
-github.com/ericlagergren/aegis v0.0.0-20250325060835-cd0defd64358 -- BSD-2-Clause -- https://github.com/ericlagergren/aegis [12]
-github.com/ericlagergren/polyval v0.0.0-20220411101811-e25bc10ba391 -- BSD-2-Clause -- https://github.com/ericlagergren/polyval [13]
-github.com/ericlagergren/siv v0.0.0-20220507050439-0b757b3aa5f1 -- BSD-3-Clause -- https://github.com/ericlagergren/siv [14]
-github.com/ericlagergren/subtle v0.0.0-20220507045147-890d697da010 -- BSD-3-Clause -- https://github.com/ericlagergren/subtle [14]
-github.com/fsnotify/fsnotify v1.9.0 -- BSD-3-Clause -- https://github.com/fsnotify/fsnotify [15]
-github.com/fxamacker/cbor/v2 v2.9.0 -- MIT -- https://github.com/fxamacker/cbor [16]
-github.com/gaukas/godicttls v0.0.4 -- BSD-3-Clause -- https://github.com/gaukas/godicttls [17]
-github.com/go-ole/go-ole v1.3.0 -- MIT -- https://github.com/go-ole/go-ole [18]
-github.com/gobwas/httphead v0.1.0 -- MIT -- https://github.com/gobwas/httphead [19]
-github.com/gobwas/pool v0.2.1 -- MIT -- https://github.com/gobwas/pool [20]
-github.com/gobwas/ws v1.4.0 -- MIT -- https://github.com/gobwas/ws [21]
-github.com/gofrs/uuid/v5 v5.4.0 -- MIT -- https://github.com/gofrs/uuid [22]
-github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 -- Apache-2.0 -- https://github.com/golang/groupcache [23]
-github.com/golang/snappy v1.0.0 -- BSD-3-Clause -- https://github.com/golang/snappy [24]
-github.com/google/btree v1.1.3 -- Apache-2.0 -- https://github.com/google/btree [25]
-github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8 -- Apache-2.0 -- https://github.com/google/pprof [25]
-github.com/hashicorp/golang-lru/v2 v2.0.7 -- MPL-2.0 -- https://github.com/hashicorp/golang-lru [26]
-github.com/insomniacslk/dhcp v0.0.0-20250109001534-8abf58130905 -- BSD-3-Clause -- https://github.com/insomniacslk/dhcp [27]
-github.com/josharian/native v1.1.0 -- MIT -- https://github.com/josharian/native [28]
-github.com/klauspost/compress v1.17.9 -- BSD-3-Clause -- https://github.com/klauspost/compress [29]
-github.com/klauspost/cpuid/v2 v2.2.6 -- MIT -- https://github.com/klauspost/cpuid [30]
-github.com/klauspost/reedsolomon v1.12.3 -- MIT -- https://github.com/klauspost/reedsolomon [31]
-github.com/metacubex/age v0.0.0-20260603010618-28d156b4ea78 -- BSD-3-Clause -- https://github.com/metacubex/age [32]
-github.com/metacubex/amneziawg-go v0.0.0-20260908071407-0c1c6f40ecd7 -- MIT -- https://github.com/metacubex/amneziawg-go [33]
-github.com/metacubex/ascon v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/ascon [34]
-github.com/metacubex/bart v0.29.0 -- MIT -- https://github.com/metacubex/bart [35]
-github.com/metacubex/bbolt v0.0.0-20260706163408-d4ec34ad7c48 -- MIT -- https://github.com/metacubex/bbolt [36]
-github.com/metacubex/blake3 v0.1.0 -- MIT -- https://github.com/metacubex/blake3 [37]
-github.com/metacubex/chacha v0.1.5 -- MIT -- https://github.com/metacubex/chacha [38], [39]
-github.com/metacubex/chi v0.1.1 -- MIT -- https://github.com/metacubex/chi [40]
-github.com/metacubex/connect-ip-go v0.0.0-20260727083417-67ccdb0cf771 -- MIT -- https://github.com/metacubex/connect-ip-go [41]
-github.com/metacubex/cpu v0.1.2 -- BSD-3-Clause -- https://github.com/metacubex/cpu [42]
-github.com/metacubex/edwards25519 v1.2.0 -- BSD-3-Clause -- https://github.com/metacubex/edwards25519 [6]
-github.com/metacubex/fswatch v0.1.1 -- GPL-3.0-or-later -- https://github.com/metacubex/fswatch [43]
-github.com/metacubex/gvisor v0.0.0-20260922041103-e2cbcd6e7400 -- Apache-2.0 -- https://github.com/metacubex/gvisor [44]
-github.com/metacubex/hkdf v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/hkdf [42]
-github.com/metacubex/hpke v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/hpke [42]
-github.com/metacubex/http v0.1.8 -- BSD-3-Clause -- https://github.com/metacubex/http [42]
-github.com/metacubex/jls-quic-go v0.0.0-20260727080412-732f2fc9a34d -- MIT -- https://github.com/metacubex/jls-quic-go [45]
-github.com/metacubex/jls-tls v0.0.0-20260723084315-67adc0e2f796 -- BSD-3-Clause -- https://github.com/metacubex/jls-tls [42]
-github.com/metacubex/jsonv2 v0.0.0-20260721082349-16b4998c8f89 -- BSD-3-Clause -- https://github.com/metacubex/jsonv2 [46]
-github.com/metacubex/kcp-go v0.0.0-20260105040817-550693377604 -- MIT -- https://github.com/metacubex/kcp-go [47]
-github.com/metacubex/mhurl v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/mhurl [42]
-github.com/metacubex/mihomo v1.19.33 -- GPL-3.0-only -- https://github.com/metacubex/mihomo [11]
-github.com/metacubex/mipstack v0.0.0-20261019124225-9a80a07eaeb9 -- MPL-2.0 -- https://github.com/metacubex/mipstack [48]
-github.com/metacubex/mlkem v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/mlkem [42]
-github.com/metacubex/qpack v0.6.0 -- MIT -- https://github.com/metacubex/qpack [49]
-github.com/metacubex/quic-go v0.61.1-0.20260727080200-2548683b76f4 -- MIT -- https://github.com/metacubex/quic-go [45]
-github.com/metacubex/randv2 v0.2.0 -- GPL-3.0-only -- https://github.com/metacubex/randv2 [11]
-github.com/metacubex/restls-client-go v0.1.9 -- BSD-3-Clause -- https://github.com/metacubex/restls-client-go [6], [50]
-github.com/metacubex/sevenzip v1.6.4 -- BSD-3-Clause -- https://github.com/metacubex/sevenzip [8]
-github.com/metacubex/sing v0.5.8 -- GPL-3.0-or-later -- https://github.com/metacubex/sing [43]
-github.com/metacubex/sing-mux v0.3.12 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-mux [43]
-github.com/metacubex/sing-quic v0.0.0-20260904234848-1c242664697a -- GPL-3.0-or-later -- https://github.com/metacubex/sing-quic [43]
-github.com/metacubex/sing-shadowsocks v0.2.13 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-shadowsocks [43]
-github.com/metacubex/sing-shadowsocks2 v0.2.8 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-shadowsocks2 [43]
-github.com/metacubex/sing-tun v0.4.28 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-tun [43]
-github.com/metacubex/sing-vmess v0.2.5 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-vmess [43]
-github.com/metacubex/sing-wireguard v0.0.0-20261002050126-e5fa1a607406 -- GPL-3.0-only -- https://github.com/metacubex/sing-wireguard [11]
-github.com/metacubex/smux v0.0.0-20260105030934-d0c8756d3141 -- MIT -- https://github.com/metacubex/smux [51]
-github.com/metacubex/ssh v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/ssh [42]
-github.com/metacubex/tailscale v0.0.0-20260821153257-ff0ecd818181 -- BSD-3-Clause -- https://github.com/metacubex/tailscale [52]
-github.com/metacubex/tailscale-wireguard-go v0.0.0-20260725073821-e61ab99cede2 -- MIT -- https://github.com/metacubex/tailscale-wireguard-go [53]
-github.com/metacubex/tfo-go v0.0.0-20260623020846-376a77860b8c -- MIT -- https://github.com/metacubex/tfo-go [54]
-github.com/metacubex/tls v0.1.9 -- BSD-3-Clause -- https://github.com/metacubex/tls [42]
-github.com/metacubex/utls v1.8.8 -- BSD-3-Clause -- https://github.com/metacubex/utls [6]
-github.com/metacubex/wazero v0.0.0-20260628025728-9ae6bdcf2a7d -- Apache-2.0 -- https://github.com/metacubex/wazero [55], [56]
-github.com/metacubex/wireguard-go v0.0.0-20250820062549-a6cecdd7f57f -- MIT -- https://github.com/metacubex/wireguard-go [53]
-github.com/metacubex/yamux v0.0.0-20250918083631-dd5f17c0be49 -- MPL-2.0 AND BSD-3-Clause -- https://github.com/metacubex/yamux [57], [6]
-github.com/metacubex/zerotier-go v0.0.0-20260813124750-13fa6f45da5f -- MPL-2.0 -- https://github.com/metacubex/zerotier-go [48], [58]
-github.com/Microsoft/go-winio v0.6.4 -- MIT -- https://github.com/Microsoft/go-winio [59]
-github.com/miekg/dns v1.1.63 -- BSD-3-Clause -- https://github.com/miekg/dns [60]
-github.com/mitchellh/go-ps v1.0.0 -- MIT -- https://github.com/mitchellh/go-ps [61]
-github.com/mroth/weightedrand/v2 v2.1.0 -- MIT -- https://github.com/mroth/weightedrand [62]
-github.com/oasisprotocol/deoxysii v0.0.0-20220228165953-2091330c22b7 -- MIT -- https://github.com/oasisprotocol/deoxysii [63]
-github.com/openacid/low v0.1.21 -- MIT -- https://github.com/openacid/low [64]
-github.com/oschwald/maxminddb-golang v1.12.0 -- ISC -- https://github.com/oschwald/maxminddb-golang [65]
-github.com/pierrec/lz4/v4 v4.1.27 -- BSD-3-Clause -- https://github.com/pierrec/lz4 [66]
-github.com/pires/go-proxyproto v0.8.0 -- Apache-2.0 -- https://github.com/pires/go-proxyproto [67]
-github.com/rasky/go-lzo v0.0.0-20200203143853-96a758eda86e -- GPL-2.0-or-later -- https://github.com/rasky/go-lzo [68]
-github.com/RyuaNerin/go-krypto v1.3.0 -- MIT -- https://github.com/RyuaNerin/go-krypto [69]
-github.com/samber/lo v1.53.0 -- MIT -- https://github.com/samber/lo [70]
-github.com/sina-ghaderi/poly1305 v0.0.0-20220724002748-c5926b03988b -- GPL-3.0-only -- https://github.com/sina-ghaderi/poly1305 [11]
-github.com/sina-ghaderi/rabaead v0.0.0-20220730151906-ab6e06b96e8c -- GPL-3.0-only -- https://github.com/sina-ghaderi/rabaead [11]
-github.com/sina-ghaderi/rabbitio v0.0.0-20220730151941-9ce26f4f872e -- Apache-2.0 -- https://github.com/sina-ghaderi/rabbitio [25]
-github.com/sirupsen/logrus v1.10.2 -- MIT -- https://github.com/sirupsen/logrus [71]
-github.com/stangelandcl/ppmd v0.1.1 -- MIT -- https://github.com/stangelandcl/ppmd [72]
-github.com/tailscale/certstore v0.1.1-0.20260409135935-3638fb84b77d -- MIT -- https://github.com/tailscale/certstore [73]
-github.com/tailscale/go-winio v0.0.0-20231025203758-c4f33415bf55 -- MIT -- https://github.com/tailscale/go-winio [59]
-github.com/tailscale/hujson v0.0.0-20221223112325-20486734a56a -- BSD-3-Clause -- https://github.com/tailscale/hujson [74]
-github.com/tailscale/peercred v0.0.0-20250107143737-35a0c7bd7edc -- BSD-3-Clause -- https://github.com/tailscale/peercred [75]
-github.com/u-root/uio v0.0.0-20230220225925-ffce2a382923 -- BSD-3-Clause -- https://github.com/u-root/uio [76]
-github.com/ulikunitz/xz v0.5.15 -- BSD-3-Clause -- https://github.com/ulikunitz/xz [77]
-github.com/vmihailenco/msgpack/v5 v5.4.1 -- BSD-2-Clause -- https://github.com/vmihailenco/msgpack [78]
-github.com/vmihailenco/tagparser/v2 v2.0.0 -- BSD-2-Clause -- https://github.com/vmihailenco/tagparser [79]
-github.com/x448/float16 v0.8.4 -- MIT -- https://github.com/x448/float16 [80]
-github.com/Yawning/aez v0.0.0-20211027044916-e49e68abd344 -- CC0-1.0 -- https://github.com/Yawning/aez [81]
-github.com/yosida95/uritemplate/v3 v3.0.2 -- BSD-3-Clause -- https://github.com/yosida95/uritemplate [82]
-gitlab.com/go-extension/aes-ccm v0.0.0-20230221065045-e58665ef23c7 -- MIT -- https://gitlab.com/go-extension/aes-ccm [83]
-gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec -- MIT -- https://gitlab.com/yawning/bsaes.git [84]
-go.yaml.in/yaml/v3 v3.0.5 -- MIT -- https://pkg.go.dev/go.yaml.in/yaml/v3 [85], [86]
-go4.org/mem v0.0.0-20240501181205-ae6ca9944745 -- Apache-2.0 -- https://pkg.go.dev/go4.org/mem [87]
-go4.org/netipx v0.0.0-20260823151212-3075585bcbeb -- BSD-3-Clause -- https://pkg.go.dev/go4.org/netipx [88]
-golang.org/x/crypto v0.57.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/crypto [42]
-golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/exp [42]
-golang.org/x/net v0.59.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/net [42]
-golang.org/x/sync v0.23.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/sync [42]
-golang.org/x/sys v0.49.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/sys [42]
-golang.org/x/term v0.46.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/term [42]
-golang.org/x/text v0.42.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/text [42]
-golang.org/x/time v0.10.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/time [42]
-google.golang.org/protobuf v1.36.10 -- BSD-3-Clause -- https://pkg.go.dev/google.golang.org/protobuf [89]
-Go standard library go1.27.3 -- BSD-3-Clause -- https://go.dev/ [42], [90]
+github.com/ajg/form v1.7.1 -- BSD-3-Clause -- https://github.com/ajg/form [19]
+github.com/andybalholm/brotli v1.1.1 -- MIT -- https://github.com/andybalholm/brotli [20]
+github.com/bahlo/generic-list-go v0.2.0 -- BSD-3-Clause -- https://github.com/bahlo/generic-list-go [21]
+github.com/bodgit/plumbing v1.3.0 -- BSD-3-Clause -- https://github.com/bodgit/plumbing [22]
+github.com/bodgit/windows v1.0.1 -- BSD-3-Clause -- https://github.com/bodgit/windows [23]
+github.com/dlclark/regexp2 v1.12.0 -- MIT -- https://github.com/dlclark/regexp2 [24]
+github.com/dunglas/httpsfv v1.0.2 -- BSD-3-Clause -- https://github.com/dunglas/httpsfv [25]
+github.com/easytier/easytier/easytier-go v0.0.0-20260910071355-3d0c9c3ca5e2 -- LGPL-3.0-only -- https://github.com/easytier/easytier [6]
+github.com/enfein/mieru/v3 v3.38.1 -- GPL-3.0-only -- https://github.com/enfein/mieru [26]
+github.com/ericlagergren/aegis v0.0.0-20250325060835-cd0defd64358 -- BSD-2-Clause -- https://github.com/ericlagergren/aegis [27]
+github.com/ericlagergren/polyval v0.0.0-20220411101811-e25bc10ba391 -- BSD-2-Clause -- https://github.com/ericlagergren/polyval [28]
+github.com/ericlagergren/siv v0.0.0-20220507050439-0b757b3aa5f1 -- BSD-3-Clause -- https://github.com/ericlagergren/siv [29]
+github.com/ericlagergren/subtle v0.0.0-20220507045147-890d697da010 -- BSD-3-Clause -- https://github.com/ericlagergren/subtle [29]
+github.com/fsnotify/fsnotify v1.9.0 -- BSD-3-Clause -- https://github.com/fsnotify/fsnotify [30]
+github.com/fxamacker/cbor/v2 v2.9.0 -- MIT -- https://github.com/fxamacker/cbor [31]
+github.com/gaukas/godicttls v0.0.4 -- BSD-3-Clause -- https://github.com/gaukas/godicttls [32]
+github.com/go-ole/go-ole v1.3.0 -- MIT -- https://github.com/go-ole/go-ole [33]
+github.com/gobwas/httphead v0.1.0 -- MIT -- https://github.com/gobwas/httphead [34]
+github.com/gobwas/pool v0.2.1 -- MIT -- https://github.com/gobwas/pool [35]
+github.com/gobwas/ws v1.4.0 -- MIT -- https://github.com/gobwas/ws [36]
+github.com/gofrs/uuid/v5 v5.4.0 -- MIT -- https://github.com/gofrs/uuid [37]
+github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 -- Apache-2.0 -- https://github.com/golang/groupcache [38]
+github.com/golang/snappy v1.0.0 -- BSD-3-Clause -- https://github.com/golang/snappy [39]
+github.com/google/btree v1.1.3 -- Apache-2.0 -- https://github.com/google/btree [40]
+github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8 -- Apache-2.0 -- https://github.com/google/pprof [40]
+github.com/hashicorp/golang-lru/v2 v2.0.7 -- MPL-2.0 -- https://github.com/hashicorp/golang-lru [41]
+github.com/insomniacslk/dhcp v0.0.0-20250109001534-8abf58130905 -- BSD-3-Clause -- https://github.com/insomniacslk/dhcp [42]
+github.com/josharian/native v1.1.0 -- MIT -- https://github.com/josharian/native [43]
+github.com/klauspost/compress v1.17.9 -- BSD-3-Clause -- https://github.com/klauspost/compress [44]
+github.com/klauspost/cpuid/v2 v2.2.6 -- MIT -- https://github.com/klauspost/cpuid [45]
+github.com/klauspost/reedsolomon v1.12.3 -- MIT -- https://github.com/klauspost/reedsolomon [46]
+github.com/metacubex/age v0.0.0-20260603010618-28d156b4ea78 -- BSD-3-Clause -- https://github.com/metacubex/age [47]
+github.com/metacubex/amneziawg-go v0.0.0-20260908071407-0c1c6f40ecd7 -- MIT -- https://github.com/metacubex/amneziawg-go [48]
+github.com/metacubex/ascon v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/ascon [49]
+github.com/metacubex/bart v0.29.0 -- MIT -- https://github.com/metacubex/bart [50]
+github.com/metacubex/bbolt v0.0.0-20260706163408-d4ec34ad7c48 -- MIT -- https://github.com/metacubex/bbolt [51]
+github.com/metacubex/blake3 v0.1.0 -- MIT -- https://github.com/metacubex/blake3 [52]
+github.com/metacubex/chacha v0.1.5 -- MIT -- https://github.com/metacubex/chacha [53], [54]
+github.com/metacubex/chi v0.1.1 -- MIT -- https://github.com/metacubex/chi [55]
+github.com/metacubex/connect-ip-go v0.0.0-20260727083417-67ccdb0cf771 -- MIT -- https://github.com/metacubex/connect-ip-go [56]
+github.com/metacubex/cpu v0.1.2 -- BSD-3-Clause -- https://github.com/metacubex/cpu [57]
+github.com/metacubex/edwards25519 v1.2.0 -- BSD-3-Clause -- https://github.com/metacubex/edwards25519 [21]
+github.com/metacubex/fswatch v0.1.1 -- GPL-3.0-or-later -- https://github.com/metacubex/fswatch [58]
+github.com/metacubex/gvisor v0.0.0-20260922041103-e2cbcd6e7400 -- Apache-2.0 -- https://github.com/metacubex/gvisor [59]
+github.com/metacubex/hkdf v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/hkdf [57]
+github.com/metacubex/hpke v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/hpke [57]
+github.com/metacubex/http v0.1.8 -- BSD-3-Clause -- https://github.com/metacubex/http [57]
+github.com/metacubex/jls-quic-go v0.0.0-20260727080412-732f2fc9a34d -- MIT -- https://github.com/metacubex/jls-quic-go [60]
+github.com/metacubex/jls-tls v0.0.0-20260723084315-67adc0e2f796 -- BSD-3-Clause -- https://github.com/metacubex/jls-tls [57]
+github.com/metacubex/jsonv2 v0.0.0-20260721082349-16b4998c8f89 -- BSD-3-Clause -- https://github.com/metacubex/jsonv2 [61]
+github.com/metacubex/kcp-go v0.0.0-20260105040817-550693377604 -- MIT -- https://github.com/metacubex/kcp-go [62]
+github.com/metacubex/mhurl v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/mhurl [57]
+github.com/metacubex/mihomo v1.19.33 -- GPL-3.0-only -- https://github.com/metacubex/mihomo [26]
+github.com/metacubex/mipstack v0.0.0-20261019124225-9a80a07eaeb9 -- MPL-2.0 -- https://github.com/metacubex/mipstack [63]
+github.com/metacubex/mlkem v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/mlkem [57]
+github.com/metacubex/qpack v0.6.0 -- MIT -- https://github.com/metacubex/qpack [64]
+github.com/metacubex/quic-go v0.61.1-0.20260727080200-2548683b76f4 -- MIT -- https://github.com/metacubex/quic-go [60]
+github.com/metacubex/randv2 v0.2.0 -- GPL-3.0-only -- https://github.com/metacubex/randv2 [26]
+github.com/metacubex/restls-client-go v0.1.9 -- BSD-3-Clause -- https://github.com/metacubex/restls-client-go [21], [65]
+github.com/metacubex/sevenzip v1.6.4 -- BSD-3-Clause -- https://github.com/metacubex/sevenzip [23]
+github.com/metacubex/sing v0.5.8 -- GPL-3.0-or-later -- https://github.com/metacubex/sing [58]
+github.com/metacubex/sing-mux v0.3.12 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-mux [58]
+github.com/metacubex/sing-quic v0.0.0-20260904234848-1c242664697a -- GPL-3.0-or-later -- https://github.com/metacubex/sing-quic [58]
+github.com/metacubex/sing-shadowsocks v0.2.13 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-shadowsocks [58]
+github.com/metacubex/sing-shadowsocks2 v0.2.8 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-shadowsocks2 [58]
+github.com/metacubex/sing-tun v0.4.28 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-tun [58]
+Wintun (wintun.dll in github.com/metacubex/sing-tun) 0.14.1 -- LicenseRef-Wintun-Prebuilt-Binaries -- https://www.wintun.net/ [66]
+github.com/metacubex/sing-vmess v0.2.5 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-vmess [58]
+github.com/metacubex/sing-wireguard v0.0.0-20261002050126-e5fa1a607406 -- GPL-3.0-only -- https://github.com/metacubex/sing-wireguard [26]
+github.com/metacubex/smux v0.0.0-20260105030934-d0c8756d3141 -- MIT -- https://github.com/metacubex/smux [67]
+github.com/metacubex/ssh v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/ssh [57]
+github.com/metacubex/tailscale v0.0.0-20260821153257-ff0ecd818181 -- BSD-3-Clause -- https://github.com/metacubex/tailscale [68]
+github.com/metacubex/tailscale-wireguard-go v0.0.0-20260725073821-e61ab99cede2 -- MIT -- https://github.com/metacubex/tailscale-wireguard-go [69]
+github.com/metacubex/tfo-go v0.0.0-20260623020846-376a77860b8c -- MIT -- https://github.com/metacubex/tfo-go [70]
+github.com/metacubex/tls v0.1.9 -- BSD-3-Clause -- https://github.com/metacubex/tls [57]
+github.com/metacubex/utls v1.8.8 -- BSD-3-Clause -- https://github.com/metacubex/utls [21]
+github.com/metacubex/wazero v0.0.0-20260628025728-9ae6bdcf2a7d -- Apache-2.0 -- https://github.com/metacubex/wazero [71], [72]
+github.com/metacubex/wireguard-go v0.0.0-20250820062549-a6cecdd7f57f -- MIT -- https://github.com/metacubex/wireguard-go [69]
+github.com/metacubex/yamux v0.0.0-20250918083631-dd5f17c0be49 -- MPL-2.0 AND BSD-3-Clause -- https://github.com/metacubex/yamux [73], [21]
+github.com/metacubex/zerotier-go v0.0.0-20260813124750-13fa6f45da5f -- MPL-2.0 -- https://github.com/metacubex/zerotier-go [63], [74]
+github.com/Microsoft/go-winio v0.6.4 -- MIT -- https://github.com/Microsoft/go-winio [75]
+github.com/miekg/dns v1.1.63 -- BSD-3-Clause -- https://github.com/miekg/dns [76]
+github.com/mitchellh/go-ps v1.0.0 -- MIT -- https://github.com/mitchellh/go-ps [77]
+github.com/mroth/weightedrand/v2 v2.1.0 -- MIT -- https://github.com/mroth/weightedrand [78]
+github.com/oasisprotocol/deoxysii v0.0.0-20220228165953-2091330c22b7 -- MIT -- https://github.com/oasisprotocol/deoxysii [79]
+github.com/openacid/low v0.1.21 -- MIT -- https://github.com/openacid/low [80]
+github.com/oschwald/maxminddb-golang v1.12.0 -- ISC -- https://github.com/oschwald/maxminddb-golang [81]
+github.com/pierrec/lz4/v4 v4.1.27 -- BSD-3-Clause -- https://github.com/pierrec/lz4 [82]
+github.com/pires/go-proxyproto v0.8.0 -- Apache-2.0 -- https://github.com/pires/go-proxyproto [83]
+github.com/rasky/go-lzo v0.0.0-20200203143853-96a758eda86e -- GPL-2.0-or-later -- https://github.com/rasky/go-lzo [84]
+github.com/RyuaNerin/go-krypto v1.3.0 -- MIT -- https://github.com/RyuaNerin/go-krypto [85]
+github.com/samber/lo v1.53.0 -- MIT -- https://github.com/samber/lo [86]
+github.com/sina-ghaderi/poly1305 v0.0.0-20220724002748-c5926b03988b -- GPL-3.0-only -- https://github.com/sina-ghaderi/poly1305 [26]
+github.com/sina-ghaderi/rabaead v0.0.0-20220730151906-ab6e06b96e8c -- GPL-3.0-only -- https://github.com/sina-ghaderi/rabaead [26]
+github.com/sina-ghaderi/rabbitio v0.0.0-20220730151941-9ce26f4f872e -- Apache-2.0 -- https://github.com/sina-ghaderi/rabbitio [40]
+github.com/sirupsen/logrus v1.10.2 -- MIT -- https://github.com/sirupsen/logrus [87]
+github.com/stangelandcl/ppmd v0.1.1 -- MIT -- https://github.com/stangelandcl/ppmd [88]
+github.com/tailscale/certstore v0.1.1-0.20260409135935-3638fb84b77d -- MIT -- https://github.com/tailscale/certstore [89]
+github.com/tailscale/go-winio v0.0.0-20231025203758-c4f33415bf55 -- MIT -- https://github.com/tailscale/go-winio [75]
+github.com/tailscale/hujson v0.0.0-20221223112325-20486734a56a -- BSD-3-Clause -- https://github.com/tailscale/hujson [90]
+github.com/tailscale/peercred v0.0.0-20250107143737-35a0c7bd7edc -- BSD-3-Clause -- https://github.com/tailscale/peercred [91]
+github.com/u-root/uio v0.0.0-20230220225925-ffce2a382923 -- BSD-3-Clause -- https://github.com/u-root/uio [92]
+github.com/ulikunitz/xz v0.5.15 -- BSD-3-Clause -- https://github.com/ulikunitz/xz [93]
+github.com/vmihailenco/msgpack/v5 v5.4.1 -- BSD-2-Clause -- https://github.com/vmihailenco/msgpack [94]
+github.com/vmihailenco/tagparser/v2 v2.0.0 -- BSD-2-Clause -- https://github.com/vmihailenco/tagparser [95]
+github.com/x448/float16 v0.8.4 -- MIT -- https://github.com/x448/float16 [96]
+github.com/Yawning/aez v0.0.0-20211027044916-e49e68abd344 -- CC0-1.0 -- https://github.com/Yawning/aez [97]
+github.com/yosida95/uritemplate/v3 v3.0.2 -- BSD-3-Clause -- https://github.com/yosida95/uritemplate [98]
+gitlab.com/go-extension/aes-ccm v0.0.0-20230221065045-e58665ef23c7 -- MIT -- https://gitlab.com/go-extension/aes-ccm [99]
+gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec -- MIT -- https://gitlab.com/yawning/bsaes.git [100]
+go.yaml.in/yaml/v3 v3.0.5 -- MIT -- https://pkg.go.dev/go.yaml.in/yaml/v3 [101], [102]
+go4.org/mem v0.0.0-20240501181205-ae6ca9944745 -- Apache-2.0 -- https://pkg.go.dev/go4.org/mem [103]
+go4.org/netipx v0.0.0-20260823151212-3075585bcbeb -- BSD-3-Clause -- https://pkg.go.dev/go4.org/netipx [104]
+golang.org/x/crypto v0.57.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/crypto [57]
+golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/exp [57]
+golang.org/x/net v0.59.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/net [57]
+golang.org/x/sync v0.23.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/sync [57]
+golang.org/x/sys v0.49.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/sys [57]
+golang.org/x/term v0.46.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/term [57]
+golang.org/x/text v0.42.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/text [57]
+golang.org/x/time v0.10.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/time [57]
+google.golang.org/protobuf v1.36.10 -- BSD-3-Clause -- https://pkg.go.dev/google.golang.org/protobuf [105]
+Go standard library go1.27.3 -- BSD-3-Clause -- https://go.dev/ [57], [106]
 
 Qt
 --
 
-Qt 6.12.0 -- LGPL-3.0-only -- https://download.qt.io/official_releases/qt/6.12/6.12.0/ [2]
-Apache Tika MimeType Definitions (Qt Core) c29724782854bb5a319f4a1940d0828a58ace3f9 -- Apache-2.0 -- https://github.com/apache/tika/tree/main/tika-core/src/main/resources/org/apache/tika/mime [91]
-BLAKE2 (reference implementation) (Qt Core) ed1974ea83433eba7b2d95c5dcd9ac33cb847913 -- CC0-1.0 OR Apache-2.0 -- https://blake2.net/ [92]
-Data Compression Library (zlib) (Qt Core) 1.3.2 -- Zlib -- https://zlib.net/ [93]
-Easing Equations by Robert Penner (Qt Core) -- BSD-3-Clause -- http://robertpenner.com/easing/ [94]
-Efficient Binary-Decimal and Decimal-Binary Conversion Routines for IEEE Doubles (Qt Core) 3.4.0 -- BSD-3-Clause -- https://github.com/google/double-conversion [95]
-MD4 (Qt Core) -- LicenseRef-Public-Domain -- https://doc.qt.io/qt-6/qtcore-attribution-md4.html [96]
-MD5 (Qt Core) -- LicenseRef-Public-Domain -- https://doc.qt.io/qt-6/qtcore-attribution-md5.html [97]
-PCRE2 - Stack-less Just-In-Time Compiler (Qt Core) 10.48 -- BSD-2-Clause -- http://www.pcre.org/ [98]
-PCRE2 (Qt Core) 10.48 -- BSD-3-Clause WITH PCRE2-exception -- http://www.pcre.org/ [99]
-QEventDispatcher on macOS (Qt Core) -- BSD-3-Clause -- https://doc.qt.io/qt-6/qtcore-attribution-qeventdispatcher-cf.html [100]
-Secure Hash Algorithm SHA-1 (Qt Core) -- LicenseRef-Public-Domain -- http://www.dominik-reichl.de/projects/csha1/ [101]
-Secure Hash Algorithm SHA-3 - Keccak (Qt Core) 3.2 -- CC0-1.0 -- https://doc.qt.io/qt-6/qtcore-attribution-sha3-keccak.html [102]
-Secure Hash Algorithm SHA-3 - brg_endian (Qt Core) 1.0.0 -- BSD-2-Clause -- https://doc.qt.io/qt-6/qtcore-attribution-sha3-endian.html [103]
-Secure Hash Algorithms SHA-384 and SHA-512 (Qt Core) -- BSD-3-Clause -- https://doc.qt.io/qt-6/qtcore-attribution-rfc6234.html [104]
-SipHash Algorithm (Qt Core) -- CC0-1.0 -- https://131002.net/siphash/ [105]
-TinyCBOR (Qt Core) 7.0 -- MIT -- https://github.com/intel/tinycbor [106]
-Unicode Character Database (UCD) (Qt Core) 36 -- Unicode-DFS-2016 -- https://www.unicode.org/ucd/ [107]
-Unicode Common Locale Data Repository (CLDR) (Qt Core) v48.2 -- Unicode-3.0 -- https://cldr.unicode.org/ [108]
-forkfd (Qt Core) -- MIT -- https://doc.qt.io/qt-6/qtcore-attribution-forkfd.html [109]
-tl::expected (Qt Core) 41d3e1f48d682992a2230b2a715bca38b848b269 -- CC0-1.0 -- https://github.com/TartanLlama/expected/ [110]
-Adobe Glyph List For New Fonts (Qt GUI) 1.7 -- BSD-3-Clause -- https://github.com/adobe-type-tools/agl-aglfn [111]
-Anti-aliasing rasterizer from FreeType 2 (Qt GUI) -- FTL OR GPL-2.0-only -- http://www.freetype.org [112]
-Cocoa Platform Plugin (Qt GUI) -- BSD-3-Clause -- https://doc.qt.io/qt-6/qtgui-attribution-cocoa-platform-plugin.html [100]
-D3D12 Memory Allocator (Qt GUI) v3.1.0 -- MIT -- https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator [113]
-DejaVu Fonts (Qt GUI) 2.37 -- Bitstream-Vera -- https://dejavu-fonts.github.io/ [114]
-Emoji Segmenter (Qt GUI) 0.4.0 -- Apache-2.0 -- https://github.com/google/emoji-segmenter [115]
-Freetype 2 - Bitmap Distribution Format (BDF) support (Qt GUI) -- MIT -- http://www.freetype.org [116]
-Freetype 2 - Portable Compiled Format (PCF) support (Qt GUI) -- MIT AND MIT-open-group -- http://www.freetype.org [117]
-Freetype 2 - zlib (Qt GUI) -- Zlib -- http://www.freetype.org [118]
-Freetype 2 (Qt GUI) 2.14.3 -- FTL OR GPL-2.0-only -- http://www.freetype.org [119]
-HarfBuzz-NG (Qt GUI) 14.5.0 -- MIT -- http://harfbuzz.org [120]
-LibJPEG-turbo (Qt GUI) 3.2.0 -- IJG AND BSD-3-Clause -- http://libjpeg-turbo.virtualgl.org/ [121]
-LibPNG (Qt GUI) 1.6.58 -- Libpng AND libpng-2.0 -- http://www.libpng.org/pub/png/libpng.html [122]
-MD4C (Qt GUI) 0.5.3 -- MIT -- https://github.com/mity/md4c [123]
-Mipmap generator for D3D12 (Qt GUI) 0aa79bad78992da0b6a8279ddb9002c1753cb849 -- MIT -- https://github.com/microsoft/DirectX-Graphics-Samples [124]
-OpenGL ES 2 Headers (Qt GUI) Revision 27673 -- MIT -- https://www.khronos.org/ [125]
-OpenGL Headers (Qt GUI) Revision 27684 -- MIT -- https://www.khronos.org/ [125]
-Pixman (Qt GUI) 0.17.12 -- MIT -- http://www.pixman.org/ [126]
-Smooth Scaling Algorithm (Qt GUI) -- BSD-2-Clause AND Imlib2 -- https://doc.qt.io/qt-6/qtgui-attribution-smooth-scaling-algorithm.html [127]
-Vulkan API Registry (Qt GUI) 1.4.308 -- Apache-2.0 OR MIT -- https://www.khronos.org/ [128]
-Vulkan Memory Allocator (Qt GUI) 3.3.0 -- MIT -- https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator [129]
-WebGradients (Qt GUI) -- MIT -- https://webgradients.com/ [130]
-Wintab API (Qt GUI) -- LicenseRef-LCS-Telegraphics -- https://doc.qt.io/qt-6/qtgui-attribution-wintab.html [131]
-sRGB color profile icc file (Qt GUI) -- LicenseRef-ICC -- http://www.color.org/ [132]
-TIFF Software Distribution (libtiff) (Qt Image Formats) 4.7.2 -- libtiff -- https://doc.qt.io/qt-6/qtimageformats-attribution-libtiff.html [133]
-WebP (libwebp) (Qt Image Formats) 1.6.0 -- BSD-3-Clause -- https://doc.qt.io/qt-6/qtimageformats-attribution-libwebp.html [134]
-The Public Suffix List (Qt Network) 2026-05-14_08-35-31_UTC -- MPL-2.0 -- http://publicsuffix.org/ [135]
-libpsl - C library to handle the Public Suffix List (Qt Network) 664f3dc85259ec65e30248a61fa1c45b7b0e4c3f -- BSD-3-Clause -- https://github.com/rockdaboot/libpsl [136]
-JavaScriptCore Macro Assembler (Qt Qml) -- BSD-2-Clause -- https://trac.webkit.org/wiki/JavaScriptCore [137]
-Yoga (Qt Quick) 2.0.1 -- MIT -- https://www.yogalayout.dev/ [138]
-Shadow values from Angular Material (Qt Quick Controls) -- MIT -- https://angularjs.org/ [139]
+Qt 6.12.0 -- LGPL-3.0-only -- https://download.qt.io/official_releases/qt/6.12/6.12.0/ [6]
+Apache Tika MimeType Definitions (Qt Core) c29724782854bb5a319f4a1940d0828a58ace3f9 -- Apache-2.0 -- https://github.com/apache/tika/tree/main/tika-core/src/main/resources/org/apache/tika/mime [107]
+BLAKE2 (reference implementation) (Qt Core) ed1974ea83433eba7b2d95c5dcd9ac33cb847913 -- CC0-1.0 OR Apache-2.0 -- https://blake2.net/ [108]
+Data Compression Library (zlib) (Qt Core) 1.3.2 -- Zlib -- https://zlib.net/ [109]
+Easing Equations by Robert Penner (Qt Core) -- BSD-3-Clause -- http://robertpenner.com/easing/ [110]
+Efficient Binary-Decimal and Decimal-Binary Conversion Routines for IEEE Doubles (Qt Core) 3.4.0 -- BSD-3-Clause -- https://github.com/google/double-conversion [111]
+MD4 (Qt Core) -- LicenseRef-Public-Domain -- https://doc.qt.io/qt-6/qtcore-attribution-md4.html [112]
+MD5 (Qt Core) -- LicenseRef-Public-Domain -- https://doc.qt.io/qt-6/qtcore-attribution-md5.html [113]
+PCRE2 - Stack-less Just-In-Time Compiler (Qt Core) 10.48 -- BSD-2-Clause -- http://www.pcre.org/ [114]
+PCRE2 (Qt Core) 10.48 -- BSD-3-Clause WITH PCRE2-exception -- http://www.pcre.org/ [115]
+QEventDispatcher on macOS (Qt Core) -- BSD-3-Clause -- https://doc.qt.io/qt-6/qtcore-attribution-qeventdispatcher-cf.html [116]
+Secure Hash Algorithm SHA-1 (Qt Core) -- LicenseRef-Public-Domain -- http://www.dominik-reichl.de/projects/csha1/ [117]
+Secure Hash Algorithm SHA-3 - Keccak (Qt Core) 3.2 -- CC0-1.0 -- https://doc.qt.io/qt-6/qtcore-attribution-sha3-keccak.html [118]
+Secure Hash Algorithm SHA-3 - brg_endian (Qt Core) 1.0.0 -- BSD-2-Clause -- https://doc.qt.io/qt-6/qtcore-attribution-sha3-endian.html [119]
+Secure Hash Algorithms SHA-384 and SHA-512 (Qt Core) -- BSD-3-Clause -- https://doc.qt.io/qt-6/qtcore-attribution-rfc6234.html [120]
+SipHash Algorithm (Qt Core) -- CC0-1.0 -- https://131002.net/siphash/ [121]
+TinyCBOR (Qt Core) 7.0 -- MIT -- https://github.com/intel/tinycbor [122]
+Unicode Character Database (UCD) (Qt Core) 36 -- Unicode-DFS-2016 -- https://www.unicode.org/ucd/ [123]
+Unicode Common Locale Data Repository (CLDR) (Qt Core) v48.2 -- Unicode-3.0 -- https://cldr.unicode.org/ [124]
+forkfd (Qt Core) -- MIT -- https://doc.qt.io/qt-6/qtcore-attribution-forkfd.html [125]
+tl::expected (Qt Core) 41d3e1f48d682992a2230b2a715bca38b848b269 -- CC0-1.0 -- https://github.com/TartanLlama/expected/ [126]
+Adobe Glyph List For New Fonts (Qt GUI) 1.7 -- BSD-3-Clause -- https://github.com/adobe-type-tools/agl-aglfn [127]
+Anti-aliasing rasterizer from FreeType 2 (Qt GUI) -- FTL OR GPL-2.0-only -- http://www.freetype.org [128]
+Cocoa Platform Plugin (Qt GUI) -- BSD-3-Clause -- https://doc.qt.io/qt-6/qtgui-attribution-cocoa-platform-plugin.html [116]
+D3D12 Memory Allocator (Qt GUI) v3.1.0 -- MIT -- https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator [129]
+DejaVu Fonts (Qt GUI) 2.37 -- Bitstream-Vera -- https://dejavu-fonts.github.io/ [130]
+Emoji Segmenter (Qt GUI) 0.4.0 -- Apache-2.0 -- https://github.com/google/emoji-segmenter [131]
+Freetype 2 - Bitmap Distribution Format (BDF) support (Qt GUI) -- MIT -- http://www.freetype.org [132]
+Freetype 2 - Portable Compiled Format (PCF) support (Qt GUI) -- MIT AND MIT-open-group -- http://www.freetype.org [133]
+Freetype 2 - zlib (Qt GUI) -- Zlib -- http://www.freetype.org [134]
+Freetype 2 (Qt GUI) 2.14.3 -- FTL OR GPL-2.0-only -- http://www.freetype.org [135]
+HarfBuzz-NG (Qt GUI) 14.5.0 -- MIT -- http://harfbuzz.org [136]
+LibJPEG-turbo (Qt GUI) 3.2.0 -- IJG AND BSD-3-Clause -- http://libjpeg-turbo.virtualgl.org/ [137]
+LibPNG (Qt GUI) 1.6.58 -- Libpng AND libpng-2.0 -- http://www.libpng.org/pub/png/libpng.html [138]
+MD4C (Qt GUI) 0.5.3 -- MIT -- https://github.com/mity/md4c [139]
+Mipmap generator for D3D12 (Qt GUI) 0aa79bad78992da0b6a8279ddb9002c1753cb849 -- MIT -- https://github.com/microsoft/DirectX-Graphics-Samples [140]
+OpenGL ES 2 Headers (Qt GUI) Revision 27673 -- MIT -- https://www.khronos.org/ [141]
+OpenGL Headers (Qt GUI) Revision 27684 -- MIT -- https://www.khronos.org/ [141]
+Pixman (Qt GUI) 0.17.12 -- MIT -- http://www.pixman.org/ [142]
+Smooth Scaling Algorithm (Qt GUI) -- BSD-2-Clause AND Imlib2 -- https://doc.qt.io/qt-6/qtgui-attribution-smooth-scaling-algorithm.html [143]
+Vulkan API Registry (Qt GUI) 1.4.308 -- Apache-2.0 OR MIT -- https://www.khronos.org/ [144]
+Vulkan Memory Allocator (Qt GUI) 3.3.0 -- MIT -- https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator [145]
+WebGradients (Qt GUI) -- MIT -- https://webgradients.com/ [146]
+Wintab API (Qt GUI) -- LicenseRef-LCS-Telegraphics -- https://doc.qt.io/qt-6/qtgui-attribution-wintab.html [147]
+sRGB color profile icc file (Qt GUI) -- LicenseRef-ICC -- http://www.color.org/ [148]
+TIFF Software Distribution (libtiff) (Qt Image Formats) 4.7.2 -- libtiff -- http://www.simplesystems.org/libtiff/ [149]
+WebP (libwebp) (Qt Image Formats) 1.6.0 -- BSD-3-Clause -- https://developers.google.com/speed/webp/ [150]
+The Public Suffix List (Qt Network) 2026-05-14_08-35-31_UTC -- MPL-2.0 -- http://publicsuffix.org/ [151]
+libpsl - C library to handle the Public Suffix List (Qt Network) 664f3dc85259ec65e30248a61fa1c45b7b0e4c3f -- BSD-3-Clause -- https://github.com/rockdaboot/libpsl [152]
+JavaScriptCore Macro Assembler (Qt Qml) -- BSD-2-Clause -- https://trac.webkit.org/wiki/JavaScriptCore [153]
+Yoga (Qt Quick) 2.0.1 -- MIT -- https://www.yogalayout.dev/ [154]
+Shadow values from Angular Material (Qt Quick Controls) -- MIT -- https://angularjs.org/ [155]
 
 Fonts
 -----
 
-Inter 4.001 -- OFL-1.1 -- https://github.com/rsms/inter [140]
-JetBrains Mono 2.304 -- OFL-1.1 -- https://github.com/JetBrains/JetBrainsMono [141]
+Inter 4.001 -- OFL-1.1 -- https://github.com/rsms/inter [156]
+JetBrains Mono 2.304 -- OFL-1.1 -- https://github.com/JetBrains/JetBrainsMono [157]
 
 
 License texts
 =============
 
----- [1] used by: protobuf 6.33.4
+---- [1] used by: jaraco.classes 3.4.0
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to
+deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
+
+---- [2] used by: jaraco.context 6.1.2, jaraco.functools 4.6.0
+
+MIT License
+
+Copyright (c) 2026 <copyright holders>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial
+portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO
+EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---- [3] used by: keyring 25.7.0
+
+MIT License
+
+Copyright (c) 2025 <copyright holders>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial
+portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO
+EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---- [4] used by: more-itertools 11.2.1
+
+Copyright (c) 2012 Erik Rose
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---- [5] used by: protobuf 6.33.4
 
 Copyright 2008 Google Inc.  All rights reserved.
 
@@ -253,7 +355,7 @@ of the input file used when generating it.  This code is not
 standalone and requires a support library to be linked with it.  This
 support library is itself covered by the above license.
 
----- [2] used by: PySide6 6.12.0, PySide6_Addons 6.12.0, PySide6_Essentials 6.12.0, shiboken6 6.12.0, github.com/easytier/easytier/easytier-go v0.0.0-20260910071355-3d0c9c3ca5e2, Qt 6.12.0
+---- [6] used by: PySide6 6.12.0, PySide6_Addons 6.12.0, PySide6_Essentials 6.12.0, shiboken6 6.12.0, github.com/easytier/easytier/easytier-go v0.0.0-20260910071355-3d0c9c3ca5e2, Qt 6.12.0
 
 GNU LESSER GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
@@ -421,7 +523,7 @@ apply, that proxy's public statement of acceptance of any version is
 permanent authorization for you to choose that version for the
 Library.
 
----- [3] used by: CPython 3.14.7
+---- [7] used by: CPython 3.14.7
 
 A. HISTORY OF THE SOFTWARE
 ==========================
@@ -701,7 +803,1357 @@ LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
 OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 
----- [4] used by: github.com/ajg/form v1.7.1
+---- [8] used by: CPython 3.14.7
+
+Licenses and Acknowledgements for Incorporated Software
+=======================================================
+
+This section is an incomplete, but growing list of licenses and acknowledgements
+for third-party software incorporated in the Python distribution.
+
+
+Mersenne Twister
+----------------
+
+The _random C extension underlying the random module
+includes code based on a download from
+http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/MT2002/emt19937ar.html. The following are
+the verbatim comments from the original code:
+
+   A C-program for MT19937, with initialization improved 2002/1/26.
+   Coded by Takuji Nishimura and Makoto Matsumoto.
+
+   Before using, initialize the state by using init_genrand(seed)
+   or init_by_array(init_key, key_length).
+
+   Copyright (C) 1997 - 2002, Makoto Matsumoto and Takuji Nishimura,
+   All rights reserved.
+
+   Redistribution and use in source and binary forms, with or without
+   modification, are permitted provided that the following conditions
+   are met:
+
+    1. Redistributions of source code must retain the above copyright
+       notice, this list of conditions and the following disclaimer.
+
+    2. Redistributions in binary form must reproduce the above copyright
+       notice, this list of conditions and the following disclaimer in the
+       documentation and/or other materials provided with the distribution.
+
+    3. The names of its contributors may not be used to endorse or promote
+       products derived from this software without specific prior written
+       permission.
+
+   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+   A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+   CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+   EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+   PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+   PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+   NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+   Any feedback is very welcome.
+   http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/emt.html
+   email: m-mat @ math.sci.hiroshima-u.ac.jp (remove space)
+
+
+Sockets
+-------
+
+The socket module uses the functions, :cgetaddrinfo, and
+:cgetnameinfo, which are coded in separate source files from the WIDE
+Project, https://www.wide.ad.jp/. :
+
+   Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
+   All rights reserved.
+
+   Redistribution and use in source and binary forms, with or without
+   modification, are permitted provided that the following conditions
+   are met:
+   1. Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+   2. Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+   3. Neither the name of the project nor the names of its contributors
+      may be used to endorse or promote products derived from this software
+      without specific prior written permission.
+
+   THIS SOFTWARE IS PROVIDED BY THE PROJECT AND CONTRIBUTORS "AS IS" AND
+   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+   IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+   ARE DISCLAIMED.  IN NO EVENT SHALL THE PROJECT OR CONTRIBUTORS BE LIABLE
+   FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+   DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+   OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+   HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+   LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+   OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+   SUCH DAMAGE.
+
+
+Asynchronous socket services
+----------------------------
+
+The test.support.asynchat and test.support.asyncore
+modules contain the following notice:
+
+   Copyright 1996 by Sam Rushing
+
+                           All Rights Reserved
+
+   Permission to use, copy, modify, and distribute this software and
+   its documentation for any purpose and without fee is hereby
+   granted, provided that the above copyright notice appear in all
+   copies and that both that copyright notice and this permission
+   notice appear in supporting documentation, and that the name of Sam
+   Rushing not be used in advertising or publicity pertaining to
+   distribution of the software without specific, written prior
+   permission.
+
+   SAM RUSHING DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+   INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN
+   NO EVENT SHALL SAM RUSHING BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+   CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
+   OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
+   NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+   CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+
+Cookie management
+-----------------
+
+The http.cookies module contains the following notice:
+
+   Copyright 2000 by Timothy O'Malley <timo@alum.mit.edu>
+
+                  All Rights Reserved
+
+   Permission to use, copy, modify, and distribute this software
+   and its documentation for any purpose and without fee is hereby
+   granted, provided that the above copyright notice appear in all
+   copies and that both that copyright notice and this permission
+   notice appear in supporting documentation, and that the name of
+   Timothy O'Malley  not be used in advertising or publicity
+   pertaining to distribution of the software without specific, written
+   prior permission.
+
+   Timothy O'Malley DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS
+   SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+   AND FITNESS, IN NO EVENT SHALL Timothy O'Malley BE LIABLE FOR
+   ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+   WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
+   ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+   PERFORMANCE OF THIS SOFTWARE.
+
+
+Execution tracing
+-----------------
+
+The trace module contains the following notice:
+
+   portions copyright 2001, Autonomous Zones Industries, Inc., all rights...
+   err...  reserved and offered to the public under the terms of the
+   Python 2.2 license.
+   Author: Zooko O'Whielacronx
+   http://zooko.com/
+   mailto:zooko@zooko.com
+
+   Copyright 2000, Mojam Media, Inc., all rights reserved.
+   Author: Skip Montanaro
+
+   Copyright 1999, Bioreason, Inc., all rights reserved.
+   Author: Andrew Dalke
+
+   Copyright 1995-1997, Automatrix, Inc., all rights reserved.
+   Author: Skip Montanaro
+
+   Copyright 1991-1995, Stichting Mathematisch Centrum, all rights reserved.
+
+
+   Permission to use, copy, modify, and distribute this Python software and
+   its associated documentation for any purpose without fee is hereby
+   granted, provided that the above copyright notice appears in all copies,
+   and that both that copyright notice and this permission notice appear in
+   supporting documentation, and that the name of neither Automatrix,
+   Bioreason or Mojam Media be used in advertising or publicity pertaining to
+   distribution of the software without specific, written prior permission.
+
+
+UUencode and UUdecode functions
+-------------------------------
+
+The uu codec contains the following notice:
+
+   Copyright 1994 by Lance Ellinghouse
+   Cathedral City, California Republic, United States of America.
+                          All Rights Reserved
+   Permission to use, copy, modify, and distribute this software and its
+   documentation for any purpose and without fee is hereby granted,
+   provided that the above copyright notice appear in all copies and that
+   both that copyright notice and this permission notice appear in
+   supporting documentation, and that the name of Lance Ellinghouse
+   not be used in advertising or publicity pertaining to distribution
+   of the software without specific, written prior permission.
+   LANCE ELLINGHOUSE DISCLAIMS ALL WARRANTIES WITH REGARD TO
+   THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+   FITNESS, IN NO EVENT SHALL LANCE ELLINGHOUSE CENTRUM BE LIABLE
+   FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
+   OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+   Modified by Jack Jansen, CWI, July 1995:
+   - Use binascii module to do the actual line-by-line conversion
+     between ascii and binary. This results in a 1000-fold speedup. The C
+     version is still 5 times faster, though.
+   - Arguments more compliant with Python standard
+
+
+XML Remote Procedure Calls
+--------------------------
+
+The xmlrpc.client module contains the following notice:
+
+       The XML-RPC client interface is
+
+   Copyright (c) 1999-2002 by Secret Labs AB
+   Copyright (c) 1999-2002 by Fredrik Lundh
+
+   By obtaining, using, and/or copying this software and/or its
+   associated documentation, you agree that you have read, understood,
+   and will comply with the following terms and conditions:
+
+   Permission to use, copy, modify, and distribute this software and
+   its associated documentation for any purpose and without fee is
+   hereby granted, provided that the above copyright notice appears in
+   all copies, and that both that copyright notice and this permission
+   notice appear in supporting documentation, and that the name of
+   Secret Labs AB or the author not be used in advertising or publicity
+   pertaining to distribution of the software without specific, written
+   prior permission.
+
+   SECRET LABS AB AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD
+   TO THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANT-
+   ABILITY AND FITNESS.  IN NO EVENT SHALL SECRET LABS AB OR THE AUTHOR
+   BE LIABLE FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY
+   DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+   WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
+   ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
+   OF THIS SOFTWARE.
+
+
+test_epoll
+----------
+
+The test.test_epoll module contains the following notice:
+
+  Copyright (c) 2001-2006 Twisted Matrix Laboratories.
+
+  Permission is hereby granted, free of charge, to any person obtaining
+  a copy of this software and associated documentation files (the
+  "Software"), to deal in the Software without restriction, including
+  without limitation the rights to use, copy, modify, merge, publish,
+  distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to
+  the following conditions:
+
+  The above copyright notice and this permission notice shall be
+  included in all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Select kqueue
+-------------
+
+The select module contains the following notice for the kqueue
+interface:
+
+  Copyright (c) 2000 Doug White, 2006 James Knight, 2007 Christian Heimes
+  All rights reserved.
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions
+  are met:
+  1. Redistributions of source code must retain the above copyright
+     notice, this list of conditions and the following disclaimer.
+  2. Redistributions in binary form must reproduce the above copyright
+     notice, this list of conditions and the following disclaimer in the
+     documentation and/or other materials provided with the distribution.
+
+  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS "AS IS" AND
+  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+  HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+  SUCH DAMAGE.
+
+
+SipHash24
+---------
+
+The file Python/pyhash.c contains Marek Majkowski' implementation of
+Dan Bernstein's SipHash24 algorithm. It contains the following note:
+
+  <MIT License>
+  Copyright (c) 2013  Marek Majkowski <marek@popcount.org>
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
+  </MIT License>
+
+  Original location:
+     https://github.com/majek/csiphash/
+
+  Solution inspired by code from:
+     Samuel Neves (supercop/crypto_auth/siphash24/little)
+     djb (supercop/crypto_auth/siphash24/little2)
+     Jean-Philippe Aumasson (https://131002.net/siphash/siphash24.c)
+
+
+strtod and dtoa
+---------------
+
+The file Python/dtoa.c, which supplies C functions dtoa and
+strtod for conversion of C doubles to and from strings, is derived
+from the file of the same name by David M. Gay, currently available
+from https://web.archive.org/web/20220517033456/http://www.netlib.org/fp/dtoa.c.
+The original file, as retrieved on March 16, 2009, contains the following
+copyright and licensing notice:
+
+   /****************************************************************
+    *
+    * The author of this software is David M. Gay.
+    *
+    * Copyright (c) 1991, 2000, 2001 by Lucent Technologies.
+    *
+    * Permission to use, copy, modify, and distribute this software for any
+    * purpose without fee is hereby granted, provided that this entire notice
+    * is included in all copies of any software which is or includes a copy
+    * or modification of this software and in all copies of the supporting
+    * documentation for such software.
+    *
+    * THIS SOFTWARE IS BEING PROVIDED "AS IS", WITHOUT ANY EXPRESS OR IMPLIED
+    * WARRANTY.  IN PARTICULAR, NEITHER THE AUTHOR NOR LUCENT MAKES ANY
+    * REPRESENTATION OR WARRANTY OF ANY KIND CONCERNING THE MERCHANTABILITY
+    * OF THIS SOFTWARE OR ITS FITNESS FOR ANY PARTICULAR PURPOSE.
+    *
+    ***************************************************************/
+
+
+OpenSSL
+-------
+
+The modules hashlib, posix and ssl use
+the OpenSSL library for added performance if made available by the
+operating system. Additionally, the Windows and macOS installers for
+Python may include a copy of the OpenSSL libraries, so we include a copy
+of the OpenSSL license here. For the OpenSSL 3.0 release,
+and later releases derived from that, the Apache License v2 applies:
+
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        https://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+
+expat
+-----
+
+The pyexpat <xml.parsers.expat> extension is built using an included copy of the expat
+sources unless the build is configured --with-system-expat:
+
+  Copyright (c) 1998, 1999, 2000 Thai Open Source Software Center Ltd
+                                 and Clark Cooper
+
+  Permission is hereby granted, free of charge, to any person obtaining
+  a copy of this software and associated documentation files (the
+  "Software"), to deal in the Software without restriction, including
+  without limitation the rights to use, copy, modify, merge, publish,
+  distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to
+  the following conditions:
+
+  The above copyright notice and this permission notice shall be included
+  in all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+  CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+libffi
+------
+
+The _ctypes C extension underlying the ctypes module
+is built using an included copy of the libffi
+sources unless the build is configured --with-system-libffi:
+
+   Copyright (c) 1996-2008  Red Hat, Inc and others.
+
+   Permission is hereby granted, free of charge, to any person obtaining
+   a copy of this software and associated documentation files (the
+   "Software"), to deal in the Software without restriction, including
+   without limitation the rights to use, copy, modify, merge, publish,
+   distribute, sublicense, and/or sell copies of the Software, and to
+   permit persons to whom the Software is furnished to do so, subject to
+   the following conditions:
+
+   The above copyright notice and this permission notice shall be included
+   in all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+   NONINFRINGEMENT.  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+   HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+   WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+   DEALINGS IN THE SOFTWARE.
+
+
+zlib
+----
+
+The zlib extension is built using an included copy of the zlib
+sources if the zlib version found on the system is too old to be
+used for the build:
+
+  Copyright (C) 1995-2011 Jean-loup Gailly and Mark Adler
+
+  This software is provided 'as-is', without any express or implied
+  warranty.  In no event will the authors be held liable for any damages
+  arising from the use of this software.
+
+  Permission is granted to anyone to use this software for any purpose,
+  including commercial applications, and to alter it and redistribute it
+  freely, subject to the following restrictions:
+
+  1. The origin of this software must not be misrepresented; you must not
+     claim that you wrote the original software. If you use this software
+     in a product, an acknowledgment in the product documentation would be
+     appreciated but is not required.
+
+  2. Altered source versions must be plainly marked as such, and must not be
+     misrepresented as being the original software.
+
+  3. This notice may not be removed or altered from any source distribution.
+
+  Jean-loup Gailly        Mark Adler
+  jloup@gzip.org          madler@alumni.caltech.edu
+
+
+cfuhash
+-------
+
+The implementation of the hash table used by the tracemalloc is based
+on the cfuhash project:
+
+   Copyright (c) 2005 Don Owens
+   All rights reserved.
+
+   This code is released under the BSD license:
+
+   Redistribution and use in source and binary forms, with or without
+   modification, are permitted provided that the following conditions
+   are met:
+
+     * Redistributions of source code must retain the above copyright
+       notice, this list of conditions and the following disclaimer.
+
+     * Redistributions in binary form must reproduce the above
+       copyright notice, this list of conditions and the following
+       disclaimer in the documentation and/or other materials provided
+       with the distribution.
+
+     * Neither the name of the author nor the names of its
+       contributors may be used to endorse or promote products derived
+       from this software without specific prior written permission.
+
+   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+   FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+   COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+   INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+   (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+   SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+   HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+   STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+   OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+libmpdec
+--------
+
+The _decimal C extension underlying the decimal module
+is built using an included copy of the libmpdec
+library unless the build is configured --with-system-libmpdec:
+
+   Copyright (c) 2008-2020 Stefan Krah. All rights reserved.
+
+   Redistribution and use in source and binary forms, with or without
+   modification, are permitted provided that the following conditions
+   are met:
+
+   1. Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+
+   2. Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+
+   THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS "AS IS" AND
+   ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+   IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+   ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+   FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+   DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+   OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+   HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+   LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+   OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+   SUCH DAMAGE.
+
+
+W3C C14N test suite
+-------------------
+
+The C14N 2.0 test suite in the test package
+(Lib/test/xmltestdata/c14n-20/) was retrieved from the W3C website at
+https://www.w3.org/TR/xml-c14n2-testcases/ and is distributed under the
+3-clause BSD license:
+
+   Copyright (c) 2013 W3C(R) (MIT, ERCIM, Keio, Beihang),
+   All Rights Reserved.
+
+   Redistribution and use in source and binary forms, with or without
+   modification, are permitted provided that the following conditions
+   are met:
+
+   * Redistributions of works must retain the original copyright notice,
+     this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the original copyright
+     notice, this list of conditions and the following disclaimer in the
+     documentation and/or other materials provided with the distribution.
+   * Neither the name of the W3C nor the names of its contributors may be
+     used to endorse or promote products derived from this work without
+     specific prior written permission.
+
+   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+
+mimalloc
+--------
+
+MIT License:
+
+   Copyright (c) 2018-2021 Microsoft Corporation, Daan Leijen
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+
+asyncio
+----------
+
+Parts of the asyncio module are incorporated from
+uvloop 0.16 (https://github.com/MagicStack/uvloop/tree/v0.16.0),
+which is distributed under the MIT license:
+
+  Copyright (c) 2015-2021 MagicStack Inc.  http://magic.io
+
+  Permission is hereby granted, free of charge, to any person obtaining
+  a copy of this software and associated documentation files (the
+  "Software"), to deal in the Software without restriction, including
+  without limitation the rights to use, copy, modify, merge, publish,
+  distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to
+  the following conditions:
+
+  The above copyright notice and this permission notice shall be
+  included in all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+Global Unbounded Sequences (GUS)
+--------------------------------
+
+The file Python/qsbr.c is adapted from FreeBSD's "Global Unbounded
+Sequences" safe memory reclamation scheme in
+subr_smr.c (https://github.com/freebsd/freebsd-src/blob/main/sys/kern/subr_smr.c).
+The file is distributed under the 2-Clause BSD License:
+
+  Copyright (c) 2019,2020 Jeffrey Roberson <jeff@FreeBSD.org>
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions
+  are met:
+  1. Redistributions of source code must retain the above copyright
+     notice unmodified, this list of conditions, and the following
+     disclaimer.
+  2. Redistributions in binary form must reproduce the above copyright
+     notice, this list of conditions and the following disclaimer in the
+     documentation and/or other materials provided with the distribution.
+
+  THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR
+  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Zstandard bindings
+------------------
+
+Zstandard bindings in Modules/_zstd and Lib/compression/zstd
+are based on code from the
+pyzstd library (https://github.com/Rogdham/pyzstd/), copyright Ma Lin and
+contributors. The pyzstd code is distributed under the 3-Clause BSD License:
+
+  Copyright (c) 2020-present, Ma Lin and contributors.
+  All rights reserved.
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are met:
+
+  1. Redistributions of source code must retain the above copyright notice, this
+     list of conditions and the following disclaimer.
+
+  2. Redistributions in binary form must reproduce the above copyright notice,
+     this list of conditions and the following disclaimer in the documentation
+     and/or other materials provided with the distribution.
+
+  3. Neither the name of the copyright holder nor the names of its
+     contributors may be used to endorse or promote products derived from
+     this software without specific prior written permission.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+  SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Unicode Character Database
+--------------------------
+
+An extract of the Unicode Character Database (https://www.unicode.org/ucd/),
+converted to an internal format, is used by the unicodedata module and
+for the Unicode support of the str type. The original Unicode data
+files are distributed under the Unicode License (https://www.unicode.org/license.txt):
+
+  UNICODE LICENSE V3
+
+  COPYRIGHT AND PERMISSION NOTICE
+
+  Copyright © 1991-2026 Unicode, Inc.
+
+  NOTICE TO USER: Carefully read the following legal agreement. BY
+  DOWNLOADING, INSTALLING, COPYING OR OTHERWISE USING DATA FILES, AND/OR
+  SOFTWARE, YOU UNEQUIVOCALLY ACCEPT, AND AGREE TO BE BOUND BY, ALL OF THE
+  TERMS AND CONDITIONS OF THIS AGREEMENT. IF YOU DO NOT AGREE, DO NOT
+  DOWNLOAD, INSTALL, COPY, DISTRIBUTE OR USE THE DATA FILES OR SOFTWARE.
+
+  Permission is hereby granted, free of charge, to any person obtaining a
+  copy of data files and any associated documentation (the "Data Files") or
+  software and any associated documentation (the "Software") to deal in the
+  Data Files or Software without restriction, including without limitation
+  the rights to use, copy, modify, merge, publish, distribute, and/or sell
+  copies of the Data Files or Software, and to permit persons to whom the
+  Data Files or Software are furnished to do so, provided that either (a)
+  this copyright and permission notice appear with all copies of the Data
+  Files or Software, or (b) this copyright and permission notice appear in
+  associated Documentation.
+
+  THE DATA FILES AND SOFTWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+  KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
+  THIRD PARTY RIGHTS.
+
+  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS INCLUDED IN THIS NOTICE
+  BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES,
+  OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+  WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
+  ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THE DATA
+  FILES OR SOFTWARE.
+
+  Except as contained in this notice, the name of a copyright holder shall
+  not be used in advertising or otherwise to promote the sale, use or other
+  dealings in these Data Files or Software without prior written
+  authorization of the copyright holder.
+
+---- [9] used by: OpenSSL (CPython _ssl, _hashlib) 3.5.8
+
+Apache License
+                           Version 2.0, January 2004
+                        https://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+---- [10] used by: SQLite (CPython _sqlite3) 3.53.1
+
+All of the code and documentation in SQLite has been dedicated to the public
+domain by the authors. All code authors, and representatives of the companies
+they work for, have signed affidavits dedicating their contributions to the
+public domain and originals of those signed affidavits are stored in a firesafe
+at the main offices of Hwaci. Anyone is free to copy, modify, publish, use,
+compile, sell, or distribute the original SQLite code, either in source code form
+or as a compiled binary, for any purpose, commercial or non-commercial, and by
+any means.
+
+The previous paragraph applies to the deliverable code and documentation in
+SQLite - those parts of the SQLite library that you actually bundle and ship
+with a larger application. Some scripts used as part of the build process (for
+example the "configure" scripts generated by autoconf) might fall under other
+open-source licenses. Nothing from these build scripts ever reaches the final
+deliverable SQLite library, however, and so the licenses associated with those
+scripts should not be a factor in assessing your rights to copy and use the
+SQLite library.
+
+All of the deliverable code in SQLite has been written from scratch. No code has
+been taken from other projects or from the open internet. Every line of code can
+be traced back to its original author, and all of those authors have public
+domain dedications on file. So the SQLite code base is clean and is
+uncontaminated with licensed code from other projects.
+
+---- [11] used by: libffi (CPython _ctypes, macOS) 3.4.8, libffi (CPython _ctypes, Windows) 3.4.7
+
+libffi - Copyright (c) 1996-2024  Anthony Green, Red Hat, Inc and others.
+See source files for details.
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+``Software''), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED ``AS IS'', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---- [12] used by: bzip2 (CPython _bz2) 1.0.8
+
+--------------------------------------------------------------------------
+
+This program, "bzip2", the associated library "libbzip2", and all
+documentation, are copyright (C) 1996-2019 Julian R Seward.  All
+rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+
+2. The origin of this software must not be misrepresented; you must 
+   not claim that you wrote the original software.  If you use this 
+   software in a product, an acknowledgment in the product 
+   documentation would be appreciated but is not required.
+
+3. Altered source versions must be plainly marked as such, and must
+   not be misrepresented as being the original software.
+
+4. The name of the author may not be used to endorse or promote 
+   products derived from this software without specific prior written 
+   permission.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS
+OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+Julian Seward, jseward@acm.org
+bzip2/libbzip2 version 1.0.8 of 13 July 2019
+
+--------------------------------------------------------------------------
+
+---- [13] used by: XZ Utils (liblzma) (CPython _lzma) 5.8.3
+
+Copyright (C) The XZ Utils authors and contributors
+
+Permission to use, copy, modify, and/or distribute this
+software for any purpose with or without fee is hereby granted.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL
+THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR
+CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
+NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+---- [14] used by: Zstandard (CPython _zstd) 1.5.7
+
+BSD License
+
+For Zstandard software
+
+Copyright (c) Meta Platforms, Inc. and affiliates. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+ * Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+ * Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+ * Neither the name Facebook, nor Meta, nor the names of its contributors may
+   be used to endorse or promote products derived from this software without
+   specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+---- [15] used by: Expat (CPython pyexpat, macOS) 2.8.4, Expat (CPython pyexpat, Windows) 2.8.2
+
+Copyright (c) 1998-2000 Thai Open Source Software Center Ltd and Clark Cooper
+Copyright (c) 2001-2025 Expat maintainers
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---- [16] used by: mpdecimal (CPython _decimal) 4.0.0
+
+Copyright (c) 2008-2020 Stefan Krah. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+SUCH DAMAGE.
+
+---- [17] used by: libuuid (CPython _uuid, macOS) 1.0.3
+
+Copyright (C) 1996, 1997 Theodore Ts'o.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+1. Redistributions of source code must retain the above copyright
+   notice, and the entire permission notice in its entirety,
+   including the disclaimer of warranties.
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+3. The name of the author may not be used to endorse or promote
+   products derived from this software without specific prior
+   written permission.
+
+THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, ALL OF
+WHICH ARE HEREBY DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+USE OF THIS SOFTWARE, EVEN IF NOT ADVISED OF THE POSSIBILITY OF SUCH
+DAMAGE.
+
+---- [18] used by: zlib-ng (CPython zlib, binascii, Windows) 2.2.4
+
+(C) 1995-2024 Jean-loup Gailly and Mark Adler
+
+This software is provided 'as-is', without any express or implied
+warranty. In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
+
+2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
+
+3. This notice may not be removed or altered from any source distribution.
+
+---- [19] used by: github.com/ajg/form v1.7.1
 
 Copyright (c) 2014 Alvaro J. Genial. All rights reserved.
 
@@ -731,7 +2183,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [5] used by: github.com/andybalholm/brotli v1.1.1
+---- [20] used by: github.com/andybalholm/brotli v1.1.1
 
 Copyright (c) 2009, 2010, 2013-2016 by the Brotli Authors.
 
@@ -753,7 +2205,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
----- [6] used by: github.com/bahlo/generic-list-go v0.2.0, github.com/metacubex/edwards25519 v1.2.0, github.com/metacubex/restls-client-go v0.1.9, github.com/metacubex/utls v1.8.8, github.com/metacubex/yamux v0.0.0-20250918083631-dd5f17c0be49
+---- [21] used by: github.com/bahlo/generic-list-go v0.2.0, github.com/metacubex/edwards25519 v1.2.0, github.com/metacubex/restls-client-go v0.1.9, github.com/metacubex/utls v1.8.8, github.com/metacubex/yamux v0.0.0-20250918083631-dd5f17c0be49
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -783,7 +2235,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [7] used by: github.com/bodgit/plumbing v1.3.0
+---- [22] used by: github.com/bodgit/plumbing v1.3.0
 
 BSD 3-Clause License
 
@@ -815,7 +2267,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [8] used by: github.com/bodgit/windows v1.0.1, github.com/metacubex/sevenzip v1.6.4
+---- [23] used by: github.com/bodgit/windows v1.0.1, github.com/metacubex/sevenzip v1.6.4
 
 BSD 3-Clause License
 
@@ -847,7 +2299,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [9] used by: github.com/dlclark/regexp2 v1.12.0
+---- [24] used by: github.com/dlclark/regexp2 v1.12.0
 
 The MIT License (MIT)
 
@@ -871,7 +2323,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [10] used by: github.com/dunglas/httpsfv v1.0.2
+---- [25] used by: github.com/dunglas/httpsfv v1.0.2
 
 Copyright (c) 2020 Kévin Dunglas. All rights reserved.
 
@@ -901,7 +2353,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [11] used by: github.com/enfein/mieru/v3 v3.38.1, github.com/metacubex/mihomo v1.19.33, github.com/metacubex/randv2 v0.2.0, github.com/metacubex/sing-wireguard v0.0.0-20261002050126-e5fa1a607406, github.com/sina-ghaderi/poly1305 v0.0.0-20220724002748-c5926b03988b, github.com/sina-ghaderi/rabaead v0.0.0-20220730151906-ab6e06b96e8c
+---- [26] used by: github.com/enfein/mieru/v3 v3.38.1, github.com/metacubex/mihomo v1.19.33, github.com/metacubex/randv2 v0.2.0, github.com/metacubex/sing-wireguard v0.0.0-20261002050126-e5fa1a607406, github.com/sina-ghaderi/poly1305 v0.0.0-20220724002748-c5926b03988b, github.com/sina-ghaderi/rabaead v0.0.0-20220730151906-ab6e06b96e8c
 
 GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
@@ -1578,7 +3030,7 @@ the library.  If this is what you want to do, use the GNU Lesser General
 Public License instead of this License.  But first, please read
 <https://www.gnu.org/licenses/why-not-lgpl.html>.
 
----- [12] used by: github.com/ericlagergren/aegis v0.0.0-20250325060835-cd0defd64358
+---- [27] used by: github.com/ericlagergren/aegis v0.0.0-20250325060835-cd0defd64358
 
 BSD 2-Clause License
 
@@ -1606,7 +3058,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [13] used by: github.com/ericlagergren/polyval v0.0.0-20220411101811-e25bc10ba391
+---- [28] used by: github.com/ericlagergren/polyval v0.0.0-20220411101811-e25bc10ba391
 
 BSD 2-Clause License
 
@@ -1634,7 +3086,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [14] used by: github.com/ericlagergren/siv v0.0.0-20220507050439-0b757b3aa5f1, github.com/ericlagergren/subtle v0.0.0-20220507045147-890d697da010
+---- [29] used by: github.com/ericlagergren/siv v0.0.0-20220507050439-0b757b3aa5f1, github.com/ericlagergren/subtle v0.0.0-20220507045147-890d697da010
 
 BSD 3-Clause License
 
@@ -1666,7 +3118,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [15] used by: github.com/fsnotify/fsnotify v1.9.0
+---- [30] used by: github.com/fsnotify/fsnotify v1.9.0
 
 Copyright © 2012 The Go Authors. All rights reserved.
 Copyright © fsnotify Authors. All rights reserved.
@@ -1694,7 +3146,7 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [16] used by: github.com/fxamacker/cbor/v2 v2.9.0
+---- [31] used by: github.com/fxamacker/cbor/v2 v2.9.0
 
 MIT License
 
@@ -1718,7 +3170,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [17] used by: github.com/gaukas/godicttls v0.0.4
+---- [32] used by: github.com/gaukas/godicttls v0.0.4
 
 BSD 3-Clause License
 
@@ -1749,7 +3201,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [18] used by: github.com/go-ole/go-ole v1.3.0
+---- [33] used by: github.com/go-ole/go-ole v1.3.0
 
 The MIT License (MIT)
 
@@ -1773,7 +3225,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [19] used by: github.com/gobwas/httphead v0.1.0
+---- [34] used by: github.com/gobwas/httphead v0.1.0
 
 The MIT License (MIT)
 
@@ -1797,7 +3249,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [20] used by: github.com/gobwas/pool v0.2.1
+---- [35] used by: github.com/gobwas/pool v0.2.1
 
 The MIT License (MIT)
 
@@ -1821,7 +3273,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [21] used by: github.com/gobwas/ws v1.4.0
+---- [36] used by: github.com/gobwas/ws v1.4.0
 
 The MIT License (MIT)
 
@@ -1845,7 +3297,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [22] used by: github.com/gofrs/uuid/v5 v5.4.0
+---- [37] used by: github.com/gofrs/uuid/v5 v5.4.0
 
 Copyright (C) 2013-2018 by Maxim Bublis <b@codemonkey.ru>
 
@@ -1868,7 +3320,7 @@ LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [23] used by: github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8
+---- [38] used by: github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8
 
 Apache License
 Version 2.0, January 2004
@@ -2062,7 +3514,7 @@ third-party archives.
    See the License for the specific language governing permissions and
    limitations under the License.
 
----- [24] used by: github.com/golang/snappy v1.0.0
+---- [39] used by: github.com/golang/snappy v1.0.0
 
 Copyright (c) 2011 The Snappy-Go Authors. All rights reserved.
 
@@ -2092,7 +3544,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [25] used by: github.com/google/btree v1.1.3, github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8, github.com/sina-ghaderi/rabbitio v0.0.0-20220730151941-9ce26f4f872e
+---- [40] used by: github.com/google/btree v1.1.3, github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8, github.com/sina-ghaderi/rabbitio v0.0.0-20220730151941-9ce26f4f872e
 
 Apache License
                            Version 2.0, January 2004
@@ -2296,7 +3748,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
----- [26] used by: github.com/hashicorp/golang-lru/v2 v2.0.7
+---- [41] used by: github.com/hashicorp/golang-lru/v2 v2.0.7
 
 Copyright (c) 2014 HashiCorp, Inc.
 
@@ -2663,7 +4115,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       With Secondary Licenses", as defined by
       the Mozilla Public License, v. 2.0.
 
----- [27] used by: github.com/insomniacslk/dhcp v0.0.0-20250109001534-8abf58130905
+---- [42] used by: github.com/insomniacslk/dhcp v0.0.0-20250109001534-8abf58130905
 
 BSD 3-Clause License
 
@@ -2695,7 +4147,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [28] used by: github.com/josharian/native v1.1.0
+---- [43] used by: github.com/josharian/native v1.1.0
 
 Copyright 2020 Josh Bleecher Snyder
 
@@ -2705,7 +4157,7 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [29] used by: github.com/klauspost/compress v1.17.9
+---- [44] used by: github.com/klauspost/compress v1.17.9
 
 Copyright (c) 2012 The Go Authors. All rights reserved.
 Copyright (c) 2019 Klaus Post. All rights reserved.
@@ -3012,7 +4464,7 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [30] used by: github.com/klauspost/cpuid/v2 v2.2.6
+---- [45] used by: github.com/klauspost/cpuid/v2 v2.2.6
 
 The MIT License (MIT)
 
@@ -3036,7 +4488,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [31] used by: github.com/klauspost/reedsolomon v1.12.3
+---- [46] used by: github.com/klauspost/reedsolomon v1.12.3
 
 The MIT License (MIT)
 
@@ -3061,7 +4513,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [32] used by: github.com/metacubex/age v0.0.0-20260603010618-28d156b4ea78
+---- [47] used by: github.com/metacubex/age v0.0.0-20260603010618-28d156b4ea78
 
 Copyright 2019 The age Authors
 Copyright 2019 Google LLC
@@ -3093,7 +4545,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [33] used by: github.com/metacubex/amneziawg-go v0.0.0-20260908071407-0c1c6f40ecd7
+---- [48] used by: github.com/metacubex/amneziawg-go v0.0.0-20260908071407-0c1c6f40ecd7
 
 Copyright (C) 2017-2025 WireGuard LLC. All Rights Reserved.
 
@@ -3115,7 +4567,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [34] used by: github.com/metacubex/ascon v0.1.0
+---- [49] used by: github.com/metacubex/ascon v0.1.0
 
 Copyright (c) 2019 Cloudflare. All rights reserved.
 
@@ -3175,7 +4627,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [35] used by: github.com/metacubex/bart v0.29.0
+---- [50] used by: github.com/metacubex/bart v0.29.0
 
 MIT License
 
@@ -3199,7 +4651,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [36] used by: github.com/metacubex/bbolt v0.0.0-20260706163408-d4ec34ad7c48
+---- [51] used by: github.com/metacubex/bbolt v0.0.0-20260706163408-d4ec34ad7c48
 
 The MIT License (MIT)
 
@@ -3222,7 +4674,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [37] used by: github.com/metacubex/blake3 v0.1.0
+---- [52] used by: github.com/metacubex/blake3 v0.1.0
 
 The MIT License (MIT)
 
@@ -3246,7 +4698,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
----- [38] used by: github.com/metacubex/chacha v0.1.5
+---- [53] used by: github.com/metacubex/chacha v0.1.5
 
 MIT License
 
@@ -3270,7 +4722,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [39] used by: github.com/metacubex/chacha v0.1.5
+---- [54] used by: github.com/metacubex/chacha v0.1.5
 
 The MIT License (MIT)
 
@@ -3294,7 +4746,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [40] used by: github.com/metacubex/chi v0.1.1
+---- [55] used by: github.com/metacubex/chi v0.1.1
 
 Copyright (c) 2015-present Peter Kieltyka (https://github.com/pkieltyka), Google Inc.
 
@@ -3317,7 +4769,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [41] used by: github.com/metacubex/connect-ip-go v0.0.0-20260727083417-67ccdb0cf771
+---- [56] used by: github.com/metacubex/connect-ip-go v0.0.0-20260727083417-67ccdb0cf771
 
 Copyright 2024 Marten Seemann
 
@@ -3327,7 +4779,7 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [42] used by: github.com/metacubex/cpu v0.1.2, github.com/metacubex/hkdf v0.1.0, github.com/metacubex/hpke v0.1.0, github.com/metacubex/http v0.1.8, github.com/metacubex/jls-tls v0.0.0-20260723084315-67adc0e2f796, github.com/metacubex/mhurl v0.1.0, github.com/metacubex/mlkem v0.1.0, github.com/metacubex/ssh v0.1.0, github.com/metacubex/tls v0.1.9, golang.org/x/crypto v0.57.0, golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e, golang.org/x/net v0.59.0, golang.org/x/sync v0.23.0, golang.org/x/sys v0.49.0, golang.org/x/term v0.46.0, golang.org/x/text v0.42.0, golang.org/x/time v0.10.0, Go standard library go1.27.3
+---- [57] used by: github.com/metacubex/cpu v0.1.2, github.com/metacubex/hkdf v0.1.0, github.com/metacubex/hpke v0.1.0, github.com/metacubex/http v0.1.8, github.com/metacubex/jls-tls v0.0.0-20260723084315-67adc0e2f796, github.com/metacubex/mhurl v0.1.0, github.com/metacubex/mlkem v0.1.0, github.com/metacubex/ssh v0.1.0, github.com/metacubex/tls v0.1.9, golang.org/x/crypto v0.57.0, golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e, golang.org/x/net v0.59.0, golang.org/x/sync v0.23.0, golang.org/x/sys v0.49.0, golang.org/x/term v0.46.0, golang.org/x/text v0.42.0, golang.org/x/time v0.10.0, Go standard library go1.27.3
 
 Copyright 2009 The Go Authors.
 
@@ -3357,7 +4809,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [43] used by: github.com/metacubex/fswatch v0.1.1, github.com/metacubex/sing v0.5.8, github.com/metacubex/sing-mux v0.3.12, github.com/metacubex/sing-quic v0.0.0-20260904234848-1c242664697a, github.com/metacubex/sing-shadowsocks v0.2.13, github.com/metacubex/sing-shadowsocks2 v0.2.8, github.com/metacubex/sing-tun v0.4.28, github.com/metacubex/sing-vmess v0.2.5
+---- [58] used by: github.com/metacubex/fswatch v0.1.1, github.com/metacubex/sing v0.5.8, github.com/metacubex/sing-mux v0.3.12, github.com/metacubex/sing-quic v0.0.0-20260904234848-1c242664697a, github.com/metacubex/sing-shadowsocks v0.2.13, github.com/metacubex/sing-shadowsocks2 v0.2.8, github.com/metacubex/sing-tun v0.4.28, github.com/metacubex/sing-vmess v0.2.5
 
 Copyright (C) 2022 by nekohasekai <contact-sagernet@sekai.icu>
 
@@ -3374,7 +4826,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 
----- [44] used by: github.com/metacubex/gvisor v0.0.0-20260922041103-e2cbcd6e7400
+---- [59] used by: github.com/metacubex/gvisor v0.0.0-20260922041103-e2cbcd6e7400
 
 Apache License
                            Version 2.0, January 2004
@@ -3630,7 +5082,7 @@ Some files carry the "BSD" license, noted at the top of each file:
    ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
    POSSIBILITY OF SUCH DAMAGE.
 
----- [45] used by: github.com/metacubex/jls-quic-go v0.0.0-20260727080412-732f2fc9a34d, github.com/metacubex/quic-go v0.61.1-0.20260727080200-2548683b76f4
+---- [60] used by: github.com/metacubex/jls-quic-go v0.0.0-20260727080412-732f2fc9a34d, github.com/metacubex/quic-go v0.61.1-0.20260727080200-2548683b76f4
 
 MIT License
 
@@ -3654,7 +5106,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [46] used by: github.com/metacubex/jsonv2 v0.0.0-20260721082349-16b4998c8f89
+---- [61] used by: github.com/metacubex/jsonv2 v0.0.0-20260721082349-16b4998c8f89
 
 Copyright (c) 2020 The Go Authors. All rights reserved.
 
@@ -3684,7 +5136,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [47] used by: github.com/metacubex/kcp-go v0.0.0-20260105040817-550693377604
+---- [62] used by: github.com/metacubex/kcp-go v0.0.0-20260105040817-550693377604
 
 The MIT License (MIT)
 
@@ -3708,7 +5160,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [48] used by: github.com/metacubex/mipstack v0.0.0-20261019124225-9a80a07eaeb9, github.com/metacubex/zerotier-go v0.0.0-20260813124750-13fa6f45da5f
+---- [63] used by: github.com/metacubex/mipstack v0.0.0-20261019124225-9a80a07eaeb9, github.com/metacubex/zerotier-go v0.0.0-20260813124750-13fa6f45da5f
 
 Mozilla Public License Version 2.0
 ==================================
@@ -4084,7 +5536,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
   This Source Code Form is "Incompatible With Secondary Licenses", as
   defined by the Mozilla Public License, v. 2.0.
 
----- [49] used by: github.com/metacubex/qpack v0.6.0
+---- [64] used by: github.com/metacubex/qpack v0.6.0
 
 Copyright 2019 Marten Seemann
 
@@ -4094,7 +5546,7 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [50] used by: github.com/metacubex/restls-client-go v0.1.9
+---- [65] used by: github.com/metacubex/restls-client-go v0.1.9
 
 Copyright (c) 2023, 3andne 
 All rights reserved. 
@@ -4123,7 +5575,94 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 POSSIBILITY OF SUCH DAMAGE.
 
----- [51] used by: github.com/metacubex/smux v0.0.0-20260105030934-d0c8756d3141
+---- [66] used by: Wintun (wintun.dll in github.com/metacubex/sing-tun) 0.14.1
+
+Prebuilt Binaries License
+-------------------------
+
+1. DEFINITIONS. "Software" means the precise contents of the "wintun.dll"
+   files that are included in the .zip file that contains this document as
+   downloaded from wintun.net/builds.
+
+2. LICENSE GRANT. WireGuard LLC grants to you a non-exclusive and
+   non-transferable right to use Software for lawful purposes under certain
+   obligations and limited rights as set forth in this agreement.
+
+3. RESTRICTIONS. Software is owned and copyrighted by WireGuard LLC. It is
+   licensed, not sold. Title to Software and all associated intellectual
+   property rights are retained by WireGuard. You must not:
+   a. reverse engineer, decompile, disassemble, extract from, or otherwise
+      modify the Software;
+   b. modify or create derivative work based upon Software in whole or in
+      parts, except insofar as only the API interfaces of the "wintun.h" file
+      distributed alongside the Software (the "Permitted API") are used;
+   c. remove any proprietary notices, labels, or copyrights from the Software;
+   d. resell, redistribute, lease, rent, transfer, sublicense, or otherwise
+      transfer rights of the Software without the prior written consent of
+      WireGuard LLC, except insofar as the Software is distributed alongside
+      other software that uses the Software only via the Permitted API;
+   e. use the name of WireGuard LLC, the WireGuard project, the Wintun
+      project, or the names of its contributors to endorse or promote products
+      derived from the Software without specific prior written consent.
+
+4. LIMITED WARRANTY. THE SOFTWARE IS PROVIDED "AS IS" AND WITHOUT WARRANTY OF
+   ANY KIND. WIREGUARD LLC HEREBY EXCLUDES AND DISCLAIMS ALL IMPLIED OR
+   STATUTORY WARRANTIES, INCLUDING ANY WARRANTIES OF MERCHANTABILITY, FITNESS
+   FOR A PARTICULAR PURPOSE, QUALITY, NON-INFRINGEMENT, TITLE, RESULTS,
+   EFFORTS, OR QUIET ENJOYMENT. THERE IS NO WARRANTY THAT THE PRODUCT WILL BE
+   ERROR-FREE OR WILL FUNCTION WITHOUT INTERRUPTION. YOU ASSUME THE ENTIRE
+   RISK FOR THE RESULTS OBTAINED USING THE PRODUCT. TO THE EXTENT THAT
+   WIREGUARD LLC MAY NOT DISCLAIM ANY WARRANTY AS A MATTER OF APPLICABLE LAW,
+   THE SCOPE AND DURATION OF SUCH WARRANTY WILL BE THE MINIMUM PERMITTED UNDER
+   SUCH LAW. ALL EXPRESS OR IMPLIED CONDITIONS, REPRESENTATIONS AND
+   WARRANTIES, INCLUDING ANY IMPLIED WARRANTY OF MERCHANTABILITY, FITNESS FOR
+   A PARTICULAR PURPOSE OR NON-INFRINGEMENT ARE DISCLAIMED, EXCEPT TO THE
+   EXTENT THAT THESE DISCLAIMERS ARE HELD TO BE LEGALLY INVALID.
+
+5. LIMITATION OF LIABILITY. To the extent not prohibited by law, in no event
+   WireGuard LLC or any third-party-developer will be liable for any lost
+   revenue, profit or data or for special, indirect, consequential, incidental
+   or punitive damages, however caused regardless of the theory of liability,
+   arising out of or related to the use of or inability to use Software, even
+   if WireGuard LLC has been advised of the possibility of such damages.
+   Solely you are responsible for determining the appropriateness of using
+   Software and accept full responsibility for all risks associated with its
+   exercise of rights under this agreement, including but not limited to the
+   risks and costs of program errors, compliance with applicable laws, damage
+   to or loss of data, programs or equipment, and unavailability or
+   interruption of operations. The foregoing limitations will apply even if
+   the above stated warranty fails of its essential purpose. You acknowledge,
+   that it is in the nature of software that software is complex and not
+   completely free of errors. In no event shall WireGuard LLC or any
+   third-party-developer be liable to you under any theory for any damages
+   suffered by you or any user of Software or for any special, incidental,
+   indirect, consequential or similar damages (including without limitation
+   damages for loss of business profits, business interruption, loss of
+   business information or any other pecuniary loss) arising out of the use or
+   inability to use Software, even if WireGuard LLC has been advised of the
+   possibility of such damages and regardless of the legal or quitable theory
+   (contract, tort, or otherwise) upon which the claim is based.
+
+6. TERMINATION. This agreement is affected until terminated. You may
+   terminate this agreement at any time. This agreement will terminate
+   immediately without notice from WireGuard LLC if you fail to comply with
+   the terms and conditions of this agreement. Upon termination, you must
+   delete Software and all copies of Software and cease all forms of
+   distribution of Software.
+
+7. SEVERABILITY. If any provision of this agreement is held to be
+   unenforceable, this agreement will remain in effect with the provision
+   omitted, unless omission would frustrate the intent of the parties, in
+   which case this agreement will immediately terminate.
+
+8. RESERVATION OF RIGHTS. All rights not expressly granted in this agreement
+   are reserved by WireGuard LLC. For example, WireGuard LLC reserves the
+   right at any time to cease development of Software, to alter distribution
+   details, features, specifications, capabilities, functions, licensing
+   terms, release dates, APIs, ABIs, general availability, or other
+   characteristics of the Software.
+
+---- [67] used by: github.com/metacubex/smux v0.0.0-20260105030934-d0c8756d3141
 
 MIT License
 
@@ -4147,7 +5686,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [52] used by: github.com/metacubex/tailscale v0.0.0-20260821153257-ff0ecd818181
+---- [68] used by: github.com/metacubex/tailscale v0.0.0-20260821153257-ff0ecd818181
 
 BSD 3-Clause License
 
@@ -4178,7 +5717,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [53] used by: github.com/metacubex/tailscale-wireguard-go v0.0.0-20260725073821-e61ab99cede2, github.com/metacubex/wireguard-go v0.0.0-20250820062549-a6cecdd7f57f
+---- [69] used by: github.com/metacubex/tailscale-wireguard-go v0.0.0-20260725073821-e61ab99cede2, github.com/metacubex/wireguard-go v0.0.0-20250820062549-a6cecdd7f57f
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
@@ -4198,7 +5737,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [54] used by: github.com/metacubex/tfo-go v0.0.0-20260623020846-376a77860b8c
+---- [70] used by: github.com/metacubex/tfo-go v0.0.0-20260623020846-376a77860b8c
 
 MIT License
 
@@ -4222,7 +5761,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [55] used by: github.com/metacubex/wazero v0.0.0-20260628025728-9ae6bdcf2a7d
+---- [71] used by: github.com/metacubex/wazero v0.0.0-20260628025728-9ae6bdcf2a7d
 
 Apache License
                            Version 2.0, January 2004
@@ -4426,12 +5965,12 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
----- [56] used by: github.com/metacubex/wazero v0.0.0-20260628025728-9ae6bdcf2a7d
+---- [72] used by: github.com/metacubex/wazero v0.0.0-20260628025728-9ae6bdcf2a7d
 
 wazero
 Copyright 2020-2023 wazero authors
 
----- [57] used by: github.com/metacubex/yamux v0.0.0-20250918083631-dd5f17c0be49
+---- [73] used by: github.com/metacubex/yamux v0.0.0-20250918083631-dd5f17c0be49
 
 Mozilla Public License, version 2.0
 
@@ -4796,7 +6335,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       With Secondary Licenses", as defined by
       the Mozilla Public License, v. 2.0.
 
----- [58] used by: github.com/metacubex/zerotier-go v0.0.0-20260813124750-13fa6f45da5f
+---- [74] used by: github.com/metacubex/zerotier-go v0.0.0-20260813124750-13fa6f45da5f
 
 This project contains a clean Go translation of portions of the ZeroTierOne
 network virtualization engine.
@@ -4807,7 +6346,7 @@ Reference source: https://github.com/zerotier/ZeroTierOne
 Translated files retain the Mozilla Public License 2.0 notices required by the
 upstream project. See LICENSE for the applicable license.
 
----- [59] used by: github.com/Microsoft/go-winio v0.6.4, github.com/tailscale/go-winio v0.0.0-20231025203758-c4f33415bf55
+---- [75] used by: github.com/Microsoft/go-winio v0.6.4, github.com/tailscale/go-winio v0.0.0-20231025203758-c4f33415bf55
 
 The MIT License (MIT)
 
@@ -4831,7 +6370,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [60] used by: github.com/miekg/dns v1.1.63
+---- [76] used by: github.com/miekg/dns v1.1.63
 
 BSD 3-Clause License
 
@@ -4863,7 +6402,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [61] used by: github.com/mitchellh/go-ps v1.0.0
+---- [77] used by: github.com/mitchellh/go-ps v1.0.0
 
 The MIT License (MIT)
 
@@ -4887,7 +6426,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
----- [62] used by: github.com/mroth/weightedrand/v2 v2.1.0
+---- [78] used by: github.com/mroth/weightedrand/v2 v2.1.0
 
 MIT License
 
@@ -4911,7 +6450,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [63] used by: github.com/oasisprotocol/deoxysii v0.0.0-20220228165953-2091330c22b7
+---- [79] used by: github.com/oasisprotocol/deoxysii v0.0.0-20220228165953-2091330c22b7
 
 Copyright (c) 2016 Thomas Pornin <pornin@bolet.org>
 Copyright (c) 2017 Yawning Angel <yawning at schwanenlied dot me>
@@ -4937,7 +6476,7 @@ ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [64] used by: github.com/openacid/low v0.1.21
+---- [80] used by: github.com/openacid/low v0.1.21
 
 MIT License
 
@@ -4961,7 +6500,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [65] used by: github.com/oschwald/maxminddb-golang v1.12.0
+---- [81] used by: github.com/oschwald/maxminddb-golang v1.12.0
 
 ISC License
 
@@ -4979,7 +6518,7 @@ LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
 OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 
----- [66] used by: github.com/pierrec/lz4/v4 v4.1.27
+---- [82] used by: github.com/pierrec/lz4/v4 v4.1.27
 
 Copyright (c) 2015, Pierre Curto
 All rights reserved.
@@ -5009,7 +6548,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [67] used by: github.com/pires/go-proxyproto v0.8.0
+---- [83] used by: github.com/pires/go-proxyproto v0.8.0
 
 Apache License
                            Version 2.0, January 2004
@@ -5213,7 +6752,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
----- [68] used by: github.com/rasky/go-lzo v0.0.0-20200203143853-96a758eda86e
+---- [84] used by: github.com/rasky/go-lzo v0.0.0-20200203143853-96a758eda86e
 
 GNU GENERAL PUBLIC LICENSE
                        Version 2, June 1991
@@ -5555,7 +7094,7 @@ consider it more useful to permit linking proprietary applications with the
 library.  If this is what you want to do, use the GNU Lesser General
 Public License instead of this License.
 
----- [69] used by: github.com/RyuaNerin/go-krypto v1.3.0
+---- [85] used by: github.com/RyuaNerin/go-krypto v1.3.0
 
 MIT License
 
@@ -5579,7 +7118,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [70] used by: github.com/samber/lo v1.53.0
+---- [86] used by: github.com/samber/lo v1.53.0
 
 MIT License
 
@@ -5603,7 +7142,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [71] used by: github.com/sirupsen/logrus v1.10.2
+---- [87] used by: github.com/sirupsen/logrus v1.10.2
 
 The MIT License (MIT)
 
@@ -5627,7 +7166,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
----- [72] used by: github.com/stangelandcl/ppmd v0.1.1
+---- [88] used by: github.com/stangelandcl/ppmd v0.1.1
 
 The MIT License (MIT)
 
@@ -5652,7 +7191,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
----- [73] used by: github.com/tailscale/certstore v0.1.1-0.20260409135935-3638fb84b77d
+---- [89] used by: github.com/tailscale/certstore v0.1.1-0.20260409135935-3638fb84b77d
 
 MIT License
 
@@ -5676,7 +7215,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [74] used by: github.com/tailscale/hujson v0.0.0-20221223112325-20486734a56a
+---- [90] used by: github.com/tailscale/hujson v0.0.0-20221223112325-20486734a56a
 
 Copyright (c) 2019 Tailscale Inc. All rights reserved.
 
@@ -5706,7 +7245,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [75] used by: github.com/tailscale/peercred v0.0.0-20250107143737-35a0c7bd7edc
+---- [91] used by: github.com/tailscale/peercred v0.0.0-20250107143737-35a0c7bd7edc
 
 BSD 3-Clause License
 
@@ -5738,7 +7277,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [76] used by: github.com/u-root/uio v0.0.0-20230220225925-ffce2a382923
+---- [92] used by: github.com/u-root/uio v0.0.0-20230220225925-ffce2a382923
 
 BSD 3-Clause License
 
@@ -5770,7 +7309,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [77] used by: github.com/ulikunitz/xz v0.5.15
+---- [93] used by: github.com/ulikunitz/xz v0.5.15
 
 Copyright (c) 2014-2022  Ulrich Kunitz
 All rights reserved.
@@ -5799,7 +7338,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [78] used by: github.com/vmihailenco/msgpack/v5 v5.4.1
+---- [94] used by: github.com/vmihailenco/msgpack/v5 v5.4.1
 
 Copyright (c) 2013 The github.com/vmihailenco/msgpack Authors.
 All rights reserved.
@@ -5827,7 +7366,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [79] used by: github.com/vmihailenco/tagparser/v2 v2.0.0
+---- [95] used by: github.com/vmihailenco/tagparser/v2 v2.0.0
 
 Copyright (c) 2019 The github.com/vmihailenco/tagparser Authors.
 All rights reserved.
@@ -5855,7 +7394,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [80] used by: github.com/x448/float16 v0.8.4
+---- [96] used by: github.com/x448/float16 v0.8.4
 
 MIT License
 
@@ -5879,7 +7418,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [81] used by: github.com/Yawning/aez v0.0.0-20211027044916-e49e68abd344
+---- [97] used by: github.com/Yawning/aez v0.0.0-20211027044916-e49e68abd344
 
 Creative Commons Legal Code
 
@@ -6003,7 +7542,7 @@ express Statement of Purpose.
     party to this document and has no duty or obligation with respect to
     this CC0 or use of the Work.
 
----- [82] used by: github.com/yosida95/uritemplate/v3 v3.0.2
+---- [98] used by: github.com/yosida95/uritemplate/v3 v3.0.2
 
 Copyright (C) 2016, Kohei YOSHIDA <https://yosida95.com/>. All rights reserved.
 
@@ -6031,7 +7570,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [83] used by: gitlab.com/go-extension/aes-ccm v0.0.0-20230221065045-e58665ef23c7
+---- [99] used by: gitlab.com/go-extension/aes-ccm v0.0.0-20230221065045-e58665ef23c7
 
 MIT License
 
@@ -6055,7 +7594,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [84] used by: gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec
+---- [100] used by: gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec
 
 Copyright (c) 2016 Thomas Pornin <pornin@bolet.org>
 Copyright (c) 2017 Yawning Angel <yawning at schwanenlied dot me>
@@ -6080,7 +7619,7 @@ ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [85] used by: go.yaml.in/yaml/v3 v3.0.5
+---- [101] used by: go.yaml.in/yaml/v3 v3.0.5
 
 This project is covered by two different licenses: MIT and Apache.
 
@@ -6132,7 +7671,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
----- [86] used by: go.yaml.in/yaml/v3 v3.0.5
+---- [102] used by: go.yaml.in/yaml/v3 v3.0.5
 
 Copyright 2011-2016 Canonical Ltd.
 
@@ -6148,7 +7687,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
----- [87] used by: go4.org/mem v0.0.0-20240501181205-ae6ca9944745
+---- [103] used by: go4.org/mem v0.0.0-20240501181205-ae6ca9944745
 
 Apache License
                            Version 2.0, January 2004
@@ -6352,7 +7891,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
----- [88] used by: go4.org/netipx v0.0.0-20260823151212-3075585bcbeb
+---- [104] used by: go4.org/netipx v0.0.0-20260823151212-3075585bcbeb
 
 Copyright (c) 2020 The Inet.af AUTHORS. All rights reserved.
 
@@ -6382,7 +7921,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [89] used by: google.golang.org/protobuf v1.36.10
+---- [105] used by: google.golang.org/protobuf v1.36.10
 
 Copyright (c) 2018 The Go Authors. All rights reserved.
 
@@ -6412,7 +7951,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [90] used by: Go standard library go1.27.3
+---- [106] used by: Go standard library go1.27.3
 
 Additional IP Rights Grant (Patents)
 
@@ -6437,7 +7976,7 @@ infringement, or inducement of patent infringement, then any patent
 rights granted to you under this License for this implementation of Go
 shall terminate as of the date such litigation is filed.
 
----- [91] used by: Apache Tika MimeType Definitions (Qt Core) c29724782854bb5a319f4a1940d0828a58ace3f9
+---- [107] used by: Apache Tika MimeType Definitions (Qt Core) c29724782854bb5a319f4a1940d0828a58ace3f9
 
 Copyright 2026 The Apache Software Foundation
 
@@ -6503,7 +8042,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
----- [92] used by: BLAKE2 (reference implementation) (Qt Core) ed1974ea83433eba7b2d95c5dcd9ac33cb847913
+---- [108] used by: BLAKE2 (reference implementation) (Qt Core) ed1974ea83433eba7b2d95c5dcd9ac33cb847913
 
 Copyright 2012, Samuel Neves <sneves@dei.uc.pt>
 
@@ -6827,7 +8366,7 @@ For more information, please see
    See the License for the specific language governing permissions and
    limitations under the License.
 
----- [93] used by: Data Compression Library (zlib) (Qt Core) 1.3.2
+---- [109] used by: Data Compression Library (zlib) (Qt Core) 1.3.2
 
 (C) 1995-2026 Jean-loup Gailly and Mark Adler
 
@@ -6859,7 +8398,7 @@ If you redistribute modified sources, we would appreciate that you include in
 the file ChangeLog history information documenting your changes.  Please read
 the FAQ for more information on the distribution of modified source versions.
 
----- [94] used by: Easing Equations by Robert Penner (Qt Core)
+---- [110] used by: Easing Equations by Robert Penner (Qt Core)
 
 Copyright (c) 2001 Robert Penner
 
@@ -6889,7 +8428,7 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [95] used by: Efficient Binary-Decimal and Decimal-Binary Conversion Routines for IEEE Doubles (Qt Core) 3.4.0
+---- [111] used by: Efficient Binary-Decimal and Decimal-Binary Conversion Routines for IEEE Doubles (Qt Core) 3.4.0
 
 Copyright 2006-2012, the V8 project authors
 
@@ -6920,7 +8459,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [96] used by: MD4 (Qt Core)
+---- [112] used by: MD4 (Qt Core)
 
 Written by Alexander Peslyak - better known as Solar Designer <solar@openwall.com> - in 2001, and placed in the public domain. There's absolutely no warranty.
 
@@ -7046,7 +8585,7 @@ express Statement of Purpose.
     party to this document and has no duty or obligation with respect to
     this CC0 or use of the Work.
 
----- [97] used by: MD5 (Qt Core)
+---- [113] used by: MD5 (Qt Core)
 
 Written by Colin Plumb in 1993, no copyright is claimed. Ian Jackson <ian@chiark.greenend.org.uk>.
 
@@ -7172,7 +8711,7 @@ express Statement of Purpose.
     party to this document and has no duty or obligation with respect to
     this CC0 or use of the Work.
 
----- [98] used by: PCRE2 - Stack-less Just-In-Time Compiler (Qt Core) 10.48
+---- [114] used by: PCRE2 - Stack-less Just-In-Time Compiler (Qt Core) 10.48
 
 Copyright Zoltan Herczeg
 
@@ -7202,7 +8741,7 @@ Copyright Zoltan Herczeg
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
----- [99] used by: PCRE2 (Qt Core) 10.48
+---- [115] used by: PCRE2 (Qt Core) 10.48
 
 Copyright (c) 1997-2007 University of Cambridge
 Copyright (c) 2007-2024 Philip Hazel
@@ -7313,7 +8852,7 @@ PCRE2, it must respect the condition, but if package B is software that
 includes package A, the condition is not imposed on package B unless it uses
 PCRE2 independently.
 
----- [100] used by: QEventDispatcher on macOS (Qt Core), Cocoa Platform Plugin (Qt GUI)
+---- [116] used by: QEventDispatcher on macOS (Qt Core), Cocoa Platform Plugin (Qt GUI)
 
 Copyright (c) 2007-2008, Apple, Inc.
 
@@ -7347,7 +8886,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [101] used by: Secure Hash Algorithm SHA-1 (Qt Core)
+---- [117] used by: Secure Hash Algorithm SHA-1 (Qt Core)
 
 Copyright (C) Dominik Reichl <dominik.reichl@t-online.de>
 Copyright (C) 2016 The Qt Company Ltd
@@ -7356,7 +8895,7 @@ Copyright (C) 2016 The Qt Company Ltd
 by Dominik Reichl <dominik.reichl@t-online.de>
 Web: http://www.dominik-reichl.de/
 
----- [102] used by: Secure Hash Algorithm SHA-3 - Keccak (Qt Core) 3.2
+---- [118] used by: Secure Hash Algorithm SHA-3 - Keccak (Qt Core) 3.2
 
 Guido Bertoni, Joan Daemen, Michaël Peeters and Gilles Van Assche.
 To the extent possible under law, the implementers have waived all copyright
@@ -7462,7 +9001,7 @@ c. Affirmer disclaims responsibility for clearing rights of other persons that m
 d. Affirmer understands and acknowledges that Creative Commons is not a party to this document and
    has no duty or obligation with respect to this CC0 or use of the Work.
 
----- [103] used by: Secure Hash Algorithm SHA-3 - brg_endian (Qt Core) 1.0.0
+---- [119] used by: Secure Hash Algorithm SHA-3 - brg_endian (Qt Core) 1.0.0
 
 Copyright (c) 1998-2013, Brian Gladman, Worcester, UK. All rights reserved.
 
@@ -7481,7 +9020,7 @@ This software is provided 'as is' with no explicit or implied warranties
 in respect of its operation, including, but not limited to, correctness
 and fitness for purpose.
 
----- [104] used by: Secure Hash Algorithms SHA-384 and SHA-512 (Qt Core)
+---- [120] used by: Secure Hash Algorithms SHA-384 and SHA-512 (Qt Core)
 
 Copyright (c) 2011 IETF Trust and the persons identified as authors of the code.
 
@@ -7520,7 +9059,7 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [105] used by: SipHash Algorithm (Qt Core)
+---- [121] used by: SipHash Algorithm (Qt Core)
 
 Copyright (C) 2012-2014 Jean-Philippe Aumasson
 Copyright (C) 2012-2014 Daniel J. Bernstein <djb@cr.yp.to>
@@ -7648,7 +9187,7 @@ express Statement of Purpose.
     party to this document and has no duty or obligation with respect to
     this CC0 or use of the Work.
 
----- [106] used by: TinyCBOR (Qt Core) 7.0
+---- [122] used by: TinyCBOR (Qt Core) 7.0
 
 Copyright (C) 2015-2025 Intel Corporation
 
@@ -7674,7 +9213,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [107] used by: Unicode Character Database (UCD) (Qt Core) 36
+---- [123] used by: Unicode Character Database (UCD) (Qt Core) 36
 
 Copyright (C) 1991-2025 Unicode, Inc.
 
@@ -7718,7 +9257,7 @@ not be used in advertising or otherwise to promote the sale, use or other
 dealings in these Data Files or Software without prior written
 authorization of the copyright holder.
 
----- [108] used by: Unicode Common Locale Data Repository (CLDR) (Qt Core) v48.2
+---- [124] used by: Unicode Common Locale Data Repository (CLDR) (Qt Core) v48.2
 
 Copyright (C) 2004-2025 Unicode, Inc.
 
@@ -7762,7 +9301,7 @@ not be used in advertising or otherwise to promote the sale, use or other
 dealings in these Data Files or Software without prior written
 authorization of the copyright holder.
 
----- [109] used by: forkfd (Qt Core)
+---- [125] used by: forkfd (Qt Core)
 
 Copyright (C) 2016 Intel Corporation
 Copyright (C) 2015 Klarälvdalens Datakonsult AB, a KDAB Group company, info@kdab.com
@@ -7788,7 +9327,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
----- [110] used by: tl::expected (Qt Core) 41d3e1f48d682992a2230b2a715bca38b848b269
+---- [126] used by: tl::expected (Qt Core) 41d3e1f48d682992a2230b2a715bca38b848b269
 
 To the extent possible under law, Sy Brand has waived all copyright and related or neighboring rights to the expected library. This work is published from: United Kingdom.
 
@@ -7914,7 +9453,7 @@ express Statement of Purpose.
     party to this document and has no duty or obligation with respect to
     this CC0 or use of the Work.
 
----- [111] used by: Adobe Glyph List For New Fonts (Qt GUI) 1.7
+---- [127] used by: Adobe Glyph List For New Fonts (Qt GUI) 1.7
 
 Copyright 2002, 2003, 2005, 2006, 2008, 2010, 2015 Adobe Systems
 
@@ -7945,7 +9484,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [112] used by: Anti-aliasing rasterizer from FreeType 2 (Qt GUI)
+---- [128] used by: Anti-aliasing rasterizer from FreeType 2 (Qt GUI)
 
 Copyright 2000-2016 by David Turner, Robert Wilhelm, and Werner Lemberg.
 
@@ -8506,7 +10045,7 @@ Public License instead of this License.
 
 --- end of GPLv2.TXT ---
 
----- [113] used by: D3D12 Memory Allocator (Qt GUI) v3.1.0
+---- [129] used by: D3D12 Memory Allocator (Qt GUI) v3.1.0
 
 Copyright (c) 2019-2026 Advanced Micro Devices, Inc. All rights reserved.
 
@@ -8530,7 +10069,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
----- [114] used by: DejaVu Fonts (Qt GUI) 2.37
+---- [130] used by: DejaVu Fonts (Qt GUI) 2.37
 
 Copyright (c) 2003 by Bitstream, Inc
 Copyright (c) 2006 by Tavmjong Bah
@@ -8724,7 +10263,7 @@ given a different name.
 
 $Id$
 
----- [115] used by: Emoji Segmenter (Qt GUI) 0.4.0
+---- [131] used by: Emoji Segmenter (Qt GUI) 0.4.0
 
 Copyright 2019 Google LLC
 
@@ -8790,7 +10329,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
----- [116] used by: Freetype 2 - Bitmap Distribution Format (BDF) support (Qt GUI)
+---- [132] used by: Freetype 2 - Bitmap Distribution Format (BDF) support (Qt GUI)
 
 Copyright (c) 2000 Computing Research Labs, New Mexico State University
 Copyright (c) 2001-2014 Francesco Zappa Nardelli
@@ -8839,7 +10378,7 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT
 OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
 THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [117] used by: Freetype 2 - Portable Compiled Format (PCF) support (Qt GUI)
+---- [133] used by: Freetype 2 - Portable Compiled Format (PCF) support (Qt GUI)
 
 Copyright (c) 2001, 2012 David Turner, Robert Wilhelm, and Werner Lemberg
 Copyright (c) 2000-2014 Francesco Zappa Nardelli
@@ -8890,7 +10429,7 @@ Except as contained in this notice, the name of The Open Group shall not be
 used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization from The Open Group.
 
----- [118] used by: Freetype 2 - zlib (Qt GUI)
+---- [134] used by: Freetype 2 - zlib (Qt GUI)
 
 Copyright (C) 1995-2024 Jean-loup Gailly and Mark Adler
 
@@ -8915,7 +10454,7 @@ freely, subject to the following restrictions:
 Jean-loup Gailly        Mark Adler
 jloup@gzip.org          madler@alumni.caltech.edu
 
----- [119] used by: Freetype 2 (Qt GUI) 2.14.3
+---- [135] used by: Freetype 2 (Qt GUI) 2.14.3
 
 Copyright (c) 2007-2014 Adobe Systems Incorporated
 Copyright (c) 2004-2026 Albert Chin-A-Young
@@ -9505,7 +11044,7 @@ Public License instead of this License.
 
 --- end of GPLv2.TXT ---
 
----- [120] used by: HarfBuzz-NG (Qt GUI) 14.5.0
+---- [136] used by: HarfBuzz-NG (Qt GUI) 14.5.0
 
 Copyright © 2010-2022  Google, Inc.
 Copyright © 2015-2020  Ebrahim Byagowi
@@ -9568,7 +11107,7 @@ FITNESS FOR A PARTICULAR PURPOSE.  THE SOFTWARE PROVIDED HEREUNDER IS
 ON AN "AS IS" BASIS, AND THE COPYRIGHT HOLDER HAS NO OBLIGATION TO
 PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
----- [121] used by: LibJPEG-turbo (Qt GUI) 3.2.0
+---- [137] used by: LibJPEG-turbo (Qt GUI) 3.2.0
 
 Copyright (C) 2009-2026 D. R. Commander
 Copyright (C) 1991-1998 Thomas G. Lane
@@ -9769,7 +11308,7 @@ We specifically permit and encourage the use of this software as the basis of
 commercial products, provided that all warranty or liability claims are
 assumed by the product vendor.
 
----- [122] used by: LibPNG (Qt GUI) 1.6.58
+---- [138] used by: LibPNG (Qt GUI) 1.6.58
 
 Copyright (c) 1995-2026 The PNG Reference Library Authors
 Copyright (c) 2000-2026 Cosmin Truta
@@ -9929,7 +11468,7 @@ to supporting the PNG file format in commercial products.  If you use
 this source code in a product, acknowledgment is not required but would
 be appreciated.
 
----- [123] used by: MD4C (Qt GUI) 0.5.3
+---- [139] used by: MD4C (Qt GUI) 0.5.3
 
 Copyright © 2016-2024 Martin Mitáš
 
@@ -9955,7 +11494,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 IN THE SOFTWARE.
 
----- [124] used by: Mipmap generator for D3D12 (Qt GUI) 0aa79bad78992da0b6a8279ddb9002c1753cb849
+---- [140] used by: Mipmap generator for D3D12 (Qt GUI) 0aa79bad78992da0b6a8279ddb9002c1753cb849
 
 Copyright (c) 2015 Microsoft
 
@@ -9981,7 +11520,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [125] used by: OpenGL ES 2 Headers (Qt GUI) Revision 27673, OpenGL Headers (Qt GUI) Revision 27684
+---- [141] used by: OpenGL ES 2 Headers (Qt GUI) Revision 27673, OpenGL Headers (Qt GUI) Revision 27684
 
 Copyright (c) 2013-2014 The Khronos Group Inc.
 
@@ -10006,7 +11545,7 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 
----- [126] used by: Pixman (Qt GUI) 0.17.12
+---- [142] used by: Pixman (Qt GUI) 0.17.12
 
 Copyright © 2009 Nokia Corporation
 
@@ -10031,7 +11570,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
----- [127] used by: Smooth Scaling Algorithm (Qt GUI)
+---- [143] used by: Smooth Scaling Algorithm (Qt GUI)
 
 Copyright (C) 2004, 2005 Daniel M. Duley.
 (C) Carsten Haitzler and various contributors.
@@ -10098,7 +11637,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
----- [128] used by: Vulkan API Registry (Qt GUI) 1.4.308
+---- [144] used by: Vulkan API Registry (Qt GUI) 1.4.308
 
 Copyright (c) 2015-2025 The Khronos Group Inc.
 
@@ -10186,7 +11725,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
----- [129] used by: Vulkan Memory Allocator (Qt GUI) 3.3.0
+---- [145] used by: Vulkan Memory Allocator (Qt GUI) 3.3.0
 
 Copyright (c) 2017-2025 Advanced Micro Devices, Inc. All rights reserved.
 
@@ -10210,7 +11749,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
----- [130] used by: WebGradients (Qt GUI)
+---- [146] used by: WebGradients (Qt GUI)
 
 Copyright (c) 2017 itmeo
 
@@ -10236,14 +11775,14 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [131] used by: Wintab API (Qt GUI)
+---- [147] used by: Wintab API (Qt GUI)
 
 Copyright 1991-1998 by LCS/Telegraphics.
 
 The text and information contained in this file may be freely used,
 copied, or distributed without compensation or licensing restrictions.
 
----- [132] used by: sRGB color profile icc file (Qt GUI)
+---- [148] used by: sRGB color profile icc file (Qt GUI)
 
 Copyright International Color Consortium, 2015
 
@@ -10258,15 +11797,68 @@ shall not be misrepresented as the original profile.
 
 (original source location: http://www.color.org/srgbprofiles.xalter)
 
----- [133] used by: TIFF Software Distribution (libtiff) (Qt Image Formats) 4.7.2
+---- [149] used by: TIFF Software Distribution (libtiff) (Qt Image Formats) 4.7.2
 
-The copyright and license of TIFF Software Distribution (libtiff), version 4.7.2 are in Qt's documentation: https://doc.qt.io/qt-6/qtimageformats-attribution-libtiff.html
+Copyright (c) 1988-1997 Sam Leffler
+Copyright (c) 1991-1997 Silicon Graphics, Inc.
 
----- [134] used by: WebP (libwebp) (Qt Image Formats) 1.6.0
+Copyright (c) 1988-1997 Sam Leffler
+Copyright (c) 1991-1997 Silicon Graphics, Inc.
 
-The copyright and license of WebP (libwebp), version 1.6.0 are in Qt's documentation: https://doc.qt.io/qt-6/qtimageformats-attribution-libwebp.html
+Permission to use, copy, modify, distribute, and sell this software and 
+its documentation for any purpose is hereby granted without fee, provided
+that (i) the above copyright notices and this permission notice appear in
+all copies of the software and related documentation, and (ii) the names of
+Sam Leffler and Silicon Graphics may not be used in any advertising or
+publicity relating to the software without the specific, prior written
+permission of Sam Leffler and Silicon Graphics.
 
----- [135] used by: The Public Suffix List (Qt Network) 2026-05-14_08-35-31_UTC
+THE SOFTWARE IS PROVIDED "AS-IS" AND WITHOUT WARRANTY OF ANY KIND, 
+EXPRESS, IMPLIED OR OTHERWISE, INCLUDING WITHOUT LIMITATION, ANY 
+WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.  
+
+IN NO EVENT SHALL SAM LEFFLER OR SILICON GRAPHICS BE LIABLE FOR
+ANY SPECIAL, INCIDENTAL, INDIRECT OR CONSEQUENTIAL DAMAGES OF ANY KIND,
+OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+WHETHER OR NOT ADVISED OF THE POSSIBILITY OF DAMAGE, AND ON ANY THEORY OF 
+LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE 
+OF THIS SOFTWARE.
+
+---- [150] used by: WebP (libwebp) (Qt Image Formats) 1.6.0
+
+Copyright (c) 2010, Google Inc. All rights reserved.
+
+Copyright (c) 2010, Google Inc. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+  * Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+
+  * Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in
+    the documentation and/or other materials provided with the
+    distribution.
+
+  * Neither the name of Google nor the names of its contributors may
+    be used to endorse or promote products derived from this software
+    without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+---- [151] used by: The Public Suffix List (Qt Network) 2026-05-14_08-35-31_UTC
 
 The list was originally provided by Jo Hermans <jo.hermans@gmail.com>.
 It is now maintained on github (https://github.com/publicsuffix/list).
@@ -10645,7 +12237,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
   This Source Code Form is "Incompatible With Secondary Licenses", as
   defined by the Mozilla Public License, v. 2.0.
 
----- [136] used by: libpsl - C library to handle the Public Suffix List (Qt Network) 664f3dc85259ec65e30248a61fa1c45b7b0e4c3f
+---- [152] used by: libpsl - C library to handle the Public Suffix List (Qt Network) 664f3dc85259ec65e30248a61fa1c45b7b0e4c3f
 
 Copyright 2014-2016 The Chromium Authors. All rights reserved.
 
@@ -10680,7 +12272,7 @@ Copyright 2014-2016 The Chromium Authors. All rights reserved.
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [137] used by: JavaScriptCore Macro Assembler (Qt Qml)
+---- [153] used by: JavaScriptCore Macro Assembler (Qt Qml)
 
 Copyright (C) 2003-2018 Apple Inc. All rights reserved.
 Copyright (C) 2007 Justin Haygood (jhaygood@reaktix.com)
@@ -10719,7 +12311,7 @@ OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [138] used by: Yoga (Qt Quick) 2.0.1
+---- [154] used by: Yoga (Qt Quick) 2.0.1
 
 Copyright (c) Facebook, Inc. and its affiliates.
 Copyright (c) Meta Platforms, Inc. and affiliates.
@@ -10746,7 +12338,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [139] used by: Shadow values from Angular Material (Qt Quick Controls)
+---- [155] used by: Shadow values from Angular Material (Qt Quick Controls)
 
 Copyright (c) 2014-2016 Google, Inc
 
@@ -10770,7 +12362,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [140] used by: Inter 4.001
+---- [156] used by: Inter 4.001
 
 Copyright (c) 2016 The Inter Project Authors (https://github.com/rsms/inter)
 
@@ -10865,7 +12457,7 @@ DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 
----- [141] used by: JetBrains Mono 2.304
+---- [157] used by: JetBrains Mono 2.304
 
 Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
 
