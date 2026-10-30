@@ -6,6 +6,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from solaris.desktop import links
 from solaris.desktop.login import LoginItem, UnavailableLoginItem
 from solaris.host.base import TunnelHost
 from solaris.models.library import ProfileLibrary
@@ -84,6 +85,17 @@ class ViewModels:
         self.logs.retranslate()
         self.settings.retranslate()
         self.about.retranslate()
+
+    def open_link(self, link: str) -> None:
+        """An install link arrived (docs/release.md §7): show the window and the import form
+        with its subscription filled in; the user imports from there."""
+        self.desktop.showWindow()
+        self.shell.setPage("profiles")
+        parsed = links.parse(link)
+        if parsed is None:
+            self.profiles.rejectLink()
+        else:
+            self.profiles.prefillImport(parsed.url, parsed.name)
 
     def shutdown(self) -> None:
         self.shell.stop()

@@ -81,6 +81,13 @@ ScrollView {
                 page.closeImport()
         }
 
+        // An install link (docs/release.md §7): the form, filled in, for the user to check.
+        function onImportPrefilled() {
+            urlField.text = page.profiles.prefillUrl
+            nameField.text = page.profiles.prefillName
+            page.openImport()
+        }
+
         function onRemovalRequested() {
             removeDialog.showFor(profileMenu.trigger, profileMenu.triggerFocusReason)
         }

@@ -1169,6 +1169,10 @@ prepend-rules:
         <translation>Edit override for “{name}”</translation>
     </message>
     <message>
+        <source>无法识别的导入链接</source>
+        <translation>Unrecognized import link</translation>
+    </message>
+    <message>
         <source>{origin} · 正在更新</source>
         <translation>{origin} · Updating…</translation>
     </message>

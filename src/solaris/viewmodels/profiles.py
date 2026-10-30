@@ -147,6 +147,7 @@ class ProfilesViewModel(QObject):
     overrideSaved = Signal()  # the host accepted the override and it is stored
     routingChanged = Signal()  # the pool or the profile in use may have changed
     routingRequested = Signal()  # 使用它的规则: the view goes to the routing page
+    importPrefilled = Signal()  # an install link filled in the import form; the view opens it
 
     def __init__(
         self,
@@ -164,6 +165,8 @@ class ProfilesViewModel(QObject):
         self._updating: set[str] = set()
         self._importing = False
         self._import_error = ""
+        self._prefill_url = ""
+        self._prefill_name = ""
         self._checking = False
         self._error = ""
         self._removal: Removal | None = None  # the last one asked about; its text stays
@@ -589,6 +592,32 @@ class ProfilesViewModel(QObject):
             self.changed.emit()
 
         self._runner.submit(action, imported, failed)
+
+    @Property(str, notify=changed)
+    def prefillUrl(self) -> str:
+        return self._prefill_url
+
+    @Property(str, notify=changed)
+    def prefillName(self) -> str:
+        return self._prefill_name
+
+    @Slot(str, str)
+    def prefillImport(self, url: str, name: str) -> None:
+        """An install link names a subscription (docs/release.md §7): the view opens the
+        import form with it filled in, and the user imports from there. Ignored while an
+        import runs."""
+        if self._importing:
+            return
+        self._prefill_url, self._prefill_name = url, name
+        self._import_error = self._error = ""
+        self.changed.emit()
+        self.importPrefilled.emit()
+
+    @Slot()
+    def rejectLink(self) -> None:
+        """An install link that names no subscription; the page header says so."""
+        self._error = self.tr("无法识别的导入链接")
+        self.changed.emit()
 
     @Slot(str, str, bool)
     def importUrl(self, url: str, name: str, auto_update: bool) -> None:
