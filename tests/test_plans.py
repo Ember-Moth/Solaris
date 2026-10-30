@@ -215,3 +215,42 @@ def test_what_the_rule_test_reads() -> None:
     assert plans.match_target("[2001:db8::1]:443") == ("2001:db8::1", 443)
     for bad in ("", "not a host", "example.com:99999", "a,b.example", "[::1]x"):
         assert plans.match_target(bad) is None, bad
+
+
+def test_the_warp_exit_goes_to_the_core_only_when_on() -> None:
+    """docs/exits.md §7.1: egress.warp.via, by group id; the switch stays in the UI's plan."""
+    plan = plans.default_plan("p", "日常")
+    assert plans.warp_exit(plan) == plans.WarpExit(False, "proxy")
+    assert "egress" not in json.loads(plan_json(plan, "zh"))
+    off = plans.with_warp_exit(plan, plans.WarpExit(False, "region:JP"))
+    assert off.egress == {"warp": {"enabled": False, "via": "region:JP"}}
+    assert "egress" not in json.loads(plan_json(off, "zh"))
+    on = plans.with_warp_exit(off, plans.WarpExit(True, "region:JP"))
+    assert json.loads(plan_json(on, "zh"))["egress"] == {"warp": {"via": "region:JP"}}
+    # A copy keeps it; a plan the core wrote with it turns it on.
+    assert plans.warp_exit(plans.copy_plan(on, "副本")) == plans.WarpExit(True, "region:JP")
+    read = plans.plan_from_json(plan_json(on, "zh"), "q", "读回")
+    assert plans.warp_exit(read) == plans.WarpExit(True, "region:JP")
+
+
+def test_mesh_targets_and_their_common_rules() -> None:
+    target = "mesh:sub-a/家里/书房"
+    assert plans.is_mesh(target)
+    assert not plans.is_mesh(plans.WARP)
+    assert plans.mesh_name(target) == "家里/书房"
+    ranges, domains = plans.common_mesh_rules("Tailscale", target)
+    assert (ranges.kind, ranges.content, ranges.target) == (
+        "ip",
+        {"items": ["100.64.0.0/10", "fd7a:115c:a1e0::/48"], "no_resolve": True},
+        target,
+    )
+    assert (domains.kind, domains.content) == ("domain", {"items": ["ts.net"]})
+    assert plans.common_mesh_rules("ZeroTier", target) == ()
+    expanded = [plans.rule_items(rule) for rule in (ranges, domains)]
+    assert expanded == [
+        [
+            {"type": "IP-CIDR", "value": "100.64.0.0/10", "no_resolve": True},
+            {"type": "IP-CIDR6", "value": "fd7a:115c:a1e0::/48", "no_resolve": True},
+        ],
+        [{"type": "DOMAIN-SUFFIX", "value": "ts.net"}],
+    ]

@@ -12,10 +12,12 @@ from PySide6.QtQuick import QQuickWindow
 from pytestqt.qtbot import QtBot
 
 from solaris.app import load_ui
+from solaris.models import credentials
 from solaris.models.store import ProfileStore
 from solaris.viewmodels.appearance import Appearance
 from solaris.viewmodels.composition import compose
 from tests.support.appearance import SystemColorScheme
+from tests.support.credentials import MemoryKeyring
 from tests.support.i18n import ui_language
 from tests.support.releases import offline_updater
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
@@ -26,6 +28,14 @@ collect_ignore = ["e2e"] if sys.platform == "win32" else []
 
 # Qt renders headless in tests; set before PySide6 creates the application.
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+
+@pytest.fixture(autouse=True)
+def keyring(monkeypatch: pytest.MonkeyPatch) -> MemoryKeyring:
+    """The system's credential store, in memory: no test reads or writes the real one."""
+    memory = MemoryKeyring()
+    monkeypatch.setattr(credentials, "system_keyring", lambda: memory)
+    return memory
 
 
 @pytest.fixture

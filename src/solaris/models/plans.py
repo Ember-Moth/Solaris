@@ -11,6 +11,9 @@ A rule entry's ``content`` depends on its kind:
 A domain is a suffix match as written, ``=`` makes it a full match and ``~`` a keyword. A
 category converted from a subscription's ``GEOIP`` rule without ``no-resolve`` keeps
 ``"no_resolve": false``; the ones the dialog adds never resolve names.
+
+Besides the plan's groups, a target may be DIRECT, REJECT, the WARP exit (``egress:warp``,
+docs/exits.md §7.1) or a mesh outbound (``mesh:<profile id>/<name>``, docs/mesh.md §3).
 """
 
 from __future__ import annotations
@@ -38,6 +41,11 @@ FALLBACK_ENTRY = "fallback"  # the entry id of the rule for other traffic
 GROUP_TYPES = ("select", "url-test", "fallback", "load-balance")
 FULL_PREFIX = "="
 KEYWORD_PREFIX = "~"
+WARP = "egress:warp"  # the WARP exit as a target
+MESH_PREFIX = "mesh:"
+# What every tailnet uses (docs/mesh.md §5): its CGNAT and ULA ranges and MagicDNS's domain.
+TAILSCALE_RANGES = ("100.64.0.0/10", "fd7a:115c:a1e0::/48")
+TAILSCALE_DOMAINS = ("ts.net",)
 # Labels of letters, digits, hyphens and underscores; any script, as IDNs are written.
 _DOMAIN = re.compile(r"[\w-]+(\.[\w-]+)*", re.UNICODE)
 
@@ -76,6 +84,50 @@ def default_plan(plan_id: str | None = None, name: str | None = None) -> Plan:
     if name is None:
         name = QCoreApplication.translate("Plans", "日常")
     return Plan(plan_id or new_id("p"), name, PROXY, builtin_groups(), rules)
+
+
+# -- chained exits and mesh outbounds (docs/exits.md, docs/mesh.md) --------------------------
+@dataclass(frozen=True)
+class WarpExit:
+    """The WARP exit in a plan: whether its rules may use it, and the group its connections
+    go out through. The account belongs to the device, not the plan."""
+
+    enabled: bool = False
+    via: str = PROXY
+
+
+def warp_exit(plan: Plan | None) -> WarpExit:
+    egress = plan.egress if plan is not None and isinstance(plan.egress, dict) else {}
+    stored = egress.get("warp")
+    if not isinstance(stored, dict):
+        return WarpExit()
+    return WarpExit(bool(stored.get("enabled")), str(stored.get("via") or PROXY))
+
+
+def with_warp_exit(plan: Plan, warp: WarpExit) -> Plan:
+    egress = dict(plan.egress) if isinstance(plan.egress, dict) else {}
+    egress["warp"] = {"enabled": warp.enabled, "via": warp.via}
+    return replace(plan, egress=egress)
+
+
+def is_mesh(target: str) -> bool:
+    return target.startswith(MESH_PREFIX)
+
+
+def mesh_name(target: str) -> str:
+    """The outbound's name in its profile, as ``mesh:<profile id>/<name>`` holds it."""
+    return target.removeprefix(MESH_PREFIX).partition("/")[2]
+
+
+def common_mesh_rules(mesh_type: str, target: str) -> tuple[PlanRule, ...]:
+    """The rules every network of the type needs, for 添加常用规则: Tailscale's ranges and
+    domain. ZeroTier and EasyTier networks each choose their own ranges, so they have none."""
+    if mesh_type != "Tailscale":
+        return ()
+    return (
+        PlanRule(new_id("r"), "ip", {"items": list(TAILSCALE_RANGES), "no_resolve": True}, target),
+        PlanRule(new_id("r"), "domain", {"items": list(TAILSCALE_DOMAINS)}, target),
+    )
 
 
 def copy_plan(plan: Plan, name: str) -> Plan:
@@ -147,13 +199,16 @@ def plan_json(plan: Plan, locale: str) -> str:
         if rule.kind == "service":
             entry["service"] = rule.content.get("service")  # the UI's own field
         rules.append(entry)
-    document = {
+    document: dict[str, Any] = {
         "version": PLAN_VERSION,
         "locale": locale,
         "groups": groups,
         "rules": rules,
         "fallback": plan.fallback,
     }
+    warp = warp_exit(plan)
+    if warp.enabled:
+        document["egress"] = {"warp": {"via": warp.via}}
     return json.dumps(document, ensure_ascii=False, separators=(",", ":"))
 
 
@@ -208,7 +263,11 @@ def plan_from_json(text: str, plan_id: str, name: str) -> Plan:
                 enabled=entry.get("enabled", True),
             )
         )
-    return Plan(plan_id, name, document.get("fallback") or PROXY, tuple(groups), tuple(rules))
+    converted = Plan(plan_id, name, document.get("fallback") or PROXY, tuple(groups), tuple(rules))
+    warp = (document.get("egress") or {}).get("warp")
+    if isinstance(warp, dict):
+        converted = with_warp_exit(converted, WarpExit(True, str(warp.get("via") or PROXY)))
+    return converted
 
 
 def match_target(text: str) -> tuple[str, int] | None:
@@ -317,5 +376,5 @@ def parse_cidrs(text: str) -> Parsed:
     return Parsed(tuple(items), tuple(invalid))
 
 
-# Targets a rule may name besides the plan's groups.
+# Outbounds a rule may name besides the plan's groups, its exits and the mesh outbounds.
 OUTBOUNDS = (DIRECT, REJECT)

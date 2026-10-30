@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from solaris.desktop import links
 from solaris.desktop.login import LoginItem, UnavailableLoginItem
 from solaris.host.base import TunnelHost
+from solaris.models.credentials import CredentialStore
 from solaris.models.library import ProfileLibrary
 from solaris.models.settings import DatabaseSettingsStore, Settings, SettingsStore
 from solaris.models.store import ProfileStore
@@ -120,19 +121,28 @@ def compose(
     start_hidden: bool = False,
     appearance: Appearance | None = None,
     updater: Updater | None = None,
+    credentials: CredentialStore | None = None,
 ) -> ViewModels:
     """``clock`` dates profile updates and subscription expiry. The settings live in the
     profiles' database unless given. ``tray_available`` and ``start_hidden``: see DesktopViewModel.
     ``appearance`` defaults to the stored choice; the settings page changes it from then on.
-    ``updater`` defaults to GitHub's releases, downloaded into the profiles' directory."""
+    ``updater`` defaults to GitHub's releases, downloaded into the profiles' directory.
+    ``credentials`` keeps the WARP account; the system's credential store by default."""
     runner = AsyncRunner()
     settings_store = settings or DatabaseSettingsStore(store.database)
-    library = ProfileLibrary(store, host, fetcher, clock, settings=lambda: settings_store.current)
+    library = ProfileLibrary(
+        store,
+        host,
+        fetcher,
+        clock,
+        settings=lambda: settings_store.current,
+        credentials=credentials,
+    )
     shell = ShellViewModel(host, runner)
     overview = OverviewViewModel(host, library, runner, settings_store)
     proxies = ProxiesViewModel(host, runner)
     profiles = ProfilesViewModel(library, runner, clock)
-    routing = RoutingViewModel(library, runner)
+    routing = RoutingViewModel(library, runner, settings_store)
     connections = ConnectionsViewModel(host, runner)
     logs = LogsViewModel(host, runner)
     settings_page = SettingsViewModel(
@@ -165,6 +175,8 @@ def compose(
     routing.routingChanged.connect(profiles.reload)
     routing.applied.connect(overview.refreshGroups)
     routing.applied.connect(proxies.refresh)
+    # The WARP exit registers once the tunnel runs (docs/exits.md §2).
+    overview.changed.connect(lambda: routing.tunnel_running(bool(overview.property("connected"))))
 
     def routing_shown() -> None:
         proxies.set_pool(*routing.pool_sources())

@@ -43,6 +43,7 @@ from solaris.host.base import (
     HostInfo,
     HostStatus,
     LogEntry,
+    MeshOutbound,
     PlanConversion,
     PoolNode,
     Proxy,
@@ -217,7 +218,14 @@ ADAPTER_TYPES = {
     "http": "Http",
     "socks5": "Socks5",
     "direct": "Direct",
+    "tailscale": "Tailscale",
+    "zerotier": "ZeroTier",
+    "easytier": "EasyTier",
 }
+# Outbounds into the user's own networks (docs/mesh.md §3): kept out of the pool.
+MESH_TYPES = ("tailscale", "zerotier", "easytier")
+WARP_TARGET = "egress:warp"
+WARP_NAMES = {"zh": "WARP 出口", "en": "WARP exit"}  # the outbound, by the plan's locale
 # Share link schemes as proxy types.
 LINK_SCHEMES = {
     "ss": "ss",
@@ -283,6 +291,7 @@ def inspect(text: str, info_filter: str = "") -> SourceInspection:
                 ADAPTER_TYPES.get(str(p.get("type")), str(p.get("type"))),
                 region_of(p["name"]),
                 info is not None and info.search(p["name"]) is not None,
+                str(p.get("type")) in MESH_TYPES,
             )
             for p in proxies
         ),
@@ -353,20 +362,29 @@ def _members(
 def compose(composition: Composition) -> tuple[dict[str, Any], CompositionReport]:
     """A small stand-in for the core's composition (docs/routing.md §8): the pool, the
     built-in and region groups, custom groups with their members, and the rules with their
-    entry ids."""
+    entry ids. Mesh outbounds stay out of the pool (docs/mesh.md §3); the WARP exit goes out
+    through its via group, and without an account its rules reject (docs/exits.md §3.3)."""
     plan = _plan(composition)
     info = _info(composition.info_filter)
     nodes: list[PoolNode] = []
     proxies: list[dict[str, Any]] = []
+    mesh: list[MeshOutbound] = []
+    mesh_proxies: list[dict[str, Any]] = []
     taken = set(BUILT_IN_PROXIES)
     for source in composition.sources:
         for proxy in _subscription(source.yaml, f"subscription {source.name!r}: ")[0]:
             original = proxy["name"]
+            kind = ADAPTER_TYPES.get(str(proxy.get("type")), str(proxy.get("type")))
+            if str(proxy.get("type")) in MESH_TYPES:
+                name = f"{original} · {source.name}" if original in taken else original
+                taken.add(name)
+                mesh.append(MeshOutbound(f"mesh:{source.id}/{original}", name, kind, source.id))
+                mesh_proxies.append({**proxy, "name": name})
+                continue
             if info is not None and info.search(original):
                 continue
             name = f"{original} · {source.name}" if original in taken else original
             taken.add(name)
-            kind = ADAPTER_TYPES.get(str(proxy.get("type")), str(proxy.get("type")))
             nodes.append(PoolNode(name, original, source.id, kind, region_of(original)))
             proxies.append({**proxy, "name": name})
     proxy_name, auto_name = "节点选择", "自动选择"
@@ -383,11 +401,24 @@ def compose(composition: Composition) -> tuple[dict[str, Any], CompositionReport
         replace(g, node_count=len(members[g.id][0])) if g.id in members else g for g in groups
     ]
     names = {group.id: group.name for group in groups}
+    meshes = {outbound.id: outbound.name for outbound in mesh}
+    warp_name = WARP_NAMES.get(str(plan.get("locale")), WARP_NAMES["zh"])
+    warp_used = False
     warnings: list[CompositionWarning] = []
 
     def target(entry_id: str, wanted: str) -> str:
+        nonlocal warp_used
         if wanted in BUILT_IN_PROXIES:
             return wanted
+        if wanted == WARP_TARGET or wanted.startswith("mesh:"):
+            if wanted == WARP_TARGET and composition.egress.warp is not None:
+                warp_used = True
+                return warp_name
+            if wanted in meshes:
+                return meshes[wanted]
+            reason = "egress_unavailable" if wanted == WARP_TARGET else "mesh_missing"
+            warnings.append(CompositionWarning(entry_id, reason, wanted))
+            return "REJECT"
         if wanted in names and members.get(wanted, ([None], [None])) != ([], []):
             return names[wanted]
         reason = "region_empty" if wanted.startswith("region:") else "group_empty"
@@ -402,6 +433,24 @@ def compose(composition: Composition) -> tuple[dict[str, Any], CompositionReport
                 Rule(i["type"].upper(), i["value"], to, entry["id"]) for i in entry["items"]
             )
     rules.append(Rule("MATCH", "", target("fallback", plan.get("fallback") or "proxy"), "fallback"))
+    account = composition.egress.warp
+    if warp_used and account is not None:
+        via = str(((plan.get("egress") or {}).get("warp") or {}).get("via") or "proxy")
+        if via not in names or members.get(via, ([None], [None])) == ([], []):
+            warnings.append(CompositionWarning(WARP_TARGET, "via_empty", via))
+            via = "proxy"
+        wireguard = account.protocol == "wireguard"
+        host, _, port = account.endpoint.rpartition(":")
+        outbound: dict[str, Any] = {
+            "name": warp_name,
+            "type": "wireguard" if wireguard else "masque",
+            "server": host,
+            "port": int(port),
+            "dialer-proxy": names[via],
+        }
+        if account.protocol == "masque-h2":
+            outbound["network"] = "h2"
+        mesh_proxies.append(outbound)
 
     def group_proxies(group: ComposedGroup) -> list[str]:
         if group.id not in members:
@@ -411,13 +460,15 @@ def compose(composition: Composition) -> tuple[dict[str, Any], CompositionReport
         return listed or ["COMPATIBLE"]
 
     document = {
-        "proxies": proxies,
+        "proxies": proxies + mesh_proxies,
         "proxy-groups": [
             {"name": g.name, "type": "select", "proxies": group_proxies(g)} for g in groups
         ],
         "rules": [",".join(part for part in (r.type, r.payload, r.proxy) if part) for r in rules],
     }
-    report = CompositionReport(tuple(warnings), tuple(groups), tuple(rules), tuple(nodes))
+    report = CompositionReport(
+        tuple(warnings), tuple(groups), tuple(rules), tuple(nodes), tuple(mesh)
+    )
     return document, report
 
 
@@ -922,6 +973,10 @@ class SimulatedHost:
         self.effective: dict[str, Any] | None = None  # that config after the pipeline
         self.report: CompositionReport | None = None  # its report, for a composition
         self.reloads = 0
+        # register_warp's calls as (via, protocol, re-keyed device or ""), and the error the
+        # next one raises instead of registering.
+        self.warp_calls: list[tuple[str, str, str]] = []
+        self.warp_error: HostError | None = None
         self._mode = "rule"
         self._tun = not development
         self._system_proxy = False
@@ -1077,6 +1132,13 @@ class SimulatedHost:
         # A fixed made-up device; the real one comes from Cloudflare (docs/exits.md §3.2).
         if not self._running:
             raise HostError("not_running", "the core is not running")
+        groups = _names((self.effective or {}).get("proxy-groups"))
+        if self.effective is not None and via not in groups:
+            raise HostError("invalid_request", f"no group {via!r} in the running configuration")
+        self.warp_calls.append((via, protocol, existing.device_id if existing else ""))
+        if self.warp_error is not None:
+            error, self.warp_error = self.warp_error, None
+            raise error
         return WarpAccount(
             device_id=existing.device_id if existing else "a1b2c3d4-0000-4000-8000-000000000000",
             token=existing.token if existing else "simulated-token",
