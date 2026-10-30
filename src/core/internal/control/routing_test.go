@@ -2,6 +2,7 @@ package control
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
@@ -104,6 +105,126 @@ func TestRoutingMethodsOnEveryHost(t *testing.T) {
 		if !slices.Contains(categories.GetGeosite().GetNames(), "telegram") || !slices.Contains(categories.GetGeoip().GetNames(), "cn") {
 			t.Fatalf("host=%v categories = %v", host, categories)
 		}
+		dispatcher.Close()
+	}
+}
+
+// The routing editor's methods need no running core and run on every host; malformed
+// requests are invalid_request, drafts the core refuses invalid_config.
+func TestPlanMethodsOnEveryHost(t *testing.T) {
+	plan := `{"version": 1, "groups": [{"id": "jp", "kind": "custom", "name": "日本", "members": {"regions": ["JP"], "others": ["DIRECT"]}}],
+		"rules": [{"id": "web", "items": [{"type": "DOMAIN-SUFFIX", "value": "example.com"}], "target": "jp"}]}`
+	for _, host := range []bool{true, false} {
+		dispatcher := New(Options{Engine: core, HostMethods: host})
+		preview := call(t, dispatcher, request(1, func(r *controlpb.Request) {
+			r.Method = &controlpb.Request_PreviewGroup{PreviewGroup: &controlpb.PreviewGroupRequest{
+				Composition: compositionOf(plan), GroupId: "jp",
+			}}
+		})).GetPreviewGroup()
+		if len(preview.GetNodes()) != 1 || !slices.Equal(preview.GetOthers(), []string{"DIRECT"}) {
+			t.Fatalf("host=%v preview = %v", host, preview)
+		}
+
+		matched := call(t, dispatcher, request(2, func(r *controlpb.Request) {
+			r.Method = &controlpb.Request_MatchRule{MatchRule: &controlpb.MatchRuleRequest{
+				Source: &controlpb.MatchRuleRequest_Composition{Composition: compositionOf(plan)},
+				Host:   "www.example.com",
+			}}
+		})).GetMatchRule()
+		if !matched.GetMatched() || matched.GetRule().GetEntryId() != "web" || !slices.Equal(matched.GetChain(), []string{"日本"}) {
+			t.Fatalf("host=%v match = %v", host, matched)
+		}
+		profileMatch := call(t, dispatcher, request(3, func(r *controlpb.Request) {
+			r.Method = &controlpb.Request_MatchRule{MatchRule: &controlpb.MatchRuleRequest{
+				Source:  &controlpb.MatchRuleRequest_ConfigYaml{ConfigYaml: "rules: ['DOMAIN-KEYWORD,example,REJECT']\n"},
+				Host:    "example.org",
+				Port:    80,
+				Network: "udp",
+			}}
+		})).GetMatchRule()
+		if profileMatch.GetRule().GetType() != "DOMAIN-KEYWORD" || profileMatch.GetRule().GetEntryId() != "" {
+			t.Fatalf("host=%v match on a profile = %v", host, profileMatch)
+		}
+
+		converted := call(t, dispatcher, request(4, func(r *controlpb.Request) {
+			r.Method = &controlpb.Request_ConvertToPlan{ConvertToPlan: &controlpb.ConvertToPlanRequest{
+				Yaml: poolSource + "rules:\n  - DOMAIN,a.example,DIRECT\n  - MATCH,REJECT\n", Locale: "en",
+			}}
+		})).GetConvertToPlan()
+		if converted.GetRuleCount() != 2 || converted.GetEntryCount() != 1 ||
+			converted.GetPlanJson() != `{"version":1,"locale":"en","rules":[{"id":"r-b04584560472","kind":"domain","items":[{"type":"DOMAIN","value":"a.example"}],"target":"DIRECT"}],"fallback":"REJECT"}` {
+			t.Fatalf("host=%v conversion = %v", host, converted)
+		}
+
+		for format, prefix := range map[controlpb.ExportFormat]string{
+			controlpb.ExportFormat_EXPORT_FORMAT_SHARE:     "proxy-groups:\n",
+			controlpb.ExportFormat_EXPORT_FORMAT_GENERATED: "mode: rule\n",
+		} {
+			exported := call(t, dispatcher, request(5, func(r *controlpb.Request) {
+				r.Method = &controlpb.Request_ExportPlan{ExportPlan: &controlpb.ExportPlanRequest{
+					Composition: compositionOf(plan), Format: format,
+				}}
+			})).GetExportPlan()
+			if !strings.HasPrefix(exported.GetYaml(), prefix) {
+				t.Fatalf("host=%v %v export = %q", host, format, exported.GetYaml())
+			}
+		}
+
+		for id, method := range map[uint64]func(*controlpb.Request){
+			10: func(r *controlpb.Request) {
+				r.Method = &controlpb.Request_PreviewGroup{PreviewGroup: &controlpb.PreviewGroupRequest{GroupId: "jp"}}
+			},
+			11: func(r *controlpb.Request) {
+				r.Method = &controlpb.Request_MatchRule{MatchRule: &controlpb.MatchRuleRequest{
+					Source: &controlpb.MatchRuleRequest_Composition{Composition: compositionOf(plan)},
+					Host:   "example.com", Network: "sctp",
+				}}
+			},
+			12: func(r *controlpb.Request) {
+				r.Method = &controlpb.Request_MatchRule{MatchRule: &controlpb.MatchRuleRequest{
+					Source: &controlpb.MatchRuleRequest_Composition{Composition: compositionOf(plan)},
+					Host:   "example.com", Port: 70000,
+				}}
+			},
+			13: func(r *controlpb.Request) {
+				r.Method = &controlpb.Request_ExportPlan{ExportPlan: &controlpb.ExportPlanRequest{}}
+			},
+			14: func(r *controlpb.Request) {
+				r.Method = &controlpb.Request_ExportPlan{ExportPlan: &controlpb.ExportPlanRequest{
+					Composition: compositionOf(plan), Format: 9,
+				}}
+			},
+			15: func(r *controlpb.Request) {
+				r.Method = &controlpb.Request_MatchRule{MatchRule: &controlpb.MatchRuleRequest{
+					Source: &controlpb.MatchRuleRequest_Composition{Composition: compositionOf(plan)},
+					Host:   "not a host",
+				}}
+			},
+		} {
+			expectError(t, call(t, dispatcher, request(id, method)), id, CodeInvalidRequest)
+		}
+		for id, method := range map[uint64]func(*controlpb.Request){
+			20: func(r *controlpb.Request) {
+				r.Method = &controlpb.Request_PreviewGroup{PreviewGroup: &controlpb.PreviewGroupRequest{
+					Composition: compositionOf(`{"version": 1}`), GroupId: "nowhere",
+				}}
+			},
+			21: func(r *controlpb.Request) {
+				r.Method = &controlpb.Request_ConvertToPlan{ConvertToPlan: &controlpb.ConvertToPlanRequest{Yaml: poolSource}}
+			},
+			22: func(r *controlpb.Request) {
+				r.Method = &controlpb.Request_MatchRule{MatchRule: &controlpb.MatchRuleRequest{
+					Source: &controlpb.MatchRuleRequest_Composition{Composition: compositionOf(`{"version": 3}`)},
+					Host:   "example.com",
+				}}
+			},
+		} {
+			expectError(t, call(t, dispatcher, request(id, method)), id, CodeInvalidConfig)
+		}
+		// Without a source the running configuration answers, and the core is stopped.
+		expectError(t, call(t, dispatcher, request(30, func(r *controlpb.Request) {
+			r.Method = &controlpb.Request_MatchRule{MatchRule: &controlpb.MatchRuleRequest{Host: "example.com"}}
+		})), 30, CodeNotRunning)
 		dispatcher.Close()
 	}
 }

@@ -6,6 +6,8 @@ from __future__ import annotations
 import asyncio
 
 from solaris.host.base import (
+    EXPORT_GENERATED,
+    EXPORT_SHARE,
     ComposedGroup,
     Composition,
     CompositionReport,
@@ -13,15 +15,19 @@ from solaris.host.base import (
     Connection,
     GeoCategories,
     GeoDataset,
+    GroupPreview,
     HostError,
     HostInfo,
     HostStatus,
     LogEntry,
+    PlanConversion,
     PoolNode,
     Proxy,
     ProxyGroup,
     Rule,
+    RuleMatch,
     RunOptions,
+    SkippedRule,
     SourceInspection,
     SourceNode,
     TrafficSample,
@@ -35,6 +41,10 @@ from solaris.protocol import control_pb2
 pb = control_pb2
 
 MODES = {"rule": pb.MODE_RULE, "global": pb.MODE_GLOBAL, "direct": pb.MODE_DIRECT}
+EXPORT_FORMATS = {
+    EXPORT_SHARE: pb.EXPORT_FORMAT_SHARE,
+    EXPORT_GENERATED: pb.EXPORT_FORMAT_GENERATED,
+}
 LOG_LEVELS = {
     "debug": pb.LOG_LEVEL_DEBUG,
     "info": pb.LOG_LEVEL_INFO,
@@ -67,7 +77,7 @@ def _composition(composition: Composition) -> pb.Composition:
     )
 
 
-def _with_source[R: (pb.ValidateRequest, pb.StartRequest, pb.ReloadRequest)](
+def _with_source[R: (pb.ValidateRequest, pb.StartRequest, pb.ReloadRequest, pb.MatchRuleRequest)](
     request: R, config: TunnelConfig
 ) -> R:
     """Fill the request's oneof source: the composition, or else the YAML."""
@@ -94,11 +104,17 @@ def _report(response: pb.Response) -> CompositionReport | None:
             )
             for g in report.groups
         ),
-        rules=tuple(Rule(r.type, r.payload, r.proxy, r.entry_id) for r in report.rules),
-        nodes=tuple(
-            PoolNode(n.name, n.original_name, n.source_id, n.type, n.region) for n in report.nodes
-        ),
+        rules=tuple(_rule(r) for r in report.rules),
+        nodes=tuple(_pool_node(n) for n in report.nodes),
     )
+
+
+def _rule(rule: pb.Rule) -> Rule:
+    return Rule(rule.type, rule.payload, rule.proxy, rule.entry_id)
+
+
+def _pool_node(node: pb.PoolNode) -> PoolNode:
+    return PoolNode(node.name, node.original_name, node.source_id, node.type, node.region)
 
 
 def _dataset(categories: pb.GeoCategories, bundled: GeoDataset) -> GeoDataset:
@@ -218,6 +234,56 @@ class ServiceHost:
             geoip=_dataset(listed.geoip, bundled.geoip),
         )
 
+    async def preview_group(self, composition: Composition, group_id: str) -> GroupPreview:
+        request = pb.PreviewGroupRequest(composition=_composition(composition), group_id=group_id)
+        preview = (await self._call(pb.Request(preview_group=request))).preview_group
+        return GroupPreview(tuple(_pool_node(n) for n in preview.nodes), tuple(preview.others))
+
+    async def match_rule(
+        self, host: str, port: int = 0, network: str = "tcp", config: TunnelConfig | None = None
+    ) -> RuleMatch:
+        request = pb.MatchRuleRequest(host=host, port=port, network=network)
+        if config is not None:
+            request.overrides.extend(config.overrides)
+            _with_source(request, config)
+        matched = (await self._call(pb.Request(match_rule=request))).match_rule
+        return RuleMatch(
+            matched=matched.matched,
+            index=matched.index,
+            rule=_rule(matched.rule) if matched.HasField("rule") else None,
+            # mihomo's order is from the node outwards, as for connections.
+            chain=tuple(reversed(matched.chain)),
+            resolved_ip=matched.resolved_ip,
+        )
+
+    async def convert_to_plan(
+        self, yaml: str, *, source_id: str = "", locale: str = "zh", info_filter: str = ""
+    ) -> PlanConversion:
+        request = pb.ConvertToPlanRequest(
+            yaml=yaml, source_id=source_id, locale=locale, info_filter=info_filter
+        )
+        converted = (await self._call(pb.Request(convert_to_plan=request))).convert_to_plan
+        return PlanConversion(
+            plan_json=converted.plan_json,
+            group_count=converted.group_count,
+            merged_group_count=converted.merged_group_count,
+            rule_count=converted.rule_count,
+            raw_rule_count=converted.raw_rule_count,
+            entry_count=converted.entry_count,
+            skipped=tuple(SkippedRule(r.rule, r.reason) for r in converted.skipped),
+        )
+
+    async def export_plan(self, config: TunnelConfig, export: str = EXPORT_SHARE) -> str:
+        if config.composition is None:
+            raise ValueError("export_plan needs a composition")
+        request = pb.ExportPlanRequest(
+            composition=_composition(config.composition),
+            format=EXPORT_FORMATS[export],
+            overrides=list(config.overrides),
+            options=_options(config.options),
+        )
+        return (await self._call(pb.Request(export_plan=request))).export_plan.yaml
+
     async def stop(self) -> None:
         await self._call(pb.Request(stop=pb.StopRequest()))
 
@@ -239,7 +305,7 @@ class ServiceHost:
 
     async def list_rules(self) -> list[Rule]:
         response = await self._call(pb.Request(list_rules=pb.ListRulesRequest()))
-        return [Rule(r.type, r.payload, r.proxy, r.entry_id) for r in response.list_rules.rules]
+        return [_rule(r) for r in response.list_rules.rules]
 
     async def select_proxy(self, group: str, proxy: str) -> None:
         request = pb.Request(select_proxy=pb.SelectProxyRequest(group=group, proxy=proxy))
