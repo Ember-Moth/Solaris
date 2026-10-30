@@ -2,7 +2,7 @@
 
 本文描述 Python 界面的结构和各部分的设计：宿主接口、配置存储、订阅、覆写、多语言、外观、连接与日志、设置与桌面行为。
 系统整体的架构见 [architecture.md](architecture.md)，视觉规范见 [DESIGN.md](../DESIGN.md)。云备份的设计见
-[storage.md](storage.md)，自定义分流的设计见 [routing.md](routing.md)，两者的界面部分尚未实现。
+[storage.md](storage.md)（界面部分尚未实现），自定义分流的设计见 [routing.md](routing.md)，界面部分见第 9 节。
 
 ## 0. 结构
 
@@ -50,7 +50,8 @@
 - `models/database.py`：连接、表结构、迁移；
 - `models/store.py`：配置和覆写（`ProfileStore`），以及打开数据库的 `open_database`；
 - `models/settings.py`：设置（第 8 节）；
-- `models/routing.py`：分流数据，界面在 C1 实现；
+- `models/routing.py`：分流数据（routing_state 和方案的三张表）；
+- `models/plans.py`、`models/services.py`、`models/regions.py`：方案的默认模板与方案 JSON、服务清单、地区名称（第 9 节）；
 - `models/file_import.py`：读取旧版本的文件存储（2.4 节）。
 
 ### 2.1 表
@@ -63,7 +64,7 @@
 | `settings` | 见第 8 节 |
 | `state` | 本机状态。目前只有 `file_import`，即文件存储的导入记录 |
 | `routing_state` | 只有一行：分流方式、"订阅自带"用的配置（也就是当前配置）、"我的方案"用的方案、信息节点表达式 |
-| `plans`、`plan_groups`、`plan_rules` | 分流方案（routing.md 第 9 节），C1 开始使用 |
+| `plans`、`plan_groups`、`plan_rules` | 分流方案（routing.md 第 9 节），第 9 节 |
 | `backup_targets` | 备份目标，C2 开始使用 |
 
 - 时间都用 Unix 秒。每行有 `updated_at`，只在内容确实变化时更新。`profiles`、`overrides`、`plans`、`plan_groups`、
@@ -78,7 +79,7 @@
   - `delete_config` 删除原文，并把这份配置的覆写标记删除。清空覆写文本也是标记删除，再次写入时恢复。
   - 原文不存在时报 `config_missing`；数据库读写失败时报 `storage_failed`，界面显示「操作失败：…」。
   - 如果在写入原文之后、保存列表之前崩溃，留下的原文会在下次打开数据库时清掉。
-- `Profile.in_pool` 对应 `profiles.in_pool`，默认为真，目前只存取，C1 才会用到。
+- `Profile.in_pool` 对应 `profiles.in_pool`，默认为真：这份订阅的节点进入"我的方案"的节点池（第 9 节）。
 - 更新失败的标记只在内存里，不写入数据库。
 
 ### 2.2 线程
@@ -165,7 +166,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   照样会被清除。
 - 某段覆写解析失败、不是映射，或插入键的值不是列表时，Validate、Start、Reload 都返回 `invalid_config`，
   `message` 是解析错误原文，界面原样显示。
-- **编辑**：入口是配置「更多」菜单里的「编辑覆写…」和配置页底部的「全局覆写」一行；有覆写的配置在列表第二行
+- **编辑**：入口是订阅「更多」菜单里的「编辑覆写…」和订阅页底部的「全局覆写」一行；有覆写的配置在列表第二行
   写「已覆写」。保存时先用受影响的配置和新覆写调用 `validate`：配置自己的覆写用这份配置校验，全局覆写用
   当前配置校验（所以没有配置时不能编辑全局覆写）。宿主拒绝时不保存，错误显示在编辑框下方；通过后写入存储，
   隧道在运行且用的正是受影响的配置时随后 `reload`。校验、写入和重载在配置库的同一把锁下进行。
@@ -211,8 +212,17 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 - **`.qm` 提交进仓库**（与 Theme.qml 一样），从源码运行和预览不需要额外步骤。Nuitka 打包时，
   `package/entry.py` 里的 `nuitka-project` 选项把 `translations/*.qm` 复制到 `mihomo_desktop/translations/`，
   `i18n.py` 按包内路径加载；找不到 `.qm` 时启动报错，而不是静默显示中文。
-- Qt 控件自带的文案（如输入框右键菜单的 Cut / Copy / Paste）不在本项目的目录里。Qt 自带的 zh_CN 目录尚未
-  收录这些新文案，中文界面下它们仍显示英文。
+- **Qt 自带的文案**：输入框和编辑框的右键菜单（撤销、重做、剪切、复制、粘贴、删除、全选）来自 Qt 自己的 QML，
+  `QtQuick.Controls.impl` 的 `UndoAction`、`CutAction` 等文件里的 `qsTr`，所以翻译上下文就是这些文件名。Qt 附带的
+  zh_CN 目录（PySide6 6.12）还没有这些条目，本项目在 `translations/qtquick_zh_CN.ts` 里补上中文，中文界面下由
+  `Translations` 一并加载（`i18n.QT_CATALOGS`）；英文界面就是 Qt 的原文，不需要目录。
+  - 这个目录不在 `gen_i18n.py` 的流程里（lupdate 扫不到 Qt 的源码），改动后用
+    `pyside6-lrelease -nounfinished -silent src/mihomo_desktop/translations/qtquick_zh_CN.ts -qm src/mihomo_desktop/translations/qtquick_zh_CN.qm`
+    编译；`.qm` 同样提交进仓库，打包时随 `translations/*.qm` 一起复制。
+  - `tests/test_qt_translations.py` 核对：每个条目都是 Qt 那个文件里的 `qsTr` 原文，Basic 样式的菜单正好用这几个
+    Action（升级 Qt 后有变化就失败）；`.qm` 与 `.ts` 一致；在中文和英文界面下实际创建这些 Action，读出的文字分别是
+    中文和 Qt 的英文原文。
+  - 其他 Qt 自带的文案（如系统文件对话框）由操作系统提供，跟随系统语言。
 
 ## 6. 外观
 
@@ -385,3 +395,44 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   - 只有打包后的程序（Nuitka 编译，macOS 上还要在 `.app` 里）才注册；从源码运行时是 `UnavailableLoginItem`，
     开关不可用并注明「仅安装版可用」，避免在开发机上把 Python 解释器注册成登录项。测试只用替身，真实注册在
     M4、M5 的测试机上验证。
+
+## 9. 分流
+
+设计见 [routing.md](routing.md)；这里写界面怎样实现它（roadmap C1）。
+
+- **分流方式决定隧道运行什么**（`ProfileLibrary`）：
+  - "订阅自带"（`routing_state.mode = 'profile'`）：当前配置（`ProfileList.active`，即 `routing_state.profile_id`）的
+    原文，覆写为全局覆写加这份订阅自己的（routing.md §5.6）；
+  - "我的方案"（`'plan'`）：`TunnelConfig.composition`，节点池里各订阅按列表顺序的原文、正在使用的方案
+    （`plans.plan_json`，`locale` 跟随界面语言）和信息节点表达式（`routing_state.info_pattern`，为 NULL 时用
+    `DEFAULT_INFO_PATTERN`）；覆写只有全局覆写。
+  - Start、Reload、改 TUN 和端口时的重载都按当前的分流方式拼出配置。
+- **导入与更新**：先 `inspect_source`。订阅带规则时再用自己的原文 `validate`（它要能单独使用）；只有节点的订阅
+  （包括分享链接）不单独校验。分流方式是"我的方案"且这份订阅加入节点池时，还要用加上它之后的拼装校验。
+  `proxy_count` 数不出来时（分享链接）取 `inspect_source` 的节点数。读出来的 `SourceInspection` 缓存在内存里，
+  界面启动后对还没读过的订阅补读一次（`inspect_all`），用于"只有节点"的标注和挑选接替的订阅。
+- **默认值**（routing.md §5.1）：
+  - `mode` 为 NULL 只表示还没导入过订阅。第一次导入时，带规则就是"订阅自带"并使用这份订阅；只有节点就是
+    "我的方案"，按模板生成方案（`plans.default_plan`，名为"日常"）。之后的导入不改分流方式；当前配置还空着时，
+    第一份带规则的订阅成为当前配置。
+  - 删除规则正在使用的订阅：改用列表里最早的另一份带规则的订阅，一份都没有就切到"我的方案"（没有方案时按
+    模板生成）。隧道在运行时先用接替者重载，重载失败就不删除。
+- **生效**（routing.md §5.4）：方案的每次改动都是"先 `validate`、再存储、正在使用时 `reload`"，在配置库的同一把
+  锁下进行。改动的结果是 `CompositionReport`：警告按条目 id 显示在规则行上，地区组和节点数供目标下拉框、策略组
+  标签和代理页使用。报告随节点池、方案和信息节点表达式的变化失效，分流页显示时重新拼装一次。
+- **`RoutingViewModel`**（`viewmodels/routing.py`）：
+  - 改动立即显示，再交给配置库；被拒绝时恢复为已存储的方案，原因写在标题栏。
+  - 拖动和菜单里的上移、下移先只改显示，停止 1 秒后作为一次改动提交；其他改动会顺带提交它们。
+  - 删除规则后标题栏显示撤销提示 8 秒，或者到下一次改动为止；撤销就是把删除前的方案存回去（软删除的记录恢复）。
+  - 添加规则对话框是 `RuleEditor`（`viewmodels/rule_editor.py`）：服务、分类、域名和 IP 段四种；多选的服务
+    和分类各生成一条，域名和 IP 段一次生成一条；新条目插在最前面，编辑保持位置和 id。内核拒绝时对话框不关闭。
+    分类列表取自 `list_geo_categories`，连不上时用安装包附带的清单。
+  - "订阅自带"且这份订阅正在运行时，用 `list_groups` 和 `list_rules` 只读列出它的策略组和规则；不在运行时
+    写出 `inspect_source` 给的数量。
+- **其他页面**：订阅页的行在说明里写"规则使用中""不加入节点池"；概览页"出站"分组的"当前使用"跳到分流页；
+  代理页用报告里的节点池标出每个节点的来源订阅，地区组收进可折叠的"地区"小节；连接页用
+  `Connection.rule_entry_id` 显示规则条目名称，第二行是内核的原始规则。
+- **服务清单与地区名称**：`models/services.py`（41 个服务，九个类别）和 `models/regions.py`（与内核的地区表
+  同序，名称用 `qsTr` 的英文译文）。服务的中英文名称在清单里，按当前安装的翻译选用（`i18n.current_language`）。
+  `tests/test_services.py` 核对清单引用的分类都在附带的 GEO 数据里，地区表与 `regions.go` 一致。
+

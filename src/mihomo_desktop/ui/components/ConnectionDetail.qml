@@ -62,8 +62,8 @@ AppPopover {
                     },
                     {
                         label: qsTr("规则"),
-                        value: popover.info.rule,
-                        mono: true
+                        value: popover.info.ruleName ? qsTr("%1（%2）").arg(popover.info.ruleName).arg(popover.info.rule) : popover.info.rule,
+                        mono: !popover.info.ruleName
                     },
                     {
                         label: qsTr("链路"),

@@ -48,6 +48,7 @@ class ConnectionRow:
     id: str
     host: str
     protocol: str
+    ruleName: str  # the plan's rule entry (routing.md §4.6); empty when none
     rule: str
     chain: str
     process: str
@@ -65,12 +66,13 @@ class ConnectionRow:
 ROLES = (*(f.name for f in fields(ConnectionRow) if f.name != "id"), "connectionId")
 
 
-def _row(tracked: TrackedConnection, now: float) -> ConnectionRow:
+def _row(tracked: TrackedConnection, now: float, entries: dict[str, str]) -> ConnectionRow:
     connection = tracked.connection
     return ConnectionRow(
         id=connection.id,
         host=address(connection),
         protocol=protocol(connection),
+        ruleName=entries.get(connection.rule_entry_id, "") if connection.rule_entry_id else "",
         rule=connection.rule,
         chain=chain(connection),
         process=process_name(connection),
@@ -106,6 +108,7 @@ class ConnectionsViewModel(QObject):
         self._state: ConnectionsState | None = None
         self._shown: list[TrackedConnection] = []
         self._query = ""
+        self._entries: dict[str, str] = {}  # rule entry id -> its name in the plan in use
         self._network = "all"
         self._sort = "duration"
         self._descending = True
@@ -154,7 +157,7 @@ class ConnectionsViewModel(QObject):
         connections = self._state.connections if self._state else ()
         self._shown = arrange(connections, self._query, self._network, self._sort, self._descending)
         now = self._clock()
-        self._model.sync([_row(c, now) for c in self._shown])
+        self._model.sync([_row(c, now, self._entries) for c in self._shown])
         if self._selected:
             current = next((c for c in connections if c.id == self._selected), None)
             self._detail = current or self._detail
@@ -188,6 +191,10 @@ class ConnectionsViewModel(QObject):
     @Property(QObject, constant=True)
     def model(self) -> KeyedListModel:
         return self._model
+
+    def set_entry_names(self, names: dict[str, str]) -> None:
+        """Name the rules by the entries of the plan in use; the next refresh shows them."""
+        self._entries = names
 
     @Property(str, notify=filtersChanged)
     def query(self) -> str:
@@ -308,6 +315,9 @@ class ConnectionsViewModel(QObject):
             "destination": connection.destination or "—",
             "process": connection.process or "—",
             "rule": connection.rule or "—",
+            "ruleName": self._entries.get(connection.rule_entry_id, "")
+            if connection.rule_entry_id
+            else "",
             "chain": chain(connection) or "—",
             "download": fmt.size(connection.download_bytes),
             "upload": fmt.size(connection.upload_bytes),

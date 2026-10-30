@@ -7,7 +7,7 @@ from contextlib import contextmanager
 
 from PySide6.QtCore import QCoreApplication, QLocale
 
-from mihomo_desktop.i18n import SOURCE_LANGUAGE, Translations
+from mihomo_desktop.i18n import Translations
 
 
 @contextmanager
@@ -20,5 +20,5 @@ def ui_language(language: str) -> Iterator[None]:
     try:
         yield
     finally:
-        translations.apply(SOURCE_LANGUAGE)
+        translations.remove()
         QLocale.setDefault(locale)

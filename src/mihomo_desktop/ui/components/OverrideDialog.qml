@@ -22,6 +22,15 @@ AppDialog {
 
     onAboutToShow: editor.text = profiles.overrideText
 
+    // Where the override applies (docs/routing.md §5.6).
+    AccessibleText {
+        Layout.fillWidth: true
+        text: dialog.profiles.overrideScope
+        role: Theme.type.bodySm
+        color: Theme.textSecondary
+        wrapMode: Text.Wrap
+    }
+
     CodeEditor {
         id: editor
 

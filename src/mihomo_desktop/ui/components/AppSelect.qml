@@ -5,13 +5,20 @@ import QtQuick.Layouts
 
 // A dropdown in a settings row (input-compact): the current choice and a chevron. Its list
 // is a menu under it, left-aligned and at least as wide, with the current choice checked.
+// An option may carry a `note`, be disabled (`enabled: false`) or open a section with a
+// `separator` (DESIGN.md "下拉框", "目标下拉框").
 Button {
     id: control
 
-    property var options: []  // [{value, label}]
+    property var options: []  // [{value, label, note?, enabled?, separator?}]
     property string current
     property string accessibleName
     readonly property string currentLabel: options.find(option => option.value === current)?.label ?? ""
+    // What the button shows: the current option's label, or a caller's for a current value
+    // the list does not offer (a region that has no nodes for now).
+    property string displayText: currentLabel
+    // The list it opens: its options, or a caller's menu with other items besides.
+    property AppMenu menu: list
     signal picked(string value)
 
     implicitHeight: Theme.controlSm
@@ -22,15 +29,15 @@ Button {
     opacity: enabled ? 1 : Theme.disabledOpacity
     Accessible.role: Accessible.ComboBox
     Accessible.name: accessibleName
-    Accessible.description: currentLabel
-    onClicked: list.openDropdown(control)
+    Accessible.description: displayText
+    onClicked: menu.openDropdown(control)
 
     contentItem: RowLayout {
         spacing: Theme.space2
 
         UiText {
             Layout.fillWidth: true
-            text: control.currentLabel
+            text: control.displayText
             role: Theme.type.bodySm
             elide: Text.ElideRight
         }
@@ -70,6 +77,9 @@ Button {
                 required property var modelData
 
                 text: choice.modelData.label
+                note: choice.modelData.note ?? ""
+                enabled: choice.modelData.enabled ?? true
+                separatorBefore: choice.modelData.separator ?? false
                 checkable: true
                 checked: choice.modelData.value === control.current
                 onTriggered: {

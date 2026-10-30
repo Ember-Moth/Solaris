@@ -15,7 +15,8 @@ QML_IMPORT_MAJOR_VERSION = 1
 PAGES = (
     {"id": "overview", "label": QT_TRANSLATE_NOOP("ShellViewModel", "概览"), "icon": "overview"},
     {"id": "proxies", "label": QT_TRANSLATE_NOOP("ShellViewModel", "代理"), "icon": "proxies"},
-    {"id": "profiles", "label": QT_TRANSLATE_NOOP("ShellViewModel", "配置"), "icon": "profiles"},
+    {"id": "profiles", "label": QT_TRANSLATE_NOOP("ShellViewModel", "订阅"), "icon": "profiles"},
+    {"id": "routing", "label": QT_TRANSLATE_NOOP("ShellViewModel", "分流"), "icon": "routing"},
     {
         "id": "connections",
         "label": QT_TRANSLATE_NOOP("ShellViewModel", "连接"),

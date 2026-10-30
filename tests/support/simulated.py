@@ -58,6 +58,7 @@ from mihomo_desktop.models.profiles import (
     Usage,
     count_proxies,
 )
+from mihomo_desktop.models.routing import MODE_PROFILE, RoutingStore
 from mihomo_desktop.models.store import ProfileStore
 from mihomo_desktop.models.subscription import Download
 
@@ -254,7 +255,16 @@ def _subscription(text: str, label: str) -> tuple[list[dict[str, Any]], dict[str
     return list(named.values()), document
 
 
+def _info(pattern: str) -> re.Pattern[str] | None:
+    """The info-node expression; one the core cannot use is an invalid configuration."""
+    try:
+        return re.compile(pattern) if pattern else None
+    except re.error as error:
+        raise HostError("invalid_config", f"info filter: {error}") from error
+
+
 def inspect(text: str, info_filter: str = "") -> SourceInspection:
+    info = _info(info_filter)
     proxies, document = _subscription(text, "")
     rules = document.get("rules") or []
     return SourceInspection(
@@ -263,7 +273,7 @@ def inspect(text: str, info_filter: str = "") -> SourceInspection:
                 p["name"],
                 ADAPTER_TYPES.get(str(p.get("type")), str(p.get("type"))),
                 region_of(p["name"]),
-                bool(info_filter) and re.search(info_filter, p["name"]) is not None,
+                info is not None and info.search(p["name"]) is not None,
             )
             for p in proxies
         ),
@@ -285,13 +295,14 @@ def compose(composition: Composition) -> tuple[dict[str, Any], CompositionReport
         version = plan.get("version") if isinstance(plan, dict) else None
         message = f"plan: plan version {version} is not supported; this core reads version 1"
         raise HostError("invalid_config", message)
+    info = _info(composition.info_filter)
     nodes: list[PoolNode] = []
     proxies: list[dict[str, Any]] = []
     taken = set(BUILT_IN_PROXIES)
     for source in composition.sources:
         for proxy in _subscription(source.yaml, f"subscription {source.name!r}: ")[0]:
             original = proxy["name"]
-            if composition.info_filter and re.search(composition.info_filter, original):
+            if info is not None and info.search(original):
                 continue
             name = f"{original} · {source.name}" if original in taken else original
             taken.add(name)
@@ -772,6 +783,24 @@ class SimulatedHost:
             for name, group in self._groups.items()
         ]
 
+    async def list_rules(self) -> list[Rule]:
+        if not self._running:
+            return []
+        if self.report is not None:
+            return list(self.report.rules)
+        # Running before any start, the sample's own rules are in use.
+        effective = self.effective if self.effective is not None else _load(SAMPLE_CONFIG, "")
+        rules = []
+        for line in effective.get("rules") or []:
+            parts = [part.strip() for part in str(line).split(",")]
+            if parts[-1] == "no-resolve":
+                parts.pop()
+            if parts[0] == "MATCH":
+                rules.append(Rule("MATCH", "", parts[1], ""))
+            else:
+                rules.append(Rule(parts[0], ",".join(parts[1:-1]), parts[-1], ""))
+        return rules
+
     async def select_proxy(self, group: str, proxy: str) -> None:
         target = self._groups.get(group)
         if target is None or target.type != "Selector":
@@ -1006,7 +1035,8 @@ class SimulatedFetcher:
 
 
 def seed_profiles(store: ProfileStore, now: float) -> ProfileList:
-    """The prototype's three profiles, with "示例订阅 A" in use."""
+    """The prototype's three profiles, with "示例订阅 A" in use: its own rules route, as the
+    first import of a profile with rules decides (docs/routing.md §5.1)."""
     local = store.directory / "config.yaml"
     local.parent.mkdir(parents=True, exist_ok=True)
     local.write_text(SAMPLE_CONFIG, encoding="utf-8")
@@ -1045,4 +1075,5 @@ def seed_profiles(store: ProfileStore, now: float) -> ProfileList:
         store.write_config(profile.id, SAMPLE_CONFIG)
     seeded = ProfileList(profiles, "sample-a")
     store.save(seeded)
+    RoutingStore(store.database).update_state(mode=MODE_PROFILE)
     return seeded

@@ -1,5 +1,5 @@
-"""Profiles ViewModel: the profile list, imports, updates and the active profile that the
-overview and the sidebar show."""
+"""Profiles ViewModel: the subscription list (docs/routing.md §4.2), imports, updates, the node
+pool, and the profile in use that the overview shows."""
 
 from __future__ import annotations
 
@@ -15,8 +15,14 @@ from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
 from mihomo_desktop.models import format as fmt
-from mihomo_desktop.models.library import DEFAULT_AUTO_UPDATE_HOURS, ProfileLibrary, Removal
+from mihomo_desktop.models.library import (
+    DEFAULT_AUTO_UPDATE_HOURS,
+    ProfileLibrary,
+    Removal,
+    Routing,
+)
 from mihomo_desktop.models.profiles import Profile, ProfileList
+from mihomo_desktop.models.routing import MODE_PLAN, MODE_PROFILE
 from mihomo_desktop.viewmodels.common.async_runner import AsyncRunner
 from mihomo_desktop.viewmodels.common.keyed_list import KeyedListModel
 from mihomo_desktop.viewmodels.feedback import failure_text
@@ -48,6 +54,10 @@ class ProfileRow:
     isSubscription: bool
     autoUpdate: bool
     hasOverride: bool
+    note: str  # 规则使用中 or 不加入节点池, after the source in the caption
+    warning: str  # 更新失败, in the warning colour (DESIGN.md "分组与行"); empty otherwise
+    inPool: bool
+    hasRules: bool  # it brings rules, or has not been read yet
 
     @property
     def profileId(self) -> str:  # QML reserves ``id``
@@ -90,24 +100,28 @@ def _usage(profile: Profile) -> tuple[str, float | None]:
 
 
 def _removal_text(removal: Removal) -> str:
-    """The consequences of a removal, stated in its confirmation."""
+    """The consequences of a removal, stated in its confirmation (routing.md §5.1)."""
     if removal.profile.has_override:
         deleted = QCoreApplication.translate(
-            "ProfilesViewModel", "配置文件和它的覆写会从本机删除，无法恢复。"
+            "ProfilesViewModel", "订阅和它的覆写会从本机删除，无法恢复。"
         )
     else:
-        deleted = QCoreApplication.translate(
-            "ProfilesViewModel", "配置文件会从本机删除，无法恢复。"
-        )
+        deleted = QCoreApplication.translate("ProfilesViewModel", "订阅会从本机删除，无法恢复。")
     # Whole sentences, so that a translation can put a space between them.
     if removal.active and removal.successor is not None:
         text = QCoreApplication.translate(
-            "ProfilesViewModel", "这是当前使用的配置，删除后改用「{successor}」。{deleted}"
+            "ProfilesViewModel",
+            "这是正在使用规则的订阅，删除后改用「{successor}」的规则。{deleted}",
         )
         return text.format(successor=removal.successor.name, deleted=deleted)
     if removal.active:
         text = QCoreApplication.translate(
-            "ProfilesViewModel", "这是当前使用的配置，删除后需要重新导入配置才能连接。{deleted}"
+            "ProfilesViewModel", "这是正在使用规则的订阅，删除后改用我的方案。{deleted}"
+        )
+        return text.format(deleted=deleted)
+    if removal.pool_nodes:
+        text = QCoreApplication.translate(
+            "ProfilesViewModel", "节点池会少 %n 个节点。{deleted}", None, removal.pool_nodes
         )
         return text.format(deleted=deleted)
     return deleted
@@ -131,6 +145,8 @@ class ProfilesViewModel(QObject):
     removalRequested = Signal()  # a removal awaits confirmation; the view asks
     overrideOpened = Signal()  # an override was read; the view opens its editor
     overrideSaved = Signal()  # the host accepted the override and it is stored
+    routingChanged = Signal()  # the pool or the profile in use may have changed
+    routingRequested = Signal()  # 使用它的规则: the view goes to the routing page
 
     def __init__(
         self,
@@ -144,6 +160,7 @@ class ProfilesViewModel(QObject):
         self._runner = runner
         self._clock = clock
         self._list: ProfileList = library.snapshot()
+        self._routing: Routing = library.routing_snapshot()
         self._updating: set[str] = set()
         self._importing = False
         self._import_error = ""
@@ -195,6 +212,7 @@ class ProfilesViewModel(QObject):
                 done()
             self._error = ""
             self._loaded(profiles)
+            self._routing_touched()
             if reloads:
                 self.applied.emit()
 
@@ -208,10 +226,59 @@ class ProfilesViewModel(QObject):
 
         self._runner.submit(action, succeeded, failed)
 
+    def _routing_touched(self) -> None:
+        """Read the routing again after a change to the profiles, and let the routing page
+        know."""
+        self._runner.submit(self._library.routing(), self._routing_loaded)
+        self.routingChanged.emit()
+
+    def _routing_loaded(self, routing: Routing) -> None:
+        self._routing = routing
+        self.changed.emit()
+
+    @Slot()
+    def reload(self) -> None:
+        """Take up what the routing page changed."""
+
+        async def read() -> tuple[ProfileList, Routing]:
+            return await self._library.current(), await self._library.routing()
+
+        def done(result: tuple[ProfileList, Routing]) -> None:
+            self._list, self._routing = result
+            self.changed.emit()
+
+        self._runner.submit(read(), done)
+
+    @Slot()
+    def inspect(self) -> None:
+        """Read the profiles not read yet, to know which bring rules."""
+        self._runner.submit(self._library.inspect_all(), self._routing_loaded)
+
     # -- list --------------------------------------------------------------------------------
     @Property(str, notify=changed)
     def summary(self) -> str:
-        return self._error or self.tr("%n 个配置", "", len(self._list.profiles))
+        if self._error:
+            return self._error
+        count = self.tr("%n 份订阅", "", len(self._list.profiles))
+        nodes = self._pool_nodes()
+        if self._routing.mode != MODE_PLAN or nodes is None:
+            return count
+        pool = self.tr("节点池 %n 个节点", "", nodes)
+        return self.tr("{count} · {pool}").format(count=count, pool=pool)
+
+    def _pool_nodes(self) -> int | None:
+        report = self._routing.report
+        if report is not None:
+            return len(report.nodes)
+        total = 0
+        for profile in self._list.profiles:
+            if not profile.in_pool:
+                continue
+            inspection = self._routing.inspections.get(profile.id)
+            if inspection is None:
+                return None
+            total += sum(not node.info for node in inspection.nodes)
+        return total
 
     @Property(bool, notify=changed)
     def hasError(self) -> bool:
@@ -253,7 +320,20 @@ class ProfilesViewModel(QObject):
             isSubscription=profile.is_subscription,
             autoUpdate=profile.auto_update_hours > 0,
             hasOverride=profile.has_override,
+            note=self._note(profile),
+            warning=self.tr("更新失败")
+            if profile.id in self._list.update_failed and not updating
+            else "",
+            inPool=profile.in_pool,
+            hasRules=self._routing.has_rules(profile.id) is not False,
         )
+
+    def _note(self, profile: Profile) -> str:
+        if self._routing.mode == MODE_PROFILE and profile.id == self._list.active:
+            return self.tr("规则使用中")
+        if self._routing.mode == MODE_PLAN and not profile.in_pool:
+            return self.tr("不加入节点池")
+        return ""
 
     @Property(str, notify=changed)
     def autoUpdateLabel(self) -> str:
@@ -263,9 +343,17 @@ class ProfilesViewModel(QObject):
         return self.tr("更新") if profile.is_subscription else self.tr("重新读取")
 
     @Slot(str)
-    def use(self, profile_id: str) -> None:
-        if profile_id != self._list.active:
+    def useRules(self, profile_id: str) -> None:
+        """使用它的规则: route with this profile's own rules, as the routing page would, and
+        go there."""
+        self.routingRequested.emit()
+        if profile_id != self._list.active or self._routing.mode != MODE_PROFILE:
             self._run(self._library.activate(profile_id), reloads=True)
+
+    @Slot(str, bool)
+    def setInPool(self, profile_id: str, in_pool: bool) -> None:
+        reloads = self._routing.mode == MODE_PLAN
+        self._run(self._library.set_in_pool(profile_id, in_pool), reloads=reloads)
 
     @Slot(str)
     def updateProfile(self, profile_id: str) -> None:
@@ -317,7 +405,9 @@ class ProfilesViewModel(QObject):
     def confirmRemove(self) -> None:
         if self._removal is not None and self._removal_pending:
             self._removal_pending = False
-            self._run(self._library.remove(self._removal.profile.id))
+            removal = self._removal
+            reloads = removal.active or bool(removal.pool_nodes)
+            self._run(self._library.remove(removal.profile.id), reloads=reloads)
 
     @Slot()
     def cancelRemove(self) -> None:
@@ -365,8 +455,22 @@ class ProfilesViewModel(QObject):
     @Property(str, notify=changed)
     def globalOverrideDetail(self) -> str:
         if self._list.has_global_override:
-            return self.tr("所有配置共用 · 已设置")
-        return self.tr("所有配置共用 · 未设置")
+            return self.tr("两种分流方式都生效 · 已设置")
+        return self.tr("两种分流方式都生效 · 未设置")
+
+    @Property(bool, notify=changed)
+    def canEditGlobalOverride(self) -> bool:
+        """The global override is checked with the routing in use, so there must be one."""
+        return self._routing.mode == MODE_PLAN or self._list.active is not None
+
+    @Property(str, notify=changed)
+    def overrideScope(self) -> str:
+        """Where the override being edited applies (routing.md §5.6)."""
+        if self._override_target is None:
+            return self.tr("对“订阅自带”和“我的方案”都生效。")
+        if self._routing.mode == MODE_PROFILE and self._override_target == self._list.active:
+            return self.tr("只在“订阅自带”方式下使用这份订阅的规则时生效，现在正在生效。")
+        return self.tr("只在“订阅自带”方式下使用这份订阅的规则时生效，现在不生效。")
 
     @Slot(str)
     def editOverride(self, profile_id: str) -> None:
@@ -422,7 +526,9 @@ class ProfilesViewModel(QObject):
         if self._override_saving:
             return
         target = self._override_target
-        reloads = target is None or target == self._list.active
+        reloads = target is None or (
+            target == self._list.active and self._routing.mode == MODE_PROFILE
+        )
         self._override_saving = True
         self._override_error = ""
         self.changed.emit()
@@ -470,6 +576,8 @@ class ProfilesViewModel(QObject):
         def imported(profiles: ProfileList) -> None:
             self._importing = False
             self._loaded(profiles)
+            self._routing_touched()
+            self.applied.emit()
             self.imported.emit()
 
         def failed(error: BaseException) -> None:
@@ -512,15 +620,24 @@ class ProfilesViewModel(QObject):
 
     @Property(str, notify=changed)
     def activeDetail(self) -> str:
+        """Where the profile in use comes from and when it was updated; a failed update is
+        ``activeWarning``, shown in the warning colour after it (DESIGN.md "分组与行")."""
         active = self._active()
         if active is None:
             return ""
         if active.id in self._updating:
             return self.tr("{origin} · 正在更新").format(origin=_origin(active))
         if active.id in self._list.update_failed:
-            return self.tr("{origin} · 更新失败").format(origin=_origin(active))
+            return _origin(active)
         ago = fmt.ago(active.updated_at, self._clock())
         return self.tr("{origin} · {ago}更新").format(origin=_origin(active), ago=ago)
+
+    @Property(str, notify=changed)
+    def activeWarning(self) -> str:
+        active = self._active()
+        if active is None or active.id in self._updating:
+            return ""
+        return self.tr("更新失败") if active.id in self._list.update_failed else ""
 
     @Property(bool, notify=changed)
     def activeUpdating(self) -> bool:

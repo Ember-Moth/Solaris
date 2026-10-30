@@ -10,6 +10,7 @@ ScrollView {
 
     required property OverviewViewModel overview
     required property ProfilesViewModel profiles
+    required property RoutingViewModel routing
     required property ShellViewModel shell
 
     contentWidth: availableWidth
@@ -78,6 +79,62 @@ ScrollView {
                             accessibleName: qsTr("模式")
                             enabled: !page.overview.busy
                             onPicked: value => page.overview.setMode(value)
+                        }
+                    }
+
+                    // What routes the traffic (docs/routing.md §4.6): a plan, or a profile's own
+                    // rules; the routing page is where it changes.
+                    GroupRow {
+                        UiText {
+                            Layout.fillWidth: true
+                            text: qsTr("当前使用")
+                        }
+
+                        LinkButton {
+                            visible: page.routing.mode === "profile"
+                            text: qsTr("改用我的方案")
+                            onClicked: {
+                                page.routing.setMode("plan")
+                                page.shell.setPage("routing")
+                            }
+                        }
+
+                        Button {
+                            id: usingButton
+
+                            implicitHeight: Theme.controlSm
+                            leftPadding: 10
+                            rightPadding: Theme.space2
+                            topPadding: 0
+                            bottomPadding: 0
+                            Accessible.name: qsTr("当前使用 %1，前往分流页").arg(page.routing.usingLabel)
+                            onClicked: page.shell.setPage("routing")
+
+                            contentItem: RowLayout {
+                                spacing: 10
+
+                                UiText {
+                                    text: page.routing.usingLabel
+                                    role: Theme.type.labelMd
+                                }
+
+                                Icon {
+                                    name: "chevron"
+                                    size: 14
+                                }
+                            }
+
+                            background: Rectangle {
+                                radius: Theme.radiusSm
+                                color: usingButton.down ? Theme.surfaceSelected : usingButton.hovered ? Theme.surfaceSubtle : Theme.surface
+                                border.width: 1
+                                border.color: Theme.borderButton
+
+                                FocusRing {
+                                    targetRadius: Theme.radiusSm
+                                    visible: usingButton.visualFocus
+                                }
+                            }
                         }
                     }
 
@@ -263,7 +320,7 @@ ScrollView {
 
                     SectionLabel {
                         Layout.fillWidth: true
-                        text: qsTr("配置")
+                        text: qsTr("订阅")
                     }
 
                     LinkButton {
@@ -272,81 +329,89 @@ ScrollView {
                     }
                 }
 
+                // The subscriptions and their quotas (docs/routing.md §4.6); what routes the
+                // traffic is in the outbound group.
                 Group {
                     Layout.fillWidth: true
 
-                    GroupRow {
-                        visible: page.profiles.hasActive
-                        divider: false
+                    Repeater {
+                        id: subscriptionRepeater
 
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 0
+                        model: page.profiles.model
 
-                            AccessibleText {
+                        GroupRow {
+                            id: subscription
+
+                            required property int index
+                            required property string name
+                            required property string warning
+                            required property string usage
+                            required property string expiry
+                            required property bool hasQuota
+                            required property real usedFraction
+
+                            divider: index > 0
+                            rowHeight: 0
+                            verticalPadding: Theme.space3
+
+                            ColumnLayout {
                                 Layout.fillWidth: true
-                                text: page.profiles.activeName
-                                role: Theme.type.labelMd
-                                elide: Text.ElideRight
-                            }
+                                spacing: 6
 
-                            AccessibleText {
-                                Layout.fillWidth: true
-                                text: page.profiles.activeDetail
-                                role: Theme.type.caption
-                                color: Theme.textMuted
-                                elide: Text.ElideRight
-                            }
-                        }
-
-                        AppButton {
-                            variant: "compact"
-                            text: page.profiles.activeUpdating ? qsTr("更新中…") : page.profiles.activeRefreshLabel
-                            enabled: !page.profiles.activeUpdating
-                            Accessible.name: text + " " + page.profiles.activeName
-                            onClicked: page.profiles.updateProfile(page.profiles.activeId)
-                        }
-                    }
-
-                    GroupRow {
-                        visible: page.profiles.hasActive && page.profiles.activeHasQuota
-                        verticalPadding: Theme.space3
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 6
-
-                            RowLayout {
-                                Layout.fillWidth: true
-
-                                AccessibleText {
+                                RowLayout {
                                     Layout.fillWidth: true
-                                    text: page.profiles.activeUsage
-                                    role: Theme.type.dataSm
-                                    color: Theme.textTertiary
+                                    spacing: Theme.space3
+
+                                    AccessibleText {
+                                        Layout.preferredWidth: Math.ceil(implicitWidth)
+                                        Layout.maximumWidth: Math.ceil(implicitWidth)
+                                        Layout.fillWidth: true
+                                        text: subscription.name
+                                        role: Theme.type.caption
+                                        color: Theme.textSecondary
+                                        elide: Text.ElideRight
+                                    }
+
+                                    // A failed update, in the warning colour after the name.
+                                    AccessibleText {
+                                        Layout.leftMargin: -Theme.space3
+                                        visible: subscription.warning !== ""
+                                        text: qsTr(" · %1").arg(subscription.warning)
+                                        role: Theme.type.caption
+                                        color: Theme.warning
+                                    }
+
+                                    Item {
+                                        Layout.fillWidth: true
+                                        Layout.preferredWidth: 0
+                                    }
+
+                                    AccessibleText {
+                                        text: subscription.expiry !== "—" ? qsTr("%1 · %2").arg(subscription.usage).arg(subscription.expiry) : subscription.usage
+                                        role: Theme.type.caption
+                                        color: Theme.textTertiary
+                                        font.features: ({
+                                                "tnum": 1
+                                            })
+                                    }
                                 }
 
-                                AccessibleText {
-                                    text: page.profiles.activeExpiry
-                                    role: Theme.type.caption
-                                    color: Theme.textTertiary
+                                UsageBar {
+                                    Layout.fillWidth: true
+                                    visible: subscription.hasQuota
+                                    fraction: subscription.usedFraction
                                 }
-                            }
-
-                            UsageBar {
-                                Layout.fillWidth: true
-                                fraction: page.profiles.activeUsedFraction
                             }
                         }
                     }
 
                     GroupRow {
-                        visible: !page.profiles.hasActive
+                        visible: subscriptionRepeater.count === 0
                         divider: false
 
                         AccessibleText {
                             Layout.fillWidth: true
-                            text: qsTr("尚未导入配置")
+                            text: qsTr("尚未导入订阅")
                             color: Theme.textMuted
                         }
 

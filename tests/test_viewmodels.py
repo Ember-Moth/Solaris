@@ -10,6 +10,7 @@ from pytestqt.qtbot import QtBot
 from mihomo_desktop.host.base import HostError, HostStatus, RunOptions
 from mihomo_desktop.host.service import ServiceHost
 from mihomo_desktop.host.transport import Streams
+from mihomo_desktop.models.profiles import ProfileError
 from mihomo_desktop.models.store import ProfileStore
 from mihomo_desktop.viewmodels.composition import ViewModels, compose
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
@@ -143,16 +144,18 @@ def test_unreachable_service_is_reported(qtbot: QtBot, tmp_path: Path) -> None:
         qtbot.waitUntil(lambda: prop(built.overview, "statusDetail") == "未能连接到服务")
         qtbot.waitUntil(lambda: prop(built.shell, "serviceText") == "服务不可用")
         assert not prop(built.profiles, "hasActive")
-        assert prop(built.profiles, "summary") == "0 个配置"
+        assert prop(built.profiles, "summary") == "0 份订阅"
     finally:
         built.shutdown()
 
 
 def test_profiles_page_lists_the_samples(qtbot: QtBot, view_models: ViewModels) -> None:
     profiles = view_models.profiles
-    assert prop(profiles, "summary") == "3 个配置"
+    assert prop(profiles, "summary") == "3 份订阅"
     a, b, c = rows(profiles)
     assert (a.name, a.active, b.active) == ("示例订阅 A", True, False)
+    # A's own rules route the traffic.
+    assert (a.note, b.note) == ("规则使用中", "")
     assert a.source == "订阅 · sub.example.com · 9 个节点"
     assert (a.usage, a.expiry, a.updated) == ("38.2 / 200 GB", "2026-12-31", "2 小时前")
     assert a.hasQuota
@@ -173,9 +176,10 @@ def test_switching_profiles_reloads_the_tunnel(qtbot: QtBot, view_models: ViewMo
     profiles, host = view_models.profiles, view_models.host
     assert isinstance(host, SimulatedHost)
     qtbot.waitUntil(lambda: prop(view_models.overview, "connected"))
-    with qtbot.waitSignal(profiles.applied):
-        profiles.use("sample-b")
+    with qtbot.waitSignals([profiles.applied, profiles.routingRequested]):
+        profiles.useRules("sample-b")
     assert prop(profiles, "activeName") == "示例订阅 B"
+    assert prop(view_models.routing, "usingLabel") != ""
     assert [row.active for row in rows(profiles)] == [False, True, False]
     assert host.reloads == 1
 
@@ -191,7 +195,7 @@ def test_importing_from_a_link(qtbot: QtBot, view_models: ViewModels) -> None:
     profiles = view_models.profiles
     with qtbot.waitSignal(profiles.imported):
         profiles.importUrl("https://new.example.com/sub", "新订阅", True)
-    assert prop(profiles, "summary") == "4 个配置"
+    assert prop(profiles, "summary") == "4 份订阅"
     row = rows(profiles)[-1]
     assert (row.name, row.active, row.autoUpdate) == ("新订阅", False, True)
     assert prop(profiles, "autoUpdateLabel") == "每 12 小时自动更新"
@@ -201,7 +205,7 @@ def test_import_failures(qtbot: QtBot, view_models: ViewModels, tmp_path: Path) 
     profiles = view_models.profiles
     profiles.importUrl("not a link", "", True)
     qtbot.waitUntil(lambda: prop(profiles, "importError") == "链接无效")
-    assert prop(profiles, "summary") == "3 个配置"  # link failures stay in the form
+    assert prop(profiles, "summary") == "3 份订阅"  # link failures stay in the form
 
     bad = tmp_path / "bad.yaml"
     bad.write_text("rules: ['MATCH,NOWHERE']\n", encoding="utf-8")
@@ -220,42 +224,38 @@ def test_removal_waits_for_confirmation(
     with qtbot.waitSignal(profiles.removalRequested):
         profiles.requestRemove("sample-b")
     assert prop(profiles, "removalTitle") == "删除「示例订阅 B」？"  # noqa: RUF001
-    assert prop(profiles, "removalText") == "配置文件会从本机删除，无法恢复。"  # noqa: RUF001
+    assert prop(profiles, "removalText") == "订阅会从本机删除，无法恢复。"  # noqa: RUF001
 
     # Cancelling removes nothing, and a late confirmation does not either.
     profiles.cancelRemove()
     profiles.confirmRemove()
     qtbot.wait(50)
-    assert prop(profiles, "summary") == "3 个配置"
+    assert prop(profiles, "summary") == "3 份订阅"
     assert has_config(tmp_path, "sample-b")
 
     with qtbot.waitSignal(profiles.removalRequested):
         profiles.requestRemove("sample-b")
     profiles.confirmRemove()
-    qtbot.waitUntil(lambda: prop(profiles, "summary") == "2 个配置")
+    qtbot.waitUntil(lambda: prop(profiles, "summary") == "2 份订阅")
     assert not has_config(tmp_path, "sample-b")
 
 
 def test_removing_the_profile_in_use(qtbot: QtBot, view_models: ViewModels) -> None:
-    profiles, overview = view_models.profiles, view_models.overview
+    """The earliest other profile with rules takes over, while the tunnel runs (§5.1)."""
+    profiles, overview, host = view_models.profiles, view_models.overview, view_models.host
+    assert isinstance(host, SimulatedHost)
     qtbot.waitUntil(lambda: prop(overview, "connected"))
-    # While the tunnel runs it is refused without asking.
-    with qtbot.assertNotEmitted(profiles.removalRequested, wait=100):
-        profiles.requestRemove("sample-a")
-        qtbot.waitUntil(lambda: prop(profiles, "hasError"))
-    assert prop(profiles, "summary") == "正在使用的配置需要先断开才能删除"
-
-    # Once stopped, the confirmation names the profile that takes over.
-    overview.toggleConnection()
-    qtbot.waitUntil(lambda: not prop(overview, "connected"))
     with qtbot.waitSignal(profiles.removalRequested):
         profiles.requestRemove("sample-a")
     assert prop(profiles, "removalText") == (
-        "这是当前使用的配置，删除后改用「示例订阅 B」。配置文件会从本机删除，无法恢复。"  # noqa: RUF001
+        "这是正在使用规则的订阅，删除后改用「示例订阅 B」的规则。订阅会从本机删除，无法恢复。"  # noqa: RUF001
     )
-    profiles.confirmRemove()
+    with qtbot.waitSignal(profiles.applied):
+        profiles.confirmRemove()
     qtbot.waitUntil(lambda: prop(profiles, "activeName") == "示例订阅 B")
-    assert prop(profiles, "summary") == "2 个配置"
+    assert prop(profiles, "summary") == "2 份订阅"
+    assert prop(overview, "connected")
+    assert host.reloads == 1
 
 
 def test_editing_an_override(qtbot: QtBot, view_models: ViewModels, tmp_path: Path) -> None:
@@ -293,7 +293,7 @@ def test_editing_the_global_override_reloads(qtbot: QtBot, view_models: ViewMode
     profiles, host = view_models.profiles, view_models.host
     assert isinstance(host, SimulatedHost)
     qtbot.waitUntil(lambda: prop(view_models.overview, "connected"))
-    assert prop(profiles, "globalOverrideDetail") == "所有配置共用 · 未设置"
+    assert prop(profiles, "globalOverrideDetail") == "两种分流方式都生效 · 未设置"
     with qtbot.waitSignal(profiles.overrideOpened):
         profiles.editGlobalOverride()
     assert prop(profiles, "overrideTitle") == "编辑全局覆写"
@@ -301,7 +301,7 @@ def test_editing_the_global_override_reloads(qtbot: QtBot, view_models: ViewMode
     with qtbot.waitSignals([profiles.overrideSaved, profiles.applied]):
         profiles.saveOverride("mode: global\n")
     assert prop(profiles, "hasGlobalOverride")
-    assert prop(profiles, "globalOverrideDetail") == "所有配置共用 · 已设置"
+    assert prop(profiles, "globalOverrideDetail") == "两种分流方式都生效 · 已设置"
     assert host.reloads == 1
     assert host.config is not None
     assert host.config.overrides == ("mode: global\n",)
@@ -315,4 +315,18 @@ def test_removal_mentions_the_override(qtbot: QtBot, view_models: ViewModels) ->
         profiles.saveOverride("mode: direct\n")
     with qtbot.waitSignal(profiles.removalRequested):
         profiles.requestRemove("sample-c")
-    assert prop(profiles, "removalText") == "配置文件和它的覆写会从本机删除，无法恢复。"  # noqa: RUF001
+    assert prop(profiles, "removalText") == "订阅和它的覆写会从本机删除，无法恢复。"  # noqa: RUF001
+
+
+def test_a_failed_update_is_a_warning_of_its_own(qtbot: QtBot, view_models: ViewModels) -> None:
+    """The view shows it in the warning colour after the rest of the line."""
+    profiles = view_models.profiles
+    fetcher = view_models.library._fetcher
+    assert isinstance(fetcher, SimulatedFetcher)
+    fetcher.error = ProfileError("http_error", "HTTP 503")
+    profiles.updateProfile("sample-a")
+    qtbot.waitUntil(lambda: rows(profiles)[0].warning == "更新失败")
+    assert rows(profiles)[0].updated == "更新失败"
+    assert prop(profiles, "activeDetail") == "sub.example.com"
+    assert prop(profiles, "activeWarning") == "更新失败"
+    assert rows(profiles)[1].warning == ""

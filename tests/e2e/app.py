@@ -134,6 +134,10 @@ class App:
     def rows(self, view_model: QObject) -> list[Any]:
         return self.prop(view_model, "model").rows
 
+    def rows_of(self, view_model: QObject, name: str) -> list[Any]:
+        """The rows of another list model property, such as the routing page's rules."""
+        return list(self.prop(view_model, name).rows)
+
     @property
     def mixed_port(self) -> int:
         return self.view_models.settings_store.current.mixed_port
@@ -205,3 +209,6 @@ class App:
 
     def stream(self, seconds: float) -> Stream:
         return Stream(self.mixed_port, self.network.proxied.url(f"/slow?seconds={seconds}"))
+
+    def stream_url(self, url: str) -> Stream:
+        return Stream(self.mixed_port, url)
