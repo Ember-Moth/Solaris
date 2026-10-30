@@ -10,7 +10,7 @@ import time
 import pytest
 
 from scripts.dev import DevService
-from solaris.host.base import HostError, TunnelConfig
+from solaris.host.base import HostError, RunOptions, TunnelConfig
 from solaris.host.service import ServiceHost
 from tests.e2e.app import DIRECT_PROFILE, App, nodes_profile
 from tests.e2e.servers import free_port, listening_port
@@ -105,7 +105,8 @@ def test_pages_show_the_core(app: App) -> None:
     # Overview: status, traffic and the busiest connection with its route.
     overview = vm.overview
     assert app.prop(overview, "statusTitle") == "已连接"
-    assert app.prop(overview, "statusDetail").startswith("已运行 ")
+    # The development service takes over nothing: only the mixed port serves (D26).
+    assert app.prop(overview, "statusDetail").startswith(f"混合端口 {app.mixed_port} · 已运行 ")
     assert (app.prop(overview, "nodeGroup"), app.prop(overview, "nodeName")) == (
         "节点选择",
         "node-a",
@@ -213,38 +214,43 @@ def test_mode_and_node_steer_traffic(app: App) -> None:
     assert network.node_b.targets == [proxied, proxied]
 
 
-def test_tun_and_system_proxy_are_refused(app: App) -> None:
-    """The development service never takes over the machine's traffic; the switches say so
-    and keep their state."""
+def test_development_mode_opens_the_mixed_port_only(app: App) -> None:
+    """The development service never takes over the machine's traffic. The UI does not ask
+    it to (TAKEOVER_NONE), so connecting with the settings' defaults, both on, works; asked
+    directly, the service still refuses."""
     vm = app.view_models
     overview, store = vm.overview, vm.settings_store
+    assert (store.current.tun, store.current.system_proxy) == (True, True)
+    assert app.prop(overview, "takeover") == "none"
     connected_on_nodes(app)
-
-    overview.setTun(True)
-    app.until(lambda: app.prop(overview, "switchError"))
-    assert app.prop(overview, "switchError") == "开发模式不支持 TUN 模式"
     assert not app.prop(overview, "tunEnabled")
-    assert app.prop(overview, "connected")
-    assert not store.current.tun
-
-    overview.setSystemProxy(True)
-    app.until(lambda: app.prop(overview, "switchError") == "开发模式不支持系统代理")
     assert not app.prop(overview, "systemProxyEnabled")
-    assert app.prop(overview, "connected")
-    assert not store.current.system_proxy
+    assert listening(app.service.pid) == {f"127.0.0.1:{app.mixed_port}"}
     assert app.curl(app.network.direct.url()) == "direct"
 
-    # Stopped, the switch is what the next connection asks for, and that connection fails.
-    overview.toggleConnection()
-    app.until(lambda: not app.prop(overview, "connected") and not app.prop(overview, "busy"))
-    overview.setTun(True)
-    app.until(lambda: app.prop(overview, "tunEnabled"))
-    overview.toggleConnection()
-    app.until(lambda: app.prop(overview, "switchError") == "开发模式不支持 TUN 模式")
-    assert app.prop(overview, "statusTitle") == "未连接"
-    overview.setTun(False)
-    app.until(lambda: not app.prop(overview, "tunEnabled"))
-    app.connect()
+    async def refusals() -> list[str]:
+        host = ServiceHost(unix_opener(str(app.service.socket)))
+        codes = []
+        try:
+            port = app.mixed_port
+            for options in (
+                RunOptions(tun_enabled=True, mixed_port=port),
+                RunOptions(system_proxy_enabled=True, mixed_port=port),
+            ):
+                try:
+                    await host.reload(TunnelConfig(DIRECT_PROFILE, options=options))
+                except HostError as error:
+                    codes.append(error.code)
+            try:
+                await host.set_system_proxy(True)
+            except HostError as error:
+                codes.append(error.code)
+        finally:
+            await host.close()
+        return codes
+
+    assert asyncio.run(refusals()) == ["unsupported_method"] * 3
+    assert app.prop(overview, "connected")
     assert app.curl(app.network.direct.url()) == "direct"
 
 
@@ -327,7 +333,8 @@ def test_reconnect_and_service_restart(app: App) -> None:
     app.service.start()
     shell.refreshService()
     app.until(lambda: app.prop(shell, "serviceAvailable"))
-    app.until(lambda: app.prop(overview, "statusDetail") == "隧道未运行")
+    app.until(lambda: app.prop(overview, "statusTitle") == "未连接")
+    app.until(lambda: app.prop(overview, "statusDetail") == "")
     assert app.prop(overview, "statusTitle") == "未连接"
     app.until(lambda: app.prop(vm.logs, "statusTone") == "")
     app.connect()
@@ -383,11 +390,12 @@ def test_mixed_port_and_lan(app: App) -> None:
     with holder:
         settings.setMixedPort(str(busy))
         app.until(lambda: app.prop(settings, "mixedPort") == busy)
-        overview.toggleConnection()
-        app.until(lambda: app.prop(overview, "switchError"))
-        assert app.prop(overview, "switchError") == (
+        overview.setConnected(True)
+        app.until(lambda: app.prop(overview, "connectionFailed"))
+        assert app.prop(overview, "connectionDetail") == (
             f"配置未能生效：listen tcp 127.0.0.1:{busy}: bind: address already in use"  # noqa: RUF001
         )
+        assert not app.prop(overview, "connectionOn")
         app.until(lambda: app.prop(overview, "statusTitle") == "连接失败")
     settings.setMixedPort(str(free))
     app.until(lambda: app.prop(settings, "mixedPort") == free)

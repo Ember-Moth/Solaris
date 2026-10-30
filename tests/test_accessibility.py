@@ -130,9 +130,10 @@ def test_custom_controls_tell_their_role_and_state(qtbot: QtBot, loaded: Loaded)
     group = loaded.item(lambda i: kind(i) == "SegmentedControl")
     assert (accessible(group).role, accessible(group).name) == (Role.Grouping, "模式")
 
-    tun = loaded.item(lambda i: kind(i) == "AppSwitch")
-    assert (accessible(tun).role, accessible(tun).name) == (Role.CheckBox, "TUN 模式")
-    assert accessible(tun).checked == loaded.view_models.overview.property("tunEnabled")
+    # The only connection control (DESIGN.md "连接开关").
+    connection = loaded.item(lambda i: kind(i) == "AppSwitch")
+    assert (accessible(connection).role, accessible(connection).name) == (Role.Switch, "连接")
+    assert accessible(connection).checked == loaded.view_models.overview.property("connectionOn")
 
     chart = loaded.item(lambda i: kind(i) == "TrafficChart")
     assert accessible(chart).role == Role.Graphic

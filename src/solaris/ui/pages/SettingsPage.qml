@@ -13,7 +13,7 @@ ScrollView {
     required property SettingsViewModel settings
     // Updates, diagnostics and licenses in the 关于 group.
     required property AboutViewModel about
-    // TUN and the system proxy are the overview's switches, shown here as well.
+    // The TUN and system proxy switches, which show the running tunnel's state.
     required property OverviewViewModel overview
     // The 备份与同步 group.
     required property BackupViewModel backup
@@ -61,26 +61,120 @@ ScrollView {
                     Layout.fillWidth: true
                     spacing: Theme.space2
 
-                    SectionLabel {
-                        text: qsTr("接管方式")
+                    // What the overview's 连接 switch takes over (D26), as far as the host
+                    // does (OverviewViewModel.takeover).
+                    RowLayout {
+                        Layout.fillWidth: true
+
+                        SectionLabel {
+                            Layout.fillWidth: true
+                            text: qsTr("接管方式")
+                        }
+
+                        AccessibleText {
+                            text: page.overview.takeover === "none" ? qsTr("开发模式只开放混合端口") : qsTr("连接时使用")
+                            role: Theme.type.caption
+                            color: Theme.textMuted
+                        }
                     }
 
                     Group {
                         Layout.fillWidth: true
 
+                        // The macOS extension always runs a TUN; the development service never does.
                         GroupRow {
                             divider: false
+                            verticalPadding: Theme.space2
 
-                            UiText {
+                            ColumnLayout {
                                 Layout.fillWidth: true
-                                text: qsTr("TUN 模式")
+                                spacing: 0
+
+                                UiText {
+                                    Layout.fillWidth: true
+                                    text: qsTr("TUN 模式")
+                                }
+
+                                AccessibleText {
+                                    Layout.fillWidth: true
+                                    visible: page.overview.takeover === "tun"
+                                    text: qsTr("macOS 上总是启用")
+                                    role: Theme.type.caption
+                                    color: Theme.textMuted
+                                    wrapMode: Text.Wrap
+                                }
                             }
 
                             AppSwitch {
+                                visible: page.overview.takeover === "settings"
                                 value: page.overview.tunEnabled
                                 enabled: !page.overview.busy
                                 Accessible.name: qsTr("TUN 模式")
                                 onRequested: on => page.overview.setTun(on)
+                            }
+
+                            AccessibleText {
+                                visible: page.overview.takeover !== "settings"
+                                text: page.overview.takeover === "tun" ? qsTr("已启用") : qsTr("不使用")
+                                role: Theme.type.bodySm
+                                color: Theme.textSecondary
+                                Accessible.name: qsTr("TUN 模式") + " " + text
+                            }
+                        }
+
+                        // Only the Windows service sets the system proxy; the macOS extension's
+                        // TUN takes all the traffic.
+                        GroupRow {
+                            visible: page.overview.takeover !== "tun"
+                            verticalPadding: Theme.space2
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+
+                                UiText {
+                                    Layout.fillWidth: true
+                                    text: qsTr("系统代理")
+                                }
+
+                                AccessibleText {
+                                    Layout.fillWidth: true
+                                    visible: page.overview.takeover === "settings" && !page.overview.tunEnabled && !page.overview.systemProxyEnabled
+                                    text: qsTr("两项都关闭时，连接后只开放混合端口")
+                                    role: Theme.type.caption
+                                    color: Theme.textMuted
+                                    wrapMode: Text.Wrap
+                                }
+                            }
+
+                            AppSwitch {
+                                visible: page.overview.takeover === "settings"
+                                value: page.overview.systemProxyEnabled
+                                enabled: !page.overview.busy
+                                Accessible.name: qsTr("系统代理")
+                                onRequested: on => page.overview.setSystemProxy(on)
+                            }
+
+                            AccessibleText {
+                                visible: page.overview.takeover === "none"
+                                text: qsTr("不使用")
+                                role: Theme.type.bodySm
+                                color: Theme.textSecondary
+                                Accessible.name: qsTr("系统代理") + " " + text
+                            }
+                        }
+
+                        GroupRow {
+                            visible: page.overview.switchError !== ""
+                            rowHeight: Theme.rowSingle
+                            verticalPadding: Theme.space2
+
+                            AccessibleText {
+                                Layout.fillWidth: true
+                                text: page.overview.switchError
+                                role: Theme.type.caption
+                                color: Theme.danger
+                                wrapMode: Text.Wrap
                             }
                         }
 
@@ -147,33 +241,6 @@ ScrollView {
                             }
                         }
 
-                        GroupRow {
-                            UiText {
-                                Layout.fillWidth: true
-                                text: qsTr("系统代理")
-                            }
-
-                            AppSwitch {
-                                value: page.overview.systemProxyEnabled
-                                enabled: !page.overview.busy
-                                Accessible.name: qsTr("系统代理")
-                                onRequested: on => page.overview.setSystemProxy(on)
-                            }
-                        }
-
-                        GroupRow {
-                            visible: page.overview.switchError !== ""
-                            rowHeight: Theme.rowSingle
-                            verticalPadding: Theme.space2
-
-                            AccessibleText {
-                                Layout.fillWidth: true
-                                text: page.overview.switchError
-                                role: Theme.type.caption
-                                color: Theme.danger
-                                wrapMode: Text.Wrap
-                            }
-                        }
 
                         GroupRow {
                             verticalPadding: Theme.space2

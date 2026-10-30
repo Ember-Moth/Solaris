@@ -12,6 +12,7 @@ from PySide6.QtQuick import QQuickWindow
 from pytestqt.qtbot import QtBot
 
 from solaris.app import load_ui
+from solaris.host.base import TAKEOVER_SETTINGS
 from solaris.models import credentials
 from solaris.models.store import ProfileStore
 from solaris.viewmodels.appearance import Appearance
@@ -58,15 +59,26 @@ def appearance(request: pytest.FixtureRequest, system: SystemColorScheme) -> App
 
 
 @pytest.fixture
+def takeover(request: pytest.FixtureRequest) -> str:
+    """What connecting takes over on the host (TunnelHost.takeover): the Windows service's
+    switches, or what indirect parametrization says. Request it before ``loaded``."""
+    return getattr(request, "param", TAKEOVER_SETTINGS)
+
+
+@pytest.fixture
 def loaded(
-    request: pytest.FixtureRequest, qtbot: QtBot, tmp_path: Path, appearance: Appearance
+    request: pytest.FixtureRequest,
+    qtbot: QtBot,
+    tmp_path: Path,
+    appearance: Appearance,
+    takeover: str,
 ) -> Iterator[Loaded]:
     """The main window in Chinese, or in the language given by indirect parametrization."""
     store = ProfileStore(tmp_path)
     seed_profiles(store, time.time())
     with ui_language(getattr(request, "param", "zh")):
         view_models = compose(
-            SimulatedHost(),
+            SimulatedHost(takeover=takeover),
             store,
             SimulatedFetcher(),
             appearance=appearance,

@@ -25,6 +25,7 @@ from pytestqt.qtbot import QtBot
 
 from scripts.dev import DevService, build_service
 from solaris.app import load_ui
+from solaris.host.base import TAKEOVER_NONE
 from solaris.host.service import ServiceHost
 from solaris.models.settings import DatabaseSettingsStore
 from solaris.models.store import ProfileStore
@@ -90,7 +91,8 @@ def app(qtbot: QtBot, tmp_path: Path, service: DevService, network: Network) -> 
     store = ProfileStore(data)
     settings = DatabaseSettingsStore(store.database)
     settings.update(mixed_port=free_port())
-    host = ServiceHost(unix_opener(str(service.socket)))
+    # As the app makes it for the development socket (app.default_host).
+    host = ServiceHost(unix_opener(str(service.socket)), takeover=TAKEOVER_NONE)
     name = QCoreApplication.applicationName()
     QCoreApplication.setApplicationName(DISPLAY_NAME)  # the sidebar shows it
     with ui_language("zh"):

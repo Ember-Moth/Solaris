@@ -1027,6 +1027,10 @@ prepend-rules:
         <translation>Outbound</translation>
     </message>
     <message>
+        <source>连接</source>
+        <translation>Connect</translation>
+    </message>
+    <message>
         <source>模式</source>
         <translation>Mode</translation>
     </message>
@@ -1045,14 +1049,6 @@ prepend-rules:
     <message>
         <source>当前节点 %1，前往代理页切换</source>
         <translation>Current proxy %1, opens Proxies to switch</translation>
-    </message>
-    <message>
-        <source>TUN 模式</source>
-        <translation>TUN mode</translation>
-    </message>
-    <message>
-        <source>系统代理</source>
-        <translation>System proxy</translation>
     </message>
     <message>
         <source>流量</source>
@@ -1169,12 +1165,20 @@ prepend-rules:
         <translation>Another user is connected; you can connect once they disconnect</translation>
     </message>
     <message>
-        <source>隧道未运行</source>
-        <translation>Tunnel not running</translation>
+        <source>{inbound} · 已运行 {uptime}</source>
+        <translation>{inbound} · running for {uptime}</translation>
     </message>
     <message>
-        <source>已运行 {uptime}</source>
-        <translation>Running for {uptime}</translation>
+        <source>TUN 与系统代理</source>
+        <translation>TUN and system proxy</translation>
+    </message>
+    <message>
+        <source>系统代理</source>
+        <translation>System proxy</translation>
+    </message>
+    <message>
+        <source>混合端口 {port}</source>
+        <translation>Mixed port {port}</translation>
     </message>
     <message>
         <source>断开</source>
@@ -1183,6 +1187,14 @@ prepend-rules:
     <message>
         <source>连接</source>
         <translation>Connect</translation>
+    </message>
+    <message>
+        <source>正在连接…</source>
+        <translation>Connecting…</translation>
+    </message>
+    <message>
+        <source>正在断开…</source>
+        <translation>Disconnecting…</translation>
     </message>
     <message>
         <source>节点</source>
@@ -2742,6 +2754,30 @@ prepend-rules:
     <message>
         <source>系统代理</source>
         <translation>System proxy</translation>
+    </message>
+    <message>
+        <source>开发模式只开放混合端口</source>
+        <translation>Development mode opens the mixed port only</translation>
+    </message>
+    <message>
+        <source>连接时使用</source>
+        <translation>Used when connecting</translation>
+    </message>
+    <message>
+        <source>macOS 上总是启用</source>
+        <translation>Always on in macOS</translation>
+    </message>
+    <message>
+        <source>已启用</source>
+        <translation>On</translation>
+    </message>
+    <message>
+        <source>不使用</source>
+        <translation>Not used</translation>
+    </message>
+    <message>
+        <source>两项都关闭时，连接后只开放混合端口</source>
+        <translation>With both off, connecting opens the mixed port only</translation>
     </message>
     <message>
         <source>混合端口</source>

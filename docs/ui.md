@@ -34,7 +34,8 @@
 | `composition` | "我的方案"时代替 `config_yaml`：节点池、方案 JSON、信息节点表达式和链式出口（第 9 节）；两者只能有一个 |
 | `options` | `RunOptions`：`tun_enabled`、`system_proxy_enabled`、`mixed_port`（0 表示沿用配置）、`allow_lan`、`tun_stack`（空串表示沿用配置）、`include_all_networks`。`validate` 不使用。`include_all_networks` 不进控制协议，只有 `MacExtensionHost` 在启动隧道时把它写进 VPN 配置（architecture.md §6.1） |
 
-- **Start** 的各项都取自设置（第 8 节）：TUN 和系统代理是用户在开关上的选择，其余是设置页的值。
+- **Start** 的各项都取自设置（第 8 节）：TUN 和系统代理是设置页「接管方式」的选择，其余是设置页的值。宿主
+  发出之前按自己能接管的改写这两项（`TunnelHost.takeover`，第 8 节）。
 - **Reload** 用 `GetStatus` 报告的 TUN 和系统代理状态，所以切换配置或订阅更新都不会改变隧道的这两项；端口、
   局域网连接和 TUN 协议栈取自设置。
 - 错误码：配置被拒绝时为 `invalid_config`（`message` 是 mihomo 的原始错误，界面显示在「配置无效：」之后）；
@@ -309,9 +310,9 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 
 用户的设置由 `models/settings.py` 的 `SettingsStore` 接口提供：读取 `current`、写入
 `update(**changes)`、订阅变更 `subscribe(listener)`（回调收到改动前后的 `Settings`，在写入的线程上调用，
-返回取消订阅的函数），以及别的代码直接写了表之后的 `reload()`。设置页（`viewmodels/settings.py`）、概览页的
-TUN 与系统代理开关、托盘和关闭窗口的行为都只依赖这个接口，并且通过订阅跟上变化，不论改动来自哪一页，还是
-从备份恢复。不接受的值抛
+返回取消订阅的函数），以及别的代码直接写了表之后的 `reload()`。设置页（`viewmodels/settings.py`）、
+「接管方式」的 TUN 与系统代理开关、托盘和关闭窗口的行为都只依赖这个接口，并且通过订阅跟上变化，不论改动来自
+哪一页，还是从备份恢复。不接受的值抛
 `ValueError`，写不进去抛 `SettingsError`（`settings_unwritable`），这两种情况都不通知，设置页标题栏显示
 「无法保存设置：…」。
 
@@ -329,8 +330,8 @@ TUN 与系统代理开关、托盘和关闭窗口的行为都只依赖这个接�
 | `appearance` | `system`、`light`、`dark` | `system` | 同步 | 外观；主题按它取色 |
 | `close_action` | `tray`、`quit` | `tray` | 本机 | 关闭主窗口时留在托盘，还是退出界面；隧道都不受影响 |
 | `launch_at_login` | 布尔 | `false` | 本机 | 登录时打开界面。以系统里的登录项为准，界面每次读到系统的状态就写回这里 |
-| `tun` | 布尔 | `false` | 本机 | 概览页和设置页「接管方式」的 TUN 开关：下一次连接是否开启 TUN |
-| `system_proxy` | 布尔 | `false` | 本机 | 概览页和设置页「接管方式」的系统代理开关：下一次连接是否设置系统代理 |
+| `tun` | 布尔 | `true` | 本机 | 设置页「接管方式」的 TUN 开关：连接时是否开启 TUN。macOS 上总是开启，不看这一项 |
+| `system_proxy` | 布尔 | `true` | 本机 | 设置页「接管方式」的系统代理开关：连接时是否设置系统代理。只有 Windows 服务设置系统代理 |
 | `mixed_port` | 1024–65535 | 7890 | 本机 | 混合端口，总是覆盖配置里的 `mixed-port` |
 | `allow_lan` | 布尔 | `false` | 本机 | 允许局域网连接（architecture.md §8"局域网暴露"） |
 | `tun_stack` | `profile`、`system`、`mips`、`gvisor`、`mixed` | `profile` | 本机 | "TUN 协议栈"（D3）：`profile` 是"跟随配置"，用配置里的 `tun.stack`；其余写进 `RunOptions.tun_stack`，盖过配置和覆写（architecture.md §3.1、§3.4）。各平台的默认值等实测后再定 |
@@ -341,11 +342,28 @@ TUN 与系统代理开关、托盘和关闭窗口的行为都只依赖这个接�
 
 - **映射到 `RunOptions`**（第 1 节）：Start 用 `Settings.run_options()` 的各项（`tun_stack` 为 `profile` 时传空串）；
   Reload 的 TUN 和系统代理取自 `GetStatus`，其余取自设置。
-  - **TUN 与系统代理**：开关在概览页「出站」分组，设置页「接管方式」显示同一个 ViewModel 的同一对开关，两页总是
-    一致。D26 会把它们只留在设置页、默认打开，概览页只剩「连接」开关，macOS 上不列出 TUN（尚未实现，见
-    DESIGN.md「连接开关」）。隧道运行时，
-    显示内核报告的状态，拨动开关先改变隧道（TUN 是带新 `RunOptions` 的 Reload，系统代理是
-    `SetSystemProxy`），宿主接受后才记入设置；隧道停止时，显示设置里的选择，拨动只改设置，下一次连接生效。
+  - **连接开关**（D26，DESIGN.md「连接开关」）：概览页「出站」分组第一行的「连接」是界面上唯一的连接控件，托盘
+    菜单的「连接 / 断开」照旧。打开即按设置连接，关闭即 `Stop`。进行中开关不可操作，第二行写「正在连接…」
+    「正在断开…」，宿主报告 `starting`、`stopping` 时也一样；操作完成后等下一次刷新读到隧道的新状态才结束，
+    开关不会先跳回原位。连不上时开关回到关闭，第二行用 `danger` 写原因，留到下一次操作。已连接时概览页标题栏
+    写接管方式和运行时长：「TUN 与系统代理 · 已运行 2:14:36」，只开一项时写「TUN」或「系统代理」，两项都没开时
+    写「混合端口 7890」。
+  - **接管方式**：连接时能接管什么由宿主决定（`TunnelHost.takeover`）。宿主发出的每份 `RunOptions` 都先经
+    `taken_over` 改写，不论设置怎么写：
+
+    | 宿主 | `takeover` | 设置页「接管方式」 | 连接时 |
+    | --- | --- | --- | --- |
+    | Windows 服务 | `settings` | 「TUN 模式」「系统代理」两个开关，默认都开 | 按开关 |
+    | macOS 扩展 | `tun` | 「TUN 模式」一行右侧写「已启用」，第二行「macOS 上总是启用」；没有系统代理一行 | 总是 TUN，不设系统代理 |
+    | 开发服务 | `none` | 两行右侧都写「不使用」，分组标题右侧写「开发模式只开放混合端口」 | 只开放混合端口 |
+
+    分组标题右侧平时写「连接时使用」。两个开关由 `OverviewViewModel` 提供，因为要显示隧道的状态：隧道运行时
+    显示内核报告的状态，拨动先改变隧道（TUN 是带新 `RunOptions` 的 Reload，系统代理是 `SetSystemProxy`），
+    宿主接受后才记入设置，所以已连接时改这两项立即生效；隧道停止时显示设置里的选择，拨动只改设置。
+  - **两项都关闭**（Windows）：照常连接，内核只开放混合端口（不允许局域网连接时只在回环地址上），系统的设置
+    一项不改，要走代理的程序自己指向这个端口。系统代理一行第二行写「两项都关闭时，连接后只开放混合端口」。
+  - **macOS 不设系统代理**：扩展不提供 `SetSystemProxy`（architecture.md §6.3），TUN 已经接管全部流量，所以
+    不列这一行，`system_proxy` 在 macOS 上不起作用。
   - **端口、局域网连接与 TUN 协议栈**：隧道运行时先带新值 Reload，成功后才写入设置；内核拒绝（如端口被占用，
     `apply_failed`；内核不带 `with_gvisor` 时选了 gVisor 或 Mixed，`invalid_config`）时保留原值，错误写在对应的
     行下。隧道停止时直接写入。
@@ -354,9 +372,11 @@ TUN 与系统代理开关、托盘和关闭窗口的行为都只依赖这个接�
   - **包含所有网络**是它下面的开关，只在 macOS 上显示，说明写着「系统默认绕开隧道的流量也进入隧道，下次连接时
     生效」。打开它只写设置，不动运行中的隧道；打开时 TUN 协议栈若是 System 或 Mixed，就和设置一起改成 gVisor，
     这一步像改栈一样先带新值 Reload。打开期间下拉框里的 System、Mixed 不可选，注记「包含所有网络时不可用」。
-  - **开发模式**：开发服务对开启 TUN 或系统代理返回 `unsupported_method`（architecture.md §11）。`ProfileLibrary` 把它换成
-    `tun_unsupported`、`system_proxy_unsupported` 或两者都有的 `tun_and_system_proxy_unsupported`，界面在概览页
-    标题栏和设置页开关下方显示「开发模式不支持 TUN 模式」等提示，设置不改。
+  - **开发模式**：开发服务对开启 TUN 或系统代理返回 `unsupported_method`（architecture.md §11）。Windows 以外的
+    服务都是开发服务，`app.default_host` 给它的 `ServiceHost` 是 `TAKEOVER_NONE`，界面不向它要这两项，所以两项
+    默认打开时开发模式照样能连接，只开放混合端口。直接向开发服务要求时，`ProfileLibrary` 仍把拒绝换成
+    `tun_unsupported`、`system_proxy_unsupported` 或两者都有的 `tun_and_system_proxy_unsupported`，界面显示
+    「开发模式不支持 TUN 模式」等提示，设置不改。
 - **外观**：设置页只负责选择和保存（`setAppearance` 写设置项 `appearance`），主题跟随第 6 节的外观对象。
 - **托盘**用 `Qt.labs.platform` 的 `SystemTrayIcon`（`ui/components/TrayIcon.qml`）。它在 macOS 和 Windows 上
   有 Qt 平台插件的原生实现，`QGuiApplication` 就够，不必为 `QSystemTrayIcon` 引入 Qt Widgets 和

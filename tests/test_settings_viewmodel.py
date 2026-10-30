@@ -136,7 +136,7 @@ def test_port_and_lan_reload_the_running_tunnel(qtbot: QtBot, view_models: ViewM
 
     settings.setAllowLan(True)
     qtbot.waitUntil(lambda: prop(settings, "allowLan"))
-    assert host.config.options == RunOptions(True, False, 7897, True)
+    assert host.config.options == RunOptions(True, True, 7897, True)
 
 
 def test_a_port_the_core_cannot_open_is_not_kept(qtbot: QtBot, view_models: ViewModels) -> None:

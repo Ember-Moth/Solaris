@@ -1,8 +1,8 @@
 """Settings ViewModel: the mixed port, LAN access and TUN stack, the UI language and
 appearance, what the desktop does (closing the window, opening at login) and what is installed.
 
-TUN and the system proxy are the overview's switches; the settings page shows the same
-ones (OverviewViewModel), so both pages always agree.
+The page's TUN and system proxy switches come from OverviewViewModel, which knows the
+running tunnel's state (D26).
 """
 
 from __future__ import annotations
@@ -93,8 +93,8 @@ class SettingsViewModel(QObject):
     ) -> None:
         super().__init__(parent)
         self._settings = settings
-        # Whoever changes the settings, the page follows: this page, the overview's switches,
-        # or (later) a restored backup.
+        # Whoever changes the settings, the page follows: this page, OverviewViewModel's
+        # switches, or a restored backup.
         settings.subscribe(self._settings_changed)
         self._library = library
         self._host = host

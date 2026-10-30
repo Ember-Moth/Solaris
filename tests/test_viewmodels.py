@@ -7,7 +7,7 @@ import pytest
 from PySide6.QtCore import QObject
 from pytestqt.qtbot import QtBot
 
-from solaris.host.base import HostError, HostStatus, RunOptions
+from solaris.host.base import TAKEOVER_NONE, HostError, HostStatus, RunOptions
 from solaris.host.service import ServiceHost
 from solaris.host.transport import Streams
 from solaris.models.profiles import ProfileError
@@ -64,7 +64,8 @@ def test_overview_recovers_when_the_service_answers_again(
     assert not prop(overview, "connected")
     monkeypatch.undo()
     qtbot.waitUntil(lambda: prop(overview, "connected"))
-    assert prop(overview, "statusDetail").startswith("已运行 ")
+    # The header says what the tunnel takes over (D26).
+    assert prop(overview, "statusDetail").startswith("TUN 与系统代理 · 已运行 ")
 
 
 def test_overview_while_another_user_runs_the_tunnel(
@@ -92,34 +93,97 @@ def test_overview_actions(qtbot: QtBot, view_models: ViewModels) -> None:
     overview, host = view_models.overview, view_models.host
     assert isinstance(host, SimulatedHost)
     qtbot.waitUntil(lambda: prop(overview, "connected"))
+    assert prop(overview, "connectionOn")
     overview.setMode("global")
     qtbot.waitUntil(lambda: prop(overview, "mode") == "global")
     # A switch changes the running tunnel and is kept for the next connection.
-    overview.setSystemProxy(True)
-    qtbot.waitUntil(lambda: prop(overview, "systemProxyEnabled"))
-    assert view_models.settings_store.current.system_proxy
-    overview.toggleConnection()
-    qtbot.waitUntil(lambda: not prop(overview, "connected"))
-    assert prop(overview, "statusTitle") == "未连接"
+    overview.setSystemProxy(False)
+    qtbot.waitUntil(lambda: not prop(overview, "systemProxyEnabled"))
+    assert not view_models.settings_store.current.system_proxy
+    assert prop(overview, "statusDetail").startswith("TUN · 已运行 ")
+
+    # The connection switch goes off at once and says what it does until the tunnel is down.
+    overview.setConnected(False)
+    assert (prop(overview, "connectionOn"), prop(overview, "connectionChanging")) == (False, True)
+    assert prop(overview, "connectionDetail") == "正在断开…"
+    qtbot.waitUntil(lambda: not prop(overview, "busy"))
+    assert not prop(overview, "connected")
+    assert (prop(overview, "connectionOn"), prop(overview, "connectionDetail")) == (False, "")
+    assert (prop(overview, "statusTitle"), prop(overview, "statusDetail")) == ("未连接", "")
     assert prop(overview, "recent") == []
     assert prop(overview, "downRate") == "—"
 
     # While stopped the switches show, and change, what the next connection asks for.
-    assert (prop(overview, "tunEnabled"), prop(overview, "systemProxyEnabled")) == (False, True)
-    overview.setTun(True)
-    qtbot.waitUntil(lambda: prop(overview, "tunEnabled"))
-    assert view_models.settings_store.current.tun
+    assert (prop(overview, "tunEnabled"), prop(overview, "systemProxyEnabled")) == (True, False)
+    overview.setTun(False)
+    qtbot.waitUntil(lambda: not prop(overview, "tunEnabled"))
+    assert not view_models.settings_store.current.tun
     assert host.reloads == 0
-    overview.toggleConnection()
-    qtbot.waitUntil(lambda: prop(overview, "connected"))
+    overview.setConnected(True)
+    assert prop(overview, "connectionOn")
+    assert prop(overview, "connectionDetail") == "正在连接…"
+    qtbot.waitUntil(lambda: not prop(overview, "busy"))
+    assert prop(overview, "connected")
     assert host.config is not None
-    assert host.config.options == RunOptions(True, True, mixed_port=7890)
+    assert host.config.options == RunOptions(False, False, mixed_port=7890)
+    # With neither, connecting opens the mixed port only.
+    assert prop(overview, "statusDetail").startswith("混合端口 7890 · 已运行 ")
+
+    # The tray's 连接 / 断开 toggles the same way.
+    overview.toggleConnection()
+    qtbot.waitUntil(lambda: not prop(overview, "connected") and not prop(overview, "busy"))
 
 
-def test_development_service_explains_the_switches(qtbot: QtBot, tmp_path: Path) -> None:
+def test_a_failed_connection_returns_the_switch(qtbot: QtBot, view_models: ViewModels) -> None:
+    overview, host = view_models.overview, view_models.host
+    assert isinstance(host, SimulatedHost)
+    qtbot.waitUntil(lambda: prop(overview, "connected"))
+    overview.setConnected(False)
+    qtbot.waitUntil(lambda: not prop(overview, "busy"))
+    host.busy_ports.add(7890)
+    overview.setConnected(True)
+    qtbot.waitUntil(lambda: not prop(overview, "busy"))
+    assert not prop(overview, "connectionOn")
+    assert prop(overview, "connectionFailed")
+    assert prop(overview, "connectionDetail").startswith("配置未能生效")
+    assert prop(overview, "statusDetail") == ""  # the reason is the switch's
+    host.busy_ports.clear()
+    overview.setConnected(True)
+    qtbot.waitUntil(lambda: prop(overview, "connected") and not prop(overview, "busy"))
+    assert not prop(overview, "connectionFailed")
+    assert prop(overview, "connectionDetail") == ""
+
+
+def test_development_service_opens_the_mixed_port_only(qtbot: QtBot, tmp_path: Path) -> None:
+    """The app's development service takes over nothing (D26): connecting with the
+    settings' defaults, both on, works."""
     store = ProfileStore(tmp_path)
     seed_profiles(store, NOW)
+    host = SimulatedHost(development=True, takeover=TAKEOVER_NONE)
+    built = compose(host, store, SimulatedFetcher(), lambda: NOW)
+    built.start()
+    try:
+        overview = built.overview
+        assert prop(overview, "takeover") == "none"
+        qtbot.waitUntil(lambda: prop(overview, "connected"))
+        overview.setConnected(False)
+        qtbot.waitUntil(lambda: not prop(overview, "busy"))
+        overview.setConnected(True)
+        qtbot.waitUntil(lambda: prop(overview, "connected") and not prop(overview, "busy"))
+        assert prop(overview, "connectionDetail") == ""
+        assert host.config is not None
+        assert host.config.options == RunOptions(mixed_port=7890)
+        assert prop(overview, "statusDetail").startswith("混合端口 7890 · 已运行 ")
+    finally:
+        built.shutdown()
+
+
+def test_a_refused_switch_is_explained_and_not_kept(qtbot: QtBot, tmp_path: Path) -> None:
+    store = ProfileStore(tmp_path)
+    seed_profiles(store, NOW)
+    # The development service asked for TUN directly, as no host of the app's does.
     built = compose(SimulatedHost(development=True), store, SimulatedFetcher(), lambda: NOW)
+    built.settings_store.update(tun=False, system_proxy=False)
     built.start()
     try:
         overview = built.overview

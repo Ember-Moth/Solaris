@@ -9,11 +9,12 @@ from PySide6.QtTest import QTest
 from pytestqt.qtbot import QtBot
 
 from solaris.app import MAIN_QML, switch_language
+from solaris.host.base import TAKEOVER_NONE, TAKEOVER_SETTINGS, TAKEOVER_TUN
 from solaris.i18n import Translations
 from solaris.viewmodels import settings as settings_view_model
 from solaris.viewmodels.composition import ViewModels
 from tests.support.appearance import SystemColorScheme
-from tests.support.window import Loaded, find, texts
+from tests.support.window import Loaded, find, find_all, texts
 
 TRAY_QML = MAIN_QML.parent / "components" / "TrayIcon.qml"
 
@@ -237,6 +238,73 @@ def test_settings_page_offers_the_tun_stack(
     assert loaded.warnings == []
 
 
+def is_switch(item: QQuickItem) -> bool:
+    return item.metaObject().className().startswith("AppSwitch")
+
+
+def shown_texts(item: QQuickItem) -> set[str]:
+    """Every ``text`` shown under ``item``, leaving out hidden items."""
+    found = (i.property("text") for i in find_all(item, lambda _: True))
+    return {text for text in found if isinstance(text, str) and text}
+
+
+def shown_row(content: QQuickItem, label: str) -> set[str] | None:
+    """The texts of the visible row labelled ``label``, or None."""
+    text = find(content, lambda i: i.property("text") == label)
+    while text is not None and not text.metaObject().className().startswith("GroupRow"):
+        text = text.parentItem()
+    return None if text is None else shown_texts(text)
+
+
+@pytest.mark.parametrize(
+    ("takeover", "tun", "system_proxy", "note"),
+    [
+        # The Windows service: both switches, on by default (D26).
+        (TAKEOVER_SETTINGS, {"TUN 模式"}, {"系统代理"}, "连接时使用"),
+        # The macOS extension always runs a TUN and never sets the system proxy.
+        (TAKEOVER_TUN, {"TUN 模式", "macOS 上总是启用", "已启用"}, None, "连接时使用"),
+        # The development service takes over nothing.
+        (TAKEOVER_NONE, {"TUN 模式", "不使用"}, {"系统代理", "不使用"}, "开发模式只开放混合端口"),
+    ],
+    indirect=["takeover"],
+)
+def test_settings_page_shows_what_connecting_takes_over(
+    qtbot: QtBot,
+    takeover: str,
+    tun: set[str],
+    system_proxy: set[str] | None,
+    note: str,
+    loaded: Loaded,
+) -> None:
+    loaded.view_models.shell.setPage("settings")
+    content = loaded.window.contentItem()
+    qtbot.waitUntil(lambda: shown_row(content, "TUN 模式") is not None)
+    assert shown_row(content, "TUN 模式") == tun
+    assert shown_row(content, "系统代理") == system_proxy
+    assert find(content, lambda i: i.property("text") == note) is not None
+    # Only the Windows service's rows have switches: the TUN and system proxy, both on.
+    group = find(content, lambda i: i.property("text") == "TUN 协议栈")
+    while group is not None and not group.metaObject().className().startswith("Group_"):
+        group = group.parentItem()
+    assert group is not None
+    on = [s for s in find_all(group, is_switch) if s.property("value")]
+    assert len(on) == (2 if takeover == TAKEOVER_SETTINGS else 0)
+    assert loaded.warnings == []
+
+
+def test_settings_page_says_when_only_the_mixed_port_serves(qtbot: QtBot, loaded: Loaded) -> None:
+    overview = loaded.view_models.overview
+    loaded.view_models.shell.setPage("settings")
+    content = loaded.window.contentItem()
+    hint = "两项都关闭时，连接后只开放混合端口"  # noqa: RUF001 - the UI's copy
+    qtbot.waitUntil(lambda: overview.property("connected"))
+    assert hint not in (shown_row(content, "系统代理") or set())
+    overview.setTun(False)
+    overview.setSystemProxy(False)
+    qtbot.waitUntil(lambda: hint in (shown_row(content, "系统代理") or set()))
+    assert loaded.warnings == []
+
+
 def cramped(item: QQuickItem) -> list[set[str]]:
     """The texts of the rows under ``item`` that need more width than they have, so that
     something in them is elided, wraps or runs under its neighbour."""
@@ -281,7 +349,7 @@ def test_language_switches_while_running(qtbot: QtBot, loaded: Loaded) -> None:
         view_models.settings.setLanguage("en")
         qtbot.waitUntil(lambda: "Outbound" in texts(content))
         shown = texts(content)
-        assert {"Overview", "Settings", "Connected", "Disconnect"} <= shown  # QML and Python
+        assert {"Overview", "Settings", "Connected", "Connect"} <= shown  # QML and Python
         assert "出站" not in shown
         assert view_models.shell.property("pages")[0]["label"] == "Overview"
         assert view_models.shell.property("serviceText") == "Service running"

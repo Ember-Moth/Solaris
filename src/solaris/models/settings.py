@@ -51,10 +51,11 @@ class Settings:
     close_action: str = _setting("tray", LOCAL)
     # Mirrors this machine's login item; the system is the record.
     launch_at_login: bool = _setting(False, LOCAL)
-    # The overview's TUN and system proxy switches: what the next connection asks for. Both
-    # take over this machine's traffic, which another machine must not do on restore.
-    tun: bool = _setting(False, LOCAL)
-    system_proxy: bool = _setting(False, LOCAL)
+    # The settings page's TUN and system proxy switches (D26): what connecting takes over, as
+    # far as the host lets it (TunnelHost.takeover). Both take over this machine's traffic,
+    # which another machine must not do on restore.
+    tun: bool = _setting(True, LOCAL)
+    system_proxy: bool = _setting(True, LOCAL)
     # A port free here may be taken elsewhere; LAN access exposes it to this network.
     mixed_port: int = _setting(DEFAULT_MIXED_PORT, LOCAL)
     allow_lan: bool = _setting(False, LOCAL)

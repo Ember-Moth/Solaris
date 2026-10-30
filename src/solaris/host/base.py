@@ -7,7 +7,7 @@ becomes ``"running"``).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Protocol
 
 from solaris.host import geo_categories
@@ -37,6 +37,21 @@ class RunOptions:
     # writes it into the VPN configuration as it brings the tunnel up, and the extension tells
     # the core.
     include_all_networks: bool = False
+
+
+# What connecting takes over on a host (D26, docs/ui.md §8).
+TAKEOVER_SETTINGS = "settings"  # the Windows service: TUN and the system proxy as set
+TAKEOVER_TUN = "tun"  # the macOS extension: always a TUN, never the system proxy
+TAKEOVER_NONE = "none"  # the development service: neither, only the mixed port
+
+
+def taken_over(options: RunOptions, takeover: str) -> RunOptions:
+    """``options`` with the TUN and the system proxy a ``takeover`` host runs."""
+    if takeover == TAKEOVER_TUN:
+        return replace(options, tun_enabled=True, system_proxy_enabled=False)
+    if takeover == TAKEOVER_NONE:
+        return replace(options, tun_enabled=False, system_proxy_enabled=False)
+    return options
 
 
 @dataclass(frozen=True)
@@ -327,6 +342,10 @@ class LogEntry:
 
 
 class TunnelHost(Protocol):
+    # TAKEOVER_SETTINGS, TAKEOVER_TUN or TAKEOVER_NONE: the host runs every config with
+    # taken_over(options, takeover), whatever the settings asked for.
+    takeover: str
+
     async def get_info(self) -> HostInfo: ...
 
     async def get_status(self) -> HostStatus: ...

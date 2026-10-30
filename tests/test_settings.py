@@ -53,7 +53,8 @@ def test_defaults_without_rows(tmp_path: Path, database: Database) -> None:
     store = DatabaseSettingsStore(database)
     assert store.current == Settings()
     assert rows(tmp_path) == {}  # nothing is written until a change
-    assert store.current.run_options() == RunOptions(mixed_port=7890)
+    # Connecting takes over with both (D26), as far as the host does.
+    assert store.current.run_options() == RunOptions(True, True, mixed_port=7890)
 
 
 def test_update_writes_and_notifies(tmp_path: Path, database: Database) -> None:
@@ -61,8 +62,8 @@ def test_update_writes_and_notifies(tmp_path: Path, database: Database) -> None:
     seen: list[tuple[Settings, Settings]] = []
     stop = store.subscribe(lambda before, after: seen.append((before, after)))
 
-    store.update(language="en", mixed_port=7897, allow_lan=True, tun=True)
-    changed = Settings(language="en", tun=True, mixed_port=7897, allow_lan=True)
+    store.update(language="en", mixed_port=7897, allow_lan=True, system_proxy=False)
+    changed = Settings(language="en", system_proxy=False, mixed_port=7897, allow_lan=True)
     assert store.current == changed
     assert seen == [(Settings(), changed)]
     assert DatabaseSettingsStore(database).current == changed
@@ -70,7 +71,7 @@ def test_update_writes_and_notifies(tmp_path: Path, database: Database) -> None:
     # One row per setting changed, with the scope it has (storage.md §2).
     assert rows(tmp_path) == {
         "language": ("en", SYNCED, 1_000.0),
-        "tun": (True, LOCAL, 1_000.0),
+        "system_proxy": (False, LOCAL, 1_000.0),
         "mixed_port": (7897, LOCAL, 1_000.0),
         "allow_lan": (True, LOCAL, 1_000.0),
     }
@@ -89,7 +90,9 @@ def test_run_options_carry_the_stack_and_all_networks(database: Database) -> Non
     for stack in ("system", "mips", "gvisor", "mixed"):
         assert store.update(tun_stack=stack).run_options().tun_stack == stack
     options = store.update(include_all_networks=True).run_options()
-    assert options == RunOptions(mixed_port=7890, tun_stack="mixed", include_all_networks=True)
+    assert options == RunOptions(
+        True, True, mixed_port=7890, tun_stack="mixed", include_all_networks=True
+    )
 
 
 @pytest.mark.parametrize(

@@ -161,13 +161,16 @@ def test_start_activates_connects_and_sends_the_config() -> None:
 
     manager = FakeManager(answer)
     host = MacExtensionHost(manager)
-    config = TunnelConfig("proxies: []\n", ("mode: rule\n",), RunOptions(tun_stack="gvisor"))
+    # Whatever the settings ask for, a TUN without the system proxy (D26).
+    options = RunOptions(tun_enabled=False, system_proxy_enabled=True, tun_stack="gvisor")
+    config = TunnelConfig("proxies: []\n", ("mode: rule\n",), options)
     all_networks = replace(config, options=RunOptions(include_all_networks=True))
 
     async def scenario() -> tuple[HostStatus, HostInfo]:
         assert await host.start(config) is None
         status = await host.get_status()
         info = await host.get_info()
+        await host.reload(config)
         await host.stop()
         await host.start(all_networks)
         return status, info
@@ -185,9 +188,12 @@ def test_start_activates_connects_and_sends_the_config() -> None:
     start = manager.requests[0].start
     assert (start.config_yaml, list(start.overrides)) == ("proxies: []\n", ["mode: rule\n"])
     assert start.options.tun_stack == pb.TUN_STACK_GVISOR
+    reload = manager.requests[3].reload
+    for sent in (start.options, reload.options, manager.requests[4].start.options):
+        assert (sent.tun_enabled, sent.system_proxy_enabled) == (True, False)
     # The VPN configuration carries the setting; the extension tells the core (D19).
     assert manager.include_all_networks == [False, True]
-    assert [request.id for request in manager.requests] == [1, 2, 3, 4]
+    assert [request.id for request in manager.requests] == [1, 2, 3, 4, 5]
     assert threading.main_thread() not in manager.threads
 
 

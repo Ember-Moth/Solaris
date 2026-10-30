@@ -572,7 +572,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   通过管理库查看连接状态。`MacExtensionHost` 这时按隧道状态报告运行状态，列表和轮询为空，GEO 分类用安装包的
   清单，其余需要内核的方法（包括 `Validate`、`InspectSource`）报 `not_running`（apple/README.md“Python 宿主”）。
 - **方法**：除 `Claim`、`SetSystemProxy` 外与 Windows 相同。隧道的启停走管理库，配置经 `Start` / `Reload` 走
-  provider message；没有 attach 的隧道时，消息得到 `not_running`。
+  provider message；没有 attach 的隧道时，消息得到 `not_running`。`MacExtensionHost` 发出的 `RunOptions` 总是开着
+  TUN、关着系统代理，不论设置怎么写（ui.md 第 8 节"接管方式"）。
 - **消息大小**：单条 provider message 的上限需要实测，它决定 `Reload` 能否直接携带大配置。
 - 做法与 hypervpn 一致，见它的 `NetworkExtensionManager.swift`（`providerExchange`）和
   `PacketTunnelProvider.swift`（`handleAppMessage`）。
