@@ -9,7 +9,7 @@
 
 | 部分 | 状态 | 说明 |
 | --- | --- | --- |
-| 架构与视觉规范 | 完成 | architecture.md、ui.md、DESIGN.md；原型在 Claude Design 画布上（第 28 版，含深色画板、分流 v2、链式出口、应用图标与顶部区域） |
+| 架构与视觉规范 | 完成 | architecture.md、ui.md、DESIGN.md；原型在 Claude Design 画布上（第 29 版，含深色画板、分流 v2、链式出口、应用图标与顶部区域） |
 | 控制协议 | v1 | 消息、方法表、帧编解码已定；Go 与 Python 共用样本测试；配置来源可以是订阅原文或拼装（`Composition`）；`InspectSource`、`ListGeoCategories`、`PreviewGroup`、`MatchRule`、`ConvertToPlan`、`ExportPlan`、`RegisterWarp`；链式出口与组网出站的字段 |
 | engine（内嵌 mihomo） | 完成（M1、M5） | mihomo v1.19.33；无 TUN、自管 TUN 和 fd 三种模式，覆写、§3.3 安全项、开发模式护栏 |
 | Go 分发器与服务入口 | 部分 | 全部内核方法、Start / Stop / Reload / Validate、`PollEvents`；`Claim`、系统代理、Authenticode 校验留到 M4 |
@@ -136,7 +136,7 @@ B1、B2 的结果与遗留：
 | 两个设置 | "TUN 协议栈"（D3，两个平台）和"包含所有网络"（D19，仅 macOS）：设置项、`RunOptions` 新字段、内核与系统扩展的处理、设置页。本轮只有它改控制协议 |
 
 **第三轮 A 合并后**：隐藏系统标题栏、自绘顶部区域（DESIGN.md「顶部区域」，原型"顶部区域 · 两个平台"）；连接从标题栏的按钮
-改为概览页出站分组第一行的开关（DESIGN.md「连接开关」）。macOS 在开发机上做和
+改为概览页出站分组第一行的开关，TUN 和系统代理两个开关移到设置页（D26，DESIGN.md「连接开关」）。macOS 在开发机上做和
 验收；Windows 的窗口按钮、拖动和贴靠要在 Windows 虚拟机上验收。
 
 **第三轮 B**（等环境）：
@@ -455,6 +455,7 @@ fake-ip 下的一致性留到 M5 / M4 实测（routing.md 第 12 节）。
 | D22 | WARP 出口放在内核：mihomo 的 MASQUE 或 WireGuard 出站，`dialer-proxy` 经用户的节点，默认 MASQUE over HTTP/2；内核经节点注册账户，账户存系统凭据库、不进备份；首发前做（M9） | exits.md 第 3 节 |
 | D25 | VPN Gate 作为第三种链式出口（"隐私出口"随之改名"链式出口"）：经节点拉列表，只用 TCP 的 OpenVPN 服务器，按国家和评分挑选；默认负载均衡组按网站分配服务器并跳过失效的，也可选只用一台；定位是换 IP 和住宅 IP，不宣传隐私；排在 M9 之后，开工前先核实使用条款 | exits.md 第 5 节 |
 | D24 | 保留 Tailscale、ZeroTier、EasyTier 出站；它们不进节点池和任何策略组，作为"组网"出站单独列出、供规则引用；只用作出站，安全项关闭 EasyTier 对外提供出口和子网的选项 | mesh.md |
+| D26 | 界面上只有一个连接开关（概览页出站分组第一行）；连接时怎样接管流量由设置页「接管方式」决定，TUN 和系统代理默认都开；macOS 上 TUN 是必选的 | DESIGN.md「连接开关」、ui.md 第 8 节 |
 | D23 | Tor 出口用 arti-client，经 pyo3 运行在界面进程；首发后作为实验功能（M10）；退出界面后 Tor 不可用，连接被拒绝 | exits.md 第 4 节 |
 
 ## 6. 风险
