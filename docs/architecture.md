@@ -101,11 +101,16 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
   mihomo 的默认值：mihomo 从 fake-ip 段取 TUN 的 IPv4 地址（段首地址的 /30），所以 `dns.fake-ip-range` 固定为
   `198.18.0.1/16`，得到 198.18.0.1/30；IPv6 是 fdfe:dcba:9876::1/126，MTU 9000。mihomo 总会劫持 TUN 地址的下一个
   地址（198.18.0.2:53），宿主把它设为系统的 DNS 服务器（6.2 节）。栈默认 gVisor（构建不带 `with_gvisor` 时为
-  mips），用户设了就保留。打开 mihomo DNS；`allow_lan` 为 false 时，入站同样限制在回环地址。准入最后核对 TUN
-  的地址和 MTU；用户关掉 `ipv6` 时 mihomo 不给 TUN 配 IPv6 地址，宿主仍把 IPv6 路由进隧道，这部分流量被丢弃。
+  mips），用户设了就保留；扩展开启了 `includeAllNetworks` 时（D19，由扩展在 attach 时告诉 engine），`system` 和
+  `mixed` 换成 gVisor 并记一条日志（3.4 节）。打开 mihomo DNS；`allow_lan` 为 false 时，入站同样限制在回环地址。
+  准入最后核对 TUN 的地址和 MTU。用户关掉 `ipv6`，或者系统没有全局单播 IPv6 地址时，mihomo 不给 TUN 配 IPv6
+  地址；扩展的 utun 自带 fdfe:dcba:9876::1，所以在扩展里只有前一种情况。这时宿主仍把 IPv6 路由进隧道，这部分
+  流量被丢弃。
 - **fd 模式下描述符的归属**：sing-tun 在 mihomo 关闭或替换 TUN 时，会关掉 TUN 所用的描述符，所以 mihomo 拿到的
   不是宿主的描述符，而是 engine 复制的一份（`F_DUPFD_CLOEXEC`），在应用配置前填进 `tun.file-descriptor`。TUN
   设置与 mihomo 正在用的相同时沿用同一份副本，`Reload` 不重建 TUN；设置变了就给一份新的，旧的由 mihomo 关闭。
+  副本设为非阻塞：sing-tun 在 macOS 上自己会这样设，在 Linux 上不会，而 Go 要等阻塞文件上未完成的 `Read`
+  返回后才真正关闭它，被替换的 TUN 会一直占着副本，直到下一个包到来。
   每次应用和停止之后，engine 放掉 mihomo 不再使用的副本：mihomo 没能打开 TUN 时副本仍开着，engine 确认这个
   号码仍指向那个 TUN（比对接口名）后才关掉它，因为号码可能已经属于别的文件。宿主的描述符 engine 从不关闭，
   `Close` 返回后由宿主关闭。
@@ -212,8 +217,9 @@ gVisor 栈。M1 的实测数据如下（v1.19.33，Go 1.27.3，`-trimpath -ldfla
   构建里编入，所以单独加 `no_tailscale` 没有效果；gVisor 栈本身约 3.8 MiB。
 - TUN 栈：`system` 和 `mips`（mihomo 的默认栈）总是可用；`gvisor` 和 `mixed` 需要 `with_gvisor`，否则要到创建
   TUN 时才报错，所以准入流水线在缺少该标签时直接以 `invalid_config` 拒绝这两种栈。
-- macOS NE 开启 `includeAllNetworks` 时，sing-tun 拒绝 `system` 和 `mixed` 栈，只剩 `mips` 和 `gvisor`；扩展目前
-  没有开启它，所以 fd 模式保留用户选的栈，只在没选时用 gVisor。
+- macOS NE 开启 `includeAllNetworks` 时，`system` 和 `mixed` 栈不能工作，只剩 `mips` 和 `gvisor`。sing-tun 有
+  对应的检查（`StackOptions.IncludeAllNetworks`），但 mihomo 不传这个选项，所以由 engine 在 fd 模式下把这两种栈
+  换成 gVisor（3.1 节）。`includeAllNetworks` 默认关闭，用户可以在设置页打开（D19，ui.md §8）。
 - 系统扩展的可执行文件（Release，`with_gvisor`）是 73.3 MiB，`xcodebuild build` 不裁剪符号；`strip -x` 后
   61.3 MiB，与上表的服务相当。裁剪放在组装 .app 一步。
 - 各标签组合在两个平台上都能编译。真实 TUN 下，四种栈在 Linux 的自管模式里都能建立 TUN 并转发流量
@@ -450,7 +456,9 @@ Solaris.app/Contents/
   `scripts/build_apple.py`。只构建 arm64（D2），最低系统版本暂定 macOS 15.0。
 - 需要 Developer ID 签名、公证，以及 `packet-tunnel-provider-systemextension` entitlement。
 - 管理库用 `OSSystemExtensionRequest` 激活扩展（用户需在系统设置中批准；包内的扩展总是替换其他构建激活的
-  扩展）、配置 `NETunnelProviderManager`、启停隧道、查询状态、收发 provider message。C 接口是
+  扩展）、配置 `NETunnelProviderManager`、启停隧道、查询状态、收发 provider message。配置时按设置写
+  `includeAllNetworks`（D19，默认关闭）；打开它时同时设 `excludeLocalNetworks`，局域网流量（打印机、AirDrop、
+  Bonjour）照旧不进隧道。C 接口是
   `apple/Manager/SolarisManager.h`：调用阻塞到完成或超时，要在后台线程调用；本库交出的字符串和缓冲区由
   调用方用 `solaris_manager_free` 释放。
 - hypervpn-desktop 的 `src/packet-engine/native/macos/SystemNetworkExtension/` 和它的 NE 管理库可以作为参考。
@@ -463,7 +471,8 @@ Solaris.app/Contents/
    的 fd 补丁都从这里取，Go 的测试核对补丁解析出的 TUN 与它一致；
 2. 网络设置完成后 NE 才打开 utun。扩展在 0 到 1024 号描述符里找
    `getsockopt(SYSPROTO_CONTROL, UTUN_OPT_IFNAME)` 返回 utun 名字的那个（与 hypervpn 的
-   `AppleRawTunFileDescriptor.locate` 相同），用 `solaris_attach_tun` 交给 Go：Go 以 fd 模式打开 engine
+   `AppleRawTunFileDescriptor.locate` 相同），连同 `protocolConfiguration` 的 `includeAllNetworks`
+   用 `solaris_attach_tun` 交给 Go：Go 以 fd 模式打开 engine
    （home 在扩展容器的 `Application Support/Solaris/core`）和分发器，mihomo 此时还不运行；
 3. 配置和 Windows 一样由界面经控制协议的 `Start` / `Reload` 传入（决策 D7），不经
    `startVPNTunnel(options:)`；mihomo 在描述符的副本上运行 TUN（3.1 节）。不监听任何 socket，mihomo 的 HTTP

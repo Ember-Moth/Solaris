@@ -120,7 +120,7 @@ B1、B2 的结果与遗留：
 | Windows 测试机或虚拟机 | B3 开始前 | M4 的安装、wintun、DNS 泄漏测试 |
 | Google Cloud 项目与"桌面应用"类型的 OAuth 客户端 | C2 开始前（同意屏幕审核要时间，越早越好） | Google Drive 备份 |
 | Developer ID Application 证书、两份 Developer ID 描述文件、公证 API Key、单独的测试 Mac（App ID、App Group、iCloud 容器已建好，见 apple/README.md） | 阶段 D 的 M5 开始前 | macOS 系统扩展、iCloud |
-| D5b、D8、D19 | 见第 5 节 | — |
+| D5b、D8 | 见第 5 节 | — |
 
 ## 3. 里程碑
 
@@ -199,8 +199,8 @@ B1、B2 的结果与遗留：
 PacketTunnel 系统扩展骨架、`scripts/build_apple.py`（签名与不签名两种模式）、CI 的不签名构建；签名材料齐全，
 本机签名校验通过。第二步 fd 模式已完成（2026-10-30）：engine 的 fd 模式、扩展找到 utun 描述符后交给 Go
 （`solaris_attach_tun` / `solaris_detach_tun`）、扩展带 `with_gvisor` 构建、CI 在网络命名空间里测 fd 模式。
-剩下：`MacExtensionHost`、把 GEO 数据放进扩展的数据目录、组装 .app、公证与发布工作流、测试 Mac 实测（找 utun
-描述符、四种栈、重连时描述符的归属、D8、D19）。
+剩下：`MacExtensionHost`、"包含所有网络"设置（D19）、把 GEO 数据放进扩展的数据目录、组装 .app、公证与发布
+工作流、测试 Mac 实测（找 utun 描述符、四种栈、重连时描述符的归属、`includeAllNetworks`、D8）。
 部署目标暂定 macOS 15.0。
 
 范围：
@@ -211,6 +211,8 @@ PacketTunnel 系统扩展骨架、`scripts/build_apple.py`（签名与不签名�
 - **扩展内部**：获取 utun fd，设置隧道网络和 DNS，建立 provider message 通道。配置和 Windows 一样经 `Start` /
   `Reload` 传入（D7）；单条消息的大小上限（D8）先用原型验证，不够就分片。
 - **Python 侧**：实现 `MacExtensionHost`，通过 ctypes 调用管理库。
+- **包含所有网络**（D19）：设置页加 macOS 专属的开关，默认关闭；管理库按它写 VPN 配置的 `includeAllNetworks`
+  和 `excludeLocalNetworks`；扩展在 attach 时把它告诉 engine，engine 在它打开时把 `system`、`mixed` 栈换成 gVisor。
 - **打包**：把 Nuitka 产物、管理库和系统扩展组装成 .app，签名并公证；实测登录项（`SMAppService`）。
 
 验收：在全新的 Mac 上安装公证后的 .app → 批准系统扩展 → 连接 → 退出 App 后隧道仍在 → 重新打开 App 能读到状态。
@@ -299,7 +301,6 @@ PacketTunnel 系统扩展骨架、`scripts/build_apple.py`（签名与不签名�
 | --- | --- | --- | --- |
 | D5b | 内核运行中能否由管理员接管其他用户的隧道（倾向可以，需 UAC 确认） | M4 | 服务的属主逻辑 |
 | D8 | provider message 单条大小上限 | M5 原型 | `Reload` 能否直接携带大配置 |
-| D19 | 扩展是否开启 `includeAllNetworks`（开启后 sing-tun 拒绝 `system` 和 `mixed` 栈） | M5 测试 Mac 实测 | macOS 设置页的栈选项、扩展的网络设置 |
 
 ### 5.2 已决定（2026-10-29 至 10-30）
 
@@ -322,6 +323,7 @@ PacketTunnel 系统扩展骨架、`scripts/build_apple.py`（签名与不签名�
 | D6 | 订阅一键导入注册 `solaris://install-config?url=…` 和 `clash://install-config` | 本文 M6 |
 | D7 | macOS 的配置和 Windows 一样，经控制协议的 `Start` / `Reload` 传入 | architecture.md §6.2 |
 | D11 | 内置检查更新与下载：安装包来自 GitHub Releases，校验签名，由用户确认安装 | 本文 M6 |
+| D19 | macOS 扩展的 `includeAllNetworks` 默认关闭，用户可在设置页打开；打开后 `system`、`mixed` 栈换成 gVisor | architecture.md §3.4、ui.md §8 |
 | D20 | fd 模式的 `dns.fake-ip-range` 固定为 `198.18.0.1/16`（TUN 地址由它得出）；用户关掉 `ipv6` 时，进入隧道的 IPv6 流量被丢弃 | architecture.md §3.1 |
 
 ## 6. 风险
