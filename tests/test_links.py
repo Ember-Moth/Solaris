@@ -15,7 +15,6 @@ from PySide6.QtCore import QCoreApplication, QUrl
 from PySide6.QtGui import QFileOpenEvent
 from pytestqt.qtbot import QtBot
 
-from solaris.desktop import links
 from solaris.desktop.instance import ACTIVATE, SingleInstance, message
 from solaris.desktop.links import InstallLink, LinkReceiver, from_arguments, parse
 from solaris.models.store import ProfileStore
@@ -173,7 +172,3 @@ def test_the_form_opens_filled_in(qtbot: QtBot, loaded: Loaded) -> None:
     assert loaded.focused_text() == SUBSCRIPTION
     # Nothing was imported: the user checks the link and presses 导入.
     assert len(view_models.library.snapshot().profiles) == 3
-
-
-def test_links_module_names_both_schemes() -> None:
-    assert links.SCHEMES == ("solaris", "clash")

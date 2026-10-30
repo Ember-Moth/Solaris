@@ -105,6 +105,8 @@ class AboutViewModel(QObject):
     installRequested = Signal()  # the view asks before the installer is opened
     _progressed = Signal(int, int)  # from the download's thread
     _verifying = Signal()
+    # The store tells its listeners on the thread that wrote; the timers live on this one.
+    _settingsStored = Signal(object, object)
 
     def __init__(
         self,
@@ -126,7 +128,8 @@ class AboutViewModel(QObject):
         super().__init__(parent)
         self._updater = updater
         self._settings = settings
-        settings.subscribe(self._settings_changed)
+        self._settingsStored.connect(self._settings_changed)
+        settings.subscribe(self._settingsStored.emit)
         self._host = host
         self._library = library
         self._runner = runner

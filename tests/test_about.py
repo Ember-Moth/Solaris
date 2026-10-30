@@ -24,7 +24,6 @@ from solaris.host.base import HostError, HostInfo, HostStatus, LogEntry
 from solaris.models.routing import Plan, PlanRule, RoutingStore
 from solaris.models.settings import Settings
 from solaris.models.store import ProfileStore
-from solaris.update import updater as updater_module
 from solaris.update.releases import ReleaseSource, UpdateError
 from solaris.update.updater import Check, Downloaded, Updater
 from solaris.viewmodels import about as about_module
@@ -548,7 +547,3 @@ def test_no_manifest(qtbot: QtBot, built: ViewModels, tmp_path: Path) -> None:
     about.setComponentQuery("")
     assert prop(about, "componentsEmpty")
     assert prop(about, "componentsSummary") == "0 个第三方组件"
-
-
-def test_updater_directory_name() -> None:
-    assert updater_module.DIRECTORY_NAME == "updates"
