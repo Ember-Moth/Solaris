@@ -41,6 +41,7 @@ def test_every_setting_has_a_scope() -> None:
         "system_proxy": LOCAL,
         "mixed_port": LOCAL,
         "allow_lan": LOCAL,
+        "warp_protocol": LOCAL,
         "update_check": SYNCED,
         "update_check_hours": SYNCED,
     }

@@ -18,7 +18,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, fields, replace
 from typing import Any, Protocol
 
-from solaris.host.base import RunOptions
+from solaris.host.base import WARP_PROTOCOLS, RunOptions
 from solaris.models.database import Database
 from solaris.models.profiles import ProfileError
 
@@ -54,6 +54,8 @@ class Settings:
     # A port free here may be taken elsewhere; LAN access exposes it to this network.
     mixed_port: int = _setting(DEFAULT_MIXED_PORT, LOCAL)
     allow_lan: bool = _setting(False, LOCAL)
+    # The WARP exit's protocol (docs/exits.md §3.1): what this machine's account has a key for.
+    warp_protocol: str = _setting(WARP_PROTOCOLS[0], LOCAL)
     # Look for a new release at startup and then every so many hours.
     update_check: bool = _setting(True, SYNCED)
     update_check_hours: int = _setting(UPDATE_CHECK_HOURS[0], SYNCED)
@@ -99,6 +101,7 @@ _CHOICES: dict[str, tuple[str, ...]] = {
     "language": LANGUAGES,
     "appearance": APPEARANCES,
     "close_action": CLOSE_ACTIONS,
+    "warp_protocol": WARP_PROTOCOLS,
 }
 
 
