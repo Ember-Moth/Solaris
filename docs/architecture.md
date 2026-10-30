@@ -546,7 +546,9 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   `curl -x` 经混合端口访问本机的 HTTP 服务；配置里的节点是本机的 HTTP 代理，它们记下经过的请求，所以能看出
   流量走了哪条路。覆盖导入文件和订阅、连接、各页数据、切换模式和节点、TUN 与系统代理被拒、覆写 / 订阅更新 /
   切换配置时重载不断开已有连接、断开重连与服务重启、混合端口被占用和局域网连接，以及模拟宿主与真实服务对一组
-  配置的判定一致。默认跳过，设置 `MIHOMO_DESKTOP_E2E=1` 才运行；`MIHOMO_DESKTOP_E2E_SERVICE` 可以指向已
+  配置的判定一致；自定义分流（B2）另有用例：只有节点的订阅加方案连接、域名规则把流量导向指定节点、连接快照带规则
+  条目 id、重载改方案。分流用例需要 GEO 数据，用 `scripts/fetch_geodata.py` 拉取并缓存。默认跳过，设置
+  `MIHOMO_DESKTOP_E2E=1` 才运行；`MIHOMO_DESKTOP_E2E_SERVICE` 可以指向已
   构建的服务，否则测试自己 `go build`；`MIHOMO_DESKTOP_E2E_SCREENSHOTS` 指向一个目录时保存各页截图。CI 的
   `e2e` job 在 macOS runner 上先构建服务再运行。全程只用回环地址，不需要 TUN。
 - **测试覆盖**：

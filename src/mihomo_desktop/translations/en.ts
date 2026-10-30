@@ -253,6 +253,10 @@
         <translation>Can’t read the override file</translation>
     </message>
     <message>
+        <source>无法读写本地数据</source>
+        <translation>Can’t read or save local data</translation>
+    </message>
+    <message>
         <source>操作失败：{detail}</source>
         <translation>Operation failed: {detail}</translation>
     </message>

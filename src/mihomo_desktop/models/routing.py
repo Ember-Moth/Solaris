@@ -25,7 +25,7 @@ RULE_KINDS = ("service", "category", "domain", "ip", "raw")
 DIRECT = "DIRECT"
 REJECT = "REJECT"
 # Nodes whose names match carry information, such as the quota, not a server (§5.2).
-DEFAULT_INFO_PATTERN = "剩余|到期|过期|流量|官网|套餐|expire|traffic|website"
+DEFAULT_INFO_PATTERN = "(?i)剩余|到期|过期|流量|官网|套餐|expire|traffic|website"
 
 
 @dataclass(frozen=True)

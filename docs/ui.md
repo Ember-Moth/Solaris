@@ -1,8 +1,8 @@
 # 界面
 
 本文描述 Python 界面的结构和各部分的设计：宿主接口、配置存储、订阅、覆写、多语言、外观、连接与日志、设置与桌面行为。
-系统整体的架构见 [architecture.md](architecture.md)，视觉规范见 [DESIGN.md](../DESIGN.md)，计划中的存储与分流设计见
-[storage.md](storage.md) 和 [routing.md](routing.md)。
+系统整体的架构见 [architecture.md](architecture.md)，视觉规范见 [DESIGN.md](../DESIGN.md)。云备份的设计见
+[storage.md](storage.md)，自定义分流的设计见 [routing.md](routing.md)，两者的界面部分尚未实现。
 
 ## 0. 结构
 
