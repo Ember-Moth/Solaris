@@ -82,6 +82,8 @@ type Engine interface {
 	ConvertToPlan(source []byte, options compose.Conversion) (*controlpb.ConvertToPlanResponse, error)
 	ExportPlan(profile engine.Profile, format controlpb.ExportFormat) ([]byte, error)
 	RegisterWarp(ctx context.Context, via string, request warp.Request) (*controlpb.WarpAccount, error)
+	MeshStatus(ctx context.Context) ([]*controlpb.MeshStatus, error)
+	LoginMesh(ctx context.Context, name string) (string, error)
 }
 
 // Host is the Windows service's part of the host methods (docs/architecture.md §5): who may
@@ -340,6 +342,7 @@ func composition(request *controlpb.Composition) *compose.Composition {
 		InfoFilter: request.GetInfoFilter(),
 		Plan:       []byte(request.GetPlanJson()),
 		Warp:       request.GetEgress().GetWarp(),
+		Mesh:       request.GetMesh(),
 	}
 	for _, source := range request.GetSources() {
 		out.Sources = append(out.Sources, compose.Source{
@@ -589,6 +592,14 @@ func (d *Dispatcher) coreMethod(ctx context.Context, caller peer.Identity, reque
 		return &controlpb.Response{Result: &controlpb.Response_ExportPlan{ExportPlan: &controlpb.ExportPlanResponse{Yaml: string(exported)}}}
 	case *controlpb.Request_RegisterWarp:
 		return d.registerWarp(ctx, method.RegisterWarp)
+	case *controlpb.Request_GetMeshStatus:
+		statuses, err := d.engine.MeshStatus(ctx)
+		if err != nil {
+			return engineFailure(err)
+		}
+		return &controlpb.Response{Result: &controlpb.Response_GetMeshStatus{GetMeshStatus: &controlpb.GetMeshStatusResponse{Networks: statuses}}}
+	case *controlpb.Request_LoginMesh:
+		return d.loginMesh(ctx, method.LoginMesh)
 	}
 	return failure(CodeNotImplemented, methodName(request)+" is not implemented")
 }
@@ -614,6 +625,25 @@ func (d *Dispatcher) registerWarp(ctx context.Context, register *controlpb.Regis
 		return engineFailure(err)
 	}
 	return &controlpb.Response{Result: &controlpb.Response_RegisterWarp{RegisterWarp: &controlpb.RegisterWarpResponse{Account: account}}}
+}
+
+// loginMesh answers LoginMesh (docs/mesh.md §10.5). Like registerWarp it runs outside the
+// operation lock: Tailscale may take seconds to hand out a URL. A URL that did not come in
+// time is worth asking for again.
+func (d *Dispatcher) loginMesh(ctx context.Context, login *controlpb.LoginMeshRequest) *controlpb.Response {
+	if login.GetName() == "" {
+		return failure(CodeInvalidRequest, "login_mesh needs the outbound's name")
+	}
+	url, err := d.engine.LoginMesh(ctx, login.GetName())
+	switch {
+	case err == nil:
+		return &controlpb.Response{Result: &controlpb.Response_LoginMesh{LoginMesh: &controlpb.LoginMeshResponse{LoginUrl: url}}}
+	case errors.Is(err, engine.ErrNotRunning), errors.Is(err, engine.ErrInvalidArgument):
+		return engineFailure(err)
+	}
+	response := failure(CodeOperationFailed, err.Error())
+	response.GetError().Retryable = true
+	return response
 }
 
 func (d *Dispatcher) matchRule(match *controlpb.MatchRuleRequest) *controlpb.Response {

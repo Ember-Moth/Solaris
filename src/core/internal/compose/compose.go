@@ -28,6 +28,8 @@ type Composition struct {
 	Plan       []byte
 	// Warp is the WARP exit's device; without it the exit is unavailable (docs/exits.md §3.3).
 	Warp *controlpb.WarpAccount
+	// Mesh are the networks the user added in the app (docs/mesh.md §10.3).
+	Mesh []*controlpb.MeshNetwork
 }
 
 // Result is a composed configuration with its report. Lines[i] is the rule
@@ -76,7 +78,8 @@ type composer struct {
 	pool    []*node
 	groups  []*group
 	byID    map[string]*group
-	// mesh are the mesh outbounds, by their plan id too.
+	// mesh are the mesh outbounds: the networks of the composition, then the pool's. They
+	// are by their plan id too.
 	mesh     []*node
 	meshByID map[string]*node
 	warp     *controlpb.WarpAccount
@@ -112,11 +115,17 @@ func newComposer(composition Composition) (*composer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("plan: %w", err)
 	}
-	if c.pool, c.mesh, err = buildPool(composition.Sources, filter, taken); err != nil {
+	// The networks are named before the nodes: the user chose their names.
+	if c.mesh, err = networkNodes(composition.Mesh, taken); err != nil {
 		return nil, err
 	}
+	pool, mesh, err := buildPool(composition.Sources, filter, taken)
+	if err != nil {
+		return nil, err
+	}
+	c.pool, c.mesh = pool, append(c.mesh, mesh...)
 	for _, n := range c.mesh {
-		c.meshByID[c.meshID(n)] = n
+		c.meshByID[n.id] = n
 	}
 	c.layOutGroups()
 	for _, g := range c.groups {
@@ -146,13 +155,14 @@ func Compose(composition Composition) (*Result, error) {
 	// so no group's use and filter takes them in.
 	var proxies []any
 	for _, n := range c.mesh {
+		outbound := &controlpb.MeshOutbound{Id: n.id, Name: n.name, Type: n.kind}
+		if n.source >= 0 {
+			outbound.SourceId = c.sources[n.source].ID
+		} else if via := c.networkVia(n, result.Report); via != "" {
+			n.mapping["dialer-proxy"] = via
+		}
 		proxies = append(proxies, n.mapping)
-		result.Report.Mesh = append(result.Report.Mesh, &controlpb.MeshOutbound{
-			Id:       c.meshID(n),
-			Name:     n.name,
-			Type:     n.kind,
-			SourceId: c.sources[n.source].ID,
-		})
+		result.Report.Mesh = append(result.Report.Mesh, outbound)
 	}
 	if c.warpUsed {
 		outbound, err := c.warpOutbound(result.Report)
@@ -168,12 +178,6 @@ func Compose(composition Composition) (*Result, error) {
 		result.Report.Nodes = append(result.Report.Nodes, c.poolNode(n))
 	}
 	return result, nil
-}
-
-// meshID is how a plan names the mesh outbound: by its source and its name there, which
-// a rename for a clashing name does not change.
-func (c *composer) meshID(n *node) string {
-	return meshPrefix + c.sources[n.source].ID + "/" + n.original
 }
 
 func (c *composer) poolNode(n *node) *controlpb.PoolNode {

@@ -282,7 +282,8 @@ func TestMeshTargetsAreNotMembers(t *testing.T) {
 	for _, plan := range []string{
 		`{"version": 1, "groups": [{"id": "g", "kind": "custom", "name": "G", "members": {"others": ["mesh:m/家里"]}}]}`,
 		`{"version": 1, "groups": [{"id": "g", "kind": "custom", "name": "G", "members": {"others": ["egress:warp"]}}]}`,
-		`{"version": 1, "fallback": "mesh:m"}`,
+		`{"version": 1, "fallback": "mesh:"}`,
+		`{"version": 1, "fallback": "mesh:a b"}`,
 		`{"version": 1, "fallback": "mesh:/家里"}`,
 		`{"version": 1, "fallback": "egress:tor"}`,
 	} {

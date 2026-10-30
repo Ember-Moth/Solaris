@@ -80,6 +80,11 @@ type Engine struct {
 	closed    bool
 	// entries ties the running rules to the plan's rule entries; nil for a profile's own rules.
 	entries *ruleEntries
+
+	// meshMu guards the running mesh outbounds (mesh_run.go), by name and in order.
+	meshMu    sync.Mutex
+	mesh      map[string]*meshOutbound
+	meshOrder []string
 }
 
 var (
@@ -265,10 +270,12 @@ func (e *Engine) admit(profile Profile) (*admission, error) {
 
 // apply puts an admitted configuration in place and keeps what goes with it.
 func (e *Engine) apply(admitted *admission) {
+	mesh := e.adoptMesh(admitted)
 	hub.ApplyConfig(admitted.cfg)
 	e.settleTUN()
 	e.setEntries(admitted.entries)
 	e.syncGeoUpdater(admitted.cfg)
+	e.runMesh(mesh)
 }
 
 // prepareTUN gives mihomo the descriptor its TUN runs on in fd mode, right before apply.
@@ -475,6 +482,7 @@ func (e *Engine) teardown() {
 	} else {
 		hub.ApplyConfig(idle)
 	}
+	e.closeMesh()
 	e.settleTUN()
 	statistic.DefaultManager.Range(func(c statistic.Tracker) bool {
 		_ = c.Close()

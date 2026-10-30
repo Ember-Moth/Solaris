@@ -36,7 +36,8 @@ const (
 	// the plan's egress.warp.
 	EgressWarp = "egress:warp"
 	// meshPrefix names a mesh outbound as a rule target: "mesh:<subscription id>/<name in
-	// the subscription>" (docs/mesh.md §3).
+	// the subscription>" (docs/mesh.md §3), or "mesh:<network id>" for a network the user
+	// added in the app (§10.3).
 	meshPrefix = "mesh:"
 )
 
@@ -389,10 +390,11 @@ func (p *Plan) checkTarget(target string) error {
 	case target == EgressWarp:
 		return nil
 	case isMesh:
-		if source, original, ok := strings.Cut(name, "/"); !ok || source == "" || original == "" {
-			return fmt.Errorf("mesh target %q is not %q, a subscription id, / and a name", target, meshPrefix)
+		source, original, ok := strings.Cut(name, "/")
+		if !ok && IsNetworkID(name) || ok && source != "" && original != "" {
+			return nil
 		}
-		return nil
+		return fmt.Errorf("mesh target %q is not %q and a network id, or a subscription id, / and a name", target, meshPrefix)
 	}
 	return p.checkReference(target)
 }

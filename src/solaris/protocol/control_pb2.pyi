@@ -72,6 +72,15 @@ class LogLevel(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     LOG_LEVEL_WARNING: _ClassVar[LogLevel]
     LOG_LEVEL_ERROR: _ClassVar[LogLevel]
 
+class MeshState(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    MESH_STATE_UNSPECIFIED: _ClassVar[MeshState]
+    MESH_STATE_STARTING: _ClassVar[MeshState]
+    MESH_STATE_NEEDS_LOGIN: _ClassVar[MeshState]
+    MESH_STATE_WAITING: _ClassVar[MeshState]
+    MESH_STATE_ONLINE: _ClassVar[MeshState]
+    MESH_STATE_FAILED: _ClassVar[MeshState]
+
 class ExportFormat(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     EXPORT_FORMAT_UNSPECIFIED: _ClassVar[ExportFormat]
@@ -115,12 +124,18 @@ LOG_LEVEL_DEBUG: LogLevel
 LOG_LEVEL_INFO: LogLevel
 LOG_LEVEL_WARNING: LogLevel
 LOG_LEVEL_ERROR: LogLevel
+MESH_STATE_UNSPECIFIED: MeshState
+MESH_STATE_STARTING: MeshState
+MESH_STATE_NEEDS_LOGIN: MeshState
+MESH_STATE_WAITING: MeshState
+MESH_STATE_ONLINE: MeshState
+MESH_STATE_FAILED: MeshState
 EXPORT_FORMAT_UNSPECIFIED: ExportFormat
 EXPORT_FORMAT_SHARE: ExportFormat
 EXPORT_FORMAT_GENERATED: ExportFormat
 
 class Request(_message.Message):
-    __slots__ = ("protocol_version", "id", "get_info", "claim", "validate", "start", "reload", "stop", "set_system_proxy", "get_status", "set_mode", "list_groups", "get_group", "select_proxy", "health_check", "test_delay", "list_providers", "update_provider", "list_rules", "close_connection", "close_all_connections", "flush_fake_ip", "flush_dns_cache", "subscribe_logs", "subscribe_traffic", "subscribe_connections", "poll_events", "unsubscribe", "inspect_source", "list_geo_categories", "preview_group", "match_rule", "convert_to_plan", "export_plan", "register_warp")
+    __slots__ = ("protocol_version", "id", "get_info", "claim", "validate", "start", "reload", "stop", "set_system_proxy", "get_status", "set_mode", "list_groups", "get_group", "select_proxy", "health_check", "test_delay", "list_providers", "update_provider", "list_rules", "close_connection", "close_all_connections", "flush_fake_ip", "flush_dns_cache", "subscribe_logs", "subscribe_traffic", "subscribe_connections", "poll_events", "unsubscribe", "inspect_source", "list_geo_categories", "preview_group", "match_rule", "convert_to_plan", "export_plan", "register_warp", "get_mesh_status", "login_mesh")
     PROTOCOL_VERSION_FIELD_NUMBER: _ClassVar[int]
     ID_FIELD_NUMBER: _ClassVar[int]
     GET_INFO_FIELD_NUMBER: _ClassVar[int]
@@ -156,6 +171,8 @@ class Request(_message.Message):
     CONVERT_TO_PLAN_FIELD_NUMBER: _ClassVar[int]
     EXPORT_PLAN_FIELD_NUMBER: _ClassVar[int]
     REGISTER_WARP_FIELD_NUMBER: _ClassVar[int]
+    GET_MESH_STATUS_FIELD_NUMBER: _ClassVar[int]
+    LOGIN_MESH_FIELD_NUMBER: _ClassVar[int]
     protocol_version: int
     id: int
     get_info: GetInfoRequest
@@ -191,10 +208,12 @@ class Request(_message.Message):
     convert_to_plan: ConvertToPlanRequest
     export_plan: ExportPlanRequest
     register_warp: RegisterWarpRequest
-    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., get_info: _Optional[_Union[GetInfoRequest, _Mapping]] = ..., claim: _Optional[_Union[ClaimRequest, _Mapping]] = ..., validate: _Optional[_Union[ValidateRequest, _Mapping]] = ..., start: _Optional[_Union[StartRequest, _Mapping]] = ..., reload: _Optional[_Union[ReloadRequest, _Mapping]] = ..., stop: _Optional[_Union[StopRequest, _Mapping]] = ..., set_system_proxy: _Optional[_Union[SetSystemProxyRequest, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusRequest, _Mapping]] = ..., set_mode: _Optional[_Union[SetModeRequest, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsRequest, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupRequest, _Mapping]] = ..., select_proxy: _Optional[_Union[SelectProxyRequest, _Mapping]] = ..., health_check: _Optional[_Union[HealthCheckRequest, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayRequest, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersRequest, _Mapping]] = ..., update_provider: _Optional[_Union[UpdateProviderRequest, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesRequest, _Mapping]] = ..., close_connection: _Optional[_Union[CloseConnectionRequest, _Mapping]] = ..., close_all_connections: _Optional[_Union[CloseAllConnectionsRequest, _Mapping]] = ..., flush_fake_ip: _Optional[_Union[FlushFakeIPRequest, _Mapping]] = ..., flush_dns_cache: _Optional[_Union[FlushDNSCacheRequest, _Mapping]] = ..., subscribe_logs: _Optional[_Union[SubscribeLogsRequest, _Mapping]] = ..., subscribe_traffic: _Optional[_Union[SubscribeTrafficRequest, _Mapping]] = ..., subscribe_connections: _Optional[_Union[SubscribeConnectionsRequest, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsRequest, _Mapping]] = ..., unsubscribe: _Optional[_Union[UnsubscribeRequest, _Mapping]] = ..., inspect_source: _Optional[_Union[InspectSourceRequest, _Mapping]] = ..., list_geo_categories: _Optional[_Union[ListGeoCategoriesRequest, _Mapping]] = ..., preview_group: _Optional[_Union[PreviewGroupRequest, _Mapping]] = ..., match_rule: _Optional[_Union[MatchRuleRequest, _Mapping]] = ..., convert_to_plan: _Optional[_Union[ConvertToPlanRequest, _Mapping]] = ..., export_plan: _Optional[_Union[ExportPlanRequest, _Mapping]] = ..., register_warp: _Optional[_Union[RegisterWarpRequest, _Mapping]] = ...) -> None: ...
+    get_mesh_status: GetMeshStatusRequest
+    login_mesh: LoginMeshRequest
+    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., get_info: _Optional[_Union[GetInfoRequest, _Mapping]] = ..., claim: _Optional[_Union[ClaimRequest, _Mapping]] = ..., validate: _Optional[_Union[ValidateRequest, _Mapping]] = ..., start: _Optional[_Union[StartRequest, _Mapping]] = ..., reload: _Optional[_Union[ReloadRequest, _Mapping]] = ..., stop: _Optional[_Union[StopRequest, _Mapping]] = ..., set_system_proxy: _Optional[_Union[SetSystemProxyRequest, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusRequest, _Mapping]] = ..., set_mode: _Optional[_Union[SetModeRequest, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsRequest, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupRequest, _Mapping]] = ..., select_proxy: _Optional[_Union[SelectProxyRequest, _Mapping]] = ..., health_check: _Optional[_Union[HealthCheckRequest, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayRequest, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersRequest, _Mapping]] = ..., update_provider: _Optional[_Union[UpdateProviderRequest, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesRequest, _Mapping]] = ..., close_connection: _Optional[_Union[CloseConnectionRequest, _Mapping]] = ..., close_all_connections: _Optional[_Union[CloseAllConnectionsRequest, _Mapping]] = ..., flush_fake_ip: _Optional[_Union[FlushFakeIPRequest, _Mapping]] = ..., flush_dns_cache: _Optional[_Union[FlushDNSCacheRequest, _Mapping]] = ..., subscribe_logs: _Optional[_Union[SubscribeLogsRequest, _Mapping]] = ..., subscribe_traffic: _Optional[_Union[SubscribeTrafficRequest, _Mapping]] = ..., subscribe_connections: _Optional[_Union[SubscribeConnectionsRequest, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsRequest, _Mapping]] = ..., unsubscribe: _Optional[_Union[UnsubscribeRequest, _Mapping]] = ..., inspect_source: _Optional[_Union[InspectSourceRequest, _Mapping]] = ..., list_geo_categories: _Optional[_Union[ListGeoCategoriesRequest, _Mapping]] = ..., preview_group: _Optional[_Union[PreviewGroupRequest, _Mapping]] = ..., match_rule: _Optional[_Union[MatchRuleRequest, _Mapping]] = ..., convert_to_plan: _Optional[_Union[ConvertToPlanRequest, _Mapping]] = ..., export_plan: _Optional[_Union[ExportPlanRequest, _Mapping]] = ..., register_warp: _Optional[_Union[RegisterWarpRequest, _Mapping]] = ..., get_mesh_status: _Optional[_Union[GetMeshStatusRequest, _Mapping]] = ..., login_mesh: _Optional[_Union[LoginMeshRequest, _Mapping]] = ...) -> None: ...
 
 class Response(_message.Message):
-    __slots__ = ("protocol_version", "id", "error", "empty", "get_info", "composition", "get_status", "list_groups", "get_group", "test_delay", "list_providers", "list_rules", "subscribe", "poll_events", "inspect_source", "list_geo_categories", "preview_group", "match_rule", "convert_to_plan", "export_plan", "register_warp")
+    __slots__ = ("protocol_version", "id", "error", "empty", "get_info", "composition", "get_status", "list_groups", "get_group", "test_delay", "list_providers", "list_rules", "subscribe", "poll_events", "inspect_source", "list_geo_categories", "preview_group", "match_rule", "convert_to_plan", "export_plan", "register_warp", "get_mesh_status", "login_mesh")
     PROTOCOL_VERSION_FIELD_NUMBER: _ClassVar[int]
     ID_FIELD_NUMBER: _ClassVar[int]
     ERROR_FIELD_NUMBER: _ClassVar[int]
@@ -216,6 +235,8 @@ class Response(_message.Message):
     CONVERT_TO_PLAN_FIELD_NUMBER: _ClassVar[int]
     EXPORT_PLAN_FIELD_NUMBER: _ClassVar[int]
     REGISTER_WARP_FIELD_NUMBER: _ClassVar[int]
+    GET_MESH_STATUS_FIELD_NUMBER: _ClassVar[int]
+    LOGIN_MESH_FIELD_NUMBER: _ClassVar[int]
     protocol_version: int
     id: int
     error: Error
@@ -237,7 +258,9 @@ class Response(_message.Message):
     convert_to_plan: ConvertToPlanResponse
     export_plan: ExportPlanResponse
     register_warp: RegisterWarpResponse
-    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., error: _Optional[_Union[Error, _Mapping]] = ..., empty: _Optional[_Union[Empty, _Mapping]] = ..., get_info: _Optional[_Union[GetInfoResponse, _Mapping]] = ..., composition: _Optional[_Union[CompositionReport, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusResponse, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsResponse, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupResponse, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayResponse, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersResponse, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesResponse, _Mapping]] = ..., subscribe: _Optional[_Union[SubscribeResponse, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsResponse, _Mapping]] = ..., inspect_source: _Optional[_Union[InspectSourceResponse, _Mapping]] = ..., list_geo_categories: _Optional[_Union[ListGeoCategoriesResponse, _Mapping]] = ..., preview_group: _Optional[_Union[PreviewGroupResponse, _Mapping]] = ..., match_rule: _Optional[_Union[MatchRuleResponse, _Mapping]] = ..., convert_to_plan: _Optional[_Union[ConvertToPlanResponse, _Mapping]] = ..., export_plan: _Optional[_Union[ExportPlanResponse, _Mapping]] = ..., register_warp: _Optional[_Union[RegisterWarpResponse, _Mapping]] = ...) -> None: ...
+    get_mesh_status: GetMeshStatusResponse
+    login_mesh: LoginMeshResponse
+    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., error: _Optional[_Union[Error, _Mapping]] = ..., empty: _Optional[_Union[Empty, _Mapping]] = ..., get_info: _Optional[_Union[GetInfoResponse, _Mapping]] = ..., composition: _Optional[_Union[CompositionReport, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusResponse, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsResponse, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupResponse, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayResponse, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersResponse, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesResponse, _Mapping]] = ..., subscribe: _Optional[_Union[SubscribeResponse, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsResponse, _Mapping]] = ..., inspect_source: _Optional[_Union[InspectSourceResponse, _Mapping]] = ..., list_geo_categories: _Optional[_Union[ListGeoCategoriesResponse, _Mapping]] = ..., preview_group: _Optional[_Union[PreviewGroupResponse, _Mapping]] = ..., match_rule: _Optional[_Union[MatchRuleResponse, _Mapping]] = ..., convert_to_plan: _Optional[_Union[ConvertToPlanResponse, _Mapping]] = ..., export_plan: _Optional[_Union[ExportPlanResponse, _Mapping]] = ..., register_warp: _Optional[_Union[RegisterWarpResponse, _Mapping]] = ..., get_mesh_status: _Optional[_Union[GetMeshStatusResponse, _Mapping]] = ..., login_mesh: _Optional[_Union[LoginMeshResponse, _Mapping]] = ...) -> None: ...
 
 class Empty(_message.Message):
     __slots__ = ()
@@ -324,16 +347,66 @@ class ReloadRequest(_message.Message):
     def __init__(self, config_yaml: _Optional[str] = ..., composition: _Optional[_Union[Composition, _Mapping]] = ..., overrides: _Optional[_Iterable[str]] = ..., options: _Optional[_Union[RunOptions, _Mapping]] = ...) -> None: ...
 
 class Composition(_message.Message):
-    __slots__ = ("sources", "info_filter", "plan_json", "egress")
+    __slots__ = ("sources", "info_filter", "plan_json", "egress", "mesh")
     SOURCES_FIELD_NUMBER: _ClassVar[int]
     INFO_FILTER_FIELD_NUMBER: _ClassVar[int]
     PLAN_JSON_FIELD_NUMBER: _ClassVar[int]
     EGRESS_FIELD_NUMBER: _ClassVar[int]
+    MESH_FIELD_NUMBER: _ClassVar[int]
     sources: _containers.RepeatedCompositeFieldContainer[CompositionSource]
     info_filter: str
     plan_json: str
     egress: Egress
-    def __init__(self, sources: _Optional[_Iterable[_Union[CompositionSource, _Mapping]]] = ..., info_filter: _Optional[str] = ..., plan_json: _Optional[str] = ..., egress: _Optional[_Union[Egress, _Mapping]] = ...) -> None: ...
+    mesh: _containers.RepeatedCompositeFieldContainer[MeshNetwork]
+    def __init__(self, sources: _Optional[_Iterable[_Union[CompositionSource, _Mapping]]] = ..., info_filter: _Optional[str] = ..., plan_json: _Optional[str] = ..., egress: _Optional[_Union[Egress, _Mapping]] = ..., mesh: _Optional[_Iterable[_Union[MeshNetwork, _Mapping]]] = ...) -> None: ...
+
+class MeshNetwork(_message.Message):
+    __slots__ = ("id", "name", "via", "tailscale", "zerotier", "easytier")
+    ID_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    VIA_FIELD_NUMBER: _ClassVar[int]
+    TAILSCALE_FIELD_NUMBER: _ClassVar[int]
+    ZEROTIER_FIELD_NUMBER: _ClassVar[int]
+    EASYTIER_FIELD_NUMBER: _ClassVar[int]
+    id: str
+    name: str
+    via: str
+    tailscale: TailscaleNetwork
+    zerotier: ZeroTierNetwork
+    easytier: EasyTierNetwork
+    def __init__(self, id: _Optional[str] = ..., name: _Optional[str] = ..., via: _Optional[str] = ..., tailscale: _Optional[_Union[TailscaleNetwork, _Mapping]] = ..., zerotier: _Optional[_Union[ZeroTierNetwork, _Mapping]] = ..., easytier: _Optional[_Union[EasyTierNetwork, _Mapping]] = ...) -> None: ...
+
+class TailscaleNetwork(_message.Message):
+    __slots__ = ("auth_key", "control_url", "hostname")
+    AUTH_KEY_FIELD_NUMBER: _ClassVar[int]
+    CONTROL_URL_FIELD_NUMBER: _ClassVar[int]
+    HOSTNAME_FIELD_NUMBER: _ClassVar[int]
+    auth_key: str
+    control_url: str
+    hostname: str
+    def __init__(self, auth_key: _Optional[str] = ..., control_url: _Optional[str] = ..., hostname: _Optional[str] = ...) -> None: ...
+
+class ZeroTierNetwork(_message.Message):
+    __slots__ = ("network_id", "identity_secret")
+    NETWORK_ID_FIELD_NUMBER: _ClassVar[int]
+    IDENTITY_SECRET_FIELD_NUMBER: _ClassVar[int]
+    network_id: str
+    identity_secret: str
+    def __init__(self, network_id: _Optional[str] = ..., identity_secret: _Optional[str] = ...) -> None: ...
+
+class EasyTierNetwork(_message.Message):
+    __slots__ = ("network_name", "network_secret", "peers", "ipv4", "hostname")
+    NETWORK_NAME_FIELD_NUMBER: _ClassVar[int]
+    NETWORK_SECRET_FIELD_NUMBER: _ClassVar[int]
+    PEERS_FIELD_NUMBER: _ClassVar[int]
+    IPV4_FIELD_NUMBER: _ClassVar[int]
+    HOSTNAME_FIELD_NUMBER: _ClassVar[int]
+    network_name: str
+    network_secret: str
+    peers: _containers.RepeatedScalarFieldContainer[str]
+    ipv4: str
+    hostname: str
+    def __init__(self, network_name: _Optional[str] = ..., network_secret: _Optional[str] = ..., peers: _Optional[_Iterable[str]] = ..., ipv4: _Optional[str] = ..., hostname: _Optional[str] = ...) -> None: ...
 
 class Egress(_message.Message):
     __slots__ = ("warp",)
@@ -792,6 +865,52 @@ class RegisterWarpResponse(_message.Message):
     ACCOUNT_FIELD_NUMBER: _ClassVar[int]
     account: WarpAccount
     def __init__(self, account: _Optional[_Union[WarpAccount, _Mapping]] = ...) -> None: ...
+
+class GetMeshStatusRequest(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
+class GetMeshStatusResponse(_message.Message):
+    __slots__ = ("networks",)
+    NETWORKS_FIELD_NUMBER: _ClassVar[int]
+    networks: _containers.RepeatedCompositeFieldContainer[MeshStatus]
+    def __init__(self, networks: _Optional[_Iterable[_Union[MeshStatus, _Mapping]]] = ...) -> None: ...
+
+class MeshStatus(_message.Message):
+    __slots__ = ("name", "id", "type", "state", "login_url", "addresses", "peer_count", "node_id", "network_name", "error")
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    ID_FIELD_NUMBER: _ClassVar[int]
+    TYPE_FIELD_NUMBER: _ClassVar[int]
+    STATE_FIELD_NUMBER: _ClassVar[int]
+    LOGIN_URL_FIELD_NUMBER: _ClassVar[int]
+    ADDRESSES_FIELD_NUMBER: _ClassVar[int]
+    PEER_COUNT_FIELD_NUMBER: _ClassVar[int]
+    NODE_ID_FIELD_NUMBER: _ClassVar[int]
+    NETWORK_NAME_FIELD_NUMBER: _ClassVar[int]
+    ERROR_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    id: str
+    type: str
+    state: MeshState
+    login_url: str
+    addresses: _containers.RepeatedScalarFieldContainer[str]
+    peer_count: int
+    node_id: str
+    network_name: str
+    error: str
+    def __init__(self, name: _Optional[str] = ..., id: _Optional[str] = ..., type: _Optional[str] = ..., state: _Optional[_Union[MeshState, str]] = ..., login_url: _Optional[str] = ..., addresses: _Optional[_Iterable[str]] = ..., peer_count: _Optional[int] = ..., node_id: _Optional[str] = ..., network_name: _Optional[str] = ..., error: _Optional[str] = ...) -> None: ...
+
+class LoginMeshRequest(_message.Message):
+    __slots__ = ("name",)
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    def __init__(self, name: _Optional[str] = ...) -> None: ...
+
+class LoginMeshResponse(_message.Message):
+    __slots__ = ("login_url",)
+    LOGIN_URL_FIELD_NUMBER: _ClassVar[int]
+    login_url: str
+    def __init__(self, login_url: _Optional[str] = ...) -> None: ...
 
 class ListGeoCategoriesRequest(_message.Message):
     __slots__ = ()
