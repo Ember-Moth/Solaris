@@ -2,10 +2,10 @@ name: Release
 
 # The signed and notarized macOS build (apple/README.md): Solaris.app from scripts/build_app.py,
 # notarized and stapled, in a notarized disk image with its SHA-256. And the Windows installer
-# from scripts/build_windows.py with its SHA-256, unsigned until the Windows signing scheme is
-# chosen (docs/roadmap.md). Runs for v* tags and by hand, in the release environment: its
-# reviewers approve each run before the jobs get the signing secrets. The installers stay
-# workflow artifacts; publishing releases comes with M6.
+# from scripts/build_windows.py with its SHA-256, unsigned for now (D29). Runs for v* tags and
+# by hand, in the release environment: its reviewers approve each run before the jobs get the
+# signing secrets. For a tag, a last job puts both installers, SHA256SUMS and the source
+# archive into a draft GitHub Release (docs/release.md §1), which a person publishes.
 on:
   workflow_dispatch:
   push:
@@ -190,7 +190,7 @@ jobs:
           rm -rf "$signing"
 
   windows:
-    name: Windows x64 (unsigned until the signing scheme is chosen)
+    name: Windows x64 (unsigned for now, D29)
     runs-on: windows-latest
     environment: release
     timeout-minutes: 90
@@ -227,14 +227,14 @@ jobs:
       - name: Build Solaris.exe and the service
         run: uv run --frozen --with nuitka==4.2.2 python scripts/build_windows.py --skip-installer
 
-      # Pending: the Windows signing scheme is not chosen (docs/roadmap.md, the release
-      # checklist). Once it is, this step signs Solaris.exe, solaris-service.exe and the other
-      # executables, DLLs and .pyd files in build/windows/Solaris with a timestamp; the service
-      # checks that the UI has its own signer (docs/architecture.md §5.3). The next step then
-      # signs the installer and its uninstaller through makensis' !finalize and !uninstfinalize,
-      # and src/solaris/update/signature.WINDOWS_SIGNER becomes the certificate's subject.
+      # Pending: the first releases are unsigned (D29). Once signing exists, this step signs
+      # Solaris.exe, solaris-service.exe and the other executables, DLLs and .pyd files in
+      # build/windows/Solaris with a timestamp, and the service links with SignedRelease=true
+      # so that it checks the UI's signer (docs/architecture.md §5.3). The next step then signs
+      # the installer and its uninstaller through makensis' !finalize and !uninstfinalize, and
+      # src/solaris/update/signature.WINDOWS_SIGNER takes the certificate's display name.
       - name: Sign the programs (pending)
-        run: echo "::warning::Windows code signing is pending; this installer is unsigned."
+        run: echo "::warning::Windows code signing is pending (D29); this installer is unsigned."
 
       - name: Installer
         run: uv run --frozen python scripts/build_windows.py --installer-only
@@ -263,3 +263,112 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 30
+
+  # The GitHub Release of a v* tag, with exactly the assets of docs/release.md §1. It stays a
+  # draft: the updater asks GitHub for the latest published release, which skips drafts, so
+  # nothing reaches installed copies until a person has downloaded both installers from the
+  # draft, tried them and written the notes, then publishes it. In the release environment
+  # like the builds, so that only its reviewers' runs write to the repository's releases.
+  release:
+    name: Draft GitHub Release
+    needs: [macos, windows]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    environment: release
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: src/core/go.mod
+          cache-dependency-path: src/core/go.sum
+      - name: Version
+        id: version
+        run: |
+          version="$(python3 -c \
+            'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          if [[ "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match version $version in pyproject.toml"
+            exit 1
+          fi
+          # The updater reads only X.Y.Z tags (docs/release.md §2).
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Version $version is not X.Y.Z"
+            exit 1
+          fi
+          {
+            echo "version=$version"
+            echo "dmg=Solaris-$version-macos-arm64.dmg"
+            echo "installer=Solaris-$version-windows-x64-setup.exe"
+            echo "source=Solaris-$version-source"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: solaris-${{ steps.version.outputs.version }}-*
+          path: build/artifacts
+          merge-multiple: true
+
+      # The build jobs' own sums first: the artifacts arrived as they were built.
+      - name: Installers
+        env:
+          DMG: ${{ steps.version.outputs.dmg }}
+          INSTALLER: ${{ steps.version.outputs.installer }}
+        run: |
+          cd build/artifacts
+          sha256sum --check --strict "$DMG.sha256" "$INSTALLER.sha256"
+          mkdir -p ../release
+          mv "$DMG" "$INSTALLER" ../release/
+
+      # The tagged tree and every Go module the service and the extension link, so that
+      # the archive builds without the network (GPL-3.0's corresponding source). Ordered,
+      # owned by root and dated at the tagged commit, so that the same tag gives the same
+      # archive.
+      - name: Source archive
+        env:
+          SOURCE: ${{ steps.version.outputs.source }}
+        run: |
+          staging="$RUNNER_TEMP/source"
+          mkdir -p "$staging"
+          git archive --format=tar --prefix="$SOURCE/" HEAD | tar -x -C "$staging"
+          go -C "$staging/$SOURCE/src/core" mod vendor
+          GOOS=windows GOARCH=amd64 GOFLAGS=-mod=vendor GOPROXY=off \
+            go -C "$staging/$SOURCE/src/core" build -tags with_gvisor -o /dev/null ./service
+          tar --sort=name --mtime="$(git log -1 --format=%cI)" --owner=0 --group=0 \
+            --numeric-owner --pax-option=exthdr.name=%d/PaxHeaders/%f,delete=atime,delete=ctime \
+            -C "$staging" -cf - "$SOURCE" | gzip -9n > "build/release/$SOURCE.tar.gz"
+
+      - name: SHA256SUMS
+        env:
+          DMG: ${{ steps.version.outputs.dmg }}
+          INSTALLER: ${{ steps.version.outputs.installer }}
+          SOURCE: ${{ steps.version.outputs.source }}
+        run: |
+          cd build/release
+          sha256sum "$DMG" "$INSTALLER" "$SOURCE.tar.gz" > SHA256SUMS
+          cat SHA256SUMS
+          ls -l
+
+      # The notes come from .github/release-notes.md; the changes are written in the draft.
+      - name: Create the draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ steps.version.outputs.version }}
+          DMG: ${{ steps.version.outputs.dmg }}
+          INSTALLER: ${{ steps.version.outputs.installer }}
+          SOURCE: ${{ steps.version.outputs.source }}
+        run: |
+          sed "s/{{version}}/$VERSION/g" .github/release-notes.md > "$RUNNER_TEMP/notes.md"
+          if grep -q "{{" "$RUNNER_TEMP/notes.md"; then
+            echo "::error::.github/release-notes.md has a placeholder other than {{version}}"
+            exit 1
+          fi
+          gh release create "$GITHUB_REF_NAME" --draft --verify-tag \
+            --title "Solaris $VERSION" --notes-file "$RUNNER_TEMP/notes.md" \
+            "build/release/$DMG" "build/release/$INSTALLER" \
+            build/release/SHA256SUMS "build/release/$SOURCE.tar.gz"

@@ -468,9 +468,17 @@ PID 来防止管道名被抢注。
    同样持有到连接结束，这期间文件不能被改写、改名或删除；
 3. 客户端必须在用户会话里（会话 ID 不为 0）；读取它 token 的用户 SID 和会话 ID，作为属主判断的身份；
 4. 签名的发布构建（链接时设 `product.SignedRelease=true`）还要求客户端的 Authenticode 签名为 Windows 信任、签名者
-   的显示名是 `product.WindowsSigner`。不检查吊销：那可能要联网，而且每条连接都要做。签名方案未定，这个常量和
-   `src/solaris/update/signature.py` 的 `WINDOWS_SIGNER` 一样是占位值；未签名的构建（包括给测试虚拟机的）不开这一项；
+   的显示名是 `product.WindowsSigner`。不检查吊销：那可能要联网，而且每条连接都要做。签名以后才有这样的构建，
+   `product.WindowsSigner` 在那之前是占位值；
 5. 最后确认客户端进程仍在运行。
+
+**未签名的构建**：首发的 Windows 安装包不签名（D29），`scripts/build_windows.py` 链接服务时只注入版本，
+`SignedRelease` 保持默认的 `"false"`，服务把空的签名者交给 `peer.PipeClientVerifier`，只跳过第 4 项。第 1、2、3、5 项
+照常：客户端必须就是服务旁边那个 `Solaris.exe` 文件本身（卷序列号和文件 ID 相同，连接期间锁住），复制到别处的同一个
+程序、同名的其他程序都会被断开。安装目录 `C:\Program Files\Solaris` 只有管理员能写，所以能换掉这个文件的人本来就
+能换掉服务。`peer_windows_test.go` 用空签名者测这几项（复制出的程序被拒、界面没装时被拒、会话 0 被拒）；CI 的
+`smoke-test.ps1` 用 PowerShell 连一次装好的服务的管道，只确认它在监听。签名以后发布构建链接时打开
+`SignedRelease`，同时界面的 `signature.WINDOWS_SIGNER` 填上同一个显示名（release.md 第 3 节）。
 
 做法参考 sing-box `experimental/boxdd` 的 `peer_windows.go`。
 
@@ -658,13 +666,15 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   组装成 5.1 节的 `build/windows/Solaris/`，检查必需的文件都在、没有链接、每个 exe、dll、pyd 都是 x64，再生成只含
   这些文件的卸载清单并编译 `build/windows/Solaris-<版本>-windows-x64-setup.exe`。`--skip-installer` 停在安装目录，
   `--installer-only` 只从已有的安装目录编译安装包，签名步骤将来插在两者之间。
-- 需要的证书：Windows Authenticode（发布构建，方案未定）、Apple Developer ID。
+- 需要的证书：Apple Developer ID；Windows Authenticode 等签名以后（首发不签名，D29）。
 - **发布工作流** `.github/workflows/release.yml`：`v*` 标签或手动触发，在 `release` Environment 里经审批后运行；
   macOS 上建临时钥匙串、签名、`notarytool` 公证、staple，产出 `Solaris-<版本>-macos-arm64.dmg` 和它的 `.sha256`；
-  Windows 上构建安装目录、（待定的）签名、编译安装包，用 `smoke-test.ps1` 在 runner 上装一遍、升级、卸载，产出
-  `Solaris-<版本>-windows-x64-setup.exe` 和它的 `.sha256`。Windows 签名方案定下之前这一步只打一条警告，安装包不签名；
-  定下后先给安装目录里的 exe、dll、pyd 签名（服务要求界面与它同一签名者，5.3 节），再经 makensis 的 `!finalize`、
-  `!uninstfinalize` 给安装器和卸载器签名。两个安装包都作为 workflow artifact 保存，发布 GitHub Release 在 M6 加入。
+  Windows 上构建安装目录、（暂缺的）签名、编译安装包，用 `smoke-test.ps1` 在 runner 上装一遍、升级、卸载，产出
+  `Solaris-<版本>-windows-x64-setup.exe` 和它的 `.sha256`。首发不签名（D29），签名这一步只打一条警告；签名以后先给
+  安装目录里的 exe、dll、pyd 签名并在链接服务时打开 `SignedRelease`（服务要求界面与它同一签名者，5.3 节），再经
+  makensis 的 `!finalize`、`!uninstfinalize` 给安装器和卸载器签名。两个安装包存为 workflow artifact；对标签，最后一个
+  job 再经一次审批，核对两个安装包，打出含 vendor 依赖的源代码包，写 `SHA256SUMS`，把这四个文件放进一个**草稿**
+  GitHub Release，由人试过安装包、写好说明后发布（release.md 第 1.1 节）。
 - 许可：本项目以 GPL-3.0-only 发布（[LICENSE](../LICENSE)）；服务和扩展链接的 mihomo 同为 GPL-3.0。
   发布二进制时须同时提供对应的源代码；新增依赖须与 GPL-3.0 兼容。
 
