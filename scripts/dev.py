@@ -98,15 +98,15 @@ def short_directory() -> Iterator[Path]:
 
 def main() -> int:
     sys.path.insert(0, str(ROOT))
-    from mihomo_desktop.app import main as run_ui
-    from mihomo_desktop.host.service import ServiceHost
+    from solaris.app import main as run_ui
+    from solaris.host.service import ServiceHost
 
     if sys.platform == "win32":
         raise SystemExit("scripts/dev.py talks to the development service over a Unix socket")
-    from mihomo_desktop.host.transport import unix_opener
-    from mihomo_desktop.models.store import ProfileStore
-    from mihomo_desktop.viewmodels.appearance import MODES
     from scripts.fetch_geodata import seed
+    from solaris.host.transport import unix_opener
+    from solaris.models.store import ProfileStore
+    from solaris.viewmodels.appearance import MODES
 
     parser = argparse.ArgumentParser(description="Run the UI against the development service")
     parser.add_argument("--data", type=Path, help="profiles and settings (default: temporary)")

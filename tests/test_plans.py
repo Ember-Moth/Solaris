@@ -2,9 +2,9 @@
 
 import json
 
-from mihomo_desktop.models import plans
-from mihomo_desktop.models.plans import Parsed, parse_cidrs, parse_domains, plan_json
-from mihomo_desktop.models.routing import Plan, PlanGroup, PlanRule
+from solaris.models import plans
+from solaris.models.plans import Parsed, parse_cidrs, parse_domains, plan_json
+from solaris.models.routing import Plan, PlanGroup, PlanRule
 
 
 def test_the_default_template() -> None:

@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from mihomo_desktop.models.profiles import KIND_SUBSCRIPTION, Profile, ProfileList
-from mihomo_desktop.models.routing import (
+from solaris.models.profiles import KIND_SUBSCRIPTION, Profile, ProfileList
+from solaris.models.routing import (
     DIRECT,
     MODE_PLAN,
     MODE_PROFILE,
@@ -17,7 +17,7 @@ from mihomo_desktop.models.routing import (
     RoutingState,
     RoutingStore,
 )
-from mihomo_desktop.models.store import ProfileStore
+from solaris.models.store import ProfileStore
 from tests.support.storage import stored
 
 

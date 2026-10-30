@@ -7,7 +7,7 @@ import json
 
 import pytest
 
-from mihomo_desktop.host.base import (
+from solaris.host.base import (
     ComposedGroup,
     Composition,
     CompositionReport,
@@ -23,8 +23,8 @@ from mihomo_desktop.host.base import (
     TunnelConfig,
     bundled_geo_categories,
 )
-from mihomo_desktop.host.service import ServiceHost
-from mihomo_desktop.protocol import control_pb2
+from solaris.host.service import ServiceHost
+from solaris.protocol import control_pb2
 from tests.support.simulated import SAMPLE_CONFIG, SimulatedHost
 from tests.test_control_client import serve
 

@@ -5,11 +5,11 @@ from typing import Any
 
 import pytest
 
-from mihomo_desktop.host.base import HostError, RunOptions
-from mihomo_desktop.models.library import RETRY_AFTER_S, ProfileLibrary
-from mihomo_desktop.models.profiles import KIND_FILE, ProfileError, Usage
-from mihomo_desktop.models.settings import Settings
-from mihomo_desktop.models.store import ProfileStore
+from solaris.host.base import HostError, RunOptions
+from solaris.models.library import RETRY_AFTER_S, ProfileLibrary
+from solaris.models.profiles import KIND_FILE, ProfileError, Usage
+from solaris.models.settings import Settings
+from solaris.models.store import ProfileStore
 from tests.support.simulated import (
     NODES,
     SAMPLE_CONFIG,

@@ -1,7 +1,7 @@
 [project]
-name = "mihomo-desktop"
+name = "solaris"
 version = "0.1.0"
-description = "mihomo desktop client for Windows and macOS (PySide6 / QML)"
+description = "Solaris, a mihomo desktop client for Windows and macOS (PySide6 / QML)"
 readme = "README.md"
 license = "GPL-3.0-only"
 license-files = ["LICENSE"]
@@ -15,14 +15,14 @@ dependencies = [
 ]
 
 [project.scripts]
-mihomo-desktop = "mihomo_desktop.app:main"
+solaris = "solaris.app:main"
 
 [build-system]
 requires = ["uv_build>=0.13.6,<0.14.0"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
-module-name = "mihomo_desktop"
+module-name = "solaris"
 module-root = "src"
 
 [dependency-groups]
@@ -35,7 +35,7 @@ dev = [
 ]
 
 [tool.ruff]
-extend-exclude = ["src/mihomo_desktop/protocol/*_pb2.py", "src/mihomo_desktop/protocol/*_pb2.pyi"]
+extend-exclude = ["src/solaris/protocol/*_pb2.py", "src/solaris/protocol/*_pb2.pyi"]
 target-version = "py314"
 line-length = 100
 src = ["src", "tests", "package", "scripts"]
@@ -54,12 +54,12 @@ select = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["mihomo_desktop", "scripts", "tests"]
+known-first-party = ["solaris", "scripts", "tests"]
 
 [tool.ruff.lint.per-file-ignores]
 # Qt-facing API on ViewModels (slots, signals, properties) is camelCase to match QML;
 # their Chinese UI copy uses fullwidth punctuation.
-"src/mihomo_desktop/viewmodels/**" = ["N802", "N815", "RUF001"]
+"src/solaris/viewmodels/**" = ["N802", "N815", "RUF001"]
 # Sample tables read better one row per line.
 "tests/support/simulated.py" = ["E501"]
 # Nuitka reads each `# nuitka-project:` option from a single comment line.
@@ -69,7 +69,7 @@ known-first-party = ["mihomo_desktop", "scripts", "tests"]
 docstring-code-format = true
 
 [tool.pyright]
-exclude = ["src/mihomo_desktop/protocol/*_pb2.py"]
+exclude = ["src/solaris/protocol/*_pb2.py"]
 include = ["src", "tests", "package", "scripts"]
 pythonVersion = "3.14"
 venvPath = "."
@@ -82,5 +82,5 @@ pythonpath = ["."]
 qt_api = "pyside6"
 addopts = "-ra --strict-markers"
 markers = [
-    "e2e: runs the UI against the development service; needs MIHOMO_DESKTOP_E2E=1 (tests/e2e)",
+    "e2e: runs the UI against the development service; needs SOLARIS_E2E=1 (tests/e2e)",
 ]

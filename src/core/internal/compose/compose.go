@@ -14,7 +14,7 @@ import (
 	"github.com/dlclark/regexp2"
 	"github.com/metacubex/mihomo/common/yaml"
 
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/controlpb"
+	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 )
 
 //go:embed base.yaml

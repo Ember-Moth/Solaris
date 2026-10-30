@@ -16,7 +16,9 @@ from collections.abc import Awaitable, Callable
 
 import pytest
 
-from mihomo_desktop.host.base import (
+from scripts.dev import DevService
+from scripts.fetch_geodata import GEOIP, GEOSITE, seed
+from solaris.host.base import (
     Composition,
     CompositionSource,
     CompositionWarning,
@@ -27,9 +29,7 @@ from mihomo_desktop.host.base import (
     TunnelConfig,
     bundled_geo_categories,
 )
-from mihomo_desktop.host.service import ServiceHost
-from scripts.dev import DevService
-from scripts.fetch_geodata import GEOIP, GEOSITE, seed
+from solaris.host.service import ServiceHost
 from tests.e2e.app import Network, Stream
 from tests.e2e.servers import ProxyNode, WebServer, free_port
 from tests.e2e.unix import unix_opener

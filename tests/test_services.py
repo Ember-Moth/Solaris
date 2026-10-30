@@ -5,14 +5,14 @@ import xml.etree.ElementTree as ET
 from collections import Counter
 from pathlib import Path
 
-from mihomo_desktop.host import geo_categories
-from mihomo_desktop.models import services
-from mihomo_desktop.models.regions import CODES, OTHER, REGIONS
-from mihomo_desktop.models.services import CATEGORIES, GEOIP, GEOSITE, SERVICES
+from solaris.host import geo_categories
+from solaris.models import services
+from solaris.models.regions import CODES, OTHER, REGIONS
+from solaris.models.services import CATEGORIES, GEOIP, GEOSITE, SERVICES
 
 ROOT = Path(__file__).resolve().parents[1]
 REGIONS_GO = ROOT / "src" / "core" / "internal" / "compose" / "regions.go"
-EN_TS = ROOT / "src" / "mihomo_desktop" / "translations" / "en.ts"
+EN_TS = ROOT / "src" / "solaris" / "translations" / "en.ts"
 
 
 def test_every_category_named_is_in_the_shipped_geo_data() -> None:

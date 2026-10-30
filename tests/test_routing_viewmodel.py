@@ -9,10 +9,10 @@ import pytest
 from PySide6.QtCore import QObject
 from pytestqt.qtbot import QtBot
 
-from mihomo_desktop.models.store import ProfileStore
-from mihomo_desktop.viewmodels.composition import ViewModels, compose
-from mihomo_desktop.viewmodels.routing import RoutingViewModel
-from mihomo_desktop.viewmodels.rule_editor import RuleEditor
+from solaris.models.store import ProfileStore
+from solaris.viewmodels.composition import ViewModels, compose
+from solaris.viewmodels.routing import RoutingViewModel
+from solaris.viewmodels.rule_editor import RuleEditor
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
 
 NOW = datetime(2026, 10, 29, 12).timestamp()

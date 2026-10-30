@@ -1,4 +1,4 @@
-"""Generate src/mihomo_desktop/ui/components/Theme.qml from the DESIGN.md frontmatter.
+"""Generate src/solaris/ui/components/Theme.qml from the DESIGN.md frontmatter.
 
     uv run python scripts/gen_theme.py          # write
     uv run python scripts/gen_theme.py --check  # exit 1 if the file is stale
@@ -19,7 +19,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 DESIGN_MD = ROOT / "DESIGN.md"
-THEME_QML = ROOT / "src" / "mihomo_desktop" / "ui" / "components" / "Theme.qml"
+THEME_QML = ROOT / "src" / "solaris" / "ui" / "components" / "Theme.qml"
 
 HEADER = "// GENERATED from DESIGN.md by scripts/gen_theme.py. Do not edit; edit DESIGN.md.\n"
 
@@ -73,7 +73,7 @@ def color_modes(colors: dict[str, Any]) -> tuple[dict[str, str], dict[str, str]]
 
 
 def render(tokens: dict[str, Any]) -> str:
-    out = [HEADER, "pragma Singleton", "import QtQuick", "import MihomoDesktop", "", "QtObject {"]
+    out = [HEADER, "pragma Singleton", "import QtQuick", "import Solaris", "", "QtObject {"]
 
     out.append(
         "    // Main.qml binds this to the injected Appearance; the theme is light without one."

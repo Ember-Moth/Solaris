@@ -9,8 +9,8 @@ from PySide6.QtCore import QModelIndex, QPersistentModelIndex
 from PySide6.QtTest import QAbstractItemModelTester
 from pytestqt.qtbot import QtBot
 
-from mihomo_desktop.host.base import Connection, HostStatus
-from mihomo_desktop.models.connections import (
+from solaris.host.base import Connection, HostStatus
+from solaris.models.connections import (
     ConnectionMonitor,
     TrackedConnection,
     address,
@@ -19,9 +19,9 @@ from mihomo_desktop.models.connections import (
     process_name,
     protocol,
 )
-from mihomo_desktop.viewmodels.common.async_runner import AsyncRunner
-from mihomo_desktop.viewmodels.common.keyed_list import KeyedListModel
-from mihomo_desktop.viewmodels.connections import ConnectionsViewModel
+from solaris.viewmodels.common.async_runner import AsyncRunner
+from solaris.viewmodels.common.keyed_list import KeyedListModel
+from solaris.viewmodels.connections import ConnectionsViewModel
 from tests.support.simulated import SimulatedHost
 
 NOW = 1_800_000_000.0  # a clock that stands still, so no connection opens or closes

@@ -11,7 +11,7 @@ import (
 	"github.com/metacubex/mihomo/common/yaml"
 	C "github.com/metacubex/mihomo/constant"
 
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/controlpb"
+	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 )
 
 // Source is one subscription in the pool.

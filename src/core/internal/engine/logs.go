@@ -5,7 +5,7 @@ import (
 
 	"github.com/metacubex/mihomo/log"
 
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/controlpb"
+	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 )
 
 // WatchLogs calls emit for every mihomo log line until stop is called. emit runs on one

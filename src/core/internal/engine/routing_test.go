@@ -14,8 +14,8 @@ import (
 
 	"github.com/metacubex/mihomo/config"
 
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/compose"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/controlpb"
+	"github.com/Ember-Moth/Solaris/src/core/internal/compose"
+	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 )
 
 // A subscription that also asks for what composition must leave behind: its rules, its

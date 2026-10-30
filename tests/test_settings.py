@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from mihomo_desktop.host.base import RunOptions
-from mihomo_desktop.models.database import Database
-from mihomo_desktop.models.settings import (
+from solaris.host.base import RunOptions
+from solaris.models.database import Database
+from solaris.models.settings import (
     LOCAL,
     SYNCED,
     DatabaseSettingsStore,
@@ -17,7 +17,7 @@ from mihomo_desktop.models.settings import (
     scope,
     write_settings,
 )
-from mihomo_desktop.models.store import open_database
+from solaris.models.store import open_database
 from tests.support.storage import allow_writes, refuse_writes, stored
 
 

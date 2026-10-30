@@ -1,4 +1,4 @@
-module github.com/Ember-Moth/mihomo-desktop/src/core
+module github.com/Ember-Moth/Solaris/src/core
 
 go 1.26.0
 

@@ -7,8 +7,8 @@ from typing import ClassVar
 
 import pytest
 
-from mihomo_desktop.models.profiles import ProfileError, Usage, count_proxies
-from mihomo_desktop.models.subscription import (
+from solaris.models.profiles import ProfileError, Usage, count_proxies
+from solaris.models.subscription import (
     USER_AGENT,
     UrlFetcher,
     decode_config,

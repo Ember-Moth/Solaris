@@ -7,12 +7,12 @@ import pytest
 from PySide6.QtCore import QObject
 from pytestqt.qtbot import QtBot
 
-from mihomo_desktop.host.base import HostError, HostStatus, RunOptions
-from mihomo_desktop.host.service import ServiceHost
-from mihomo_desktop.host.transport import Streams
-from mihomo_desktop.models.profiles import ProfileError
-from mihomo_desktop.models.store import ProfileStore
-from mihomo_desktop.viewmodels.composition import ViewModels, compose
+from solaris.host.base import HostError, HostStatus, RunOptions
+from solaris.host.service import ServiceHost
+from solaris.host.transport import Streams
+from solaris.models.profiles import ProfileError
+from solaris.models.store import ProfileStore
+from solaris.viewmodels.composition import ViewModels, compose
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
 from tests.support.storage import has_config, has_override
 

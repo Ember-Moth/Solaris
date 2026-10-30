@@ -4,7 +4,7 @@
     uv run python scripts/gen_i18n.py --check  # exit 1 if a catalog is stale or unfinished
 
 Source strings are Simplified Chinese, in qsTr() and QCoreApplication.translate()/self.tr()
-calls. Translate new entries in src/mihomo_desktop/translations/<language>.ts, by hand or with
+calls. Translate new entries in src/solaris/translations/<language>.ts, by hand or with
 pyside6-linguist, then run this again. The .qm files are committed so the app runs from a
 checkout without this step.
 """
@@ -21,7 +21,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-PACKAGE = ROOT / "src" / "mihomo_desktop"
+PACKAGE = ROOT / "src" / "solaris"
 TRANSLATIONS = PACKAGE / "translations"
 SOURCE_LANGUAGE = "zh_CN"
 LANGUAGES = ("en",)
@@ -70,7 +70,7 @@ def _text(path: Path) -> str:
 def stale_catalogs() -> list[str]:
     """Catalogs that lupdate would change: a string was added, edited or removed."""
     problems = []
-    with tempfile.TemporaryDirectory(prefix="mihomo-desktop-i18n-") as directory:
+    with tempfile.TemporaryDirectory(prefix="solaris-i18n-") as directory:
         for language in LANGUAGES:
             current = catalog(language)
             updated = Path(directory) / current.name
@@ -115,7 +115,7 @@ def unfinished_messages() -> list[str]:
 def stale_binaries() -> list[str]:
     """Compiled catalogs that do not match their .ts."""
     problems = []
-    with tempfile.TemporaryDirectory(prefix="mihomo-desktop-i18n-") as directory:
+    with tempfile.TemporaryDirectory(prefix="solaris-i18n-") as directory:
         for language in LANGUAGES:
             compiled = Path(directory) / f"{language}.qm"
             lrelease(catalog(language), compiled)

@@ -17,13 +17,13 @@ from PySide6.QtCore import QObject, QUrl
 from PySide6.QtQuick import QQuickWindow
 from pytestqt.qtbot import QtBot
 
-from mihomo_desktop.viewmodels.composition import ViewModels
 from scripts.dev import DevService
+from solaris.viewmodels.composition import ViewModels
 from tests.e2e.servers import ProxyNode, WebServer
 
 WAIT_MS = 15_000
 # A directory to save screenshots of the window in, as the tests reach each page.
-SCREENSHOTS_ENV = "MIHOMO_DESKTOP_E2E_SCREENSHOTS"
+SCREENSHOTS_ENV = "SOLARIS_E2E_SCREENSHOTS"
 WINDOW_SIZE = (1280, 800)
 
 

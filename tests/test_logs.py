@@ -8,15 +8,15 @@ from PySide6.QtCore import QUrl
 from PySide6.QtTest import QAbstractItemModelTester
 from pytestqt.qtbot import QtBot
 
-from mihomo_desktop.host.base import LogEntry
-from mihomo_desktop.models.logs import (
+from solaris.host.base import LogEntry
+from solaris.models.logs import (
     LogBuffer,
     clock_time,
     export_text,
     subscription_level,
 )
-from mihomo_desktop.viewmodels.common.async_runner import AsyncRunner
-from mihomo_desktop.viewmodels.logs import LogListModel, LogsViewModel
+from solaris.viewmodels.common.async_runner import AsyncRunner
+from solaris.viewmodels.logs import LogListModel, LogsViewModel
 from tests.support.simulated import SimulatedHost
 
 NOW = datetime(2026, 10, 29, 12, 4, 1).timestamp()

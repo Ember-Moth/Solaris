@@ -11,8 +11,8 @@ from PySide6.QtCore import QCoreApplication, QUrl
 from PySide6.QtQml import QQmlComponent, QQmlEngine
 from pytestqt.qtbot import QtBot
 
-from mihomo_desktop.i18n import QT_CATALOGS, TRANSLATIONS_DIR
 from scripts.gen_i18n import tool
+from solaris.i18n import QT_CATALOGS, TRANSLATIONS_DIR
 from tests.support.i18n import ui_language
 
 CATALOG = TRANSLATIONS_DIR / f"{QT_CATALOGS['zh']}.ts"

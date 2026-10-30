@@ -1,19 +1,17 @@
-// Package product holds the identifiers that change with the product name.
-//
-// "mihomo-desktop" is a working name until the product is named
-// (docs/architecture.md §12); src/mihomo_desktop/product.py mirrors these values.
+// Package product holds the identifiers that carry the product name, Solaris
+// (docs/roadmap.md, decision D1); src/solaris/product.py mirrors these values.
 package product
 
 const (
 	// DisplayName also names the data directories (docs/architecture.md §5.1).
-	DisplayName = "Mihomo Desktop"
+	DisplayName = "Solaris"
 
-	ServiceName = "MihomoDesktopService"
+	ServiceName = "SolarisService"
 
 	// UIExecutable is the only client the Windows service accepts, from its own directory.
-	UIExecutable = "mihomo-desktop.exe"
+	UIExecutable = "Solaris.exe"
 
-	PipeName = `\\.\pipe\ProtectedPrefix\Administrators\mihomo-desktop`
+	PipeName = `\\.\pipe\ProtectedPrefix\Administrators\solaris`
 	// SYSTEM and Administrators get full access; interactive users may read and write.
 	PipeSDDL = "D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GRGW;;;IU)"
 
@@ -21,7 +19,7 @@ const (
 )
 
 // FrameMagic opens every frame on the Windows pipe.
-var FrameMagic = [4]byte{'M', 'D', 'C', 'P'}
+var FrameMagic = [4]byte{'S', 'L', 'R', 'S'}
 
 // Version is set at link time with -ldflags "-X <module>/internal/product.Version=<version>".
 var Version = "dev"

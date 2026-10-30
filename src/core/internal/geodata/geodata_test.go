@@ -6,7 +6,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/geodata/geodatatest"
+	"github.com/Ember-Moth/Solaris/src/core/internal/geodata/geodatatest"
 )
 
 func TestCategories(t *testing.T) {

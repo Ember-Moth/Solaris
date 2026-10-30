@@ -27,7 +27,7 @@ from urllib.parse import unquote, urlsplit
 
 import yaml
 
-from mihomo_desktop.host.base import (
+from solaris.host.base import (
     LOG_LEVELS,
     ComposedGroup,
     Composition,
@@ -49,7 +49,7 @@ from mihomo_desktop.host.base import (
     TunnelConfig,
     bundled_geo_categories,
 )
-from mihomo_desktop.models.profiles import (
+from solaris.models.profiles import (
     KIND_FILE,
     KIND_SUBSCRIPTION,
     Profile,
@@ -58,9 +58,9 @@ from mihomo_desktop.models.profiles import (
     Usage,
     count_proxies,
 )
-from mihomo_desktop.models.routing import MODE_PROFILE, RoutingStore
-from mihomo_desktop.models.store import ProfileStore
-from mihomo_desktop.models.subscription import Download
+from solaris.models.routing import MODE_PROFILE, RoutingStore
+from solaris.models.store import ProfileStore
+from solaris.models.subscription import Download
 
 GB = 1024**3
 MB = 1024**2

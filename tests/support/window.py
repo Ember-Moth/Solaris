@@ -13,7 +13,7 @@ from PySide6.QtQuick import QQuickItem, QQuickWindow
 from PySide6.QtTest import QTest
 from pytestqt.qtbot import QtBot
 
-from mihomo_desktop.viewmodels.composition import ViewModels
+from solaris.viewmodels.composition import ViewModels
 
 
 def find(item: QQuickItem, test: Callable[[QQuickItem], bool]) -> QQuickItem | None:

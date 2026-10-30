@@ -11,10 +11,10 @@ from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickWindow
 from pytestqt.qtbot import QtBot
 
-from mihomo_desktop.app import load_ui
-from mihomo_desktop.models.store import ProfileStore
-from mihomo_desktop.viewmodels.appearance import Appearance
-from mihomo_desktop.viewmodels.composition import compose
+from solaris.app import load_ui
+from solaris.models.store import ProfileStore
+from solaris.viewmodels.appearance import Appearance
+from solaris.viewmodels.composition import compose
 from tests.support.appearance import SystemColorScheme
 from tests.support.i18n import ui_language
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles

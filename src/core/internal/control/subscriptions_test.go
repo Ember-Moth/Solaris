@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/controlpb"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/peer"
+	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
+	"github.com/Ember-Moth/Solaris/src/core/internal/peer"
 )
 
 // sampler stands in for the engine: fixed samples, and a log feed the test drives.

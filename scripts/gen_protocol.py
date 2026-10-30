@@ -21,8 +21,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SCHEMAS = ROOT / "proto"
 TOOLS = ROOT / "build/protobuf-toolchain"
 GO_MODULE_DIR = ROOT / "src/core"
-GO_MODULE = "github.com/Ember-Moth/mihomo-desktop/src/core"
-PYTHON_OUTPUT = ROOT / "src/mihomo_desktop/protocol"
+GO_MODULE = "github.com/Ember-Moth/Solaris/src/core"
+PYTHON_OUTPUT = ROOT / "src/solaris/protocol"
 GO_OUTPUT = GO_MODULE_DIR / "internal/controlpb"
 LOCK = json.loads((SCHEMAS / "toolchain.json").read_text(encoding="utf-8"))
 
@@ -83,7 +83,7 @@ def generated_files() -> dict[Path, bytes]:
     compiler = protoc()
     plugin = go_plugin()
     schemas = sorted(SCHEMAS.rglob("*.proto"))
-    with tempfile.TemporaryDirectory(prefix="mihomo-desktop-protobuf-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="solaris-protobuf-") as temporary:
         directory = Path(temporary)
         python = directory / "python"
         go = directory / "go"

@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/controlpb"
+	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 )
 
 const poolSource = "proxies:\n  - {name: 🇯🇵 东京 01, type: direct}\n  - {name: 剩余流量, type: direct}\n"

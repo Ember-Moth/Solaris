@@ -18,8 +18,8 @@ import (
 	"github.com/metacubex/mihomo/hub/executor"
 	"github.com/metacubex/mihomo/listener/inbound"
 
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/compose"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/controlpb"
+	"github.com/Ember-Moth/Solaris/src/core/internal/compose"
+	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 )
 
 // TunMode decides who owns the TUN and the routes (docs/architecture.md §3.1). It is

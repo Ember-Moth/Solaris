@@ -4,10 +4,10 @@ import pytest
 from PySide6.QtCore import QCoreApplication, Qt
 from pytestqt.qtbot import QtBot
 
-from mihomo_desktop.models.settings import DatabaseSettingsStore
-from mihomo_desktop.models.store import ProfileStore
-from mihomo_desktop.viewmodels.appearance import APPEARANCE_ENV, Appearance, resolve_mode
-from mihomo_desktop.viewmodels.composition import compose
+from solaris.models.settings import DatabaseSettingsStore
+from solaris.models.store import ProfileStore
+from solaris.viewmodels.appearance import APPEARANCE_ENV, Appearance, resolve_mode
+from solaris.viewmodels.composition import compose
 from tests.support.appearance import SystemColorScheme
 from tests.support.simulated import SimulatedFetcher, SimulatedHost
 

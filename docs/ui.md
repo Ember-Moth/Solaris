@@ -43,9 +43,9 @@
 
 ## 2. 配置存储
 
-界面的本地数据（配置、覆写、设置、分流方案）存在用户数据目录下的 SQLite 数据库 `mihomo-desktop.db` 里。用户数据
-目录在 Windows 上是 `%LOCALAPPDATA%\<Product>\`，在 macOS 上是 `~/Library/Application Support/<Product>/`，
-`<Product>` 取 `product.py` 的 `DISPLAY_NAME`。数据库的整体设计和云备份见 [storage.md](storage.md)。代码分布：
+界面的本地数据（配置、覆写、设置、分流方案）存在用户数据目录下的 SQLite 数据库 `solaris.db` 里。用户数据
+目录在 Windows 上是 `%LOCALAPPDATA%\Solaris\`，在 macOS 上是 `~/Library/Application Support/Solaris/`，
+`Solaris` 取自 `product.py` 的 `DISPLAY_NAME`。数据库的整体设计和云备份见 [storage.md](storage.md)。代码分布：
 
 - `models/database.py`：连接、表结构、迁移；
 - `models/store.py`：配置和覆写（`ProfileStore`），以及打开数据库的 `open_database`；
@@ -104,12 +104,12 @@
 - 增加版本时，在 `MIGRATIONS` 末尾追加一个函数，不改已有的。测试会检查：从每个旧版本迁移上来的数据库，表结构
   与新建的完全相同。
 - 文件打不开（不是数据库，或已损坏），或者版本比本程序认识的还新（降级的情况），就把它连同 `-wal`、`-shm`
-  改名为 `mihomo-desktop.db.<时间戳>.bad` 保留，再新建一个空库。
+  改名为 `solaris.db.<时间戳>.bad` 保留，再新建一个空库。
 
 ## 3. 订阅与切换
 
 - **下载**在用户上下文中进行（urllib，在工作线程里执行），跟随系统代理设置。User-Agent 为
-  `mihomo-desktop/<版本> clash.meta`，让订阅服务返回 Clash YAML。只接受 http 和 https；超过一个请求帧能装下的
+  `solaris/<版本> clash.meta`，让订阅服务返回 Clash YAML。只接受 http 和 https；超过一个请求帧能装下的
   大小（16 MiB 减 1 MiB）即拒绝。`Content-Disposition` 里的文件名作为默认名称。
 - **导入**：下载或读文件 → 解码为 UTF-8 → 宿主 `validate`（带上全局覆写）→ 写入存储。第一份配置自动成为当前配置。
 - **自动更新**：订阅默认每 12 小时更新一次，可以按配置关闭。界面每分钟检查一次到期的订阅，在启动时也检查；
@@ -150,7 +150,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 
 界面提供简体中文和英文（决策 D12），用 Qt Linguist 工具链；英文文案的风格以 DESIGN.md 为准。
 
-- **源语言是简体中文**：源码里的文案就是中文界面，`src/mihomo_desktop/translations/en.ts` 是唯一的译文。
+- **源语言是简体中文**：源码里的文案就是中文界面，`src/solaris/translations/en.ts` 是唯一的译文。
   中文界面不加载翻译，测试里的中文断言就是界面上的文字。
 - **标记文案**：
   - QML 用 `qsTr()`，参数写 `%1` 再 `.arg()`；
@@ -169,7 +169,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 - **语言选择**（`i18n.resolve_language`）按顺序取第一个有效值：
   1. 设置页的选择（设置项 `language`，见第 8 节；`system` 表示跟随系统）。`app.main(language=…)`
      和 `scripts/preview.py --lang` 在启动时优先于它；
-  2. 环境变量 `MIHOMO_DESKTOP_LANG=zh|en`，用于预览和测试，`scripts/preview.py --lang en` 等价；
+  2. 环境变量 `SOLARIS_LANG=zh|en`，用于预览和测试，`scripts/preview.py --lang en` 等价；
   3. 系统的首选界面语言（`QLocale.system().uiLanguages()` 的第一项）：`zh` 开头用中文，其他一律用英文。
 
   格式化日期的 locale：系统 locale 与界面同一语言时用系统的（保留 en_GB 等地区习惯），否则用该语言的默认
@@ -180,19 +180,19 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   `QQmlEngine.retranslate()` 重算 QML 里的 `qsTr`，`ViewModels.retranslate()` 让每个 ViewModel 重新发出文本
   属性的通知。`pages`、`modeOptions`、`sortOptions` 和设置页的选项各有自己的通知信号，而不挂在每秒触发的
   `changed` 上，否则分段控件和菜单会每秒重建。已经显示出来的错误提示保持切换前的语言，直到下一次刷新或操作。
-- **流程**：改动文案后运行 `scripts/gen_i18n.py`。`pyside6-lupdate` 扫描 `src/mihomo_desktop` 下的 QML 和
+- **流程**：改动文案后运行 `scripts/gen_i18n.py`。`pyside6-lupdate` 扫描 `src/solaris` 下的 QML 和
   Python 并更新 `.ts`（不记录行号，移动代码不会改动目录），`pyside6-lrelease` 再编译出 `.qm`。新条目在 `.ts`
   里翻译（手改或用 `pyside6-linguist`），然后再运行一次。`--check` 和 `tests/test_i18n.py` 检查：`.ts`
   覆盖当前源码；英文没有未完成的条目，占位符与源文一致；`.qm` 与 `.ts` 一致。
 - **`.qm` 提交进仓库**（与 Theme.qml 一样），从源码运行和预览不需要额外步骤。Nuitka 打包时，
-  `package/entry.py` 里的 `nuitka-project` 选项把 `translations/*.qm` 复制到 `mihomo_desktop/translations/`，
+  `package/entry.py` 里的 `nuitka-project` 选项把 `translations/*.qm` 复制到 `solaris/translations/`，
   `i18n.py` 按包内路径加载；找不到 `.qm` 时启动报错，而不是静默显示中文。
 - **Qt 自带的文案**：输入框和编辑框的右键菜单（撤销、重做、剪切、复制、粘贴、删除、全选）来自 Qt 自己的 QML，
   `QtQuick.Controls.impl` 的 `UndoAction`、`CutAction` 等文件里的 `qsTr`，所以翻译上下文就是这些文件名。Qt 附带的
   zh_CN 目录（PySide6 6.12）还没有这些条目，本项目在 `translations/qtquick_zh_CN.ts` 里补上中文，中文界面下由
   `Translations` 一并加载（`i18n.QT_CATALOGS`）；英文界面就是 Qt 的原文，不需要目录。
   - 这个目录不在 `gen_i18n.py` 的流程里（lupdate 扫不到 Qt 的源码），改动后用
-    `pyside6-lrelease -nounfinished -silent src/mihomo_desktop/translations/qtquick_zh_CN.ts -qm src/mihomo_desktop/translations/qtquick_zh_CN.qm`
+    `pyside6-lrelease -nounfinished -silent src/solaris/translations/qtquick_zh_CN.ts -qm src/solaris/translations/qtquick_zh_CN.qm`
     编译；`.qm` 同样提交进仓库，打包时随 `translations/*.qm` 一起复制。
   - `tests/test_qt_translations.py` 核对：每个条目都是 Qt 那个文件里的 `qsTr` 原文，Basic 样式的菜单正好用这几个
     Action（升级 Qt 后有变化就失败）；`.qm` 与 `.ts` 一致；在中文和英文界面下实际创建这些 Action，读出的文字分别是
@@ -206,7 +206,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 - **主题**：DESIGN.md 的 `colors` 是浅色值，`colors.dark` 是同名角色的深色值。`scripts/gen_theme.py` 把每个
   角色生成为一个绑定，如 `primary: dark ? "#6495FF" : "#1F5EFF"`；`Theme.dark` 取自注入的外观对象。外观变化时
   所有绑定随之重算，界面立即重绘，不需要重启或重新加载 QML。
-- **外观对象** `viewmodels/appearance.py` 的 `Appearance`，在 QML 里是 `MihomoDesktop` 模块的类型：
+- **外观对象** `viewmodels/appearance.py` 的 `Appearance`，在 QML 里是 `Solaris` 模块的类型：
 
   | 成员 | 说明 |
   | --- | --- |
@@ -224,7 +224,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   所以无论改动来自设置页还是将来的备份恢复，外观都立即跟上。
 - **启动时的模式**（`resolve_mode`）按顺序取第一个有效值：
   1. `app.main(appearance=…)` 的参数，然后是设置项 `appearance`（`system` 视为未指定）；
-  2. 环境变量 `MIHOMO_DESKTOP_APPEARANCE=system|light|dark`，用于预览和测试，
+  2. 环境变量 `SOLARIS_APPEARANCE=system|light|dark`，用于预览和测试，
      `scripts/preview.py --appearance dark` 等价；
   3. `system`。
 - **Qt 控件的调色板**：Basic 样式里本项目没有重绘的部分（滚动条、Qt 自带的右键菜单和工具提示、文字选区的
@@ -247,7 +247,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   | `shadow` | `scrim` |
 
 - **字体**：Inter（400、500、600）和 JetBrains Mono（400）放在 `ui/fonts/`，各带 `OFL.txt`，由 `Fonts.qml` 的
-  `FontLoader` 加载；Nuitka 打包时 `package/entry.py` 把整个目录复制到 `mihomo_desktop/ui/fonts/`。中日韩文字
+  `FontLoader` 加载；Nuitka 打包时 `package/entry.py` 把整个目录复制到 `solaris/ui/fonts/`。中日韩文字
   由 Qt 从系统字体回退。SIL OFL 1.1 允许字体与任何软件捆绑分发，只要求随附版权声明和许可证、不单独出售
   字体、修改版不用保留字体名；字体不受 GPL 约束，也不改变本项目的 GPL-3.0 许可。
 - **测试**：`tests/test_theme.py` 检查 Theme.qml 与 DESIGN.md 一致、两组颜色角色相同，并按 DESIGN.md 的用法
@@ -353,14 +353,14 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 - **关闭窗口**：`tray`（默认）时隐藏窗口，界面留在托盘；Windows 上点托盘图标、macOS 上点 Dock 图标（Qt 把每次
   点击报告为应用激活）恢复窗口。`quit` 时退出界面进程。两种情况下隧道都继续运行（architecture.md §1）。
 - **单实例**：第一个界面在用户数据目录持有 `ui.lock`（`QLockFile`，进程不在了的锁视为过期），并以
-  `mihomo-desktop-<用户名和数据目录的哈希>` 为名监听 `QLocalServer`（只允许同一用户连接）。后来的界面拿不到
+  `solaris-<用户名和数据目录的哈希>` 为名监听 `QLocalServer`（只允许同一用户连接）。后来的界面拿不到
   锁，就连上这个名字发一行 `activate`，然后退出；第一个界面收到后显示并激活窗口。Windows 上后来的界面先调用
   `AllowSetForegroundWindow`，让第一个界面能把窗口带到前台。由锁而不是由服务端名字来判断，是因为 macOS 上
   崩溃的界面会留下 socket 文件，而且两个同时启动的界面拿锁时只有一个能成功。
 - **登录时打开**（`desktop/login.py`，平台接口 `LoginItem`）：
   - Windows：为当前用户注册一个计划任务（`schtasks /Create /XML`）：登录触发器只针对该用户，以该用户身份、
     交互式令牌、不提权运行，普通优先级，没有运行时限，动作是 `<界面>.exe --background`（界面只进托盘）。
-    任务名 `Mihomo Desktop (<域>_<用户名>)`。用计划任务而不是注册表的 `Run` 键，是沿用开发方案的选择：登录后
+    任务名 `Solaris (<域>_<用户名>)`。用计划任务而不是注册表的 `Run` 键，是沿用开发方案的选择：登录后
     立即启动，不受 Windows 对启动项的延迟，安装器（M4）也能用同一个任务名创建和清理。读状态用
     `schtasks /Query /XML`，用户在任务计划程序里禁用的任务视为关闭。
   - macOS：`SMAppService.mainAppService` 的 `register` / `unregister`（macOS 13 起），经 ctypes 调用

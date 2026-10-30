@@ -7,7 +7,7 @@ from contextlib import contextmanager
 
 from PySide6.QtCore import QCoreApplication, QLocale
 
-from mihomo_desktop.i18n import Translations
+from solaris.i18n import Translations
 
 
 @contextmanager

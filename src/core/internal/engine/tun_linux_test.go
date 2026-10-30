@@ -4,7 +4,7 @@ package engine
 
 // The owned-TUN test creates a real TUN, so it only ever runs inside a network
 // namespace (docs/architecture.md §11): it compiles only with -tags tuntest, runs only
-// with MIHOMO_DESKTOP_TUN_TEST=1, and refuses the host's namespace. CI builds the
+// with SOLARIS_TUN_TEST=1, and refuses the host's namespace. CI builds the
 // namespaces; see the tun job in .github/workflows/ci.yml.
 
 import (
@@ -19,21 +19,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/controlpb"
+	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 )
 
 const tunDevice = "mdtun0"
 
 func TestOwnedTUN(t *testing.T) {
-	if os.Getenv("MIHOMO_DESKTOP_TUN_TEST") != "1" {
-		t.Skip("set MIHOMO_DESKTOP_TUN_TEST=1 and run inside a network namespace")
+	if os.Getenv("SOLARIS_TUN_TEST") != "1" {
+		t.Skip("set SOLARIS_TUN_TEST=1 and run inside a network namespace")
 	}
 	requireIsolatedNamespace(t)
-	target := os.Getenv("MIHOMO_DESKTOP_TUN_TARGET")
+	target := os.Getenv("SOLARIS_TUN_TARGET")
 	if target == "" {
-		t.Fatal("MIHOMO_DESKTOP_TUN_TARGET names the HTTP server outside the namespace")
+		t.Fatal("SOLARIS_TUN_TARGET names the HTTP server outside the namespace")
 	}
-	stacks := strings.Split(os.Getenv("MIHOMO_DESKTOP_TUN_STACKS"), ",")
+	stacks := strings.Split(os.Getenv("SOLARIS_TUN_STACKS"), ",")
 	if stacks[0] == "" {
 		stacks = []string{"system"}
 	}

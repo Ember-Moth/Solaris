@@ -11,7 +11,7 @@ import (
 
 	C "github.com/metacubex/mihomo/constant"
 
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/geodata/geodatatest"
+	"github.com/Ember-Moth/Solaris/src/core/internal/geodata/geodatatest"
 )
 
 // testHome is shared by every test: mihomo opens cache.db in the first home it uses and
@@ -20,7 +20,7 @@ var testHome string
 
 // helperEnv makes the test binary open one engine and report the result, for checks
 // that need environment variables mihomo reads before main.
-const helperEnv = "MIHOMO_DESKTOP_ENGINE_HELPER"
+const helperEnv = "SOLARIS_ENGINE_HELPER"
 
 func TestMain(m *testing.M) {
 	if os.Getenv(helperEnv) != "" {

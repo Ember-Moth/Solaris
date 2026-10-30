@@ -14,11 +14,11 @@ import (
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/svc"
 
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/control"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/engine"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/peer"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/product"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/server"
+	"github.com/Ember-Moth/Solaris/src/core/internal/control"
+	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
+	"github.com/Ember-Moth/Solaris/src/core/internal/peer"
+	"github.com/Ember-Moth/Solaris/src/core/internal/product"
+	"github.com/Ember-Moth/Solaris/src/core/internal/server"
 )
 
 const pipeBufferSize = 64 << 10
@@ -113,7 +113,8 @@ func (service) Execute(_ []string, requests <-chan svc.ChangeRequest, status cha
 				cancel()
 				return false, exitCode(<-done)
 			case svc.SessionChange:
-				// Owner logoff policy is still open (docs/architecture.md §12).
+				// The owner signing out stops the tunnel (decision D5, docs/architecture.md §5.4);
+				// it comes with Claim in M4.
 			}
 		}
 	}

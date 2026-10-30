@@ -3,10 +3,10 @@ from datetime import datetime
 
 import pytest
 
-from mihomo_desktop.host.base import Connection, HostStatus, Proxy, ProxyGroup, TrafficSample
-from mihomo_desktop.models import format as fmt
-from mihomo_desktop.models.proxies import main_group, resolve, sort_proxies
-from mihomo_desktop.models.tunnel import HISTORY_LENGTH, TunnelSession
+from solaris.host.base import Connection, HostStatus, Proxy, ProxyGroup, TrafficSample
+from solaris.models import format as fmt
+from solaris.models.proxies import main_group, resolve, sort_proxies
+from solaris.models.tunnel import HISTORY_LENGTH, TunnelSession
 from tests.support.simulated import GB, MB, SimulatedHost
 
 

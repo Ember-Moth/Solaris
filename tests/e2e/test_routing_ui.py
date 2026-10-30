@@ -14,9 +14,9 @@ from typing import Any
 
 import pytest
 
-from mihomo_desktop.models.library import Routing
-from mihomo_desktop.models.routing import PlanGroup
 from scripts.fetch_geodata import seed
+from solaris.models.library import Routing
+from solaris.models.routing import PlanGroup
 from tests.e2e.app import App, nodes_profile
 from tests.e2e.servers import ProxyNode, WebServer
 from tests.e2e.test_routing import nodes_only

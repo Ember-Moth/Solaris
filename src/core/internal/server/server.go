@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/frame"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/peer"
+	"github.com/Ember-Moth/Solaris/src/core/internal/frame"
+	"github.com/Ember-Moth/Solaris/src/core/internal/peer"
 )
 
 type Handler interface {

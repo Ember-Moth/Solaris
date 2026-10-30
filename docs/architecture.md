@@ -1,10 +1,9 @@
 # 架构
 
-本文记录 mihomo 桌面客户端（仓库 `Ember-Moth/mihomo-desktop`）的目标架构。项目最初计划基于 sing-box，
-后来因为官方 sing-box for Desktop 已经发布，改为基于 mihomo。产品名尚未确定，下文用 `<Product>`（显示名）和
-`<product>`（服务名、管道名、bundle id 等标识符）占位。代码中暂用工作名 `mihomo-desktop`，
-集中在 `src/core/internal/product/product.go` 与 `src/mihomo_desktop/product.py`；协议草案见
-`proto/mihomo_desktop/protocol/control.proto`。
+本文记录 Solaris 的目标架构。Solaris 是 mihomo 的桌面客户端（仓库 `Ember-Moth/Solaris`），项目最初计划基于
+sing-box，后来因为官方 sing-box for Desktop 已经发布，改为基于 mihomo。产品名、应用名都是 Solaris（决策 D1）；
+代码里的产品标识集中在 `src/core/internal/product/product.go` 与 `src/solaris/product.py`，协议见
+`proto/solaris/protocol/control.proto`。
 
 本文只讲系统层面的结构；界面各部分的设计见 [ui.md](ui.md)，计划中的存储与分流见 [storage.md](storage.md) 和
 [routing.md](routing.md)，进度、计划与决策见 [roadmap.md](roadmap.md)。
@@ -52,9 +51,9 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
                  |                                        |
    Windows       | named pipe, framed             macOS   | ctypes -> Swift manager dylib
                  v                                        |   activate sysext, start/stop tunnel,
-   <product>-service.exe  (LocalSystem, Go)               |   sendProviderMessage(Request)
-     \\.\pipe\ProtectedPrefix\Administrators\<product>    v
-     peer check, host + core methods             <product>.systemextension  (Swift)
+   solaris-service.exe  (LocalSystem, Go)               |   sendProviderMessage(Request)
+     \\.\pipe\ProtectedPrefix\Administrators\solaris    v
+     peer check, host + core methods             dev.tschen.solaris.tunnel.systemextension  (Swift)
      engine (mihomo), owned-TUN mode               handleAppMessage -> Go dispatcher
      no mihomo HTTP controller                     engine (mihomo), fd mode
                                                    no socket, no HTTP controller
@@ -105,8 +104,8 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
 ### 3.2 engine 的职责
 
 - **初始化**（`engine.New`）：为属主设置 mihomo 的 home 目录（`C.SetHomeDir`），开启 `route.SetEmbedMode(true)`，
-  然后自检路径沙箱。开发服务的 home 默认在用户配置目录下的 `<Product>/dev-core`（`-home` 可改）；
-  Windows 服务暂用 `%ProgramData%\<Product>\core`，按 SID 划分的目录随 M4 的 `Claim` 实现。
+  然后自检路径沙箱。开发服务的 home 默认在用户配置目录下的 `Solaris/dev-core`（`-home` 可改）；
+  Windows 服务暂用 `%ProgramData%\Solaris\core`，按 SID 划分的目录随 M4 的 `Claim` 实现。
   mihomo 在进程内只打开一次 `cache.db`，所以 home 在进程生命周期内不能更换，更换属主需要新的服务进程。
 - **配置准入**：用户 YAML 解析为映射（锚点和合并键在这一步展开，补丁无法被别名绕过），或者由节点池和方案
   拼装出映射 → 依次应用覆写 → 按 TUN 模式打补丁 → 最后一步强制安全项 → 重新编码后交给
@@ -212,7 +211,7 @@ protobuf，编译和测试都正常。
 
 两个平台共用同一组 Protobuf 消息和同一个 Go 分发器，区别只在传输层和"启停"这类宿主方法。
 协议只有请求和响应两种消息，没有服务端主动推送，因为 macOS 的 provider message 只支持一问一答。
-schema 放在 `proto/<product>/control/v1/control.proto`，Go 与 Python 的绑定由它生成。
+schema 放在 `proto/solaris/protocol/control.proto`，Go 与 Python 的绑定由它生成。
 Swift 侧（管理库和扩展）只转发字节，不解析消息。
 
 ### 4.1 消息
@@ -357,12 +356,12 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 ### 5.1 安装布局
 
 ```text
-C:\Program Files\<Product>\            管理员所有，用户只读
-├── <product>.exe                      Nuitka standalone UI
-├── <product>-service.exe              Go 服务
+C:\Program Files\Solaris\            管理员所有，用户只读
+├── Solaris.exe                      Nuitka standalone UI
+├── solaris-service.exe              Go 服务
 └── …                                  Python / Qt 运行依赖
 
-C:\ProgramData\<Product>\              仅 SYSTEM 与 Administrators 可访问
+C:\ProgramData\Solaris\              仅 SYSTEM 与 Administrators 可访问
 ├── service.log
 ├── owner.json                         当前属主 SID、会话
 └── users\<SID>\                       该用户的 mihomo home 目录（IsSafePath 根）
@@ -378,7 +377,7 @@ UI 必须使用 Nuitka standalone 模式。onefile 模式会解压到 `%TEMP%` �
 
 ### 5.2 服务
 
-- 服务名 `<Product>Service`，以 LocalSystem 身份运行，自动启动。
+- 服务名 `SolarisService`，以 LocalSystem 身份运行，自动启动。
 - SCM 故障恢复：依次在 5 s、15 s、60 s 后重启。
 - 接受的控制事件：Stop、Shutdown、SessionChange、PowerEvent。PowerEvent 用于唤醒后重置连接。
 - 启动时读取 `owner.json` 和对应用户的 `options.json`；若 `was_running` 为真，按保存的配置恢复隧道。
@@ -387,7 +386,7 @@ UI 必须使用 Nuitka standalone 模式。onefile 模式会解压到 `%TEMP%` �
 
 ### 5.3 管道与客户端校验
 
-管道名为 `\\.\pipe\ProtectedPrefix\Administrators\<product>`，SDDL 为
+管道名为 `\\.\pipe\ProtectedPrefix\Administrators\solaris`，SDDL 为
 `D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GRGW;;;IU)`。这是服务唯一的对外入口。
 
 `ProtectedPrefix\Administrators` 前缀下只有管理员和 SYSTEM 能创建管道，因此客户端不必再核对服务端
@@ -396,7 +395,7 @@ PID 来防止管道名被抢注。
 服务在每条连接建立时校验客户端，任一项不通过就断开：
 
 1. 用 `GetNamedPipeClientProcessId` 取得客户端进程，并在整个连接期间持有其进程句柄；
-2. 客户端映像的最终路径必须是安装目录里的 `<product>.exe`，并锁住文件句柄、比较文件 ID，防止中途被替换；
+2. 客户端映像的最终路径必须是安装目录里的 `Solaris.exe`，并锁住文件句柄、比较文件 ID，防止中途被替换；
 3. 读取客户端 token 的用户 SID 和会话 ID，作为后续属主判断的身份；
 4. 发布构建额外要求客户端的 Authenticode 签名者与服务相同。
 
@@ -422,9 +421,9 @@ WinINet；内核停止时还原。开机恢复时，如果属主尚未登录，�
 ### 6.1 包结构
 
 ```text
-<Product>.app/Contents/
-├── MacOS/<product>                                   Nuitka standalone UI
-├── Frameworks/<Product>Manager.dylib                 Swift，C ABI，供 ctypes 调用
+Solaris.app/Contents/
+├── MacOS/Solaris                                   Nuitka standalone UI
+├── Frameworks/SolarisManager.dylib                 Swift，C ABI，供 ctypes 调用
 └── Library/SystemExtensions/<bundle-id>.systemextension
     └── NEPacketTunnelProvider + 本仓库 Go 模块编出的 xcframework
 ```
@@ -518,7 +517,7 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   不进入任何发布包；macOS 正式版走 provider message，不使用 socket。
 
   ```bash
-  go -C src/core run ./service -socket /tmp/mihomo-desktop-dev.sock
+  go -C src/core run ./service -socket /tmp/solaris-dev.sock
   ```
 
   `scripts/dev.py` 一步完成联调：构建并启动开发服务，界面的配置和设置放在单独的目录（默认临时目录），
@@ -536,7 +535,7 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 - **TUN 只在隔离环境里测试**：自管模式在 CI 的 Linux runner 上、独立的网络命名空间里测试；wintun 和
   strict-route 在 Windows 测试虚拟机里验证；macOS NE 在单独的测试 Mac 或虚拟机上验证，不在开发机上运行。
   - `internal/engine/tun_linux_test.go` 有三道开关：只在 `-tags tuntest` 时编译，只在
-    `MIHOMO_DESKTOP_TUN_TEST=1` 时运行，并且拒绝在宿主机的网络命名空间里运行。本机执行 `go test ./...`
+    `SOLARIS_TUN_TEST=1` 时运行，并且拒绝在宿主机的网络命名空间里运行。本机执行 `go test ./...`
     不会编译它。
   - CI 的 `tun` job 建两个命名空间，用 veth 相连：`md-tun` 里以 root 运行测试，`md-srv` 里起一个 HTTP 服务。
     服务监听在 `md-srv` 回环口上的 10.201.0.1，不在 `md-tun` 的链路网段里：auto-route 让主表里比默认路由
@@ -551,8 +550,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   切换配置时重载不断开已有连接、断开重连与服务重启、混合端口被占用和局域网连接，以及模拟宿主与真实服务对一组
   配置的判定一致；自定义分流（B2）另有用例：只有节点的订阅加方案连接、域名规则把流量导向指定节点、连接快照带规则
   条目 id、重载改方案。分流用例需要 GEO 数据，用 `scripts/fetch_geodata.py` 拉取并缓存。默认跳过，设置
-  `MIHOMO_DESKTOP_E2E=1` 才运行；`MIHOMO_DESKTOP_E2E_SERVICE` 可以指向已
-  构建的服务，否则测试自己 `go build`；`MIHOMO_DESKTOP_E2E_SCREENSHOTS` 指向一个目录时保存各页截图。CI 的
+  `SOLARIS_E2E=1` 才运行；`SOLARIS_E2E_SERVICE` 可以指向已
+  构建的服务，否则测试自己 `go build`；`SOLARIS_E2E_SCREENSHOTS` 指向一个目录时保存各页截图。CI 的
   `e2e` job 在 macOS runner 上先构建服务再运行。全程只用回环地址，不需要 TUN。
 - **测试覆盖**：
   - engine：配置流水线的回归测试，对应 3.3 节各项；开发模式护栏；启停与重载；50 次启停的泄漏检查；

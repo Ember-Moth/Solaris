@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from mihomo_desktop.models.profiles import (
+from solaris.models.profiles import (
     KIND_FILE,
     KIND_SUBSCRIPTION,
     Profile,
@@ -13,8 +13,8 @@ from mihomo_desktop.models.profiles import (
     ProfileList,
     Usage,
 )
-from mihomo_desktop.models.settings import DatabaseSettingsStore
-from mihomo_desktop.models.store import ProfileStore, default_data_dir
+from solaris.models.settings import DatabaseSettingsStore
+from solaris.models.store import ProfileStore, default_data_dir
 from tests.support.storage import refuse_writes, stored
 
 SUBSCRIPTION = Profile(
@@ -244,9 +244,9 @@ def test_threads_share_the_store(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("platform", "env", "expected"),
     [
-        ("darwin", {}, "Library/Application Support/Mihomo Desktop"),
-        ("win32", {"LOCALAPPDATA": "{home}/Local"}, "Local/Mihomo Desktop"),
-        ("linux", {"XDG_DATA_HOME": ""}, ".local/share/Mihomo Desktop"),
+        ("darwin", {}, "Library/Application Support/Solaris"),
+        ("win32", {"LOCALAPPDATA": "{home}/Local"}, "Local/Solaris"),
+        ("linux", {"XDG_DATA_HOME": ""}, ".local/share/Solaris"),
     ],
 )
 def test_default_data_dir(

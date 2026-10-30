@@ -11,8 +11,8 @@ import pytest
 from PySide6.QtCore import QCoreApplication
 from pytestqt.qtbot import QtBot
 
-from mihomo_desktop.desktop.instance import CONNECT_TIMEOUT_MS, SingleInstance, server_name
-from mihomo_desktop.desktop.login import (
+from solaris.desktop.instance import CONNECT_TIMEOUT_MS, SingleInstance, server_name
+from solaris.desktop.login import (
     ENABLED,
     NOT_FOUND,
     NOT_REGISTERED,
@@ -27,12 +27,12 @@ from mihomo_desktop.desktop.login import (
     task_enabled,
     task_xml,
 )
-from mihomo_desktop.desktop.tray import TRAY_DIR, tray_icon, tray_supported
-from mihomo_desktop.models.settings import DatabaseSettingsStore
-from mihomo_desktop.models.store import open_database
-from mihomo_desktop.viewmodels.desktop import DesktopViewModel
+from solaris.desktop.tray import TRAY_DIR, tray_icon, tray_supported
+from solaris.models.settings import DatabaseSettingsStore
+from solaris.models.store import open_database
+from solaris.viewmodels.desktop import DesktopViewModel
 
-EXE = Path(r"C:\Program Files\Mihomo Desktop\mihomo-desktop.exe")
+EXE = Path(r"C:\Program Files\Solaris\Solaris.exe")
 
 
 class FakeSchtasks:
@@ -65,7 +65,7 @@ class FakeSchtasks:
 def test_scheduled_task_round_trip() -> None:
     schtasks = FakeSchtasks()
     task = ScheduledTask(EXE, r"DESKTOP-1\ember", run=schtasks)
-    assert task.name == "Mihomo Desktop (DESKTOP-1_ember)"
+    assert task.name == "Solaris (DESKTOP-1_ember)"
     assert task.status() == LoginItemStatus(enabled=False)
 
     assert task.set_enabled(True) == LoginItemStatus(enabled=True)
@@ -152,7 +152,7 @@ SECOND_UI = """
 import sys
 from pathlib import Path
 from PySide6.QtCore import QCoreApplication
-from mihomo_desktop.desktop.instance import SingleInstance
+from solaris.desktop.instance import SingleInstance
 app = QCoreApplication(sys.argv)
 print("claiming", flush=True)
 sys.exit(1 if SingleInstance(Path(sys.argv[1])).claim() else 0)
@@ -188,7 +188,7 @@ def test_second_instance_shows_the_first(qtbot: QtBot, tmp_path: Path) -> None:
 
 def test_instances_are_per_user_and_directory(tmp_path: Path) -> None:
     name = server_name(tmp_path / "a", "ember")
-    assert name.startswith("mihomo-desktop-")
+    assert name.startswith("solaris-")
     assert name == server_name(tmp_path / "a", "ember")
     assert name != server_name(tmp_path / "a", "other")
     assert name != server_name(tmp_path / "b", "ember")

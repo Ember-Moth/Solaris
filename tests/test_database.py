@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from mihomo_desktop.models.database import (
+from solaris.models.database import (
     DATABASE_NAME,
     MIGRATIONS,
     SCHEMA_VERSION,

@@ -10,13 +10,13 @@
 - **存储内容**：配置（订阅和本地文件，以及是否加入节点池）、覆写（全局一份，每个配置各一份）、分流方式与分流方案
   （策略组和规则，见 [routing.md](routing.md)）、设置。
 - **不在本文范围内**：
-  - Windows 服务在 `C:\ProgramData\<Product>\` 下保存的运行副本（architecture.md §5.1），它只用于开机恢复；
+  - Windows 服务在 `C:\ProgramData\Solaris\` 下保存的运行副本（architecture.md §5.1），它只用于开机恢复；
   - mihomo 自己的 provider 缓存和 `cache.db`。
 - **读写方**：数据库只由界面进程以当前用户身份读写。服务和系统扩展都不访问它，它们从宿主请求里拿到配置。
 
 ## 2. 本地数据库
 
-- **位置**：用户数据目录下的 `mihomo-desktop.db`。macOS 为 `~/Library/Application Support/<Product>/`，Windows 为 `%LOCALAPPDATA%\<Product>\`。
+- **位置**：用户数据目录下的 `solaris.db`。macOS 为 `~/Library/Application Support/Solaris/`，Windows 为 `%LOCALAPPDATA%\Solaris\`。
 - **实现**：使用标准库 `sqlite3`，开启 WAL 模式。schema 版本记在 `PRAGMA user_version` 里，启动时按版本依次迁移。
 - **写入**：每次写入都在一个事务里完成。界面是单实例，所以同一时间只有一个进程打开数据库。
 - **主键**：配置、方案、规则条目和备份目标用 UUID 作主键；覆写、设置和本机状态以 `scope`、`key` 这样的自然键为主键，
@@ -50,7 +50,7 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
 
 **快照内容**：一个 JSON 文档，包含以下字段：
 
-- `format`（固定为 `"mihomo-desktop-backup"`）、`version`、`created_at`、`device`（设备名）、`app_version`；
+- `format`（固定为 `"solaris-backup"`）、`version`、`created_at`、`device`（设备名）、`app_version`；
 - `profiles`：配置列表。订阅只存链接和更新设置，不存下载到的内容；本地文件配置存 YAML 原文；
 - `overrides`：全部覆写；
 - `routing`：分流方式、节点池设置和全部分流方案（包括策略组和规则条目）；

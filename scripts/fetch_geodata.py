@@ -6,7 +6,7 @@ from a pinned MetaCubeX/meta-rules-dat release, checked against pinned SHA-256 d
     uv run python scripts/fetch_geodata.py --check       # the committed list matches the data
 
 The files keep mihomo's names, so M4 and M5 copy them into the core's home as they are. The
-category list (src/mihomo_desktop/host/geo_categories.py) is what the category picker offers
+category list (src/solaris/host/geo_categories.py) is what the category picker offers
 while the core has no GEO data to list. Moving the pin means new digests and a new list.
 """
 
@@ -24,7 +24,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CACHE = ROOT / "build" / "geodata"
-CATEGORIES = ROOT / "src" / "mihomo_desktop" / "host" / "geo_categories.py"
+CATEGORIES = ROOT / "src" / "solaris" / "host" / "geo_categories.py"
 
 REPOSITORY = "MetaCubeX/meta-rules-dat"
 # The release branch on 2026-10-29 ("Released on 2026-10-29 09:52").

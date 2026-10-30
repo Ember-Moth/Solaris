@@ -5,8 +5,8 @@ the profiles and settings in a temporary directory and drives the real ViewModel
 QML loaded offscreen. Traffic goes to local servers through the mixed port, so nothing
 leaves the machine and the machine's network does not change (docs/architecture.md §11).
 
-The tests only run with MIHOMO_DESKTOP_E2E=1. They build the service with ``go build``
-unless MIHOMO_DESKTOP_E2E_SERVICE names a binary built already.
+The tests only run with SOLARIS_E2E=1. They build the service with ``go build``
+unless SOLARIS_E2E_SERVICE names a binary built already.
 """
 
 from __future__ import annotations
@@ -23,21 +23,21 @@ from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickWindow
 from pytestqt.qtbot import QtBot
 
-from mihomo_desktop.app import load_ui
-from mihomo_desktop.host.service import ServiceHost
-from mihomo_desktop.models.settings import DatabaseSettingsStore
-from mihomo_desktop.models.store import ProfileStore
-from mihomo_desktop.models.subscription import UrlFetcher
-from mihomo_desktop.product import DISPLAY_NAME
-from mihomo_desktop.viewmodels.composition import compose
 from scripts.dev import DevService, build_service
+from solaris.app import load_ui
+from solaris.host.service import ServiceHost
+from solaris.models.settings import DatabaseSettingsStore
+from solaris.models.store import ProfileStore
+from solaris.models.subscription import UrlFetcher
+from solaris.product import DISPLAY_NAME
+from solaris.viewmodels.composition import compose
 from tests.e2e.app import App, Network
 from tests.e2e.servers import ProxyNode, WebServer, free_port
 from tests.e2e.unix import unix_opener
 from tests.support.i18n import ui_language
 
-E2E_ENV = "MIHOMO_DESKTOP_E2E"
-SERVICE_ENV = "MIHOMO_DESKTOP_E2E_SERVICE"
+E2E_ENV = "SOLARIS_E2E"
+SERVICE_ENV = "SOLARIS_E2E_SERVICE"
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:

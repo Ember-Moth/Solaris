@@ -10,19 +10,19 @@ from typing import Any
 
 import pytest
 
-from mihomo_desktop.host.base import HostError, TunnelConfig
-from mihomo_desktop.models import plans
-from mihomo_desktop.models.library import ProfileLibrary
-from mihomo_desktop.models.profiles import ProfileError
-from mihomo_desktop.models.routing import (
+from solaris.host.base import HostError, TunnelConfig
+from solaris.models import plans
+from solaris.models.library import ProfileLibrary
+from solaris.models.profiles import ProfileError
+from solaris.models.routing import (
     DEFAULT_INFO_PATTERN,
     MODE_PLAN,
     MODE_PROFILE,
     PlanRule,
     RoutingStore,
 )
-from mihomo_desktop.models.settings import Settings
-from mihomo_desktop.models.store import ProfileStore
+from solaris.models.settings import Settings
+from solaris.models.store import ProfileStore
 from tests.support.simulated import SAMPLE_CONFIG, SimulatedFetcher, SimulatedHost, seed_profiles
 
 NOW = 1_800_000_000.0

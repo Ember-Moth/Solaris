@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from mihomo_desktop.host.base import HostError, TunnelConfig
-from mihomo_desktop.models.profiles import ProfileError
+from solaris.host.base import HostError, TunnelConfig
+from solaris.models.profiles import ProfileError
 from tests.support.simulated import SAMPLE_CONFIG, check_config
 from tests.test_library import OTHER_CONFIG, Scene, run
 

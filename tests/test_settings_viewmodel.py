@@ -7,11 +7,11 @@ import pytest
 from PySide6.QtCore import QObject
 from pytestqt.qtbot import QtBot
 
-from mihomo_desktop.desktop.login import LoginItemError, LoginItemStatus
-from mihomo_desktop.host.base import RunOptions
-from mihomo_desktop.models.settings import DatabaseSettingsStore, Settings
-from mihomo_desktop.models.store import ProfileStore, open_database
-from mihomo_desktop.viewmodels.composition import ViewModels, compose
+from solaris.desktop.login import LoginItemError, LoginItemStatus
+from solaris.host.base import RunOptions
+from solaris.models.settings import DatabaseSettingsStore, Settings
+from solaris.models.store import ProfileStore, open_database
+from solaris.viewmodels.composition import ViewModels, compose
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
 from tests.support.storage import refuse_writes
 
@@ -66,7 +66,7 @@ def test_about_shows_the_versions(qtbot: QtBot, view_models: ViewModels) -> None
     assert prop(settings, "serviceVersion") == "simulated"
     assert prop(settings, "protocolVersion") == "v1"
     assert prop(settings, "license") == "GPL-3.0-only"
-    assert prop(settings, "projectUrl") == "https://github.com/Ember-Moth/mihomo-desktop"
+    assert prop(settings, "projectUrl") == "https://github.com/Ember-Moth/Solaris"
 
 
 def test_choices_are_stored(qtbot: QtBot, view_models: ViewModels, tmp_path: Path) -> None:

@@ -12,9 +12,9 @@ import (
 	"github.com/metacubex/mihomo/log"
 	"github.com/metacubex/mihomo/tunnel/statistic"
 
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/compose"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/controlpb"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/geodata"
+	"github.com/Ember-Moth/Solaris/src/core/internal/compose"
+	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
+	"github.com/Ember-Moth/Solaris/src/core/internal/geodata"
 )
 
 // ruleEntries ties the rules of a composed configuration to the plan's rule entries, so

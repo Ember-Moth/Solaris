@@ -3,8 +3,8 @@
 import json
 from pathlib import Path
 
-from mihomo_desktop.protocol import control_pb2
-from mihomo_desktop.protocol.frame import (
+from solaris.protocol import control_pb2
+from solaris.protocol.frame import (
     HEADER_SIZE,
     KIND_REQUEST,
     KIND_RESPONSE,

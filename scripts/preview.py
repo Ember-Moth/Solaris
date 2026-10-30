@@ -1,9 +1,9 @@
 """Run the UI against the simulated host and the prototype's sample profiles.
 
     uv run python scripts/preview.py             # the system's language
-    uv run python scripts/preview.py --lang en   # or zh; MIHOMO_DESKTOP_LANG works too
+    uv run python scripts/preview.py --lang en   # or zh; SOLARIS_LANG works too
     uv run python scripts/preview.py --appearance dark  # or light, system;
-                                                        # MIHOMO_DESKTOP_APPEARANCE works too
+                                                        # SOLARIS_APPEARANCE works too
     uv run python scripts/preview.py --crowd 2000  # a busy core: 2000 more connections
     uv run python scripts/preview.py --development  # refuse TUN and the system proxy
     uv run python scripts/preview.py --plan  # route with my plan, the default template
@@ -21,11 +21,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from mihomo_desktop.app import main
-from mihomo_desktop.models.plans import default_plan
-from mihomo_desktop.models.routing import MODE_PLAN, RoutingStore
-from mihomo_desktop.models.store import ProfileStore
-from mihomo_desktop.viewmodels.appearance import MODES
+from solaris.app import main
+from solaris.models.plans import default_plan
+from solaris.models.routing import MODE_PLAN, RoutingStore
+from solaris.models.store import ProfileStore
+from solaris.viewmodels.appearance import MODES
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
 
 if __name__ == "__main__":
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     )
     args, qt_args = parser.parse_known_args()
     sys.argv[1:] = qt_args
-    with tempfile.TemporaryDirectory(prefix="mihomo-desktop-preview-") as directory:
+    with tempfile.TemporaryDirectory(prefix="solaris-preview-") as directory:
         store = ProfileStore(Path(directory))
         seed_profiles(store, time.time())
         if args.plan:

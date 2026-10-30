@@ -313,7 +313,7 @@
   `geosite.dat` 4.4 MB，1563 个分类；`geoip.dat` 16.5 MB，260 个分类；共 20.9 MB。版本、大小和 sha256 写在
   `scripts/fetch_geodata.py`，与发布方的 `.sha256sum` 一致。脚本下载到 `build/geodata/`（已被 git 忽略），文件名
   已是 mihomo 的写法，M4、M5 打包时原样复制进内核的 home；开发服务（`scripts/dev.py`）启动时也会放一份。
-- **兜底清单**：`src/mihomo_desktop/host/geo_categories.py`，由 `fetch_geodata.py --categories` 从附带的数据生成，
+- **兜底清单**：`src/solaris/host/geo_categories.py`，由 `fetch_geodata.py --categories` 从附带的数据生成，
   28 KB，带两个文件的 sha256。内核没有数据或连不上时（例如 macOS 隧道未连接），分类选择器用它。用 Python
   模块而不是数据文件，Nuitka 打包时自动带上。CI 用 `--check` 核对清单与钉住的数据一致。
 - **更新**：基础段开启 `geo-auto-update`，周期 24 小时。mihomo 只在它自己的 `main` 里启动 GEO 更新器，内嵌时

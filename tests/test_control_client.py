@@ -3,12 +3,12 @@ from collections.abc import Awaitable, Callable
 
 import pytest
 
-from mihomo_desktop.host.base import HostError, HostInfo, RunOptions, TunnelConfig
-from mihomo_desktop.host.client import ControlClient
-from mihomo_desktop.host.service import ServiceHost
-from mihomo_desktop.host.transport import Opener, Streams
-from mihomo_desktop.protocol import control_pb2
-from mihomo_desktop.protocol.frame import KIND_REQUEST, KIND_RESPONSE, encode, read_frame
+from solaris.host.base import HostError, HostInfo, RunOptions, TunnelConfig
+from solaris.host.client import ControlClient
+from solaris.host.service import ServiceHost
+from solaris.host.transport import Opener, Streams
+from solaris.protocol import control_pb2
+from solaris.protocol.frame import KIND_REQUEST, KIND_RESPONSE, encode, read_frame
 
 type Answer = Callable[[control_pb2.Request], Awaitable[control_pb2.Response | None]]
 

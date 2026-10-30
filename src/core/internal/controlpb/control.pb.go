@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.10
 // 	protoc        v6.33.4
-// source: mihomo_desktop/protocol/control.proto
+// source: solaris/protocol/control.proto
 
 package controlpb
 
@@ -63,11 +63,11 @@ func (x RunState) String() string {
 }
 
 func (RunState) Descriptor() protoreflect.EnumDescriptor {
-	return file_mihomo_desktop_protocol_control_proto_enumTypes[0].Descriptor()
+	return file_solaris_protocol_control_proto_enumTypes[0].Descriptor()
 }
 
 func (RunState) Type() protoreflect.EnumType {
-	return &file_mihomo_desktop_protocol_control_proto_enumTypes[0]
+	return &file_solaris_protocol_control_proto_enumTypes[0]
 }
 
 func (x RunState) Number() protoreflect.EnumNumber {
@@ -76,7 +76,7 @@ func (x RunState) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use RunState.Descriptor instead.
 func (RunState) EnumDescriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{0}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{0}
 }
 
 type Ownership int32
@@ -115,11 +115,11 @@ func (x Ownership) String() string {
 }
 
 func (Ownership) Descriptor() protoreflect.EnumDescriptor {
-	return file_mihomo_desktop_protocol_control_proto_enumTypes[1].Descriptor()
+	return file_solaris_protocol_control_proto_enumTypes[1].Descriptor()
 }
 
 func (Ownership) Type() protoreflect.EnumType {
-	return &file_mihomo_desktop_protocol_control_proto_enumTypes[1]
+	return &file_solaris_protocol_control_proto_enumTypes[1]
 }
 
 func (x Ownership) Number() protoreflect.EnumNumber {
@@ -128,7 +128,7 @@ func (x Ownership) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Ownership.Descriptor instead.
 func (Ownership) EnumDescriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{1}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{1}
 }
 
 type GroupKind int32
@@ -167,11 +167,11 @@ func (x GroupKind) String() string {
 }
 
 func (GroupKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_mihomo_desktop_protocol_control_proto_enumTypes[2].Descriptor()
+	return file_solaris_protocol_control_proto_enumTypes[2].Descriptor()
 }
 
 func (GroupKind) Type() protoreflect.EnumType {
-	return &file_mihomo_desktop_protocol_control_proto_enumTypes[2]
+	return &file_solaris_protocol_control_proto_enumTypes[2]
 }
 
 func (x GroupKind) Number() protoreflect.EnumNumber {
@@ -180,7 +180,7 @@ func (x GroupKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use GroupKind.Descriptor instead.
 func (GroupKind) EnumDescriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{2}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{2}
 }
 
 type Mode int32
@@ -219,11 +219,11 @@ func (x Mode) String() string {
 }
 
 func (Mode) Descriptor() protoreflect.EnumDescriptor {
-	return file_mihomo_desktop_protocol_control_proto_enumTypes[3].Descriptor()
+	return file_solaris_protocol_control_proto_enumTypes[3].Descriptor()
 }
 
 func (Mode) Type() protoreflect.EnumType {
-	return &file_mihomo_desktop_protocol_control_proto_enumTypes[3]
+	return &file_solaris_protocol_control_proto_enumTypes[3]
 }
 
 func (x Mode) Number() protoreflect.EnumNumber {
@@ -232,7 +232,7 @@ func (x Mode) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Mode.Descriptor instead.
 func (Mode) EnumDescriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{3}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{3}
 }
 
 type GroupSort int32
@@ -268,11 +268,11 @@ func (x GroupSort) String() string {
 }
 
 func (GroupSort) Descriptor() protoreflect.EnumDescriptor {
-	return file_mihomo_desktop_protocol_control_proto_enumTypes[4].Descriptor()
+	return file_solaris_protocol_control_proto_enumTypes[4].Descriptor()
 }
 
 func (GroupSort) Type() protoreflect.EnumType {
-	return &file_mihomo_desktop_protocol_control_proto_enumTypes[4]
+	return &file_solaris_protocol_control_proto_enumTypes[4]
 }
 
 func (x GroupSort) Number() protoreflect.EnumNumber {
@@ -281,7 +281,7 @@ func (x GroupSort) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use GroupSort.Descriptor instead.
 func (GroupSort) EnumDescriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{4}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{4}
 }
 
 type ProviderKind int32
@@ -317,11 +317,11 @@ func (x ProviderKind) String() string {
 }
 
 func (ProviderKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_mihomo_desktop_protocol_control_proto_enumTypes[5].Descriptor()
+	return file_solaris_protocol_control_proto_enumTypes[5].Descriptor()
 }
 
 func (ProviderKind) Type() protoreflect.EnumType {
-	return &file_mihomo_desktop_protocol_control_proto_enumTypes[5]
+	return &file_solaris_protocol_control_proto_enumTypes[5]
 }
 
 func (x ProviderKind) Number() protoreflect.EnumNumber {
@@ -330,7 +330,7 @@ func (x ProviderKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ProviderKind.Descriptor instead.
 func (ProviderKind) EnumDescriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{5}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{5}
 }
 
 type LogLevel int32
@@ -372,11 +372,11 @@ func (x LogLevel) String() string {
 }
 
 func (LogLevel) Descriptor() protoreflect.EnumDescriptor {
-	return file_mihomo_desktop_protocol_control_proto_enumTypes[6].Descriptor()
+	return file_solaris_protocol_control_proto_enumTypes[6].Descriptor()
 }
 
 func (LogLevel) Type() protoreflect.EnumType {
-	return &file_mihomo_desktop_protocol_control_proto_enumTypes[6]
+	return &file_solaris_protocol_control_proto_enumTypes[6]
 }
 
 func (x LogLevel) Number() protoreflect.EnumNumber {
@@ -385,7 +385,7 @@ func (x LogLevel) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use LogLevel.Descriptor instead.
 func (LogLevel) EnumDescriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{6}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{6}
 }
 
 type Request struct {
@@ -429,7 +429,7 @@ type Request struct {
 
 func (x *Request) Reset() {
 	*x = Request{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[0]
+	mi := &file_solaris_protocol_control_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -441,7 +441,7 @@ func (x *Request) String() string {
 func (*Request) ProtoMessage() {}
 
 func (x *Request) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[0]
+	mi := &file_solaris_protocol_control_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -454,7 +454,7 @@ func (x *Request) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Request.ProtoReflect.Descriptor instead.
 func (*Request) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{0}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Request) GetProtocolVersion() uint32 {
@@ -935,7 +935,7 @@ type Response struct {
 
 func (x *Response) Reset() {
 	*x = Response{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[1]
+	mi := &file_solaris_protocol_control_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -947,7 +947,7 @@ func (x *Response) String() string {
 func (*Response) ProtoMessage() {}
 
 func (x *Response) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[1]
+	mi := &file_solaris_protocol_control_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -960,7 +960,7 @@ func (x *Response) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Response.ProtoReflect.Descriptor instead.
 func (*Response) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{1}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *Response) GetProtocolVersion() uint32 {
@@ -1207,7 +1207,7 @@ type Empty struct {
 
 func (x *Empty) Reset() {
 	*x = Empty{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[2]
+	mi := &file_solaris_protocol_control_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1219,7 +1219,7 @@ func (x *Empty) String() string {
 func (*Empty) ProtoMessage() {}
 
 func (x *Empty) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[2]
+	mi := &file_solaris_protocol_control_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1232,7 +1232,7 @@ func (x *Empty) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Empty.ProtoReflect.Descriptor instead.
 func (*Empty) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{2}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{2}
 }
 
 type Error struct {
@@ -1246,7 +1246,7 @@ type Error struct {
 
 func (x *Error) Reset() {
 	*x = Error{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[3]
+	mi := &file_solaris_protocol_control_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1258,7 +1258,7 @@ func (x *Error) String() string {
 func (*Error) ProtoMessage() {}
 
 func (x *Error) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[3]
+	mi := &file_solaris_protocol_control_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1271,7 +1271,7 @@ func (x *Error) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Error.ProtoReflect.Descriptor instead.
 func (*Error) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{3}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *Error) GetCode() string {
@@ -1303,7 +1303,7 @@ type GetInfoRequest struct {
 
 func (x *GetInfoRequest) Reset() {
 	*x = GetInfoRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[4]
+	mi := &file_solaris_protocol_control_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1315,7 +1315,7 @@ func (x *GetInfoRequest) String() string {
 func (*GetInfoRequest) ProtoMessage() {}
 
 func (x *GetInfoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[4]
+	mi := &file_solaris_protocol_control_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1328,7 +1328,7 @@ func (x *GetInfoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetInfoRequest.ProtoReflect.Descriptor instead.
 func (*GetInfoRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{4}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{4}
 }
 
 type GetInfoResponse struct {
@@ -1336,15 +1336,15 @@ type GetInfoResponse struct {
 	ProtocolVersion uint32                 `protobuf:"varint,1,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
 	ServiceVersion  string                 `protobuf:"bytes,2,opt,name=service_version,json=serviceVersion,proto3" json:"service_version,omitempty"`
 	CoreVersion     string                 `protobuf:"bytes,3,opt,name=core_version,json=coreVersion,proto3" json:"core_version,omitempty"`
-	State           RunState               `protobuf:"varint,4,opt,name=state,proto3,enum=mihomo_desktop.control.v1.RunState" json:"state,omitempty"`
-	Ownership       Ownership              `protobuf:"varint,5,opt,name=ownership,proto3,enum=mihomo_desktop.control.v1.Ownership" json:"ownership,omitempty"`
+	State           RunState               `protobuf:"varint,4,opt,name=state,proto3,enum=solaris.control.v1.RunState" json:"state,omitempty"`
+	Ownership       Ownership              `protobuf:"varint,5,opt,name=ownership,proto3,enum=solaris.control.v1.Ownership" json:"ownership,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
 
 func (x *GetInfoResponse) Reset() {
 	*x = GetInfoResponse{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[5]
+	mi := &file_solaris_protocol_control_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1356,7 +1356,7 @@ func (x *GetInfoResponse) String() string {
 func (*GetInfoResponse) ProtoMessage() {}
 
 func (x *GetInfoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[5]
+	mi := &file_solaris_protocol_control_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1369,7 +1369,7 @@ func (x *GetInfoResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetInfoResponse.ProtoReflect.Descriptor instead.
 func (*GetInfoResponse) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{5}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetInfoResponse) GetProtocolVersion() uint32 {
@@ -1415,7 +1415,7 @@ type ClaimRequest struct {
 
 func (x *ClaimRequest) Reset() {
 	*x = ClaimRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[6]
+	mi := &file_solaris_protocol_control_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1427,7 +1427,7 @@ func (x *ClaimRequest) String() string {
 func (*ClaimRequest) ProtoMessage() {}
 
 func (x *ClaimRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[6]
+	mi := &file_solaris_protocol_control_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1440,7 +1440,7 @@ func (x *ClaimRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClaimRequest.ProtoReflect.Descriptor instead.
 func (*ClaimRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{6}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{6}
 }
 
 type RunOptions struct {
@@ -1455,7 +1455,7 @@ type RunOptions struct {
 
 func (x *RunOptions) Reset() {
 	*x = RunOptions{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[7]
+	mi := &file_solaris_protocol_control_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1467,7 +1467,7 @@ func (x *RunOptions) String() string {
 func (*RunOptions) ProtoMessage() {}
 
 func (x *RunOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[7]
+	mi := &file_solaris_protocol_control_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1480,7 +1480,7 @@ func (x *RunOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunOptions.ProtoReflect.Descriptor instead.
 func (*RunOptions) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{7}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *RunOptions) GetTunEnabled() bool {
@@ -1528,7 +1528,7 @@ type ValidateRequest struct {
 
 func (x *ValidateRequest) Reset() {
 	*x = ValidateRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[8]
+	mi := &file_solaris_protocol_control_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1540,7 +1540,7 @@ func (x *ValidateRequest) String() string {
 func (*ValidateRequest) ProtoMessage() {}
 
 func (x *ValidateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[8]
+	mi := &file_solaris_protocol_control_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1553,7 +1553,7 @@ func (x *ValidateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ValidateRequest.ProtoReflect.Descriptor instead.
 func (*ValidateRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{8}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ValidateRequest) GetSource() isValidateRequest_Source {
@@ -1619,7 +1619,7 @@ type StartRequest struct {
 
 func (x *StartRequest) Reset() {
 	*x = StartRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[9]
+	mi := &file_solaris_protocol_control_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1631,7 +1631,7 @@ func (x *StartRequest) String() string {
 func (*StartRequest) ProtoMessage() {}
 
 func (x *StartRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[9]
+	mi := &file_solaris_protocol_control_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1644,7 +1644,7 @@ func (x *StartRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartRequest.ProtoReflect.Descriptor instead.
 func (*StartRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{9}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *StartRequest) GetSource() isStartRequest_Source {
@@ -1717,7 +1717,7 @@ type ReloadRequest struct {
 
 func (x *ReloadRequest) Reset() {
 	*x = ReloadRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[10]
+	mi := &file_solaris_protocol_control_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1729,7 +1729,7 @@ func (x *ReloadRequest) String() string {
 func (*ReloadRequest) ProtoMessage() {}
 
 func (x *ReloadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[10]
+	mi := &file_solaris_protocol_control_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1742,7 +1742,7 @@ func (x *ReloadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReloadRequest.ProtoReflect.Descriptor instead.
 func (*ReloadRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{10}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ReloadRequest) GetSource() isReloadRequest_Source {
@@ -1818,7 +1818,7 @@ type Composition struct {
 
 func (x *Composition) Reset() {
 	*x = Composition{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[11]
+	mi := &file_solaris_protocol_control_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1830,7 +1830,7 @@ func (x *Composition) String() string {
 func (*Composition) ProtoMessage() {}
 
 func (x *Composition) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[11]
+	mi := &file_solaris_protocol_control_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1843,7 +1843,7 @@ func (x *Composition) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Composition.ProtoReflect.Descriptor instead.
 func (*Composition) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{11}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *Composition) GetSources() []*CompositionSource {
@@ -1878,7 +1878,7 @@ type CompositionSource struct {
 
 func (x *CompositionSource) Reset() {
 	*x = CompositionSource{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[12]
+	mi := &file_solaris_protocol_control_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1890,7 +1890,7 @@ func (x *CompositionSource) String() string {
 func (*CompositionSource) ProtoMessage() {}
 
 func (x *CompositionSource) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[12]
+	mi := &file_solaris_protocol_control_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1903,7 +1903,7 @@ func (x *CompositionSource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompositionSource.ProtoReflect.Descriptor instead.
 func (*CompositionSource) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{12}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *CompositionSource) GetId() string {
@@ -1940,7 +1940,7 @@ type CompositionReport struct {
 
 func (x *CompositionReport) Reset() {
 	*x = CompositionReport{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[13]
+	mi := &file_solaris_protocol_control_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1952,7 +1952,7 @@ func (x *CompositionReport) String() string {
 func (*CompositionReport) ProtoMessage() {}
 
 func (x *CompositionReport) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[13]
+	mi := &file_solaris_protocol_control_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1965,7 +1965,7 @@ func (x *CompositionReport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompositionReport.ProtoReflect.Descriptor instead.
 func (*CompositionReport) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{13}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *CompositionReport) GetWarnings() []*CompositionWarning {
@@ -2009,7 +2009,7 @@ type CompositionWarning struct {
 
 func (x *CompositionWarning) Reset() {
 	*x = CompositionWarning{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[14]
+	mi := &file_solaris_protocol_control_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2021,7 +2021,7 @@ func (x *CompositionWarning) String() string {
 func (*CompositionWarning) ProtoMessage() {}
 
 func (x *CompositionWarning) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[14]
+	mi := &file_solaris_protocol_control_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2034,7 +2034,7 @@ func (x *CompositionWarning) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompositionWarning.ProtoReflect.Descriptor instead.
 func (*CompositionWarning) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{14}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *CompositionWarning) GetEntryId() string {
@@ -2062,7 +2062,7 @@ type ComposedGroup struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`     // "proxy", "auto", "region:HK" or the plan's own id
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"` // the name in the generated configuration
-	Kind          GroupKind              `protobuf:"varint,3,opt,name=kind,proto3,enum=mihomo_desktop.control.v1.GroupKind" json:"kind,omitempty"`
+	Kind          GroupKind              `protobuf:"varint,3,opt,name=kind,proto3,enum=solaris.control.v1.GroupKind" json:"kind,omitempty"`
 	Region        string                 `protobuf:"bytes,4,opt,name=region,proto3" json:"region,omitempty"` // region groups only: the region code
 	NodeCount     uint32                 `protobuf:"varint,5,opt,name=node_count,json=nodeCount,proto3" json:"node_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -2071,7 +2071,7 @@ type ComposedGroup struct {
 
 func (x *ComposedGroup) Reset() {
 	*x = ComposedGroup{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[15]
+	mi := &file_solaris_protocol_control_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2083,7 +2083,7 @@ func (x *ComposedGroup) String() string {
 func (*ComposedGroup) ProtoMessage() {}
 
 func (x *ComposedGroup) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[15]
+	mi := &file_solaris_protocol_control_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2096,7 +2096,7 @@ func (x *ComposedGroup) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ComposedGroup.ProtoReflect.Descriptor instead.
 func (*ComposedGroup) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{15}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ComposedGroup) GetId() string {
@@ -2147,7 +2147,7 @@ type PoolNode struct {
 
 func (x *PoolNode) Reset() {
 	*x = PoolNode{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[16]
+	mi := &file_solaris_protocol_control_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2159,7 +2159,7 @@ func (x *PoolNode) String() string {
 func (*PoolNode) ProtoMessage() {}
 
 func (x *PoolNode) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[16]
+	mi := &file_solaris_protocol_control_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2172,7 +2172,7 @@ func (x *PoolNode) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PoolNode.ProtoReflect.Descriptor instead.
 func (*PoolNode) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{16}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *PoolNode) GetName() string {
@@ -2218,7 +2218,7 @@ type StopRequest struct {
 
 func (x *StopRequest) Reset() {
 	*x = StopRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[17]
+	mi := &file_solaris_protocol_control_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2230,7 +2230,7 @@ func (x *StopRequest) String() string {
 func (*StopRequest) ProtoMessage() {}
 
 func (x *StopRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[17]
+	mi := &file_solaris_protocol_control_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2243,7 +2243,7 @@ func (x *StopRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopRequest.ProtoReflect.Descriptor instead.
 func (*StopRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{17}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{17}
 }
 
 type SetSystemProxyRequest struct {
@@ -2255,7 +2255,7 @@ type SetSystemProxyRequest struct {
 
 func (x *SetSystemProxyRequest) Reset() {
 	*x = SetSystemProxyRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[18]
+	mi := &file_solaris_protocol_control_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2267,7 +2267,7 @@ func (x *SetSystemProxyRequest) String() string {
 func (*SetSystemProxyRequest) ProtoMessage() {}
 
 func (x *SetSystemProxyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[18]
+	mi := &file_solaris_protocol_control_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2280,7 +2280,7 @@ func (x *SetSystemProxyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetSystemProxyRequest.ProtoReflect.Descriptor instead.
 func (*SetSystemProxyRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{18}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *SetSystemProxyRequest) GetEnabled() bool {
@@ -2298,7 +2298,7 @@ type GetStatusRequest struct {
 
 func (x *GetStatusRequest) Reset() {
 	*x = GetStatusRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[19]
+	mi := &file_solaris_protocol_control_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2310,7 +2310,7 @@ func (x *GetStatusRequest) String() string {
 func (*GetStatusRequest) ProtoMessage() {}
 
 func (x *GetStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[19]
+	mi := &file_solaris_protocol_control_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2323,13 +2323,13 @@ func (x *GetStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetStatusRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{19}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{19}
 }
 
 type GetStatusResponse struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
-	State              RunState               `protobuf:"varint,1,opt,name=state,proto3,enum=mihomo_desktop.control.v1.RunState" json:"state,omitempty"`
-	Mode               Mode                   `protobuf:"varint,2,opt,name=mode,proto3,enum=mihomo_desktop.control.v1.Mode" json:"mode,omitempty"`
+	State              RunState               `protobuf:"varint,1,opt,name=state,proto3,enum=solaris.control.v1.RunState" json:"state,omitempty"`
+	Mode               Mode                   `protobuf:"varint,2,opt,name=mode,proto3,enum=solaris.control.v1.Mode" json:"mode,omitempty"`
 	StartedAtUnixMs    uint64                 `protobuf:"varint,3,opt,name=started_at_unix_ms,json=startedAtUnixMs,proto3" json:"started_at_unix_ms,omitempty"`
 	MemoryBytes        uint64                 `protobuf:"varint,4,opt,name=memory_bytes,json=memoryBytes,proto3" json:"memory_bytes,omitempty"`
 	ConnectionCount    uint32                 `protobuf:"varint,5,opt,name=connection_count,json=connectionCount,proto3" json:"connection_count,omitempty"`
@@ -2342,7 +2342,7 @@ type GetStatusResponse struct {
 
 func (x *GetStatusResponse) Reset() {
 	*x = GetStatusResponse{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[20]
+	mi := &file_solaris_protocol_control_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2354,7 +2354,7 @@ func (x *GetStatusResponse) String() string {
 func (*GetStatusResponse) ProtoMessage() {}
 
 func (x *GetStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[20]
+	mi := &file_solaris_protocol_control_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2367,7 +2367,7 @@ func (x *GetStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetStatusResponse) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{20}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *GetStatusResponse) GetState() RunState {
@@ -2428,14 +2428,14 @@ func (x *GetStatusResponse) GetSystemProxyEnabled() bool {
 
 type SetModeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Mode          Mode                   `protobuf:"varint,1,opt,name=mode,proto3,enum=mihomo_desktop.control.v1.Mode" json:"mode,omitempty"`
+	Mode          Mode                   `protobuf:"varint,1,opt,name=mode,proto3,enum=solaris.control.v1.Mode" json:"mode,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SetModeRequest) Reset() {
 	*x = SetModeRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[21]
+	mi := &file_solaris_protocol_control_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2447,7 +2447,7 @@ func (x *SetModeRequest) String() string {
 func (*SetModeRequest) ProtoMessage() {}
 
 func (x *SetModeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[21]
+	mi := &file_solaris_protocol_control_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2460,7 +2460,7 @@ func (x *SetModeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetModeRequest.ProtoReflect.Descriptor instead.
 func (*SetModeRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{21}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *SetModeRequest) GetMode() Mode {
@@ -2481,7 +2481,7 @@ type Proxy struct {
 
 func (x *Proxy) Reset() {
 	*x = Proxy{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[22]
+	mi := &file_solaris_protocol_control_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2493,7 +2493,7 @@ func (x *Proxy) String() string {
 func (*Proxy) ProtoMessage() {}
 
 func (x *Proxy) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[22]
+	mi := &file_solaris_protocol_control_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2506,7 +2506,7 @@ func (x *Proxy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Proxy.ProtoReflect.Descriptor instead.
 func (*Proxy) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{22}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *Proxy) GetName() string {
@@ -2543,7 +2543,7 @@ type ProxyGroup struct {
 
 func (x *ProxyGroup) Reset() {
 	*x = ProxyGroup{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[23]
+	mi := &file_solaris_protocol_control_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2555,7 +2555,7 @@ func (x *ProxyGroup) String() string {
 func (*ProxyGroup) ProtoMessage() {}
 
 func (x *ProxyGroup) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[23]
+	mi := &file_solaris_protocol_control_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2568,7 +2568,7 @@ func (x *ProxyGroup) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProxyGroup.ProtoReflect.Descriptor instead.
 func (*ProxyGroup) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{23}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ProxyGroup) GetName() string {
@@ -2608,7 +2608,7 @@ func (x *ProxyGroup) GetProxies() []*Proxy {
 
 type ListGroupsRequest struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
-	Sort                 GroupSort              `protobuf:"varint,1,opt,name=sort,proto3,enum=mihomo_desktop.control.v1.GroupSort" json:"sort,omitempty"`
+	Sort                 GroupSort              `protobuf:"varint,1,opt,name=sort,proto3,enum=solaris.control.v1.GroupSort" json:"sort,omitempty"`
 	ExcludeNotSelectable bool                   `protobuf:"varint,2,opt,name=exclude_not_selectable,json=excludeNotSelectable,proto3" json:"exclude_not_selectable,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
@@ -2616,7 +2616,7 @@ type ListGroupsRequest struct {
 
 func (x *ListGroupsRequest) Reset() {
 	*x = ListGroupsRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[24]
+	mi := &file_solaris_protocol_control_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2628,7 +2628,7 @@ func (x *ListGroupsRequest) String() string {
 func (*ListGroupsRequest) ProtoMessage() {}
 
 func (x *ListGroupsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[24]
+	mi := &file_solaris_protocol_control_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2641,7 +2641,7 @@ func (x *ListGroupsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGroupsRequest.ProtoReflect.Descriptor instead.
 func (*ListGroupsRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{24}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ListGroupsRequest) GetSort() GroupSort {
@@ -2667,7 +2667,7 @@ type ListGroupsResponse struct {
 
 func (x *ListGroupsResponse) Reset() {
 	*x = ListGroupsResponse{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[25]
+	mi := &file_solaris_protocol_control_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2679,7 +2679,7 @@ func (x *ListGroupsResponse) String() string {
 func (*ListGroupsResponse) ProtoMessage() {}
 
 func (x *ListGroupsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[25]
+	mi := &file_solaris_protocol_control_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2692,7 +2692,7 @@ func (x *ListGroupsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGroupsResponse.ProtoReflect.Descriptor instead.
 func (*ListGroupsResponse) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{25}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ListGroupsResponse) GetGroups() []*ProxyGroup {
@@ -2705,14 +2705,14 @@ func (x *ListGroupsResponse) GetGroups() []*ProxyGroup {
 type GetGroupRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Sort          GroupSort              `protobuf:"varint,2,opt,name=sort,proto3,enum=mihomo_desktop.control.v1.GroupSort" json:"sort,omitempty"`
+	Sort          GroupSort              `protobuf:"varint,2,opt,name=sort,proto3,enum=solaris.control.v1.GroupSort" json:"sort,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetGroupRequest) Reset() {
 	*x = GetGroupRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[26]
+	mi := &file_solaris_protocol_control_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2724,7 +2724,7 @@ func (x *GetGroupRequest) String() string {
 func (*GetGroupRequest) ProtoMessage() {}
 
 func (x *GetGroupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[26]
+	mi := &file_solaris_protocol_control_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2737,7 +2737,7 @@ func (x *GetGroupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGroupRequest.ProtoReflect.Descriptor instead.
 func (*GetGroupRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{26}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *GetGroupRequest) GetName() string {
@@ -2763,7 +2763,7 @@ type GetGroupResponse struct {
 
 func (x *GetGroupResponse) Reset() {
 	*x = GetGroupResponse{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[27]
+	mi := &file_solaris_protocol_control_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2775,7 +2775,7 @@ func (x *GetGroupResponse) String() string {
 func (*GetGroupResponse) ProtoMessage() {}
 
 func (x *GetGroupResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[27]
+	mi := &file_solaris_protocol_control_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2788,7 +2788,7 @@ func (x *GetGroupResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGroupResponse.ProtoReflect.Descriptor instead.
 func (*GetGroupResponse) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{27}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *GetGroupResponse) GetGroup() *ProxyGroup {
@@ -2808,7 +2808,7 @@ type SelectProxyRequest struct {
 
 func (x *SelectProxyRequest) Reset() {
 	*x = SelectProxyRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[28]
+	mi := &file_solaris_protocol_control_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2820,7 +2820,7 @@ func (x *SelectProxyRequest) String() string {
 func (*SelectProxyRequest) ProtoMessage() {}
 
 func (x *SelectProxyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[28]
+	mi := &file_solaris_protocol_control_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2833,7 +2833,7 @@ func (x *SelectProxyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SelectProxyRequest.ProtoReflect.Descriptor instead.
 func (*SelectProxyRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{28}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *SelectProxyRequest) GetGroup() string {
@@ -2859,7 +2859,7 @@ type HealthCheckRequest struct {
 
 func (x *HealthCheckRequest) Reset() {
 	*x = HealthCheckRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[29]
+	mi := &file_solaris_protocol_control_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2871,7 +2871,7 @@ func (x *HealthCheckRequest) String() string {
 func (*HealthCheckRequest) ProtoMessage() {}
 
 func (x *HealthCheckRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[29]
+	mi := &file_solaris_protocol_control_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2884,7 +2884,7 @@ func (x *HealthCheckRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HealthCheckRequest.ProtoReflect.Descriptor instead.
 func (*HealthCheckRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{29}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *HealthCheckRequest) GetGroup() string {
@@ -2905,7 +2905,7 @@ type TestDelayRequest struct {
 
 func (x *TestDelayRequest) Reset() {
 	*x = TestDelayRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[30]
+	mi := &file_solaris_protocol_control_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2917,7 +2917,7 @@ func (x *TestDelayRequest) String() string {
 func (*TestDelayRequest) ProtoMessage() {}
 
 func (x *TestDelayRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[30]
+	mi := &file_solaris_protocol_control_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2930,7 +2930,7 @@ func (x *TestDelayRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TestDelayRequest.ProtoReflect.Descriptor instead.
 func (*TestDelayRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{30}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *TestDelayRequest) GetProxy() string {
@@ -2963,7 +2963,7 @@ type TestDelayResponse struct {
 
 func (x *TestDelayResponse) Reset() {
 	*x = TestDelayResponse{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[31]
+	mi := &file_solaris_protocol_control_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2975,7 +2975,7 @@ func (x *TestDelayResponse) String() string {
 func (*TestDelayResponse) ProtoMessage() {}
 
 func (x *TestDelayResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[31]
+	mi := &file_solaris_protocol_control_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2988,7 +2988,7 @@ func (x *TestDelayResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TestDelayResponse.ProtoReflect.Descriptor instead.
 func (*TestDelayResponse) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{31}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *TestDelayResponse) GetDelayMs() uint32 {
@@ -3001,7 +3001,7 @@ func (x *TestDelayResponse) GetDelayMs() uint32 {
 type Provider struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Name            string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Kind            ProviderKind           `protobuf:"varint,2,opt,name=kind,proto3,enum=mihomo_desktop.control.v1.ProviderKind" json:"kind,omitempty"`
+	Kind            ProviderKind           `protobuf:"varint,2,opt,name=kind,proto3,enum=solaris.control.v1.ProviderKind" json:"kind,omitempty"`
 	VehicleType     string                 `protobuf:"bytes,3,opt,name=vehicle_type,json=vehicleType,proto3" json:"vehicle_type,omitempty"`
 	UpdatedAtUnixMs uint64                 `protobuf:"varint,4,opt,name=updated_at_unix_ms,json=updatedAtUnixMs,proto3" json:"updated_at_unix_ms,omitempty"`
 	unknownFields   protoimpl.UnknownFields
@@ -3010,7 +3010,7 @@ type Provider struct {
 
 func (x *Provider) Reset() {
 	*x = Provider{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[32]
+	mi := &file_solaris_protocol_control_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3022,7 +3022,7 @@ func (x *Provider) String() string {
 func (*Provider) ProtoMessage() {}
 
 func (x *Provider) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[32]
+	mi := &file_solaris_protocol_control_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3035,7 +3035,7 @@ func (x *Provider) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Provider.ProtoReflect.Descriptor instead.
 func (*Provider) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{32}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *Provider) GetName() string {
@@ -3074,7 +3074,7 @@ type ListProvidersRequest struct {
 
 func (x *ListProvidersRequest) Reset() {
 	*x = ListProvidersRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[33]
+	mi := &file_solaris_protocol_control_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3086,7 +3086,7 @@ func (x *ListProvidersRequest) String() string {
 func (*ListProvidersRequest) ProtoMessage() {}
 
 func (x *ListProvidersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[33]
+	mi := &file_solaris_protocol_control_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3099,7 +3099,7 @@ func (x *ListProvidersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProvidersRequest.ProtoReflect.Descriptor instead.
 func (*ListProvidersRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{33}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{33}
 }
 
 type ListProvidersResponse struct {
@@ -3111,7 +3111,7 @@ type ListProvidersResponse struct {
 
 func (x *ListProvidersResponse) Reset() {
 	*x = ListProvidersResponse{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[34]
+	mi := &file_solaris_protocol_control_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3123,7 +3123,7 @@ func (x *ListProvidersResponse) String() string {
 func (*ListProvidersResponse) ProtoMessage() {}
 
 func (x *ListProvidersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[34]
+	mi := &file_solaris_protocol_control_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3136,7 +3136,7 @@ func (x *ListProvidersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProvidersResponse.ProtoReflect.Descriptor instead.
 func (*ListProvidersResponse) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{34}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *ListProvidersResponse) GetProviders() []*Provider {
@@ -3148,7 +3148,7 @@ func (x *ListProvidersResponse) GetProviders() []*Provider {
 
 type UpdateProviderRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Kind          ProviderKind           `protobuf:"varint,1,opt,name=kind,proto3,enum=mihomo_desktop.control.v1.ProviderKind" json:"kind,omitempty"`
+	Kind          ProviderKind           `protobuf:"varint,1,opt,name=kind,proto3,enum=solaris.control.v1.ProviderKind" json:"kind,omitempty"`
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -3156,7 +3156,7 @@ type UpdateProviderRequest struct {
 
 func (x *UpdateProviderRequest) Reset() {
 	*x = UpdateProviderRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[35]
+	mi := &file_solaris_protocol_control_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3168,7 +3168,7 @@ func (x *UpdateProviderRequest) String() string {
 func (*UpdateProviderRequest) ProtoMessage() {}
 
 func (x *UpdateProviderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[35]
+	mi := &file_solaris_protocol_control_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3181,7 +3181,7 @@ func (x *UpdateProviderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateProviderRequest.ProtoReflect.Descriptor instead.
 func (*UpdateProviderRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{35}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *UpdateProviderRequest) GetKind() ProviderKind {
@@ -3212,7 +3212,7 @@ type Rule struct {
 
 func (x *Rule) Reset() {
 	*x = Rule{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[36]
+	mi := &file_solaris_protocol_control_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3224,7 +3224,7 @@ func (x *Rule) String() string {
 func (*Rule) ProtoMessage() {}
 
 func (x *Rule) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[36]
+	mi := &file_solaris_protocol_control_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3237,7 +3237,7 @@ func (x *Rule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Rule.ProtoReflect.Descriptor instead.
 func (*Rule) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{36}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *Rule) GetType() string {
@@ -3276,7 +3276,7 @@ type ListRulesRequest struct {
 
 func (x *ListRulesRequest) Reset() {
 	*x = ListRulesRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[37]
+	mi := &file_solaris_protocol_control_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3288,7 +3288,7 @@ func (x *ListRulesRequest) String() string {
 func (*ListRulesRequest) ProtoMessage() {}
 
 func (x *ListRulesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[37]
+	mi := &file_solaris_protocol_control_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3301,7 +3301,7 @@ func (x *ListRulesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRulesRequest.ProtoReflect.Descriptor instead.
 func (*ListRulesRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{37}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{37}
 }
 
 type ListRulesResponse struct {
@@ -3313,7 +3313,7 @@ type ListRulesResponse struct {
 
 func (x *ListRulesResponse) Reset() {
 	*x = ListRulesResponse{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[38]
+	mi := &file_solaris_protocol_control_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3325,7 +3325,7 @@ func (x *ListRulesResponse) String() string {
 func (*ListRulesResponse) ProtoMessage() {}
 
 func (x *ListRulesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[38]
+	mi := &file_solaris_protocol_control_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3338,7 +3338,7 @@ func (x *ListRulesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRulesResponse.ProtoReflect.Descriptor instead.
 func (*ListRulesResponse) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{38}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *ListRulesResponse) GetRules() []*Rule {
@@ -3357,7 +3357,7 @@ type CloseConnectionRequest struct {
 
 func (x *CloseConnectionRequest) Reset() {
 	*x = CloseConnectionRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[39]
+	mi := &file_solaris_protocol_control_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3369,7 +3369,7 @@ func (x *CloseConnectionRequest) String() string {
 func (*CloseConnectionRequest) ProtoMessage() {}
 
 func (x *CloseConnectionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[39]
+	mi := &file_solaris_protocol_control_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3382,7 +3382,7 @@ func (x *CloseConnectionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloseConnectionRequest.ProtoReflect.Descriptor instead.
 func (*CloseConnectionRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{39}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *CloseConnectionRequest) GetId() string {
@@ -3400,7 +3400,7 @@ type CloseAllConnectionsRequest struct {
 
 func (x *CloseAllConnectionsRequest) Reset() {
 	*x = CloseAllConnectionsRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[40]
+	mi := &file_solaris_protocol_control_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3412,7 +3412,7 @@ func (x *CloseAllConnectionsRequest) String() string {
 func (*CloseAllConnectionsRequest) ProtoMessage() {}
 
 func (x *CloseAllConnectionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[40]
+	mi := &file_solaris_protocol_control_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3425,7 +3425,7 @@ func (x *CloseAllConnectionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloseAllConnectionsRequest.ProtoReflect.Descriptor instead.
 func (*CloseAllConnectionsRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{40}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{40}
 }
 
 type FlushFakeIPRequest struct {
@@ -3436,7 +3436,7 @@ type FlushFakeIPRequest struct {
 
 func (x *FlushFakeIPRequest) Reset() {
 	*x = FlushFakeIPRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[41]
+	mi := &file_solaris_protocol_control_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3448,7 +3448,7 @@ func (x *FlushFakeIPRequest) String() string {
 func (*FlushFakeIPRequest) ProtoMessage() {}
 
 func (x *FlushFakeIPRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[41]
+	mi := &file_solaris_protocol_control_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3461,7 +3461,7 @@ func (x *FlushFakeIPRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FlushFakeIPRequest.ProtoReflect.Descriptor instead.
 func (*FlushFakeIPRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{41}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{41}
 }
 
 type FlushDNSCacheRequest struct {
@@ -3472,7 +3472,7 @@ type FlushDNSCacheRequest struct {
 
 func (x *FlushDNSCacheRequest) Reset() {
 	*x = FlushDNSCacheRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[42]
+	mi := &file_solaris_protocol_control_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3484,7 +3484,7 @@ func (x *FlushDNSCacheRequest) String() string {
 func (*FlushDNSCacheRequest) ProtoMessage() {}
 
 func (x *FlushDNSCacheRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[42]
+	mi := &file_solaris_protocol_control_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3497,19 +3497,19 @@ func (x *FlushDNSCacheRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FlushDNSCacheRequest.ProtoReflect.Descriptor instead.
 func (*FlushDNSCacheRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{42}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{42}
 }
 
 type SubscribeLogsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Level         LogLevel               `protobuf:"varint,1,opt,name=level,proto3,enum=mihomo_desktop.control.v1.LogLevel" json:"level,omitempty"`
+	Level         LogLevel               `protobuf:"varint,1,opt,name=level,proto3,enum=solaris.control.v1.LogLevel" json:"level,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SubscribeLogsRequest) Reset() {
 	*x = SubscribeLogsRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[43]
+	mi := &file_solaris_protocol_control_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3521,7 +3521,7 @@ func (x *SubscribeLogsRequest) String() string {
 func (*SubscribeLogsRequest) ProtoMessage() {}
 
 func (x *SubscribeLogsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[43]
+	mi := &file_solaris_protocol_control_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3534,7 +3534,7 @@ func (x *SubscribeLogsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeLogsRequest.ProtoReflect.Descriptor instead.
 func (*SubscribeLogsRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{43}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *SubscribeLogsRequest) GetLevel() LogLevel {
@@ -3552,7 +3552,7 @@ type SubscribeTrafficRequest struct {
 
 func (x *SubscribeTrafficRequest) Reset() {
 	*x = SubscribeTrafficRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[44]
+	mi := &file_solaris_protocol_control_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3564,7 +3564,7 @@ func (x *SubscribeTrafficRequest) String() string {
 func (*SubscribeTrafficRequest) ProtoMessage() {}
 
 func (x *SubscribeTrafficRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[44]
+	mi := &file_solaris_protocol_control_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3577,7 +3577,7 @@ func (x *SubscribeTrafficRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeTrafficRequest.ProtoReflect.Descriptor instead.
 func (*SubscribeTrafficRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{44}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{44}
 }
 
 type SubscribeConnectionsRequest struct {
@@ -3588,7 +3588,7 @@ type SubscribeConnectionsRequest struct {
 
 func (x *SubscribeConnectionsRequest) Reset() {
 	*x = SubscribeConnectionsRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[45]
+	mi := &file_solaris_protocol_control_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3600,7 +3600,7 @@ func (x *SubscribeConnectionsRequest) String() string {
 func (*SubscribeConnectionsRequest) ProtoMessage() {}
 
 func (x *SubscribeConnectionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[45]
+	mi := &file_solaris_protocol_control_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3613,7 +3613,7 @@ func (x *SubscribeConnectionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeConnectionsRequest.ProtoReflect.Descriptor instead.
 func (*SubscribeConnectionsRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{45}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{45}
 }
 
 type SubscribeResponse struct {
@@ -3625,7 +3625,7 @@ type SubscribeResponse struct {
 
 func (x *SubscribeResponse) Reset() {
 	*x = SubscribeResponse{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[46]
+	mi := &file_solaris_protocol_control_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3637,7 +3637,7 @@ func (x *SubscribeResponse) String() string {
 func (*SubscribeResponse) ProtoMessage() {}
 
 func (x *SubscribeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[46]
+	mi := &file_solaris_protocol_control_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3650,7 +3650,7 @@ func (x *SubscribeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeResponse.ProtoReflect.Descriptor instead.
 func (*SubscribeResponse) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{46}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *SubscribeResponse) GetSubscriptionId() uint64 {
@@ -3670,7 +3670,7 @@ type PollEventsRequest struct {
 
 func (x *PollEventsRequest) Reset() {
 	*x = PollEventsRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[47]
+	mi := &file_solaris_protocol_control_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3682,7 +3682,7 @@ func (x *PollEventsRequest) String() string {
 func (*PollEventsRequest) ProtoMessage() {}
 
 func (x *PollEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[47]
+	mi := &file_solaris_protocol_control_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3695,7 +3695,7 @@ func (x *PollEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PollEventsRequest.ProtoReflect.Descriptor instead.
 func (*PollEventsRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{47}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *PollEventsRequest) GetSubscriptionId() uint64 {
@@ -3722,7 +3722,7 @@ type PollEventsResponse struct {
 
 func (x *PollEventsResponse) Reset() {
 	*x = PollEventsResponse{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[48]
+	mi := &file_solaris_protocol_control_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3734,7 +3734,7 @@ func (x *PollEventsResponse) String() string {
 func (*PollEventsResponse) ProtoMessage() {}
 
 func (x *PollEventsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[48]
+	mi := &file_solaris_protocol_control_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3747,7 +3747,7 @@ func (x *PollEventsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PollEventsResponse.ProtoReflect.Descriptor instead.
 func (*PollEventsResponse) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{48}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *PollEventsResponse) GetEvents() []*Event {
@@ -3773,7 +3773,7 @@ type UnsubscribeRequest struct {
 
 func (x *UnsubscribeRequest) Reset() {
 	*x = UnsubscribeRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[49]
+	mi := &file_solaris_protocol_control_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3785,7 +3785,7 @@ func (x *UnsubscribeRequest) String() string {
 func (*UnsubscribeRequest) ProtoMessage() {}
 
 func (x *UnsubscribeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[49]
+	mi := &file_solaris_protocol_control_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3798,7 +3798,7 @@ func (x *UnsubscribeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnsubscribeRequest.ProtoReflect.Descriptor instead.
 func (*UnsubscribeRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{49}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *UnsubscribeRequest) GetSubscriptionId() uint64 {
@@ -3822,7 +3822,7 @@ type Event struct {
 
 func (x *Event) Reset() {
 	*x = Event{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[50]
+	mi := &file_solaris_protocol_control_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3834,7 +3834,7 @@ func (x *Event) String() string {
 func (*Event) ProtoMessage() {}
 
 func (x *Event) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[50]
+	mi := &file_solaris_protocol_control_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3847,7 +3847,7 @@ func (x *Event) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Event.ProtoReflect.Descriptor instead.
 func (*Event) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{50}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *Event) GetPayload() isEvent_Payload {
@@ -3908,7 +3908,7 @@ func (*Event_Connections) isEvent_Payload() {}
 
 type LogEntry struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Level         LogLevel               `protobuf:"varint,1,opt,name=level,proto3,enum=mihomo_desktop.control.v1.LogLevel" json:"level,omitempty"`
+	Level         LogLevel               `protobuf:"varint,1,opt,name=level,proto3,enum=solaris.control.v1.LogLevel" json:"level,omitempty"`
 	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 	TimeUnixMs    uint64                 `protobuf:"varint,3,opt,name=time_unix_ms,json=timeUnixMs,proto3" json:"time_unix_ms,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -3917,7 +3917,7 @@ type LogEntry struct {
 
 func (x *LogEntry) Reset() {
 	*x = LogEntry{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[51]
+	mi := &file_solaris_protocol_control_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3929,7 +3929,7 @@ func (x *LogEntry) String() string {
 func (*LogEntry) ProtoMessage() {}
 
 func (x *LogEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[51]
+	mi := &file_solaris_protocol_control_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3942,7 +3942,7 @@ func (x *LogEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogEntry.ProtoReflect.Descriptor instead.
 func (*LogEntry) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{51}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *LogEntry) GetLevel() LogLevel {
@@ -3978,7 +3978,7 @@ type TrafficSample struct {
 
 func (x *TrafficSample) Reset() {
 	*x = TrafficSample{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[52]
+	mi := &file_solaris_protocol_control_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3990,7 +3990,7 @@ func (x *TrafficSample) String() string {
 func (*TrafficSample) ProtoMessage() {}
 
 func (x *TrafficSample) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[52]
+	mi := &file_solaris_protocol_control_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4003,7 +4003,7 @@ func (x *TrafficSample) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrafficSample.ProtoReflect.Descriptor instead.
 func (*TrafficSample) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{52}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *TrafficSample) GetUpBytesPerSecond() uint64 {
@@ -4055,7 +4055,7 @@ type Connection struct {
 
 func (x *Connection) Reset() {
 	*x = Connection{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[53]
+	mi := &file_solaris_protocol_control_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4067,7 +4067,7 @@ func (x *Connection) String() string {
 func (*Connection) ProtoMessage() {}
 
 func (x *Connection) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[53]
+	mi := &file_solaris_protocol_control_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4080,7 +4080,7 @@ func (x *Connection) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Connection.ProtoReflect.Descriptor instead.
 func (*Connection) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{53}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *Connection) GetId() string {
@@ -4183,7 +4183,7 @@ type ConnectionSnapshot struct {
 
 func (x *ConnectionSnapshot) Reset() {
 	*x = ConnectionSnapshot{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[54]
+	mi := &file_solaris_protocol_control_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4195,7 +4195,7 @@ func (x *ConnectionSnapshot) String() string {
 func (*ConnectionSnapshot) ProtoMessage() {}
 
 func (x *ConnectionSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[54]
+	mi := &file_solaris_protocol_control_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4208,7 +4208,7 @@ func (x *ConnectionSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectionSnapshot.ProtoReflect.Descriptor instead.
 func (*ConnectionSnapshot) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{54}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *ConnectionSnapshot) GetConnections() []*Connection {
@@ -4228,7 +4228,7 @@ type InspectSourceRequest struct {
 
 func (x *InspectSourceRequest) Reset() {
 	*x = InspectSourceRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[55]
+	mi := &file_solaris_protocol_control_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4240,7 +4240,7 @@ func (x *InspectSourceRequest) String() string {
 func (*InspectSourceRequest) ProtoMessage() {}
 
 func (x *InspectSourceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[55]
+	mi := &file_solaris_protocol_control_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4253,7 +4253,7 @@ func (x *InspectSourceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InspectSourceRequest.ProtoReflect.Descriptor instead.
 func (*InspectSourceRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{55}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *InspectSourceRequest) GetYaml() string {
@@ -4282,7 +4282,7 @@ type InspectSourceResponse struct {
 
 func (x *InspectSourceResponse) Reset() {
 	*x = InspectSourceResponse{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[56]
+	mi := &file_solaris_protocol_control_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4294,7 +4294,7 @@ func (x *InspectSourceResponse) String() string {
 func (*InspectSourceResponse) ProtoMessage() {}
 
 func (x *InspectSourceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[56]
+	mi := &file_solaris_protocol_control_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4307,7 +4307,7 @@ func (x *InspectSourceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InspectSourceResponse.ProtoReflect.Descriptor instead.
 func (*InspectSourceResponse) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{56}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *InspectSourceResponse) GetNodes() []*SourceNode {
@@ -4350,7 +4350,7 @@ type SourceNode struct {
 
 func (x *SourceNode) Reset() {
 	*x = SourceNode{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[57]
+	mi := &file_solaris_protocol_control_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4362,7 +4362,7 @@ func (x *SourceNode) String() string {
 func (*SourceNode) ProtoMessage() {}
 
 func (x *SourceNode) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[57]
+	mi := &file_solaris_protocol_control_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4375,7 +4375,7 @@ func (x *SourceNode) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SourceNode.ProtoReflect.Descriptor instead.
 func (*SourceNode) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{57}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *SourceNode) GetName() string {
@@ -4414,7 +4414,7 @@ type ListGeoCategoriesRequest struct {
 
 func (x *ListGeoCategoriesRequest) Reset() {
 	*x = ListGeoCategoriesRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[58]
+	mi := &file_solaris_protocol_control_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4426,7 +4426,7 @@ func (x *ListGeoCategoriesRequest) String() string {
 func (*ListGeoCategoriesRequest) ProtoMessage() {}
 
 func (x *ListGeoCategoriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[58]
+	mi := &file_solaris_protocol_control_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4439,7 +4439,7 @@ func (x *ListGeoCategoriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGeoCategoriesRequest.ProtoReflect.Descriptor instead.
 func (*ListGeoCategoriesRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{58}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{58}
 }
 
 type ListGeoCategoriesResponse struct {
@@ -4452,7 +4452,7 @@ type ListGeoCategoriesResponse struct {
 
 func (x *ListGeoCategoriesResponse) Reset() {
 	*x = ListGeoCategoriesResponse{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[59]
+	mi := &file_solaris_protocol_control_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4464,7 +4464,7 @@ func (x *ListGeoCategoriesResponse) String() string {
 func (*ListGeoCategoriesResponse) ProtoMessage() {}
 
 func (x *ListGeoCategoriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[59]
+	mi := &file_solaris_protocol_control_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4477,7 +4477,7 @@ func (x *ListGeoCategoriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGeoCategoriesResponse.ProtoReflect.Descriptor instead.
 func (*ListGeoCategoriesResponse) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{59}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *ListGeoCategoriesResponse) GetGeosite() *GeoCategories {
@@ -4507,7 +4507,7 @@ type GeoCategories struct {
 
 func (x *GeoCategories) Reset() {
 	*x = GeoCategories{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[60]
+	mi := &file_solaris_protocol_control_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4519,7 +4519,7 @@ func (x *GeoCategories) String() string {
 func (*GeoCategories) ProtoMessage() {}
 
 func (x *GeoCategories) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[60]
+	mi := &file_solaris_protocol_control_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4532,7 +4532,7 @@ func (x *GeoCategories) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GeoCategories.ProtoReflect.Descriptor instead.
 func (*GeoCategories) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{60}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *GeoCategories) GetNames() []string {
@@ -4556,85 +4556,85 @@ func (x *GeoCategories) GetUpdatedAtUnixMs() uint64 {
 	return 0
 }
 
-var File_mihomo_desktop_protocol_control_proto protoreflect.FileDescriptor
+var File_solaris_protocol_control_proto protoreflect.FileDescriptor
 
-const file_mihomo_desktop_protocol_control_proto_rawDesc = "" +
+const file_solaris_protocol_control_proto_rawDesc = "" +
 	"\n" +
-	"%mihomo_desktop/protocol/control.proto\x12\x19mihomo_desktop.control.v1\"\x83\x13\n" +
+	"\x1esolaris/protocol/control.proto\x12\x12solaris.control.v1\"\xbf\x11\n" +
 	"\aRequest\x12)\n" +
 	"\x10protocol_version\x18\x01 \x01(\rR\x0fprotocolVersion\x12\x0e\n" +
-	"\x02id\x18\x02 \x01(\x04R\x02id\x12F\n" +
+	"\x02id\x18\x02 \x01(\x04R\x02id\x12?\n" +
 	"\bget_info\x18\n" +
-	" \x01(\v2).mihomo_desktop.control.v1.GetInfoRequestH\x00R\agetInfo\x12?\n" +
-	"\x05claim\x18\v \x01(\v2'.mihomo_desktop.control.v1.ClaimRequestH\x00R\x05claim\x12H\n" +
-	"\bvalidate\x18\f \x01(\v2*.mihomo_desktop.control.v1.ValidateRequestH\x00R\bvalidate\x12?\n" +
-	"\x05start\x18\r \x01(\v2'.mihomo_desktop.control.v1.StartRequestH\x00R\x05start\x12B\n" +
-	"\x06reload\x18\x0e \x01(\v2(.mihomo_desktop.control.v1.ReloadRequestH\x00R\x06reload\x12<\n" +
-	"\x04stop\x18\x0f \x01(\v2&.mihomo_desktop.control.v1.StopRequestH\x00R\x04stop\x12\\\n" +
-	"\x10set_system_proxy\x18\x10 \x01(\v20.mihomo_desktop.control.v1.SetSystemProxyRequestH\x00R\x0esetSystemProxy\x12L\n" +
+	" \x01(\v2\".solaris.control.v1.GetInfoRequestH\x00R\agetInfo\x128\n" +
+	"\x05claim\x18\v \x01(\v2 .solaris.control.v1.ClaimRequestH\x00R\x05claim\x12A\n" +
+	"\bvalidate\x18\f \x01(\v2#.solaris.control.v1.ValidateRequestH\x00R\bvalidate\x128\n" +
+	"\x05start\x18\r \x01(\v2 .solaris.control.v1.StartRequestH\x00R\x05start\x12;\n" +
+	"\x06reload\x18\x0e \x01(\v2!.solaris.control.v1.ReloadRequestH\x00R\x06reload\x125\n" +
+	"\x04stop\x18\x0f \x01(\v2\x1f.solaris.control.v1.StopRequestH\x00R\x04stop\x12U\n" +
+	"\x10set_system_proxy\x18\x10 \x01(\v2).solaris.control.v1.SetSystemProxyRequestH\x00R\x0esetSystemProxy\x12E\n" +
 	"\n" +
-	"get_status\x18\x1e \x01(\v2+.mihomo_desktop.control.v1.GetStatusRequestH\x00R\tgetStatus\x12F\n" +
-	"\bset_mode\x18\x1f \x01(\v2).mihomo_desktop.control.v1.SetModeRequestH\x00R\asetMode\x12O\n" +
-	"\vlist_groups\x18  \x01(\v2,.mihomo_desktop.control.v1.ListGroupsRequestH\x00R\n" +
-	"listGroups\x12I\n" +
-	"\tget_group\x18! \x01(\v2*.mihomo_desktop.control.v1.GetGroupRequestH\x00R\bgetGroup\x12R\n" +
-	"\fselect_proxy\x18\" \x01(\v2-.mihomo_desktop.control.v1.SelectProxyRequestH\x00R\vselectProxy\x12R\n" +
-	"\fhealth_check\x18# \x01(\v2-.mihomo_desktop.control.v1.HealthCheckRequestH\x00R\vhealthCheck\x12L\n" +
+	"get_status\x18\x1e \x01(\v2$.solaris.control.v1.GetStatusRequestH\x00R\tgetStatus\x12?\n" +
+	"\bset_mode\x18\x1f \x01(\v2\".solaris.control.v1.SetModeRequestH\x00R\asetMode\x12H\n" +
+	"\vlist_groups\x18  \x01(\v2%.solaris.control.v1.ListGroupsRequestH\x00R\n" +
+	"listGroups\x12B\n" +
+	"\tget_group\x18! \x01(\v2#.solaris.control.v1.GetGroupRequestH\x00R\bgetGroup\x12K\n" +
+	"\fselect_proxy\x18\" \x01(\v2&.solaris.control.v1.SelectProxyRequestH\x00R\vselectProxy\x12K\n" +
+	"\fhealth_check\x18# \x01(\v2&.solaris.control.v1.HealthCheckRequestH\x00R\vhealthCheck\x12E\n" +
 	"\n" +
-	"test_delay\x18$ \x01(\v2+.mihomo_desktop.control.v1.TestDelayRequestH\x00R\ttestDelay\x12X\n" +
-	"\x0elist_providers\x18% \x01(\v2/.mihomo_desktop.control.v1.ListProvidersRequestH\x00R\rlistProviders\x12[\n" +
-	"\x0fupdate_provider\x18& \x01(\v20.mihomo_desktop.control.v1.UpdateProviderRequestH\x00R\x0eupdateProvider\x12L\n" +
+	"test_delay\x18$ \x01(\v2$.solaris.control.v1.TestDelayRequestH\x00R\ttestDelay\x12Q\n" +
+	"\x0elist_providers\x18% \x01(\v2(.solaris.control.v1.ListProvidersRequestH\x00R\rlistProviders\x12T\n" +
+	"\x0fupdate_provider\x18& \x01(\v2).solaris.control.v1.UpdateProviderRequestH\x00R\x0eupdateProvider\x12E\n" +
 	"\n" +
-	"list_rules\x18' \x01(\v2+.mihomo_desktop.control.v1.ListRulesRequestH\x00R\tlistRules\x12^\n" +
-	"\x10close_connection\x18( \x01(\v21.mihomo_desktop.control.v1.CloseConnectionRequestH\x00R\x0fcloseConnection\x12k\n" +
-	"\x15close_all_connections\x18) \x01(\v25.mihomo_desktop.control.v1.CloseAllConnectionsRequestH\x00R\x13closeAllConnections\x12S\n" +
-	"\rflush_fake_ip\x18* \x01(\v2-.mihomo_desktop.control.v1.FlushFakeIPRequestH\x00R\vflushFakeIp\x12Y\n" +
-	"\x0fflush_dns_cache\x18+ \x01(\v2/.mihomo_desktop.control.v1.FlushDNSCacheRequestH\x00R\rflushDnsCache\x12X\n" +
-	"\x0esubscribe_logs\x18, \x01(\v2/.mihomo_desktop.control.v1.SubscribeLogsRequestH\x00R\rsubscribeLogs\x12a\n" +
-	"\x11subscribe_traffic\x18- \x01(\v22.mihomo_desktop.control.v1.SubscribeTrafficRequestH\x00R\x10subscribeTraffic\x12m\n" +
-	"\x15subscribe_connections\x18. \x01(\v26.mihomo_desktop.control.v1.SubscribeConnectionsRequestH\x00R\x14subscribeConnections\x12O\n" +
-	"\vpoll_events\x18/ \x01(\v2,.mihomo_desktop.control.v1.PollEventsRequestH\x00R\n" +
-	"pollEvents\x12Q\n" +
-	"\vunsubscribe\x180 \x01(\v2-.mihomo_desktop.control.v1.UnsubscribeRequestH\x00R\vunsubscribe\x12X\n" +
-	"\x0einspect_source\x181 \x01(\v2/.mihomo_desktop.control.v1.InspectSourceRequestH\x00R\rinspectSource\x12e\n" +
-	"\x13list_geo_categories\x182 \x01(\v23.mihomo_desktop.control.v1.ListGeoCategoriesRequestH\x00R\x11listGeoCategoriesB\b\n" +
-	"\x06methodJ\x04\b3\x107\"\xad\t\n" +
+	"list_rules\x18' \x01(\v2$.solaris.control.v1.ListRulesRequestH\x00R\tlistRules\x12W\n" +
+	"\x10close_connection\x18( \x01(\v2*.solaris.control.v1.CloseConnectionRequestH\x00R\x0fcloseConnection\x12d\n" +
+	"\x15close_all_connections\x18) \x01(\v2..solaris.control.v1.CloseAllConnectionsRequestH\x00R\x13closeAllConnections\x12L\n" +
+	"\rflush_fake_ip\x18* \x01(\v2&.solaris.control.v1.FlushFakeIPRequestH\x00R\vflushFakeIp\x12R\n" +
+	"\x0fflush_dns_cache\x18+ \x01(\v2(.solaris.control.v1.FlushDNSCacheRequestH\x00R\rflushDnsCache\x12Q\n" +
+	"\x0esubscribe_logs\x18, \x01(\v2(.solaris.control.v1.SubscribeLogsRequestH\x00R\rsubscribeLogs\x12Z\n" +
+	"\x11subscribe_traffic\x18- \x01(\v2+.solaris.control.v1.SubscribeTrafficRequestH\x00R\x10subscribeTraffic\x12f\n" +
+	"\x15subscribe_connections\x18. \x01(\v2/.solaris.control.v1.SubscribeConnectionsRequestH\x00R\x14subscribeConnections\x12H\n" +
+	"\vpoll_events\x18/ \x01(\v2%.solaris.control.v1.PollEventsRequestH\x00R\n" +
+	"pollEvents\x12J\n" +
+	"\vunsubscribe\x180 \x01(\v2&.solaris.control.v1.UnsubscribeRequestH\x00R\vunsubscribe\x12Q\n" +
+	"\x0einspect_source\x181 \x01(\v2(.solaris.control.v1.InspectSourceRequestH\x00R\rinspectSource\x12^\n" +
+	"\x13list_geo_categories\x182 \x01(\v2,.solaris.control.v1.ListGeoCategoriesRequestH\x00R\x11listGeoCategoriesB\b\n" +
+	"\x06methodJ\x04\b3\x107\"\xcb\b\n" +
 	"\bResponse\x12)\n" +
 	"\x10protocol_version\x18\x01 \x01(\rR\x0fprotocolVersion\x12\x0e\n" +
-	"\x02id\x18\x02 \x01(\x04R\x02id\x128\n" +
-	"\x05error\x18\x03 \x01(\v2 .mihomo_desktop.control.v1.ErrorH\x00R\x05error\x128\n" +
-	"\x05empty\x18\x04 \x01(\v2 .mihomo_desktop.control.v1.EmptyH\x00R\x05empty\x12G\n" +
+	"\x02id\x18\x02 \x01(\x04R\x02id\x121\n" +
+	"\x05error\x18\x03 \x01(\v2\x19.solaris.control.v1.ErrorH\x00R\x05error\x121\n" +
+	"\x05empty\x18\x04 \x01(\v2\x19.solaris.control.v1.EmptyH\x00R\x05empty\x12@\n" +
 	"\bget_info\x18\n" +
-	" \x01(\v2*.mihomo_desktop.control.v1.GetInfoResponseH\x00R\agetInfo\x12P\n" +
-	"\vcomposition\x18\f \x01(\v2,.mihomo_desktop.control.v1.CompositionReportH\x00R\vcomposition\x12M\n" +
+	" \x01(\v2#.solaris.control.v1.GetInfoResponseH\x00R\agetInfo\x12I\n" +
+	"\vcomposition\x18\f \x01(\v2%.solaris.control.v1.CompositionReportH\x00R\vcomposition\x12F\n" +
 	"\n" +
-	"get_status\x18\x1e \x01(\v2,.mihomo_desktop.control.v1.GetStatusResponseH\x00R\tgetStatus\x12P\n" +
-	"\vlist_groups\x18  \x01(\v2-.mihomo_desktop.control.v1.ListGroupsResponseH\x00R\n" +
-	"listGroups\x12J\n" +
-	"\tget_group\x18! \x01(\v2+.mihomo_desktop.control.v1.GetGroupResponseH\x00R\bgetGroup\x12M\n" +
+	"get_status\x18\x1e \x01(\v2%.solaris.control.v1.GetStatusResponseH\x00R\tgetStatus\x12I\n" +
+	"\vlist_groups\x18  \x01(\v2&.solaris.control.v1.ListGroupsResponseH\x00R\n" +
+	"listGroups\x12C\n" +
+	"\tget_group\x18! \x01(\v2$.solaris.control.v1.GetGroupResponseH\x00R\bgetGroup\x12F\n" +
 	"\n" +
-	"test_delay\x18$ \x01(\v2,.mihomo_desktop.control.v1.TestDelayResponseH\x00R\ttestDelay\x12Y\n" +
-	"\x0elist_providers\x18% \x01(\v20.mihomo_desktop.control.v1.ListProvidersResponseH\x00R\rlistProviders\x12M\n" +
+	"test_delay\x18$ \x01(\v2%.solaris.control.v1.TestDelayResponseH\x00R\ttestDelay\x12R\n" +
+	"\x0elist_providers\x18% \x01(\v2).solaris.control.v1.ListProvidersResponseH\x00R\rlistProviders\x12F\n" +
 	"\n" +
-	"list_rules\x18' \x01(\v2,.mihomo_desktop.control.v1.ListRulesResponseH\x00R\tlistRules\x12L\n" +
-	"\tsubscribe\x18, \x01(\v2,.mihomo_desktop.control.v1.SubscribeResponseH\x00R\tsubscribe\x12P\n" +
-	"\vpoll_events\x18/ \x01(\v2-.mihomo_desktop.control.v1.PollEventsResponseH\x00R\n" +
-	"pollEvents\x12Y\n" +
-	"\x0einspect_source\x181 \x01(\v20.mihomo_desktop.control.v1.InspectSourceResponseH\x00R\rinspectSource\x12f\n" +
-	"\x13list_geo_categories\x182 \x01(\v24.mihomo_desktop.control.v1.ListGeoCategoriesResponseH\x00R\x11listGeoCategoriesB\b\n" +
+	"list_rules\x18' \x01(\v2%.solaris.control.v1.ListRulesResponseH\x00R\tlistRules\x12E\n" +
+	"\tsubscribe\x18, \x01(\v2%.solaris.control.v1.SubscribeResponseH\x00R\tsubscribe\x12I\n" +
+	"\vpoll_events\x18/ \x01(\v2&.solaris.control.v1.PollEventsResponseH\x00R\n" +
+	"pollEvents\x12R\n" +
+	"\x0einspect_source\x181 \x01(\v2).solaris.control.v1.InspectSourceResponseH\x00R\rinspectSource\x12_\n" +
+	"\x13list_geo_categories\x182 \x01(\v2-.solaris.control.v1.ListGeoCategoriesResponseH\x00R\x11listGeoCategoriesB\b\n" +
 	"\x06resultJ\x04\b3\x107\"\a\n" +
 	"\x05Empty\"S\n" +
 	"\x05Error\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12\x1c\n" +
 	"\tretryable\x18\x03 \x01(\bR\tretryable\"\x10\n" +
-	"\x0eGetInfoRequest\"\x87\x02\n" +
+	"\x0eGetInfoRequest\"\xf9\x01\n" +
 	"\x0fGetInfoResponse\x12)\n" +
 	"\x10protocol_version\x18\x01 \x01(\rR\x0fprotocolVersion\x12'\n" +
 	"\x0fservice_version\x18\x02 \x01(\tR\x0eserviceVersion\x12!\n" +
-	"\fcore_version\x18\x03 \x01(\tR\vcoreVersion\x129\n" +
-	"\x05state\x18\x04 \x01(\x0e2#.mihomo_desktop.control.v1.RunStateR\x05state\x12B\n" +
-	"\townership\x18\x05 \x01(\x0e2$.mihomo_desktop.control.v1.OwnershipR\townership\"\x0e\n" +
+	"\fcore_version\x18\x03 \x01(\tR\vcoreVersion\x122\n" +
+	"\x05state\x18\x04 \x01(\x0e2\x1c.solaris.control.v1.RunStateR\x05state\x12;\n" +
+	"\townership\x18\x05 \x01(\x0e2\x1d.solaris.control.v1.OwnershipR\townership\"\x0e\n" +
 	"\fClaimRequest\"\x9b\x01\n" +
 	"\n" +
 	"RunOptions\x12\x1f\n" +
@@ -4643,49 +4643,49 @@ const file_mihomo_desktop_protocol_control_proto_rawDesc = "" +
 	"\x14system_proxy_enabled\x18\x02 \x01(\bR\x12systemProxyEnabled\x12\x1d\n" +
 	"\n" +
 	"mixed_port\x18\x03 \x01(\rR\tmixedPort\x12\x1b\n" +
-	"\tallow_lan\x18\x04 \x01(\bR\ballowLan\"\xa8\x01\n" +
+	"\tallow_lan\x18\x04 \x01(\bR\ballowLan\"\xa1\x01\n" +
 	"\x0fValidateRequest\x12!\n" +
 	"\vconfig_yaml\x18\x01 \x01(\tH\x00R\n" +
-	"configYaml\x12J\n" +
-	"\vcomposition\x18\x04 \x01(\v2&.mihomo_desktop.control.v1.CompositionH\x00R\vcomposition\x12\x1c\n" +
+	"configYaml\x12C\n" +
+	"\vcomposition\x18\x04 \x01(\v2\x1f.solaris.control.v1.CompositionH\x00R\vcomposition\x12\x1c\n" +
 	"\toverrides\x18\x02 \x03(\tR\toverridesB\b\n" +
-	"\x06source\"\xe6\x01\n" +
+	"\x06source\"\xd8\x01\n" +
 	"\fStartRequest\x12!\n" +
 	"\vconfig_yaml\x18\x01 \x01(\tH\x00R\n" +
-	"configYaml\x12J\n" +
-	"\vcomposition\x18\x04 \x01(\v2&.mihomo_desktop.control.v1.CompositionH\x00R\vcomposition\x12\x1c\n" +
-	"\toverrides\x18\x02 \x03(\tR\toverrides\x12?\n" +
-	"\aoptions\x18\x03 \x01(\v2%.mihomo_desktop.control.v1.RunOptionsR\aoptionsB\b\n" +
-	"\x06source\"\xe7\x01\n" +
+	"configYaml\x12C\n" +
+	"\vcomposition\x18\x04 \x01(\v2\x1f.solaris.control.v1.CompositionH\x00R\vcomposition\x12\x1c\n" +
+	"\toverrides\x18\x02 \x03(\tR\toverrides\x128\n" +
+	"\aoptions\x18\x03 \x01(\v2\x1e.solaris.control.v1.RunOptionsR\aoptionsB\b\n" +
+	"\x06source\"\xd9\x01\n" +
 	"\rReloadRequest\x12!\n" +
 	"\vconfig_yaml\x18\x01 \x01(\tH\x00R\n" +
-	"configYaml\x12J\n" +
-	"\vcomposition\x18\x04 \x01(\v2&.mihomo_desktop.control.v1.CompositionH\x00R\vcomposition\x12\x1c\n" +
-	"\toverrides\x18\x02 \x03(\tR\toverrides\x12?\n" +
-	"\aoptions\x18\x03 \x01(\v2%.mihomo_desktop.control.v1.RunOptionsR\aoptionsB\b\n" +
-	"\x06source\"\x93\x01\n" +
-	"\vComposition\x12F\n" +
-	"\asources\x18\x01 \x03(\v2,.mihomo_desktop.control.v1.CompositionSourceR\asources\x12\x1f\n" +
+	"configYaml\x12C\n" +
+	"\vcomposition\x18\x04 \x01(\v2\x1f.solaris.control.v1.CompositionH\x00R\vcomposition\x12\x1c\n" +
+	"\toverrides\x18\x02 \x03(\tR\toverrides\x128\n" +
+	"\aoptions\x18\x03 \x01(\v2\x1e.solaris.control.v1.RunOptionsR\aoptionsB\b\n" +
+	"\x06source\"\x8c\x01\n" +
+	"\vComposition\x12?\n" +
+	"\asources\x18\x01 \x03(\v2%.solaris.control.v1.CompositionSourceR\asources\x12\x1f\n" +
 	"\vinfo_filter\x18\x02 \x01(\tR\n" +
 	"infoFilter\x12\x1b\n" +
 	"\tplan_json\x18\x03 \x01(\tR\bplanJson\"K\n" +
 	"\x11CompositionSource\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
-	"\x04yaml\x18\x03 \x01(\tR\x04yaml\"\x92\x02\n" +
-	"\x11CompositionReport\x12I\n" +
-	"\bwarnings\x18\x01 \x03(\v2-.mihomo_desktop.control.v1.CompositionWarningR\bwarnings\x12@\n" +
-	"\x06groups\x18\x02 \x03(\v2(.mihomo_desktop.control.v1.ComposedGroupR\x06groups\x125\n" +
-	"\x05rules\x18\x03 \x03(\v2\x1f.mihomo_desktop.control.v1.RuleR\x05rules\x129\n" +
-	"\x05nodes\x18\x04 \x03(\v2#.mihomo_desktop.control.v1.PoolNodeR\x05nodes\"_\n" +
+	"\x04yaml\x18\x03 \x01(\tR\x04yaml\"\xf6\x01\n" +
+	"\x11CompositionReport\x12B\n" +
+	"\bwarnings\x18\x01 \x03(\v2&.solaris.control.v1.CompositionWarningR\bwarnings\x129\n" +
+	"\x06groups\x18\x02 \x03(\v2!.solaris.control.v1.ComposedGroupR\x06groups\x12.\n" +
+	"\x05rules\x18\x03 \x03(\v2\x18.solaris.control.v1.RuleR\x05rules\x122\n" +
+	"\x05nodes\x18\x04 \x03(\v2\x1c.solaris.control.v1.PoolNodeR\x05nodes\"_\n" +
 	"\x12CompositionWarning\x12\x19\n" +
 	"\bentry_id\x18\x01 \x01(\tR\aentryId\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x16\n" +
-	"\x06target\x18\x03 \x01(\tR\x06target\"\xa4\x01\n" +
+	"\x06target\x18\x03 \x01(\tR\x06target\"\x9d\x01\n" +
 	"\rComposedGroup\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x128\n" +
-	"\x04kind\x18\x03 \x01(\x0e2$.mihomo_desktop.control.v1.GroupKindR\x04kind\x12\x16\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x121\n" +
+	"\x04kind\x18\x03 \x01(\x0e2\x1d.solaris.control.v1.GroupKindR\x04kind\x12\x16\n" +
 	"\x06region\x18\x04 \x01(\tR\x06region\x12\x1d\n" +
 	"\n" +
 	"node_count\x18\x05 \x01(\rR\tnodeCount\"\x8c\x01\n" +
@@ -4698,43 +4698,43 @@ const file_mihomo_desktop_protocol_control_proto_rawDesc = "" +
 	"\vStopRequest\"1\n" +
 	"\x15SetSystemProxyRequest\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\"\x12\n" +
-	"\x10GetStatusRequest\"\xa6\x03\n" +
-	"\x11GetStatusResponse\x129\n" +
-	"\x05state\x18\x01 \x01(\x0e2#.mihomo_desktop.control.v1.RunStateR\x05state\x123\n" +
-	"\x04mode\x18\x02 \x01(\x0e2\x1f.mihomo_desktop.control.v1.ModeR\x04mode\x12+\n" +
+	"\x10GetStatusRequest\"\x91\x03\n" +
+	"\x11GetStatusResponse\x122\n" +
+	"\x05state\x18\x01 \x01(\x0e2\x1c.solaris.control.v1.RunStateR\x05state\x12,\n" +
+	"\x04mode\x18\x02 \x01(\x0e2\x18.solaris.control.v1.ModeR\x04mode\x12+\n" +
 	"\x12started_at_unix_ms\x18\x03 \x01(\x04R\x0fstartedAtUnixMs\x12!\n" +
 	"\fmemory_bytes\x18\x04 \x01(\x04R\vmemoryBytes\x12)\n" +
-	"\x10connection_count\x18\x05 \x01(\rR\x0fconnectionCount\x12D\n" +
+	"\x10connection_count\x18\x05 \x01(\rR\x0fconnectionCount\x12=\n" +
 	"\n" +
-	"last_error\x18\x06 \x01(\v2 .mihomo_desktop.control.v1.ErrorH\x00R\tlastError\x88\x01\x01\x12\x1f\n" +
+	"last_error\x18\x06 \x01(\v2\x19.solaris.control.v1.ErrorH\x00R\tlastError\x88\x01\x01\x12\x1f\n" +
 	"\vtun_enabled\x18\a \x01(\bR\n" +
 	"tunEnabled\x120\n" +
 	"\x14system_proxy_enabled\x18\b \x01(\bR\x12systemProxyEnabledB\r\n" +
-	"\v_last_error\"E\n" +
-	"\x0eSetModeRequest\x123\n" +
-	"\x04mode\x18\x01 \x01(\x0e2\x1f.mihomo_desktop.control.v1.ModeR\x04mode\"\\\n" +
+	"\v_last_error\">\n" +
+	"\x0eSetModeRequest\x12,\n" +
+	"\x04mode\x18\x01 \x01(\x0e2\x18.solaris.control.v1.ModeR\x04mode\"\\\n" +
 	"\x05Proxy\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x1e\n" +
 	"\bdelay_ms\x18\x03 \x01(\rH\x00R\adelayMs\x88\x01\x01B\v\n" +
-	"\t_delay_ms\"\x9d\x01\n" +
+	"\t_delay_ms\"\x96\x01\n" +
 	"\n" +
 	"ProxyGroup\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x10\n" +
 	"\x03now\x18\x03 \x01(\tR\x03now\x12\x19\n" +
-	"\btest_url\x18\x04 \x01(\tR\atestUrl\x12:\n" +
-	"\aproxies\x18\x05 \x03(\v2 .mihomo_desktop.control.v1.ProxyR\aproxies\"\x83\x01\n" +
-	"\x11ListGroupsRequest\x128\n" +
-	"\x04sort\x18\x01 \x01(\x0e2$.mihomo_desktop.control.v1.GroupSortR\x04sort\x124\n" +
-	"\x16exclude_not_selectable\x18\x02 \x01(\bR\x14excludeNotSelectable\"S\n" +
-	"\x12ListGroupsResponse\x12=\n" +
-	"\x06groups\x18\x01 \x03(\v2%.mihomo_desktop.control.v1.ProxyGroupR\x06groups\"_\n" +
+	"\btest_url\x18\x04 \x01(\tR\atestUrl\x123\n" +
+	"\aproxies\x18\x05 \x03(\v2\x19.solaris.control.v1.ProxyR\aproxies\"|\n" +
+	"\x11ListGroupsRequest\x121\n" +
+	"\x04sort\x18\x01 \x01(\x0e2\x1d.solaris.control.v1.GroupSortR\x04sort\x124\n" +
+	"\x16exclude_not_selectable\x18\x02 \x01(\bR\x14excludeNotSelectable\"L\n" +
+	"\x12ListGroupsResponse\x126\n" +
+	"\x06groups\x18\x01 \x03(\v2\x1e.solaris.control.v1.ProxyGroupR\x06groups\"X\n" +
 	"\x0fGetGroupRequest\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x128\n" +
-	"\x04sort\x18\x02 \x01(\x0e2$.mihomo_desktop.control.v1.GroupSortR\x04sort\"O\n" +
-	"\x10GetGroupResponse\x12;\n" +
-	"\x05group\x18\x01 \x01(\v2%.mihomo_desktop.control.v1.ProxyGroupR\x05group\"@\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x121\n" +
+	"\x04sort\x18\x02 \x01(\x0e2\x1d.solaris.control.v1.GroupSortR\x04sort\"H\n" +
+	"\x10GetGroupResponse\x124\n" +
+	"\x05group\x18\x01 \x01(\v2\x1e.solaris.control.v1.ProxyGroupR\x05group\"@\n" +
 	"\x12SelectProxyRequest\x12\x14\n" +
 	"\x05group\x18\x01 \x01(\tR\x05group\x12\x14\n" +
 	"\x05proxy\x18\x02 \x01(\tR\x05proxy\"*\n" +
@@ -4746,33 +4746,33 @@ const file_mihomo_desktop_protocol_control_proto_rawDesc = "" +
 	"\n" +
 	"timeout_ms\x18\x03 \x01(\rR\ttimeoutMs\".\n" +
 	"\x11TestDelayResponse\x12\x19\n" +
-	"\bdelay_ms\x18\x01 \x01(\rR\adelayMs\"\xab\x01\n" +
+	"\bdelay_ms\x18\x01 \x01(\rR\adelayMs\"\xa4\x01\n" +
 	"\bProvider\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12;\n" +
-	"\x04kind\x18\x02 \x01(\x0e2'.mihomo_desktop.control.v1.ProviderKindR\x04kind\x12!\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x124\n" +
+	"\x04kind\x18\x02 \x01(\x0e2 .solaris.control.v1.ProviderKindR\x04kind\x12!\n" +
 	"\fvehicle_type\x18\x03 \x01(\tR\vvehicleType\x12+\n" +
 	"\x12updated_at_unix_ms\x18\x04 \x01(\x04R\x0fupdatedAtUnixMs\"\x16\n" +
-	"\x14ListProvidersRequest\"Z\n" +
-	"\x15ListProvidersResponse\x12A\n" +
-	"\tproviders\x18\x01 \x03(\v2#.mihomo_desktop.control.v1.ProviderR\tproviders\"h\n" +
-	"\x15UpdateProviderRequest\x12;\n" +
-	"\x04kind\x18\x01 \x01(\x0e2'.mihomo_desktop.control.v1.ProviderKindR\x04kind\x12\x12\n" +
+	"\x14ListProvidersRequest\"S\n" +
+	"\x15ListProvidersResponse\x12:\n" +
+	"\tproviders\x18\x01 \x03(\v2\x1c.solaris.control.v1.ProviderR\tproviders\"a\n" +
+	"\x15UpdateProviderRequest\x124\n" +
+	"\x04kind\x18\x01 \x01(\x0e2 .solaris.control.v1.ProviderKindR\x04kind\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\"e\n" +
 	"\x04Rule\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x18\n" +
 	"\apayload\x18\x02 \x01(\tR\apayload\x12\x14\n" +
 	"\x05proxy\x18\x03 \x01(\tR\x05proxy\x12\x19\n" +
 	"\bentry_id\x18\x04 \x01(\tR\aentryId\"\x12\n" +
-	"\x10ListRulesRequest\"J\n" +
-	"\x11ListRulesResponse\x125\n" +
-	"\x05rules\x18\x01 \x03(\v2\x1f.mihomo_desktop.control.v1.RuleR\x05rules\"(\n" +
+	"\x10ListRulesRequest\"C\n" +
+	"\x11ListRulesResponse\x12.\n" +
+	"\x05rules\x18\x01 \x03(\v2\x18.solaris.control.v1.RuleR\x05rules\"(\n" +
 	"\x16CloseConnectionRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x1c\n" +
 	"\x1aCloseAllConnectionsRequest\"\x14\n" +
 	"\x12FlushFakeIPRequest\"\x16\n" +
-	"\x14FlushDNSCacheRequest\"Q\n" +
-	"\x14SubscribeLogsRequest\x129\n" +
-	"\x05level\x18\x01 \x01(\x0e2#.mihomo_desktop.control.v1.LogLevelR\x05level\"\x19\n" +
+	"\x14FlushDNSCacheRequest\"J\n" +
+	"\x14SubscribeLogsRequest\x122\n" +
+	"\x05level\x18\x01 \x01(\x0e2\x1c.solaris.control.v1.LogLevelR\x05level\"\x19\n" +
 	"\x17SubscribeTrafficRequest\"\x1d\n" +
 	"\x1bSubscribeConnectionsRequest\"<\n" +
 	"\x11SubscribeResponse\x12'\n" +
@@ -4780,19 +4780,19 @@ const file_mihomo_desktop_protocol_control_proto_rawDesc = "" +
 	"\x11PollEventsRequest\x12'\n" +
 	"\x0fsubscription_id\x18\x01 \x01(\x04R\x0esubscriptionId\x12\x1d\n" +
 	"\n" +
-	"max_events\x18\x02 \x01(\rR\tmaxEvents\"h\n" +
-	"\x12PollEventsResponse\x128\n" +
-	"\x06events\x18\x01 \x03(\v2 .mihomo_desktop.control.v1.EventR\x06events\x12\x18\n" +
+	"max_events\x18\x02 \x01(\rR\tmaxEvents\"a\n" +
+	"\x12PollEventsResponse\x121\n" +
+	"\x06events\x18\x01 \x03(\v2\x19.solaris.control.v1.EventR\x06events\x12\x18\n" +
 	"\adropped\x18\x02 \x01(\x04R\adropped\"=\n" +
 	"\x12UnsubscribeRequest\x12'\n" +
-	"\x0fsubscription_id\x18\x01 \x01(\x04R\x0esubscriptionId\"\xe4\x01\n" +
-	"\x05Event\x127\n" +
-	"\x03log\x18\x01 \x01(\v2#.mihomo_desktop.control.v1.LogEntryH\x00R\x03log\x12D\n" +
-	"\atraffic\x18\x02 \x01(\v2(.mihomo_desktop.control.v1.TrafficSampleH\x00R\atraffic\x12Q\n" +
-	"\vconnections\x18\x03 \x01(\v2-.mihomo_desktop.control.v1.ConnectionSnapshotH\x00R\vconnectionsB\t\n" +
-	"\apayload\"\x81\x01\n" +
-	"\bLogEntry\x129\n" +
-	"\x05level\x18\x01 \x01(\x0e2#.mihomo_desktop.control.v1.LogLevelR\x05level\x12\x18\n" +
+	"\x0fsubscription_id\x18\x01 \x01(\x04R\x0esubscriptionId\"\xcf\x01\n" +
+	"\x05Event\x120\n" +
+	"\x03log\x18\x01 \x01(\v2\x1c.solaris.control.v1.LogEntryH\x00R\x03log\x12=\n" +
+	"\atraffic\x18\x02 \x01(\v2!.solaris.control.v1.TrafficSampleH\x00R\atraffic\x12J\n" +
+	"\vconnections\x18\x03 \x01(\v2&.solaris.control.v1.ConnectionSnapshotH\x00R\vconnectionsB\t\n" +
+	"\apayload\"z\n" +
+	"\bLogEntry\x122\n" +
+	"\x05level\x18\x01 \x01(\x0e2\x1c.solaris.control.v1.LogLevelR\x05level\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12 \n" +
 	"\ftime_unix_ms\x18\x03 \x01(\x04R\n" +
 	"timeUnixMs\"\xc1\x01\n" +
@@ -4816,15 +4816,15 @@ const file_mihomo_desktop_protocol_control_proto_rawDesc = "" +
 	" \x01(\x04R\vuploadBytes\x12%\n" +
 	"\x0edownload_bytes\x18\v \x01(\x04R\rdownloadBytes\x12+\n" +
 	"\x12started_at_unix_ms\x18\f \x01(\x04R\x0fstartedAtUnixMs\x12\"\n" +
-	"\rrule_entry_id\x18\r \x01(\tR\vruleEntryId\"]\n" +
-	"\x12ConnectionSnapshot\x12G\n" +
-	"\vconnections\x18\x01 \x03(\v2%.mihomo_desktop.control.v1.ConnectionR\vconnections\"K\n" +
+	"\rrule_entry_id\x18\r \x01(\tR\vruleEntryId\"V\n" +
+	"\x12ConnectionSnapshot\x12@\n" +
+	"\vconnections\x18\x01 \x03(\v2\x1e.solaris.control.v1.ConnectionR\vconnections\"K\n" +
 	"\x14InspectSourceRequest\x12\x12\n" +
 	"\x04yaml\x18\x01 \x01(\tR\x04yaml\x12\x1f\n" +
 	"\vinfo_filter\x18\x02 \x01(\tR\n" +
-	"infoFilter\"\xb1\x01\n" +
-	"\x15InspectSourceResponse\x12;\n" +
-	"\x05nodes\x18\x01 \x03(\v2%.mihomo_desktop.control.v1.SourceNodeR\x05nodes\x12\x1b\n" +
+	"infoFilter\"\xaa\x01\n" +
+	"\x15InspectSourceResponse\x124\n" +
+	"\x05nodes\x18\x01 \x03(\v2\x1e.solaris.control.v1.SourceNodeR\x05nodes\x12\x1b\n" +
 	"\thas_rules\x18\x02 \x01(\bR\bhasRules\x12\x1f\n" +
 	"\vgroup_count\x18\x03 \x01(\rR\n" +
 	"groupCount\x12\x1d\n" +
@@ -4836,10 +4836,10 @@ const file_mihomo_desktop_protocol_control_proto_rawDesc = "" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x16\n" +
 	"\x06region\x18\x03 \x01(\tR\x06region\x12\x12\n" +
 	"\x04info\x18\x04 \x01(\bR\x04info\"\x1a\n" +
-	"\x18ListGeoCategoriesRequest\"\x9f\x01\n" +
-	"\x19ListGeoCategoriesResponse\x12B\n" +
-	"\ageosite\x18\x01 \x01(\v2(.mihomo_desktop.control.v1.GeoCategoriesR\ageosite\x12>\n" +
-	"\x05geoip\x18\x02 \x01(\v2(.mihomo_desktop.control.v1.GeoCategoriesR\x05geoip\"j\n" +
+	"\x18ListGeoCategoriesRequest\"\x91\x01\n" +
+	"\x19ListGeoCategoriesResponse\x12;\n" +
+	"\ageosite\x18\x01 \x01(\v2!.solaris.control.v1.GeoCategoriesR\ageosite\x127\n" +
+	"\x05geoip\x18\x02 \x01(\v2!.solaris.control.v1.GeoCategoriesR\x05geoip\"j\n" +
 	"\rGeoCategories\x12\x14\n" +
 	"\x05names\x18\x01 \x03(\tR\x05names\x12\x16\n" +
 	"\x06sha256\x18\x02 \x01(\tR\x06sha256\x12+\n" +
@@ -4879,171 +4879,171 @@ const file_mihomo_desktop_protocol_control_proto_rawDesc = "" +
 	"\x0fLOG_LEVEL_DEBUG\x10\x01\x12\x12\n" +
 	"\x0eLOG_LEVEL_INFO\x10\x02\x12\x15\n" +
 	"\x11LOG_LEVEL_WARNING\x10\x03\x12\x13\n" +
-	"\x0fLOG_LEVEL_ERROR\x10\x04BLZJgithub.com/Ember-Moth/mihomo-desktop/src/core/internal/controlpb;controlpbb\x06proto3"
+	"\x0fLOG_LEVEL_ERROR\x10\x04BEZCgithub.com/Ember-Moth/Solaris/src/core/internal/controlpb;controlpbb\x06proto3"
 
 var (
-	file_mihomo_desktop_protocol_control_proto_rawDescOnce sync.Once
-	file_mihomo_desktop_protocol_control_proto_rawDescData []byte
+	file_solaris_protocol_control_proto_rawDescOnce sync.Once
+	file_solaris_protocol_control_proto_rawDescData []byte
 )
 
-func file_mihomo_desktop_protocol_control_proto_rawDescGZIP() []byte {
-	file_mihomo_desktop_protocol_control_proto_rawDescOnce.Do(func() {
-		file_mihomo_desktop_protocol_control_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_mihomo_desktop_protocol_control_proto_rawDesc), len(file_mihomo_desktop_protocol_control_proto_rawDesc)))
+func file_solaris_protocol_control_proto_rawDescGZIP() []byte {
+	file_solaris_protocol_control_proto_rawDescOnce.Do(func() {
+		file_solaris_protocol_control_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_solaris_protocol_control_proto_rawDesc), len(file_solaris_protocol_control_proto_rawDesc)))
 	})
-	return file_mihomo_desktop_protocol_control_proto_rawDescData
+	return file_solaris_protocol_control_proto_rawDescData
 }
 
-var file_mihomo_desktop_protocol_control_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
-var file_mihomo_desktop_protocol_control_proto_msgTypes = make([]protoimpl.MessageInfo, 61)
-var file_mihomo_desktop_protocol_control_proto_goTypes = []any{
-	(RunState)(0),                       // 0: mihomo_desktop.control.v1.RunState
-	(Ownership)(0),                      // 1: mihomo_desktop.control.v1.Ownership
-	(GroupKind)(0),                      // 2: mihomo_desktop.control.v1.GroupKind
-	(Mode)(0),                           // 3: mihomo_desktop.control.v1.Mode
-	(GroupSort)(0),                      // 4: mihomo_desktop.control.v1.GroupSort
-	(ProviderKind)(0),                   // 5: mihomo_desktop.control.v1.ProviderKind
-	(LogLevel)(0),                       // 6: mihomo_desktop.control.v1.LogLevel
-	(*Request)(nil),                     // 7: mihomo_desktop.control.v1.Request
-	(*Response)(nil),                    // 8: mihomo_desktop.control.v1.Response
-	(*Empty)(nil),                       // 9: mihomo_desktop.control.v1.Empty
-	(*Error)(nil),                       // 10: mihomo_desktop.control.v1.Error
-	(*GetInfoRequest)(nil),              // 11: mihomo_desktop.control.v1.GetInfoRequest
-	(*GetInfoResponse)(nil),             // 12: mihomo_desktop.control.v1.GetInfoResponse
-	(*ClaimRequest)(nil),                // 13: mihomo_desktop.control.v1.ClaimRequest
-	(*RunOptions)(nil),                  // 14: mihomo_desktop.control.v1.RunOptions
-	(*ValidateRequest)(nil),             // 15: mihomo_desktop.control.v1.ValidateRequest
-	(*StartRequest)(nil),                // 16: mihomo_desktop.control.v1.StartRequest
-	(*ReloadRequest)(nil),               // 17: mihomo_desktop.control.v1.ReloadRequest
-	(*Composition)(nil),                 // 18: mihomo_desktop.control.v1.Composition
-	(*CompositionSource)(nil),           // 19: mihomo_desktop.control.v1.CompositionSource
-	(*CompositionReport)(nil),           // 20: mihomo_desktop.control.v1.CompositionReport
-	(*CompositionWarning)(nil),          // 21: mihomo_desktop.control.v1.CompositionWarning
-	(*ComposedGroup)(nil),               // 22: mihomo_desktop.control.v1.ComposedGroup
-	(*PoolNode)(nil),                    // 23: mihomo_desktop.control.v1.PoolNode
-	(*StopRequest)(nil),                 // 24: mihomo_desktop.control.v1.StopRequest
-	(*SetSystemProxyRequest)(nil),       // 25: mihomo_desktop.control.v1.SetSystemProxyRequest
-	(*GetStatusRequest)(nil),            // 26: mihomo_desktop.control.v1.GetStatusRequest
-	(*GetStatusResponse)(nil),           // 27: mihomo_desktop.control.v1.GetStatusResponse
-	(*SetModeRequest)(nil),              // 28: mihomo_desktop.control.v1.SetModeRequest
-	(*Proxy)(nil),                       // 29: mihomo_desktop.control.v1.Proxy
-	(*ProxyGroup)(nil),                  // 30: mihomo_desktop.control.v1.ProxyGroup
-	(*ListGroupsRequest)(nil),           // 31: mihomo_desktop.control.v1.ListGroupsRequest
-	(*ListGroupsResponse)(nil),          // 32: mihomo_desktop.control.v1.ListGroupsResponse
-	(*GetGroupRequest)(nil),             // 33: mihomo_desktop.control.v1.GetGroupRequest
-	(*GetGroupResponse)(nil),            // 34: mihomo_desktop.control.v1.GetGroupResponse
-	(*SelectProxyRequest)(nil),          // 35: mihomo_desktop.control.v1.SelectProxyRequest
-	(*HealthCheckRequest)(nil),          // 36: mihomo_desktop.control.v1.HealthCheckRequest
-	(*TestDelayRequest)(nil),            // 37: mihomo_desktop.control.v1.TestDelayRequest
-	(*TestDelayResponse)(nil),           // 38: mihomo_desktop.control.v1.TestDelayResponse
-	(*Provider)(nil),                    // 39: mihomo_desktop.control.v1.Provider
-	(*ListProvidersRequest)(nil),        // 40: mihomo_desktop.control.v1.ListProvidersRequest
-	(*ListProvidersResponse)(nil),       // 41: mihomo_desktop.control.v1.ListProvidersResponse
-	(*UpdateProviderRequest)(nil),       // 42: mihomo_desktop.control.v1.UpdateProviderRequest
-	(*Rule)(nil),                        // 43: mihomo_desktop.control.v1.Rule
-	(*ListRulesRequest)(nil),            // 44: mihomo_desktop.control.v1.ListRulesRequest
-	(*ListRulesResponse)(nil),           // 45: mihomo_desktop.control.v1.ListRulesResponse
-	(*CloseConnectionRequest)(nil),      // 46: mihomo_desktop.control.v1.CloseConnectionRequest
-	(*CloseAllConnectionsRequest)(nil),  // 47: mihomo_desktop.control.v1.CloseAllConnectionsRequest
-	(*FlushFakeIPRequest)(nil),          // 48: mihomo_desktop.control.v1.FlushFakeIPRequest
-	(*FlushDNSCacheRequest)(nil),        // 49: mihomo_desktop.control.v1.FlushDNSCacheRequest
-	(*SubscribeLogsRequest)(nil),        // 50: mihomo_desktop.control.v1.SubscribeLogsRequest
-	(*SubscribeTrafficRequest)(nil),     // 51: mihomo_desktop.control.v1.SubscribeTrafficRequest
-	(*SubscribeConnectionsRequest)(nil), // 52: mihomo_desktop.control.v1.SubscribeConnectionsRequest
-	(*SubscribeResponse)(nil),           // 53: mihomo_desktop.control.v1.SubscribeResponse
-	(*PollEventsRequest)(nil),           // 54: mihomo_desktop.control.v1.PollEventsRequest
-	(*PollEventsResponse)(nil),          // 55: mihomo_desktop.control.v1.PollEventsResponse
-	(*UnsubscribeRequest)(nil),          // 56: mihomo_desktop.control.v1.UnsubscribeRequest
-	(*Event)(nil),                       // 57: mihomo_desktop.control.v1.Event
-	(*LogEntry)(nil),                    // 58: mihomo_desktop.control.v1.LogEntry
-	(*TrafficSample)(nil),               // 59: mihomo_desktop.control.v1.TrafficSample
-	(*Connection)(nil),                  // 60: mihomo_desktop.control.v1.Connection
-	(*ConnectionSnapshot)(nil),          // 61: mihomo_desktop.control.v1.ConnectionSnapshot
-	(*InspectSourceRequest)(nil),        // 62: mihomo_desktop.control.v1.InspectSourceRequest
-	(*InspectSourceResponse)(nil),       // 63: mihomo_desktop.control.v1.InspectSourceResponse
-	(*SourceNode)(nil),                  // 64: mihomo_desktop.control.v1.SourceNode
-	(*ListGeoCategoriesRequest)(nil),    // 65: mihomo_desktop.control.v1.ListGeoCategoriesRequest
-	(*ListGeoCategoriesResponse)(nil),   // 66: mihomo_desktop.control.v1.ListGeoCategoriesResponse
-	(*GeoCategories)(nil),               // 67: mihomo_desktop.control.v1.GeoCategories
+var file_solaris_protocol_control_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
+var file_solaris_protocol_control_proto_msgTypes = make([]protoimpl.MessageInfo, 61)
+var file_solaris_protocol_control_proto_goTypes = []any{
+	(RunState)(0),                       // 0: solaris.control.v1.RunState
+	(Ownership)(0),                      // 1: solaris.control.v1.Ownership
+	(GroupKind)(0),                      // 2: solaris.control.v1.GroupKind
+	(Mode)(0),                           // 3: solaris.control.v1.Mode
+	(GroupSort)(0),                      // 4: solaris.control.v1.GroupSort
+	(ProviderKind)(0),                   // 5: solaris.control.v1.ProviderKind
+	(LogLevel)(0),                       // 6: solaris.control.v1.LogLevel
+	(*Request)(nil),                     // 7: solaris.control.v1.Request
+	(*Response)(nil),                    // 8: solaris.control.v1.Response
+	(*Empty)(nil),                       // 9: solaris.control.v1.Empty
+	(*Error)(nil),                       // 10: solaris.control.v1.Error
+	(*GetInfoRequest)(nil),              // 11: solaris.control.v1.GetInfoRequest
+	(*GetInfoResponse)(nil),             // 12: solaris.control.v1.GetInfoResponse
+	(*ClaimRequest)(nil),                // 13: solaris.control.v1.ClaimRequest
+	(*RunOptions)(nil),                  // 14: solaris.control.v1.RunOptions
+	(*ValidateRequest)(nil),             // 15: solaris.control.v1.ValidateRequest
+	(*StartRequest)(nil),                // 16: solaris.control.v1.StartRequest
+	(*ReloadRequest)(nil),               // 17: solaris.control.v1.ReloadRequest
+	(*Composition)(nil),                 // 18: solaris.control.v1.Composition
+	(*CompositionSource)(nil),           // 19: solaris.control.v1.CompositionSource
+	(*CompositionReport)(nil),           // 20: solaris.control.v1.CompositionReport
+	(*CompositionWarning)(nil),          // 21: solaris.control.v1.CompositionWarning
+	(*ComposedGroup)(nil),               // 22: solaris.control.v1.ComposedGroup
+	(*PoolNode)(nil),                    // 23: solaris.control.v1.PoolNode
+	(*StopRequest)(nil),                 // 24: solaris.control.v1.StopRequest
+	(*SetSystemProxyRequest)(nil),       // 25: solaris.control.v1.SetSystemProxyRequest
+	(*GetStatusRequest)(nil),            // 26: solaris.control.v1.GetStatusRequest
+	(*GetStatusResponse)(nil),           // 27: solaris.control.v1.GetStatusResponse
+	(*SetModeRequest)(nil),              // 28: solaris.control.v1.SetModeRequest
+	(*Proxy)(nil),                       // 29: solaris.control.v1.Proxy
+	(*ProxyGroup)(nil),                  // 30: solaris.control.v1.ProxyGroup
+	(*ListGroupsRequest)(nil),           // 31: solaris.control.v1.ListGroupsRequest
+	(*ListGroupsResponse)(nil),          // 32: solaris.control.v1.ListGroupsResponse
+	(*GetGroupRequest)(nil),             // 33: solaris.control.v1.GetGroupRequest
+	(*GetGroupResponse)(nil),            // 34: solaris.control.v1.GetGroupResponse
+	(*SelectProxyRequest)(nil),          // 35: solaris.control.v1.SelectProxyRequest
+	(*HealthCheckRequest)(nil),          // 36: solaris.control.v1.HealthCheckRequest
+	(*TestDelayRequest)(nil),            // 37: solaris.control.v1.TestDelayRequest
+	(*TestDelayResponse)(nil),           // 38: solaris.control.v1.TestDelayResponse
+	(*Provider)(nil),                    // 39: solaris.control.v1.Provider
+	(*ListProvidersRequest)(nil),        // 40: solaris.control.v1.ListProvidersRequest
+	(*ListProvidersResponse)(nil),       // 41: solaris.control.v1.ListProvidersResponse
+	(*UpdateProviderRequest)(nil),       // 42: solaris.control.v1.UpdateProviderRequest
+	(*Rule)(nil),                        // 43: solaris.control.v1.Rule
+	(*ListRulesRequest)(nil),            // 44: solaris.control.v1.ListRulesRequest
+	(*ListRulesResponse)(nil),           // 45: solaris.control.v1.ListRulesResponse
+	(*CloseConnectionRequest)(nil),      // 46: solaris.control.v1.CloseConnectionRequest
+	(*CloseAllConnectionsRequest)(nil),  // 47: solaris.control.v1.CloseAllConnectionsRequest
+	(*FlushFakeIPRequest)(nil),          // 48: solaris.control.v1.FlushFakeIPRequest
+	(*FlushDNSCacheRequest)(nil),        // 49: solaris.control.v1.FlushDNSCacheRequest
+	(*SubscribeLogsRequest)(nil),        // 50: solaris.control.v1.SubscribeLogsRequest
+	(*SubscribeTrafficRequest)(nil),     // 51: solaris.control.v1.SubscribeTrafficRequest
+	(*SubscribeConnectionsRequest)(nil), // 52: solaris.control.v1.SubscribeConnectionsRequest
+	(*SubscribeResponse)(nil),           // 53: solaris.control.v1.SubscribeResponse
+	(*PollEventsRequest)(nil),           // 54: solaris.control.v1.PollEventsRequest
+	(*PollEventsResponse)(nil),          // 55: solaris.control.v1.PollEventsResponse
+	(*UnsubscribeRequest)(nil),          // 56: solaris.control.v1.UnsubscribeRequest
+	(*Event)(nil),                       // 57: solaris.control.v1.Event
+	(*LogEntry)(nil),                    // 58: solaris.control.v1.LogEntry
+	(*TrafficSample)(nil),               // 59: solaris.control.v1.TrafficSample
+	(*Connection)(nil),                  // 60: solaris.control.v1.Connection
+	(*ConnectionSnapshot)(nil),          // 61: solaris.control.v1.ConnectionSnapshot
+	(*InspectSourceRequest)(nil),        // 62: solaris.control.v1.InspectSourceRequest
+	(*InspectSourceResponse)(nil),       // 63: solaris.control.v1.InspectSourceResponse
+	(*SourceNode)(nil),                  // 64: solaris.control.v1.SourceNode
+	(*ListGeoCategoriesRequest)(nil),    // 65: solaris.control.v1.ListGeoCategoriesRequest
+	(*ListGeoCategoriesResponse)(nil),   // 66: solaris.control.v1.ListGeoCategoriesResponse
+	(*GeoCategories)(nil),               // 67: solaris.control.v1.GeoCategories
 }
-var file_mihomo_desktop_protocol_control_proto_depIdxs = []int32{
-	11, // 0: mihomo_desktop.control.v1.Request.get_info:type_name -> mihomo_desktop.control.v1.GetInfoRequest
-	13, // 1: mihomo_desktop.control.v1.Request.claim:type_name -> mihomo_desktop.control.v1.ClaimRequest
-	15, // 2: mihomo_desktop.control.v1.Request.validate:type_name -> mihomo_desktop.control.v1.ValidateRequest
-	16, // 3: mihomo_desktop.control.v1.Request.start:type_name -> mihomo_desktop.control.v1.StartRequest
-	17, // 4: mihomo_desktop.control.v1.Request.reload:type_name -> mihomo_desktop.control.v1.ReloadRequest
-	24, // 5: mihomo_desktop.control.v1.Request.stop:type_name -> mihomo_desktop.control.v1.StopRequest
-	25, // 6: mihomo_desktop.control.v1.Request.set_system_proxy:type_name -> mihomo_desktop.control.v1.SetSystemProxyRequest
-	26, // 7: mihomo_desktop.control.v1.Request.get_status:type_name -> mihomo_desktop.control.v1.GetStatusRequest
-	28, // 8: mihomo_desktop.control.v1.Request.set_mode:type_name -> mihomo_desktop.control.v1.SetModeRequest
-	31, // 9: mihomo_desktop.control.v1.Request.list_groups:type_name -> mihomo_desktop.control.v1.ListGroupsRequest
-	33, // 10: mihomo_desktop.control.v1.Request.get_group:type_name -> mihomo_desktop.control.v1.GetGroupRequest
-	35, // 11: mihomo_desktop.control.v1.Request.select_proxy:type_name -> mihomo_desktop.control.v1.SelectProxyRequest
-	36, // 12: mihomo_desktop.control.v1.Request.health_check:type_name -> mihomo_desktop.control.v1.HealthCheckRequest
-	37, // 13: mihomo_desktop.control.v1.Request.test_delay:type_name -> mihomo_desktop.control.v1.TestDelayRequest
-	40, // 14: mihomo_desktop.control.v1.Request.list_providers:type_name -> mihomo_desktop.control.v1.ListProvidersRequest
-	42, // 15: mihomo_desktop.control.v1.Request.update_provider:type_name -> mihomo_desktop.control.v1.UpdateProviderRequest
-	44, // 16: mihomo_desktop.control.v1.Request.list_rules:type_name -> mihomo_desktop.control.v1.ListRulesRequest
-	46, // 17: mihomo_desktop.control.v1.Request.close_connection:type_name -> mihomo_desktop.control.v1.CloseConnectionRequest
-	47, // 18: mihomo_desktop.control.v1.Request.close_all_connections:type_name -> mihomo_desktop.control.v1.CloseAllConnectionsRequest
-	48, // 19: mihomo_desktop.control.v1.Request.flush_fake_ip:type_name -> mihomo_desktop.control.v1.FlushFakeIPRequest
-	49, // 20: mihomo_desktop.control.v1.Request.flush_dns_cache:type_name -> mihomo_desktop.control.v1.FlushDNSCacheRequest
-	50, // 21: mihomo_desktop.control.v1.Request.subscribe_logs:type_name -> mihomo_desktop.control.v1.SubscribeLogsRequest
-	51, // 22: mihomo_desktop.control.v1.Request.subscribe_traffic:type_name -> mihomo_desktop.control.v1.SubscribeTrafficRequest
-	52, // 23: mihomo_desktop.control.v1.Request.subscribe_connections:type_name -> mihomo_desktop.control.v1.SubscribeConnectionsRequest
-	54, // 24: mihomo_desktop.control.v1.Request.poll_events:type_name -> mihomo_desktop.control.v1.PollEventsRequest
-	56, // 25: mihomo_desktop.control.v1.Request.unsubscribe:type_name -> mihomo_desktop.control.v1.UnsubscribeRequest
-	62, // 26: mihomo_desktop.control.v1.Request.inspect_source:type_name -> mihomo_desktop.control.v1.InspectSourceRequest
-	65, // 27: mihomo_desktop.control.v1.Request.list_geo_categories:type_name -> mihomo_desktop.control.v1.ListGeoCategoriesRequest
-	10, // 28: mihomo_desktop.control.v1.Response.error:type_name -> mihomo_desktop.control.v1.Error
-	9,  // 29: mihomo_desktop.control.v1.Response.empty:type_name -> mihomo_desktop.control.v1.Empty
-	12, // 30: mihomo_desktop.control.v1.Response.get_info:type_name -> mihomo_desktop.control.v1.GetInfoResponse
-	20, // 31: mihomo_desktop.control.v1.Response.composition:type_name -> mihomo_desktop.control.v1.CompositionReport
-	27, // 32: mihomo_desktop.control.v1.Response.get_status:type_name -> mihomo_desktop.control.v1.GetStatusResponse
-	32, // 33: mihomo_desktop.control.v1.Response.list_groups:type_name -> mihomo_desktop.control.v1.ListGroupsResponse
-	34, // 34: mihomo_desktop.control.v1.Response.get_group:type_name -> mihomo_desktop.control.v1.GetGroupResponse
-	38, // 35: mihomo_desktop.control.v1.Response.test_delay:type_name -> mihomo_desktop.control.v1.TestDelayResponse
-	41, // 36: mihomo_desktop.control.v1.Response.list_providers:type_name -> mihomo_desktop.control.v1.ListProvidersResponse
-	45, // 37: mihomo_desktop.control.v1.Response.list_rules:type_name -> mihomo_desktop.control.v1.ListRulesResponse
-	53, // 38: mihomo_desktop.control.v1.Response.subscribe:type_name -> mihomo_desktop.control.v1.SubscribeResponse
-	55, // 39: mihomo_desktop.control.v1.Response.poll_events:type_name -> mihomo_desktop.control.v1.PollEventsResponse
-	63, // 40: mihomo_desktop.control.v1.Response.inspect_source:type_name -> mihomo_desktop.control.v1.InspectSourceResponse
-	66, // 41: mihomo_desktop.control.v1.Response.list_geo_categories:type_name -> mihomo_desktop.control.v1.ListGeoCategoriesResponse
-	0,  // 42: mihomo_desktop.control.v1.GetInfoResponse.state:type_name -> mihomo_desktop.control.v1.RunState
-	1,  // 43: mihomo_desktop.control.v1.GetInfoResponse.ownership:type_name -> mihomo_desktop.control.v1.Ownership
-	18, // 44: mihomo_desktop.control.v1.ValidateRequest.composition:type_name -> mihomo_desktop.control.v1.Composition
-	18, // 45: mihomo_desktop.control.v1.StartRequest.composition:type_name -> mihomo_desktop.control.v1.Composition
-	14, // 46: mihomo_desktop.control.v1.StartRequest.options:type_name -> mihomo_desktop.control.v1.RunOptions
-	18, // 47: mihomo_desktop.control.v1.ReloadRequest.composition:type_name -> mihomo_desktop.control.v1.Composition
-	14, // 48: mihomo_desktop.control.v1.ReloadRequest.options:type_name -> mihomo_desktop.control.v1.RunOptions
-	19, // 49: mihomo_desktop.control.v1.Composition.sources:type_name -> mihomo_desktop.control.v1.CompositionSource
-	21, // 50: mihomo_desktop.control.v1.CompositionReport.warnings:type_name -> mihomo_desktop.control.v1.CompositionWarning
-	22, // 51: mihomo_desktop.control.v1.CompositionReport.groups:type_name -> mihomo_desktop.control.v1.ComposedGroup
-	43, // 52: mihomo_desktop.control.v1.CompositionReport.rules:type_name -> mihomo_desktop.control.v1.Rule
-	23, // 53: mihomo_desktop.control.v1.CompositionReport.nodes:type_name -> mihomo_desktop.control.v1.PoolNode
-	2,  // 54: mihomo_desktop.control.v1.ComposedGroup.kind:type_name -> mihomo_desktop.control.v1.GroupKind
-	0,  // 55: mihomo_desktop.control.v1.GetStatusResponse.state:type_name -> mihomo_desktop.control.v1.RunState
-	3,  // 56: mihomo_desktop.control.v1.GetStatusResponse.mode:type_name -> mihomo_desktop.control.v1.Mode
-	10, // 57: mihomo_desktop.control.v1.GetStatusResponse.last_error:type_name -> mihomo_desktop.control.v1.Error
-	3,  // 58: mihomo_desktop.control.v1.SetModeRequest.mode:type_name -> mihomo_desktop.control.v1.Mode
-	29, // 59: mihomo_desktop.control.v1.ProxyGroup.proxies:type_name -> mihomo_desktop.control.v1.Proxy
-	4,  // 60: mihomo_desktop.control.v1.ListGroupsRequest.sort:type_name -> mihomo_desktop.control.v1.GroupSort
-	30, // 61: mihomo_desktop.control.v1.ListGroupsResponse.groups:type_name -> mihomo_desktop.control.v1.ProxyGroup
-	4,  // 62: mihomo_desktop.control.v1.GetGroupRequest.sort:type_name -> mihomo_desktop.control.v1.GroupSort
-	30, // 63: mihomo_desktop.control.v1.GetGroupResponse.group:type_name -> mihomo_desktop.control.v1.ProxyGroup
-	5,  // 64: mihomo_desktop.control.v1.Provider.kind:type_name -> mihomo_desktop.control.v1.ProviderKind
-	39, // 65: mihomo_desktop.control.v1.ListProvidersResponse.providers:type_name -> mihomo_desktop.control.v1.Provider
-	5,  // 66: mihomo_desktop.control.v1.UpdateProviderRequest.kind:type_name -> mihomo_desktop.control.v1.ProviderKind
-	43, // 67: mihomo_desktop.control.v1.ListRulesResponse.rules:type_name -> mihomo_desktop.control.v1.Rule
-	6,  // 68: mihomo_desktop.control.v1.SubscribeLogsRequest.level:type_name -> mihomo_desktop.control.v1.LogLevel
-	57, // 69: mihomo_desktop.control.v1.PollEventsResponse.events:type_name -> mihomo_desktop.control.v1.Event
-	58, // 70: mihomo_desktop.control.v1.Event.log:type_name -> mihomo_desktop.control.v1.LogEntry
-	59, // 71: mihomo_desktop.control.v1.Event.traffic:type_name -> mihomo_desktop.control.v1.TrafficSample
-	61, // 72: mihomo_desktop.control.v1.Event.connections:type_name -> mihomo_desktop.control.v1.ConnectionSnapshot
-	6,  // 73: mihomo_desktop.control.v1.LogEntry.level:type_name -> mihomo_desktop.control.v1.LogLevel
-	60, // 74: mihomo_desktop.control.v1.ConnectionSnapshot.connections:type_name -> mihomo_desktop.control.v1.Connection
-	64, // 75: mihomo_desktop.control.v1.InspectSourceResponse.nodes:type_name -> mihomo_desktop.control.v1.SourceNode
-	67, // 76: mihomo_desktop.control.v1.ListGeoCategoriesResponse.geosite:type_name -> mihomo_desktop.control.v1.GeoCategories
-	67, // 77: mihomo_desktop.control.v1.ListGeoCategoriesResponse.geoip:type_name -> mihomo_desktop.control.v1.GeoCategories
+var file_solaris_protocol_control_proto_depIdxs = []int32{
+	11, // 0: solaris.control.v1.Request.get_info:type_name -> solaris.control.v1.GetInfoRequest
+	13, // 1: solaris.control.v1.Request.claim:type_name -> solaris.control.v1.ClaimRequest
+	15, // 2: solaris.control.v1.Request.validate:type_name -> solaris.control.v1.ValidateRequest
+	16, // 3: solaris.control.v1.Request.start:type_name -> solaris.control.v1.StartRequest
+	17, // 4: solaris.control.v1.Request.reload:type_name -> solaris.control.v1.ReloadRequest
+	24, // 5: solaris.control.v1.Request.stop:type_name -> solaris.control.v1.StopRequest
+	25, // 6: solaris.control.v1.Request.set_system_proxy:type_name -> solaris.control.v1.SetSystemProxyRequest
+	26, // 7: solaris.control.v1.Request.get_status:type_name -> solaris.control.v1.GetStatusRequest
+	28, // 8: solaris.control.v1.Request.set_mode:type_name -> solaris.control.v1.SetModeRequest
+	31, // 9: solaris.control.v1.Request.list_groups:type_name -> solaris.control.v1.ListGroupsRequest
+	33, // 10: solaris.control.v1.Request.get_group:type_name -> solaris.control.v1.GetGroupRequest
+	35, // 11: solaris.control.v1.Request.select_proxy:type_name -> solaris.control.v1.SelectProxyRequest
+	36, // 12: solaris.control.v1.Request.health_check:type_name -> solaris.control.v1.HealthCheckRequest
+	37, // 13: solaris.control.v1.Request.test_delay:type_name -> solaris.control.v1.TestDelayRequest
+	40, // 14: solaris.control.v1.Request.list_providers:type_name -> solaris.control.v1.ListProvidersRequest
+	42, // 15: solaris.control.v1.Request.update_provider:type_name -> solaris.control.v1.UpdateProviderRequest
+	44, // 16: solaris.control.v1.Request.list_rules:type_name -> solaris.control.v1.ListRulesRequest
+	46, // 17: solaris.control.v1.Request.close_connection:type_name -> solaris.control.v1.CloseConnectionRequest
+	47, // 18: solaris.control.v1.Request.close_all_connections:type_name -> solaris.control.v1.CloseAllConnectionsRequest
+	48, // 19: solaris.control.v1.Request.flush_fake_ip:type_name -> solaris.control.v1.FlushFakeIPRequest
+	49, // 20: solaris.control.v1.Request.flush_dns_cache:type_name -> solaris.control.v1.FlushDNSCacheRequest
+	50, // 21: solaris.control.v1.Request.subscribe_logs:type_name -> solaris.control.v1.SubscribeLogsRequest
+	51, // 22: solaris.control.v1.Request.subscribe_traffic:type_name -> solaris.control.v1.SubscribeTrafficRequest
+	52, // 23: solaris.control.v1.Request.subscribe_connections:type_name -> solaris.control.v1.SubscribeConnectionsRequest
+	54, // 24: solaris.control.v1.Request.poll_events:type_name -> solaris.control.v1.PollEventsRequest
+	56, // 25: solaris.control.v1.Request.unsubscribe:type_name -> solaris.control.v1.UnsubscribeRequest
+	62, // 26: solaris.control.v1.Request.inspect_source:type_name -> solaris.control.v1.InspectSourceRequest
+	65, // 27: solaris.control.v1.Request.list_geo_categories:type_name -> solaris.control.v1.ListGeoCategoriesRequest
+	10, // 28: solaris.control.v1.Response.error:type_name -> solaris.control.v1.Error
+	9,  // 29: solaris.control.v1.Response.empty:type_name -> solaris.control.v1.Empty
+	12, // 30: solaris.control.v1.Response.get_info:type_name -> solaris.control.v1.GetInfoResponse
+	20, // 31: solaris.control.v1.Response.composition:type_name -> solaris.control.v1.CompositionReport
+	27, // 32: solaris.control.v1.Response.get_status:type_name -> solaris.control.v1.GetStatusResponse
+	32, // 33: solaris.control.v1.Response.list_groups:type_name -> solaris.control.v1.ListGroupsResponse
+	34, // 34: solaris.control.v1.Response.get_group:type_name -> solaris.control.v1.GetGroupResponse
+	38, // 35: solaris.control.v1.Response.test_delay:type_name -> solaris.control.v1.TestDelayResponse
+	41, // 36: solaris.control.v1.Response.list_providers:type_name -> solaris.control.v1.ListProvidersResponse
+	45, // 37: solaris.control.v1.Response.list_rules:type_name -> solaris.control.v1.ListRulesResponse
+	53, // 38: solaris.control.v1.Response.subscribe:type_name -> solaris.control.v1.SubscribeResponse
+	55, // 39: solaris.control.v1.Response.poll_events:type_name -> solaris.control.v1.PollEventsResponse
+	63, // 40: solaris.control.v1.Response.inspect_source:type_name -> solaris.control.v1.InspectSourceResponse
+	66, // 41: solaris.control.v1.Response.list_geo_categories:type_name -> solaris.control.v1.ListGeoCategoriesResponse
+	0,  // 42: solaris.control.v1.GetInfoResponse.state:type_name -> solaris.control.v1.RunState
+	1,  // 43: solaris.control.v1.GetInfoResponse.ownership:type_name -> solaris.control.v1.Ownership
+	18, // 44: solaris.control.v1.ValidateRequest.composition:type_name -> solaris.control.v1.Composition
+	18, // 45: solaris.control.v1.StartRequest.composition:type_name -> solaris.control.v1.Composition
+	14, // 46: solaris.control.v1.StartRequest.options:type_name -> solaris.control.v1.RunOptions
+	18, // 47: solaris.control.v1.ReloadRequest.composition:type_name -> solaris.control.v1.Composition
+	14, // 48: solaris.control.v1.ReloadRequest.options:type_name -> solaris.control.v1.RunOptions
+	19, // 49: solaris.control.v1.Composition.sources:type_name -> solaris.control.v1.CompositionSource
+	21, // 50: solaris.control.v1.CompositionReport.warnings:type_name -> solaris.control.v1.CompositionWarning
+	22, // 51: solaris.control.v1.CompositionReport.groups:type_name -> solaris.control.v1.ComposedGroup
+	43, // 52: solaris.control.v1.CompositionReport.rules:type_name -> solaris.control.v1.Rule
+	23, // 53: solaris.control.v1.CompositionReport.nodes:type_name -> solaris.control.v1.PoolNode
+	2,  // 54: solaris.control.v1.ComposedGroup.kind:type_name -> solaris.control.v1.GroupKind
+	0,  // 55: solaris.control.v1.GetStatusResponse.state:type_name -> solaris.control.v1.RunState
+	3,  // 56: solaris.control.v1.GetStatusResponse.mode:type_name -> solaris.control.v1.Mode
+	10, // 57: solaris.control.v1.GetStatusResponse.last_error:type_name -> solaris.control.v1.Error
+	3,  // 58: solaris.control.v1.SetModeRequest.mode:type_name -> solaris.control.v1.Mode
+	29, // 59: solaris.control.v1.ProxyGroup.proxies:type_name -> solaris.control.v1.Proxy
+	4,  // 60: solaris.control.v1.ListGroupsRequest.sort:type_name -> solaris.control.v1.GroupSort
+	30, // 61: solaris.control.v1.ListGroupsResponse.groups:type_name -> solaris.control.v1.ProxyGroup
+	4,  // 62: solaris.control.v1.GetGroupRequest.sort:type_name -> solaris.control.v1.GroupSort
+	30, // 63: solaris.control.v1.GetGroupResponse.group:type_name -> solaris.control.v1.ProxyGroup
+	5,  // 64: solaris.control.v1.Provider.kind:type_name -> solaris.control.v1.ProviderKind
+	39, // 65: solaris.control.v1.ListProvidersResponse.providers:type_name -> solaris.control.v1.Provider
+	5,  // 66: solaris.control.v1.UpdateProviderRequest.kind:type_name -> solaris.control.v1.ProviderKind
+	43, // 67: solaris.control.v1.ListRulesResponse.rules:type_name -> solaris.control.v1.Rule
+	6,  // 68: solaris.control.v1.SubscribeLogsRequest.level:type_name -> solaris.control.v1.LogLevel
+	57, // 69: solaris.control.v1.PollEventsResponse.events:type_name -> solaris.control.v1.Event
+	58, // 70: solaris.control.v1.Event.log:type_name -> solaris.control.v1.LogEntry
+	59, // 71: solaris.control.v1.Event.traffic:type_name -> solaris.control.v1.TrafficSample
+	61, // 72: solaris.control.v1.Event.connections:type_name -> solaris.control.v1.ConnectionSnapshot
+	6,  // 73: solaris.control.v1.LogEntry.level:type_name -> solaris.control.v1.LogLevel
+	60, // 74: solaris.control.v1.ConnectionSnapshot.connections:type_name -> solaris.control.v1.Connection
+	64, // 75: solaris.control.v1.InspectSourceResponse.nodes:type_name -> solaris.control.v1.SourceNode
+	67, // 76: solaris.control.v1.ListGeoCategoriesResponse.geosite:type_name -> solaris.control.v1.GeoCategories
+	67, // 77: solaris.control.v1.ListGeoCategoriesResponse.geoip:type_name -> solaris.control.v1.GeoCategories
 	78, // [78:78] is the sub-list for method output_type
 	78, // [78:78] is the sub-list for method input_type
 	78, // [78:78] is the sub-list for extension type_name
@@ -5051,12 +5051,12 @@ var file_mihomo_desktop_protocol_control_proto_depIdxs = []int32{
 	0,  // [0:78] is the sub-list for field type_name
 }
 
-func init() { file_mihomo_desktop_protocol_control_proto_init() }
-func file_mihomo_desktop_protocol_control_proto_init() {
-	if File_mihomo_desktop_protocol_control_proto != nil {
+func init() { file_solaris_protocol_control_proto_init() }
+func file_solaris_protocol_control_proto_init() {
+	if File_solaris_protocol_control_proto != nil {
 		return
 	}
-	file_mihomo_desktop_protocol_control_proto_msgTypes[0].OneofWrappers = []any{
+	file_solaris_protocol_control_proto_msgTypes[0].OneofWrappers = []any{
 		(*Request_GetInfo)(nil),
 		(*Request_Claim)(nil),
 		(*Request_Validate)(nil),
@@ -5086,7 +5086,7 @@ func file_mihomo_desktop_protocol_control_proto_init() {
 		(*Request_InspectSource)(nil),
 		(*Request_ListGeoCategories)(nil),
 	}
-	file_mihomo_desktop_protocol_control_proto_msgTypes[1].OneofWrappers = []any{
+	file_solaris_protocol_control_proto_msgTypes[1].OneofWrappers = []any{
 		(*Response_Error)(nil),
 		(*Response_Empty)(nil),
 		(*Response_GetInfo)(nil),
@@ -5102,21 +5102,21 @@ func file_mihomo_desktop_protocol_control_proto_init() {
 		(*Response_InspectSource)(nil),
 		(*Response_ListGeoCategories)(nil),
 	}
-	file_mihomo_desktop_protocol_control_proto_msgTypes[8].OneofWrappers = []any{
+	file_solaris_protocol_control_proto_msgTypes[8].OneofWrappers = []any{
 		(*ValidateRequest_ConfigYaml)(nil),
 		(*ValidateRequest_Composition)(nil),
 	}
-	file_mihomo_desktop_protocol_control_proto_msgTypes[9].OneofWrappers = []any{
+	file_solaris_protocol_control_proto_msgTypes[9].OneofWrappers = []any{
 		(*StartRequest_ConfigYaml)(nil),
 		(*StartRequest_Composition)(nil),
 	}
-	file_mihomo_desktop_protocol_control_proto_msgTypes[10].OneofWrappers = []any{
+	file_solaris_protocol_control_proto_msgTypes[10].OneofWrappers = []any{
 		(*ReloadRequest_ConfigYaml)(nil),
 		(*ReloadRequest_Composition)(nil),
 	}
-	file_mihomo_desktop_protocol_control_proto_msgTypes[20].OneofWrappers = []any{}
-	file_mihomo_desktop_protocol_control_proto_msgTypes[22].OneofWrappers = []any{}
-	file_mihomo_desktop_protocol_control_proto_msgTypes[50].OneofWrappers = []any{
+	file_solaris_protocol_control_proto_msgTypes[20].OneofWrappers = []any{}
+	file_solaris_protocol_control_proto_msgTypes[22].OneofWrappers = []any{}
+	file_solaris_protocol_control_proto_msgTypes[50].OneofWrappers = []any{
 		(*Event_Log)(nil),
 		(*Event_Traffic)(nil),
 		(*Event_Connections)(nil),
@@ -5125,18 +5125,18 @@ func file_mihomo_desktop_protocol_control_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mihomo_desktop_protocol_control_proto_rawDesc), len(file_mihomo_desktop_protocol_control_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_solaris_protocol_control_proto_rawDesc), len(file_solaris_protocol_control_proto_rawDesc)),
 			NumEnums:      7,
 			NumMessages:   61,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_mihomo_desktop_protocol_control_proto_goTypes,
-		DependencyIndexes: file_mihomo_desktop_protocol_control_proto_depIdxs,
-		EnumInfos:         file_mihomo_desktop_protocol_control_proto_enumTypes,
-		MessageInfos:      file_mihomo_desktop_protocol_control_proto_msgTypes,
+		GoTypes:           file_solaris_protocol_control_proto_goTypes,
+		DependencyIndexes: file_solaris_protocol_control_proto_depIdxs,
+		EnumInfos:         file_solaris_protocol_control_proto_enumTypes,
+		MessageInfos:      file_solaris_protocol_control_proto_msgTypes,
 	}.Build()
-	File_mihomo_desktop_protocol_control_proto = out.File
-	file_mihomo_desktop_protocol_control_proto_goTypes = nil
-	file_mihomo_desktop_protocol_control_proto_depIdxs = nil
+	File_solaris_protocol_control_proto = out.File
+	file_solaris_protocol_control_proto_goTypes = nil
+	file_solaris_protocol_control_proto_depIdxs = nil
 }

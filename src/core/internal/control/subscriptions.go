@@ -10,8 +10,8 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/controlpb"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/peer"
+	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
+	"github.com/Ember-Moth/Solaris/src/core/internal/peer"
 )
 
 // Subscriptions are pulled, not pushed (docs/architecture.md §4.4): each one buffers its

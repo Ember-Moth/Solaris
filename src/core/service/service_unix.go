@@ -15,11 +15,11 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/control"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/engine"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/peer"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/product"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/server"
+	"github.com/Ember-Moth/Solaris/src/core/internal/control"
+	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
+	"github.com/Ember-Moth/Solaris/src/core/internal/peer"
+	"github.com/Ember-Moth/Solaris/src/core/internal/product"
+	"github.com/Ember-Moth/Solaris/src/core/internal/server"
 )
 
 // The development server runs on the developer's own machine, so it must never change

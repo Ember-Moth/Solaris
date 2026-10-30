@@ -75,12 +75,12 @@ jobs:
       - name: GEO data and its category list
         run: uv run python scripts/fetch_geodata.py --check
       - name: Build the development service
-        run: go -C src/core build -o "$RUNNER_TEMP/mihomo-desktop-service" ./service
+        run: go -C src/core build -o "$RUNNER_TEMP/solaris-service" ./service
       - name: End-to-end tests
         env:
           QT_QPA_PLATFORM: offscreen
-          MIHOMO_DESKTOP_E2E: "1"
-          MIHOMO_DESKTOP_E2E_SERVICE: ${{ runner.temp }}/mihomo-desktop-service
+          SOLARIS_E2E: "1"
+          SOLARIS_E2E_SERVICE: ${{ runner.temp }}/solaris-service
         run: uv run pytest -q tests/e2e
 
   go:
@@ -111,7 +111,7 @@ jobs:
         run: GOOS=windows GOARCH=amd64 go build -o /dev/null ./service
       - name: macOS extension archive
         if: runner.os == 'macOS'
-        run: go build -buildmode=c-archive -o "$RUNNER_TEMP/libmihomo_desktop.a" ./apple
+        run: go build -buildmode=c-archive -o "$RUNNER_TEMP/libsolaris.a" ./apple
 
   # The owned-TUN test creates a real TUN, so it runs only here, inside network
   # namespaces (docs/architecture.md §11). md-tun holds the engine; md-srv, on the
@@ -166,9 +166,9 @@ jobs:
             sudo ip netns exec md-tun curl -fsS --max-time 1 http://10.201.0.1:8080/ && break
             sleep 0.2
           done
-          sudo env MIHOMO_DESKTOP_TUN_TEST=1 \
-            MIHOMO_DESKTOP_TUN_TARGET=http://10.201.0.1:8080/ \
-            MIHOMO_DESKTOP_TUN_STACKS="${{ matrix.stacks }}" \
+          sudo env SOLARIS_TUN_TEST=1 \
+            SOLARIS_TUN_TARGET=http://10.201.0.1:8080/ \
+            SOLARIS_TUN_STACKS="${{ matrix.stacks }}" \
             ip netns exec md-tun "$RUNNER_TEMP/engine-tun.test" -test.run '^TestOwnedTUN$' -test.v -test.count=1
       # systemd-resolved serves the runner, outside the namespaces, yet takes interface
       # indexes from inside them over D-Bus: sing-tun's resolvectl calls for mdtun0 land on

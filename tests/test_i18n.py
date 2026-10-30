@@ -7,14 +7,14 @@ import pytest
 from PySide6.QtCore import QCoreApplication, QLocale, QObject
 from pytestqt.qtbot import QtBot
 
-from mihomo_desktop.host.base import HostError
-from mihomo_desktop.i18n import LANG_ENV, resolve_language, ui_locale
-from mihomo_desktop.models import format as fmt
-from mihomo_desktop.models.profiles import ProfileError
-from mihomo_desktop.models.store import ProfileStore
-from mihomo_desktop.viewmodels.composition import ViewModels, compose
-from mihomo_desktop.viewmodels.feedback import failure_text
 from scripts.gen_i18n import stale_binaries, stale_catalogs, unfinished_messages
+from solaris.host.base import HostError
+from solaris.i18n import LANG_ENV, resolve_language, ui_locale
+from solaris.models import format as fmt
+from solaris.models.profiles import ProfileError
+from solaris.models.store import ProfileStore
+from solaris.viewmodels.composition import ViewModels, compose
+from solaris.viewmodels.feedback import failure_text
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
 
 NOW = datetime(2026, 10, 29, 12).timestamp()

@@ -1,5 +1,5 @@
 // Command service is the LocalSystem service on Windows (docs/architecture.md §5),
-// built as mihomo-desktop-service.exe with go build -o. On macOS and Linux it only
+// built as solaris-service.exe with go build -o. On macOS and Linux it only
 // runs as a development server on a Unix socket (§11); the macOS release uses the
 // system extension instead.
 package main

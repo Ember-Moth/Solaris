@@ -3,7 +3,7 @@ import struct
 
 import pytest
 
-from mihomo_desktop.protocol.frame import (
+from solaris.protocol.frame import (
     HEADER_SIZE,
     KIND_REQUEST,
     KIND_RESPONSE,

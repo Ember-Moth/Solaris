@@ -10,11 +10,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/compose"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/controlpb"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/engine"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/frame"
-	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/peer"
+	"github.com/Ember-Moth/Solaris/src/core/internal/compose"
+	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
+	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
+	"github.com/Ember-Moth/Solaris/src/core/internal/frame"
+	"github.com/Ember-Moth/Solaris/src/core/internal/peer"
 )
 
 // vectorEngine answers the shared vectors' requests with fixed results and keeps what it

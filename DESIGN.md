@@ -1,6 +1,6 @@
 ---
 version: alpha
-name: Mihomo Desktop
+name: Solaris
 description: 石墨灰底、白色分组、单一信号蓝强调的原生风格桌面代理客户端；信息密集、控件紧凑，拒绝"AI 仪表盘"式的大按钮和数字卡片。
 colors:
   primary: "#1F5EFF"
@@ -527,11 +527,11 @@ components:
     typography: "{typography.body-sm}"
 ---
 
-# Mihomo Desktop
+# Solaris
 
 ## Overview
 
-Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 PySide6 / QML 实现。用户主要做四件事：确认隧道是否在运行、切换出站模式和节点、管理订阅、排查连接和日志。界面要让这四件事一眼可见、一两下可改，其余时间保持安静。
+Solaris 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 PySide6 / QML 实现。用户主要做四件事：确认隧道是否在运行、切换出站模式和节点、管理订阅、排查连接和日志。界面要让这四件事一眼可见、一两下可改，其余时间保持安静。
 
 视觉主题是**原生系统工具**：像 macOS「系统设置」或 Windows 11「设置」，而不是营销页或数据大屏。浅灰石墨底，内容放在白色分组里，组内用细线分行；全局只有一个信号蓝强调色，只用在开关开启、主操作、焦点和当前项标记上。信息密度偏高，控件紧凑，数字用等宽字体。
 
@@ -592,7 +592,7 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
 
 ## Typography
 
-拉丁字符用 **Inter**，数据用 **JetBrains Mono**，两者都是 OFL 许可，随应用打包在 `src/mihomo_desktop/ui/fonts/`（QML `FontLoader`），各自的 `OFL.txt` 一并分发。只打包用到的字重：Inter 4.1 的 400、500、600，JetBrains Mono 2.304 的 400。中文由系统字体回退：macOS 为 PingFang SC，Windows 为 Microsoft YaHei UI。Inter 不可用时回退到系统界面字体（SF Pro / Segoe UI Variable），JetBrains Mono 回退到 SF Mono / Consolas。
+拉丁字符用 **Inter**，数据用 **JetBrains Mono**，两者都是 OFL 许可，随应用打包在 `src/solaris/ui/fonts/`（QML `FontLoader`），各自的 `OFL.txt` 一并分发。只打包用到的字重：Inter 4.1 的 400、500、600，JetBrains Mono 2.304 的 400。中文由系统字体回退：macOS 为 PingFang SC，Windows 为 Microsoft YaHei UI。Inter 不可用时回退到系统界面字体（SF Pro / Segoe UI Variable），JetBrains Mono 回退到 SF Mono / Consolas。
 
 | 角色 | token | 用途 |
 | --- | --- | --- |
@@ -697,7 +697,7 @@ Mihomo Desktop 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 P
   - 图形与侧栏左上角的标记相同（同为占位），画在 22 单位的视框里，描边 2.6，比界面图标粗，在 16–22px 的托盘尺寸下仍清楚；导出为 32px 的 SVG，放在 `ui/tray/`。
   - macOS 用模板图（黑色加不透明度），由系统按菜单栏外观着色。Windows 按任务栏的深浅各备一套：浅色任务栏用浅色外观的 `text`（`#15171C`），深色任务栏用白色。任务栏的深浅取系统的「默认 Windows 模式」，不取应用的外观，应用固定为深色时托盘图标也不跟着变。
   - 隧道未运行时整个图形 45% 不透明。不加彩色角标、状态圆点或第二种图形。
-  - 提示文字写「应用名 · 状态」，如「Mihomo Desktop · 已连接」。
+  - 提示文字写「应用名 · 状态」，如「Solaris · 已连接」。
   - 托盘菜单是系统原生菜单，外观跟随平台，不套用下文应用内菜单的样式。依次是：状态（不可点）、连接 / 断开、「出站模式」子菜单（单选）、打开主窗口、「退出界面（隧道保持运行）」，各组之间用分隔线。子菜单只出现在这里，是「不做多级子菜单」的例外。
   - Windows 上单击或双击图标打开主窗口，右键打开菜单；macOS 上单击打开菜单。
 - **页面标题栏**：见 Layout。连接状态放在概览页标题位置，写作「已连接 / 未连接」。连接与断开是一个普通按钮：已连接时为次要按钮「断开」，未连接时为主按钮「连接」。不做大号圆形开关。

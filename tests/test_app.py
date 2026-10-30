@@ -8,9 +8,9 @@ from PySide6.QtQuick import QQuickItem
 from PySide6.QtTest import QTest
 from pytestqt.qtbot import QtBot
 
-from mihomo_desktop.app import MAIN_QML, switch_language
-from mihomo_desktop.i18n import Translations
-from mihomo_desktop.viewmodels.composition import ViewModels
+from solaris.app import MAIN_QML, switch_language
+from solaris.i18n import Translations
+from solaris.viewmodels.composition import ViewModels
 from tests.support.appearance import SystemColorScheme
 from tests.support.window import Loaded, texts
 
