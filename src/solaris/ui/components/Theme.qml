@@ -38,6 +38,9 @@ QtObject {
     readonly property color info: dark ? "#8AAEFF" : "#1846C7"  // info
     readonly property color chartUpload: dark ? "#F28A4B" : "#C2410C"  // chart-upload
     readonly property color scrim: dark ? "#80000000" : "#3315171C"  // scrim
+    readonly property color captionHover: dark ? "#0FFFFFFF" : "#0F15171C"  // caption-hover
+    readonly property color captionPressed: dark ? "#0AFFFFFF" : "#0A15171C"  // caption-pressed
+    readonly property color captionClose: dark ? "#C42B1C" : "#C42B1C"  // caption-close
     readonly property color shadowOverlay: dark ? "#66000000" : "#1F15171C"  // shadow-overlay
     readonly property color shadowSegment: dark ? "#52000000" : "#1F15171C"  // shadow-segment
     readonly property color shadowNav: dark ? "#3D000000" : "#1415171C"  // shadow-nav
@@ -144,6 +147,11 @@ QtObject {
     readonly property int windowDefaultHeight: 800  // spacing.window-default-height
     readonly property int windowMinWidth: 960  // spacing.window-min-width
     readonly property int windowMinHeight: 640  // spacing.window-min-height
+    readonly property int titlebarHeight: 48  // spacing.titlebar-height
+    readonly property int titlebarPageTop: 6  // spacing.titlebar-page-top
+    readonly property int captionButtonWidth: 46  // spacing.caption-button-width
+    readonly property int sidebarTopMacos: 52  // spacing.sidebar-top-macos
+    readonly property int sidebarTopWindows: 9  // spacing.sidebar-top-windows
     readonly property int controlSm: 32  // spacing.control-sm
     readonly property int controlMd: 36  // spacing.control-md
     readonly property int rowSingle: 44  // spacing.row-single
