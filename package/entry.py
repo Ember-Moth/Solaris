@@ -9,6 +9,13 @@ install directory (docs/architecture.md §5.1).
 # nuitka-project: --include-data-files={MAIN_DIRECTORY}/../src/solaris/translations/*.qm=solaris/translations/
 # Bundled Inter and JetBrains Mono with their OFL.txt; Fonts.qml loads them from ui/fonts/.
 # nuitka-project: --include-data-dir={MAIN_DIRECTORY}/../src/solaris/ui/fonts=solaris/ui/fonts
+# The license manifest the settings page lists, and the project's own license
+# (docs/release.md §5, §6).
+# nuitka-project: --include-data-files={MAIN_DIRECTORY}/../src/solaris/licenses/third_party.json=solaris/licenses/
+# nuitka-project: --include-data-files={MAIN_DIRECTORY}/../src/solaris/licenses/THIRD_PARTY_NOTICES.txt=solaris/licenses/
+# nuitka-project: --include-data-files={MAIN_DIRECTORY}/../LICENSE=LICENSE
+# solaris.__version__ reads the package's metadata; without it every release looks newer.
+# nuitka-project: --include-distribution-metadata=solaris
 
 from solaris.app import main
 
