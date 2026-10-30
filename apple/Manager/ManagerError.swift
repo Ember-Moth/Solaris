@@ -26,4 +26,20 @@ struct ManagerError: Error {
   static let needsReboot = ManagerError(
     result: SOLARIS_MANAGER_NEEDS_REBOOT,
     message: "The Solaris network extension is ready after the Mac restarts")
+
+  static func notSignedIn(_ message: String) -> ManagerError {
+    ManagerError(result: SOLARIS_MANAGER_NOT_SIGNED_IN, message: message)
+  }
+
+  static func notFound(_ message: String) -> ManagerError {
+    ManagerError(result: SOLARIS_MANAGER_NOT_FOUND, message: message)
+  }
+
+  static func quotaExceeded(_ message: String) -> ManagerError {
+    ManagerError(result: SOLARIS_MANAGER_QUOTA_EXCEEDED, message: message)
+  }
+
+  static func unreachable(_ message: String) -> ManagerError {
+    ManagerError(result: SOLARIS_MANAGER_UNREACHABLE, message: message)
+  }
 }
