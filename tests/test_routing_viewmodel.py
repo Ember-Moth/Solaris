@@ -101,9 +101,13 @@ def test_my_plan_starts_from_the_template(qtbot: QtBot, planned: ViewModels) -> 
         ("日本", False),
         ("新加坡", False),
         ("美国", False),
+        ("WARP 出口", True),
         ("直连", True),
         ("拒绝", False),
     ]
+    # The plan has not turned the WARP exit on (docs/exits.md §6).
+    warp = next(o for o in prop(routing, "targetOptions") if o["value"] == "egress:warp")
+    assert (warp["note"], warp["enabled"]) == ("未启用", False)
     assert [(g.name, g.caption) for g in rows(routing, "builtinGroups")] == [
         ("节点选择", "手动选择 · 自动选择、4 个地区组、直连"),
         ("自动选择", "自动选择 · 27 个节点"),

@@ -115,11 +115,14 @@ CREATE TABLE routing_state (
 ) STRICT;
 INSERT INTO routing_state (id, updated_at) VALUES (1, 0);
 
--- fallback and plan_rules.target: a group id of the same plan, DIRECT or REJECT.
+-- fallback and plan_rules.target: a group id of the same plan, DIRECT, REJECT, a chained
+-- exit (egress:warp) or a mesh outbound (mesh:<profile id>/<name>). egress: the chained
+-- exits' settings as JSON (docs/exits.md §7.1).
 CREATE TABLE plans (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     fallback TEXT NOT NULL,
+    egress TEXT NOT NULL DEFAULT '{}',
     position INTEGER NOT NULL,
     created_at REAL NOT NULL,
     updated_at REAL NOT NULL,

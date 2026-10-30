@@ -18,6 +18,10 @@ Every change to the routing is validated, then stored, then reloaded into a runn
 (§5.4). Switching profiles or updating the one in use reloads it in place, with the TUN and
 system proxy state the host reports, so neither is interrupted.
 
+The WARP exit's account belongs to the device, not to a plan: it lives in the system's
+credential store (credentials.py) and joins the composition of every plan that turns the
+exit on (docs/exits.md §3.2).
+
 Every method runs on the asyncio thread. Downloads and their validation run outside the
 lock; writing the store and reloading hold it, so an automatic update cannot interleave
 with a switch or a plan edit.
@@ -26,6 +30,7 @@ with a switch or a plan edit.
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 import uuid
 from collections.abc import Callable, Iterator, Mapping
@@ -38,6 +43,7 @@ from solaris.host.base import (
     Composition,
     CompositionReport,
     CompositionSource,
+    Egress,
     GeoCategories,
     GroupPreview,
     HostError,
@@ -50,9 +56,16 @@ from solaris.host.base import (
     SourceInspection,
     TunnelConfig,
     TunnelHost,
+    WarpAccount,
     bundled_geo_categories,
 )
 from solaris.models import plans
+from solaris.models.credentials import (
+    CredentialError,
+    CredentialStore,
+    KeyringCredentials,
+    WarpAccounts,
+)
 from solaris.models.profiles import (
     KIND_FILE,
     KIND_SUBSCRIPTION,
@@ -81,6 +94,8 @@ from solaris.models.subscription import (
     read_config_file,
 )
 
+_log = logging.getLogger(__name__)
+
 DEFAULT_AUTO_UPDATE_HOURS = 12
 # After a failed automatic update, wait this long before the next attempt.
 RETRY_AFTER_S = 30 * 60
@@ -106,6 +121,7 @@ class Routing:
     # until it has been composed with the current pool.
     report: CompositionReport | None
     inspections: Mapping[str, SourceInspection]  # by profile id; missing until read
+    warp: WarpAccount | None = None  # this device's WARP account; None until read, or none
 
     @property
     def mode(self) -> str | None:
@@ -174,9 +190,11 @@ class ProfileLibrary:
         clock: Callable[[], float] = time.time,
         settings: Callable[[], Settings] = Settings,
         locale: Callable[[], str] = plans.ui_locale,
+        credentials: CredentialStore | None = None,
     ) -> None:
         """``settings`` returns the current settings; it is read on the asyncio thread.
-        ``locale`` names the groups the core generates for a plan (routing.md §8.5)."""
+        ``locale`` names the groups the core generates for a plan (routing.md §8.5).
+        ``credentials`` keeps the WARP account; the system's store by default."""
         self._store = store
         self._routing_store = RoutingStore(store.database)
         self._host = host
@@ -189,6 +207,9 @@ class ProfileLibrary:
         self._failed: dict[str, float] = {}  # profile id -> time of the failed update
         self._inspections: dict[str, SourceInspection] = {}
         self._report: CompositionReport | None = None
+        self._accounts = WarpAccounts(credentials or KeyringCredentials())
+        self._warp: WarpAccount | None = None
+        self._warp_read = False
         # None until the first import picks the mode (routing.md §5.1).
         self._state = self._routing_store.state()
         self._plans = self._routing_store.plans()
@@ -213,6 +234,7 @@ class ProfileLibrary:
             self._plans,
             self._report,
             dict(self._inspections),
+            self._warp,
         )
 
     # -- reading profiles as the core does ---------------------------------------------------
@@ -224,9 +246,10 @@ class ProfileLibrary:
         return await self._host.inspect_source(text, self._info_filter())
 
     async def inspect_all(self) -> Routing:
-        """Read the profiles not read yet, so the routing page knows which bring rules. A
-        profile the host cannot read stays unknown."""
+        """Read the profiles not read yet, so the routing page knows which bring rules, and
+        the WARP account. A profile the host cannot read stays unknown."""
         await self._inspect_missing()
+        await self._read_warp()
         return self._routing()
 
     async def _inspect_missing(self) -> None:
@@ -765,6 +788,67 @@ class ProfileLibrary:
         )
         return await self._host.export_plan(config, export)
 
+    # -- the WARP exit (docs/exits.md §3.2) -----------------------------------------------------
+    async def register_warp(self, *, renew: bool = False) -> Routing:
+        """Register this device with WARP through the via group of the plan in use, or give
+        the account it has a key for the protocol in the settings; ``renew`` registers a new
+        device instead. The core registers through its running configuration, so the tunnel
+        must run the plan. The account goes to the credential store, then into the tunnel."""
+        async with self._lock:
+            plan = self._current_plan()
+            if self._state.mode != MODE_PLAN or plan is None:
+                raise ProfileError("not_routing_plan", "the tunnel does not route with a plan")
+            if await self._running() is None:
+                raise HostError("not_running", "the core is not running")
+            report = self._report or await self._validate_plan(plan, self._list)
+            if report is None:  # a composition always has one; for the type checker
+                raise ProfileError("not_routing_plan", "the plan was not composed")
+            self._report = report
+            via = _via_name(report, plans.warp_exit(plan).via)
+            existing = None if renew else await self._warp_account()
+        # Outside the lock: Cloudflare may take a while, and plan edits need not wait for it.
+        account = await self._host.register_warp(via, self._settings().warp_protocol, existing)
+        async with self._lock:
+            await asyncio.to_thread(self._accounts.save, account)
+            self._warp, self._warp_read = account, True
+            await self._recompose()
+            return self._routing()
+
+    async def forget_warp(self) -> Routing:
+        """Delete this device's copy of the account; the rules that name the exit reject
+        their connections from now on (D21)."""
+        async with self._lock:
+            await asyncio.to_thread(self._accounts.delete)
+            self._warp, self._warp_read = None, True
+            await self._recompose()
+            return self._routing()
+
+    async def _warp_account(self) -> WarpAccount | None:
+        if not self._warp_read:
+            self._warp = await asyncio.to_thread(self._accounts.load)
+            self._warp_read = True
+        return self._warp
+
+    async def _read_warp(self) -> WarpAccount | None:
+        """The account, or None while the credential store cannot be read: the exit is then
+        unavailable, and its rules reject their connections."""
+        try:
+            return await self._warp_account()
+        except CredentialError as error:
+            _log.warning("cannot read the WARP account: %s", error.message)
+            return None
+
+    async def _recompose(self) -> None:
+        """Bring the report and a tunnel that routes with the plan in use up to date with
+        something outside the plan, such as the WARP account."""
+        plan = self._current_plan()
+        if plan is None:
+            return
+        if self._state.mode == MODE_PLAN and await self._running() is not None:
+            await self._reload_if_running()
+        else:
+            self._report = await self._validate_plan(plan, self._list)
+
     def _current_plan(self) -> Plan | None:
         return self._routing().plan()
 
@@ -825,8 +909,11 @@ class ProfileLibrary:
                         raise
                     continue
             sources.append(CompositionSource(profile.id, profile.name, text))
-        plan_json = plans.plan_json(plan or plans.default_plan(), self._locale())
-        return Composition(tuple(sources), plan_json, info)
+        plan = plan or plans.default_plan()
+        plan_json = plans.plan_json(plan, self._locale())
+        # A plan that turns the WARP exit off gets no account: its rules reject (D21).
+        warp = await self._read_warp() if plans.warp_exit(plan).enabled else None
+        return Composition(tuple(sources), plan_json, info, Egress(warp))
 
     # -- tunnel ------------------------------------------------------------------------------
     async def start_tunnel(self) -> None:
@@ -958,3 +1045,11 @@ class ProfileLibrary:
 
 # A profile not read yet: it may bring rules.
 _UNKNOWN = SourceInspection((), True, 0, 0)
+
+
+def _via_name(report: CompositionReport, via: str) -> str:
+    """The via group's name in the running configuration; 节点选择's when it has no members,
+    as the exit itself goes through 节点选择 then (docs/exits.md §3.3)."""
+    names = {group.id: group.name for group in report.groups}
+    empty = any(w.entry_id == plans.WARP and w.reason == "via_empty" for w in report.warnings)
+    return names.get(plans.PROXY, "") if empty or via not in names else names[via]

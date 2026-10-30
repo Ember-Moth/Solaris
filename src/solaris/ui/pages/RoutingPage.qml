@@ -82,6 +82,14 @@ ScrollView {
     }
 
     Connections {
+        target: page.routing.warp
+
+        function onOpened() {
+            warpDialog.showFor(page.dialogTrigger, page.dialogFocusReason)
+        }
+    }
+
+    Connections {
         target: page.routing.transfer
 
         function onConversionReady() {
@@ -815,7 +823,7 @@ ScrollView {
                 }
             }
 
-            // The groups: built in, and one per region with nodes.
+            // The groups: built in, one per region with nodes, and custom.
             Repeater {
                 model: [
                     {
@@ -961,6 +969,150 @@ ScrollView {
                                 role: Theme.type.bodySm
                                 color: Theme.textMuted
                             }
+                        }
+                    }
+                }
+            }
+
+            // Mesh outbounds: rule targets of their own, in no group (docs/mesh.md §5).
+            ColumnLayout {
+                Layout.fillWidth: true
+                visible: page.tab === "groups" && page.routing.hasMesh
+                spacing: Theme.space2
+
+                SectionLabel {
+                    Layout.fillWidth: true
+                    text: qsTr("组网")
+                }
+
+                Group {
+                    Layout.fillWidth: true
+
+                    Repeater {
+                        model: page.routing.meshOutbounds
+
+                        GroupRow {
+                            id: meshRow
+
+                            required property int index
+                            required property string meshId
+                            required property string name
+                            required property string caption
+
+                            divider: index > 0
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+                                Accessible.role: Accessible.StaticText
+                                Accessible.name: meshRow.name
+                                Accessible.description: meshRow.caption
+
+                                UiText {
+                                    Layout.fillWidth: true
+                                    text: meshRow.name
+                                    role: Theme.type.labelMd
+                                    elide: Text.ElideRight
+                                }
+
+                                UiText {
+                                    Layout.fillWidth: true
+                                    text: meshRow.caption
+                                    role: Theme.type.caption
+                                    color: Theme.textMuted
+                                    elide: Text.ElideRight
+                                }
+                            }
+
+                            IconButton {
+                                id: meshMore
+
+                                iconName: "more"
+                                accessibleName: qsTr("%1 的更多操作").arg(meshRow.name)
+                                onClicked: meshMenu.openFor(meshRow.meshId, meshMore)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Chained exits: for now WARP (docs/exits.md §6).
+            ColumnLayout {
+                Layout.fillWidth: true
+                visible: page.tab === "groups"
+                spacing: Theme.space2
+
+                SectionLabel {
+                    Layout.fillWidth: true
+                    text: qsTr("链式出口")
+                }
+
+                Group {
+                    Layout.fillWidth: true
+
+                    GroupRow {
+                        divider: false
+
+                        AbstractButton {
+                            id: warpButton
+
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            padding: 0
+                            Accessible.role: Accessible.Button
+                            Accessible.name: qsTr("设置「%1」").arg(page.routing.warp.name)
+                            Accessible.description: qsTr("%1。%2").arg(page.routing.warp.caption).arg(page.routing.warp.status)
+                            onClicked: {
+                                page.dialogTrigger = warpButton
+                                page.dialogFocusReason = Focus.reasonAfter(warpButton)
+                                page.routing.warp.open()
+                            }
+
+                            contentItem: Item {
+                                ColumnLayout {
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 0
+
+                                    UiText {
+                                        Layout.fillWidth: true
+                                        text: page.routing.warp.name
+                                        role: Theme.type.labelMd
+                                        color: page.routing.warp.active ? Theme.text : Theme.textMuted
+                                        elide: Text.ElideRight
+                                    }
+
+                                    UiText {
+                                        Layout.fillWidth: true
+                                        text: page.routing.warp.caption
+                                        role: Theme.type.caption
+                                        color: Theme.textMuted
+                                        elide: Text.ElideRight
+                                    }
+                                }
+                            }
+
+                            background: Item {
+                                FocusRing {
+                                    targetRadius: 4
+                                    visible: warpButton.visualFocus
+                                }
+                            }
+                        }
+
+                        UiText {
+                            text: page.routing.warp.status
+                            role: Theme.type.bodySm
+                            color: page.routing.warp.statusTone === "warning" ? Theme.warning : page.routing.warp.statusTone === "muted" ? Theme.textMuted : Theme.text
+                        }
+
+                        IconButton {
+                            id: warpMore
+
+                            iconName: "more"
+                            accessibleName: qsTr("%1 的更多操作").arg(page.routing.warp.name)
+                            onClicked: exitMenu.openBelow(warpMore)
                         }
                     }
                 }
@@ -1382,6 +1534,55 @@ ScrollView {
         }
     }
 
+    AppMenu {
+        id: meshMenu
+
+        property string meshId
+
+        function openFor(id: string, anchor: Item) {
+            meshId = id
+            openBelow(anchor)
+        }
+
+        // Tailscale's rules go in at once; the others open the rule dialog.
+        AppMenuItem {
+            text: qsTr("添加常用规则")
+            enabled: !page.routing.busy
+            onTriggered: {
+                page.dialogTrigger = meshMenu.trigger
+                page.dialogFocusReason = meshMenu.triggerFocusReason
+                page.routing.addMeshRules(meshMenu.meshId)
+            }
+        }
+
+        AppMenuItem {
+            text: qsTr("使用它的规则")
+            onTriggered: {
+                page.routing.showMeshRules(meshMenu.meshId)
+                page.tab = "rules"
+            }
+        }
+    }
+
+    AppMenu {
+        id: exitMenu
+
+        AppMenuItem {
+            text: qsTr("设置…")
+            onTriggered: {
+                page.dialogTrigger = exitMenu.trigger
+                page.dialogFocusReason = exitMenu.triggerFocusReason
+                page.routing.warp.open()
+            }
+        }
+
+        AppMenuItem {
+            text: page.routing.warp.registerLabel
+            enabled: page.routing.warp.canRegister
+            onTriggered: page.routing.warp.register()
+        }
+    }
+
     RuleDialog {
         id: ruleDialog
 
@@ -1410,6 +1611,12 @@ ScrollView {
         id: convertDialog
 
         transfer: page.routing.transfer
+    }
+
+    WarpDialog {
+        id: warpDialog
+
+        warp: page.routing.warp
     }
 
     YamlDialog {

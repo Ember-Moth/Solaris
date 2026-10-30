@@ -102,6 +102,17 @@ def test_plans_round_trip(tmp_path: Path, routing: RoutingStore) -> None:
         routing.plan("nope")
 
 
+def test_the_exits_settings_are_stored_with_the_plan(tmp_path: Path, routing: RoutingStore) -> None:
+    egress = {"warp": {"enabled": True, "via": "region:HK"}}
+    routing.put_plan(replace(DEFAULT, egress=egress))
+    assert routing.plan(DEFAULT.id).egress == egress
+    assert stored(tmp_path, "SELECT egress FROM plans") == [
+        ('{"warp":{"enabled":true,"via":"region:HK"}}',)
+    ]
+    routing.put_plan(DEFAULT)
+    assert routing.plan(DEFAULT.id).egress == {}
+
+
 def test_a_plan_is_written_whole(tmp_path: Path, clock: Clock, routing: RoutingStore) -> None:
     routing.put_plan(DEFAULT)
     clock.now = 2_000.0

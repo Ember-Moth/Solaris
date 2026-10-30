@@ -52,7 +52,9 @@ class PlanRule:
     id: str
     kind: str  # one of RULE_KINDS
     content: Any  # what it matches; JSON
-    target: str  # a group id of the plan, DIRECT or REJECT
+    # A group id of the plan, DIRECT, REJECT, a chained exit such as "egress:warp", or a
+    # mesh outbound as "mesh:<profile id>/<name in the profile>".
+    target: str
     enabled: bool = True
 
 
@@ -63,6 +65,8 @@ class Plan:
     fallback: str  # where other traffic goes, as a rule's target
     groups: tuple[PlanGroup, ...] = ()
     rules: tuple[PlanRule, ...] = ()
+    # The chained exits' settings, as {"warp": {"enabled": true, "via": "proxy"}}; JSON.
+    egress: Any = field(default_factory=dict)
 
 
 class RoutingStore:
@@ -95,7 +99,7 @@ class RoutingStore:
         """The plans in their order, without the deleted ones."""
         with self._database.reading() as connection:
             rows = connection.execute(
-                "SELECT id, name, fallback FROM plans WHERE deleted_at IS NULL "
+                "SELECT id, name, fallback, egress FROM plans WHERE deleted_at IS NULL "
                 "ORDER BY position, created_at"
             ).fetchall()
             return tuple(_plan(connection, row) for row in rows)
@@ -104,7 +108,7 @@ class RoutingStore:
         """The plan, unless it was deleted; raises KeyError otherwise."""
         with self._database.reading() as connection:
             row = connection.execute(
-                "SELECT id, name, fallback FROM plans WHERE id = ? AND deleted_at IS NULL",
+                "SELECT id, name, fallback, egress FROM plans WHERE id = ? AND deleted_at IS NULL",
                 (plan_id,),
             ).fetchone()
             if row is None:
@@ -130,23 +134,24 @@ class RoutingStore:
         ]
         with self._database.transaction() as connection:
             now = self._database.clock()
+            egress = _json(plan.egress)
             row = connection.execute(
-                "SELECT name, fallback, deleted_at FROM plans WHERE id = ?", (plan.id,)
+                "SELECT name, fallback, egress, deleted_at FROM plans WHERE id = ?", (plan.id,)
             ).fetchone()
             if row is None:
                 (position,) = connection.execute(
                     "SELECT COALESCE(MAX(position) + 1, 0) FROM plans"
                 ).fetchone()
                 connection.execute(
-                    "INSERT INTO plans (id, name, fallback, position, created_at, updated_at) "
-                    "VALUES (?, ?, ?, ?, ?, ?)",
-                    (plan.id, plan.name, plan.fallback, position, now, now),
+                    "INSERT INTO plans (id, name, fallback, egress, position, created_at, "
+                    "updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (plan.id, plan.name, plan.fallback, egress, position, now, now),
                 )
-            elif tuple(row) != (plan.name, plan.fallback, None):
+            elif tuple(row) != (plan.name, plan.fallback, egress, None):
                 connection.execute(
-                    "UPDATE plans SET name = ?, fallback = ?, updated_at = ?, deleted_at = NULL "
-                    "WHERE id = ?",
-                    (plan.name, plan.fallback, now, plan.id),
+                    "UPDATE plans SET name = ?, fallback = ?, egress = ?, updated_at = ?, "
+                    "deleted_at = NULL WHERE id = ?",
+                    (plan.name, plan.fallback, egress, now, plan.id),
                 )
             parent = ("plan_id", plan.id)
             group_columns = ("id", "kind", "type", "name", "conditions", "options", "hidden")
@@ -223,4 +228,4 @@ def _plan(connection: sqlite3.Connection, row: sqlite3.Row) -> Plan:
             (plan_id,),
         )
     )
-    return Plan(plan_id, row["name"], row["fallback"], groups, rules)
+    return Plan(plan_id, row["name"], row["fallback"], groups, rules, json.loads(row["egress"]))

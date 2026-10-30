@@ -157,7 +157,8 @@ func admitProfile(profile Profile, mode TunMode) (*admission, error) {
 	if err != nil {
 		return nil, invalidConfig(err)
 	}
-	if err := enforceSecurity(doc); err != nil {
+	restricted, err := enforceSecurity(doc)
+	if err != nil {
 		return nil, invalidConfig(err)
 	}
 	raw, err := yaml.Marshal(doc)
@@ -173,6 +174,7 @@ func admitProfile(profile Profile, mode TunMode) (*admission, error) {
 	}
 	admitted := &admission{cfg: cfg, doc: doc}
 	if composed != nil {
+		meshWarnings(composed.Report, restricted)
 		admitted.report = composed.Report
 		admitted.entries = newRuleEntries(composed, doc, cfg)
 	}
@@ -548,8 +550,9 @@ func withLoopbackHost(address string) (string, error) {
 }
 
 // enforceSecurity is the last step before parsing, after the overrides, so neither the
-// profile nor an override can undo it (docs/architecture.md §3.3).
-func enforceSecurity(doc map[string]any) error {
+// profile nor an override can undo it (docs/architecture.md §3.3). It reports the mesh
+// outbound options it turned off.
+func enforceSecurity(doc map[string]any) ([]meshRestriction, error) {
 	// Empty, not absent: a missing external-ui-url falls back to mihomo's download URL.
 	for _, key := range controllerKeys {
 		doc[key] = ""
@@ -562,10 +565,10 @@ func enforceSecurity(doc map[string]any) error {
 	section(doc, "ntp")["write-to-system"] = false
 	for _, key := range []string{"proxy-providers", "rule-providers"} {
 		if err := checkProviderPaths(doc, key); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return restrictMesh(doc)
 }
 
 // checkProviderPaths keeps provider files inside the home directory with the

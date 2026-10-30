@@ -2038,12 +2038,40 @@ prepend-rules:
         <translation>More actions for %1</translation>
     </message>
     <message>
+        <source>组网</source>
+        <translation>Mesh networks</translation>
+    </message>
+    <message>
+        <source>链式出口</source>
+        <translation>Chained exits</translation>
+    </message>
+    <message>
+        <source>设置「%1」</source>
+        <translation>Set up “%1”</translation>
+    </message>
+    <message>
+        <source>%1。%2</source>
+        <translation>%1. %2</translation>
+    </message>
+    <message>
         <source>启用「%1」</source>
         <translation>Enable “%1”</translation>
     </message>
     <message>
         <source>复制为自建策略组…</source>
         <translation>Copy as custom group…</translation>
+    </message>
+    <message>
+        <source>添加常用规则</source>
+        <translation>Add common rules</translation>
+    </message>
+    <message>
+        <source>使用它的规则</source>
+        <translation>Rules that use it</translation>
+    </message>
+    <message>
+        <source>设置…</source>
+        <translation>Settings…</translation>
     </message>
     <message>
         <source>导入方案</source>
@@ -2282,6 +2310,17 @@ prepend-rules:
         <source>全部目标</source>
         <translation>All targets</translation>
     </message>
+    <message numerus="yes">
+        <source>已为「{name}」添加 %n 条规则</source>
+        <translation>
+            <numerusform>Added %n rule for “{name}”</numerusform>
+            <numerusform>Added %n rules for “{name}”</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>撤销添加「{name}」的规则</source>
+        <translation>Undo adding rules for “{name}”</translation>
+    </message>
     <message>
         <source>删除策略组「{name}」？</source>
         <translation>Delete group “{name}”?</translation>
@@ -2297,6 +2336,10 @@ prepend-rules:
     <message>
         <source>策略组{names}里不再包含它。</source>
         <translation>The groups {names}no longer hold it.</translation>
+    </message>
+    <message>
+        <source>WARP 出口经由它，删除后改经「节点选择」。</source>
+        <translation>The WARP exit goes out through it; it goes through “Proxy” afterwards. </translation>
     </message>
     <message>
         <source>没有规则或策略组引用它。</source>
@@ -2330,6 +2373,14 @@ prepend-rules:
     <message>
         <source>没有成员</source>
         <translation>No members</translation>
+    </message>
+    <message>
+        <source>{type} · 来自「{source}」</source>
+        <translation>{type} · from “{source}”</translation>
+    </message>
+    <message>
+        <source>{caption} · 已关闭 {options}</source>
+        <translation>{caption} · turned off {options}</translation>
     </message>
     <message>
         <source>自动 · 已隐藏</source>
@@ -2377,6 +2428,22 @@ prepend-rules:
     <message>
         <source>拒绝</source>
         <translation>Reject</translation>
+    </message>
+    <message>
+        <source>WARP 出口</source>
+        <translation>WARP exit</translation>
+    </message>
+    <message>
+        <source>不可用，已拒绝连接</source>
+        <translation>Unavailable; connections rejected</translation>
+    </message>
+    <message>
+        <source>不存在，已拒绝连接</source>
+        <translation>Gone; connections rejected</translation>
+    </message>
+    <message>
+        <source>未启用</source>
+        <translation>Off</translation>
     </message>
     <message numerus="yes">
         <source>自定义域名（%n 个）</source>
@@ -2945,6 +3012,148 @@ Protocol v{protocol}</translation>
     <message>
         <source>已用 %1%</source>
         <translation>%1% used</translation>
+    </message>
+</context>
+<context>
+    <name>WarpDialog</name>
+    <message>
+        <source>Cloudflare 能看到你访问的网站；机场节点看不到</source>
+        <translation>Cloudflare sees the sites you visit; your nodes don’t</translation>
+    </message>
+    <message>
+        <source>启用</source>
+        <translation>On</translation>
+    </message>
+    <message>
+        <source>启用 WARP 出口</source>
+        <translation>Use the WARP exit</translation>
+    </message>
+    <message>
+        <source>经由</source>
+        <translation>Via</translation>
+    </message>
+    <message>
+        <source>协议</source>
+        <translation>Protocol</translation>
+    </message>
+    <message>
+        <source>账户</source>
+        <translation>Account</translation>
+    </message>
+    <message>
+        <source>账户的更多操作</source>
+        <translation>More account actions</translation>
+    </message>
+    <message>
+        <source>完成</source>
+        <translation>Done</translation>
+    </message>
+    <message>
+        <source>删除账户…</source>
+        <translation>Delete account…</translation>
+    </message>
+    <message>
+        <source>删除 WARP 账户？</source>
+        <translation>Delete the WARP account?</translation>
+    </message>
+    <message>
+        <source>只删除这台设备保存的账户。指向 WARP 出口的规则会拒绝连接，直到重新注册。</source>
+        <translation>Only this device’s copy is deleted. Rules that send traffic to the WARP exit reject their connections until you register again.</translation>
+    </message>
+    <message>
+        <source>删除</source>
+        <translation>Delete</translation>
+    </message>
+</context>
+<context>
+    <name>WarpExit</name>
+    <message>
+        <source>MASQUE（HTTP/2）</source>
+        <translation>MASQUE (HTTP/2)</translation>
+    </message>
+    <message>
+        <source>只需要 TCP，任何节点都能当跳板</source>
+        <translation>Needs TCP only; any node can carry it</translation>
+    </message>
+    <message>
+        <source>MASQUE（HTTP/3）</source>
+        <translation>MASQUE (HTTP/3)</translation>
+    </message>
+    <message>
+        <source>节点要能转发 UDP；开销更小</source>
+        <translation>The node must forward UDP; less overhead</translation>
+    </message>
+    <message>
+        <source>WireGuard</source>
+        <translation>WireGuard</translation>
+    </message>
+    <message>
+        <source>节点要能转发 UDP；开销最小</source>
+        <translation>The node must forward UDP; least overhead</translation>
+    </message>
+    <message>
+        <source>{via}，暂经节点选择</source>
+        <translation>{via}, through Proxy for now</translation>
+    </message>
+    <message>
+        <source>经由 {via} · {protocol}</source>
+        <translation>Via {via} · {protocol}</translation>
+    </message>
+    <message>
+        <source>未启用</source>
+        <translation>Off</translation>
+    </message>
+    <message>
+        <source>正在注册…</source>
+        <translation>Registering…</translation>
+    </message>
+    <message>
+        <source>已就绪</source>
+        <translation>Ready</translation>
+    </message>
+    <message>
+        <source>不可用</source>
+        <translation>Unavailable</translation>
+    </message>
+    <message>
+        <source>连接后注册</source>
+        <translation>Registers once connected</translation>
+    </message>
+    <message>
+        <source>未注册</source>
+        <translation>Not registered</translation>
+    </message>
+    <message>
+        <source>已注册</source>
+        <translation>Registered</translation>
+    </message>
+    <message>
+        <source>经节点连接 Cloudflare，它看不到你的 IP</source>
+        <translation>Reaching Cloudflare through your node, so it can’t see your IP</translation>
+    </message>
+    <message>
+        <source>连接后经节点注册</source>
+        <translation>Registers through your node once connected</translation>
+    </message>
+    <message>
+        <source>经节点注册，Cloudflare 看不到你的 IP</source>
+        <translation>Registers through your node; Cloudflare can’t see your IP</translation>
+    </message>
+    <message>
+        <source>{date} · 设备 {device}</source>
+        <translation>{date} · device {device}</translation>
+    </message>
+    <message>
+        <source>连接后换用 {protocol}</source>
+        <translation>switches to {protocol} once connected</translation>
+    </message>
+    <message>
+        <source>重新注册</source>
+        <translation>Register again</translation>
+    </message>
+    <message>
+        <source>注册</source>
+        <translation>Register</translation>
     </message>
 </context>
 <context>

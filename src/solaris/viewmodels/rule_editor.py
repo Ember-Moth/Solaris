@@ -132,8 +132,17 @@ class RuleEditor(QObject):
         if rule is not None and rule.kind != "raw":
             self._open(rule)
 
-    def _open(self, rule: PlanRule | None) -> None:
+    def openAddRanges(self, target: str) -> None:
+        """添加规则 · IP 段 with the target chosen, for a mesh outbound whose network has
+        ranges of its own (docs/mesh.md §5)."""
+        self._open(None, kind="ip", target=target)
+
+    def _open(self, rule: PlanRule | None, *, kind: str = "", target: str = "") -> None:
         self._reset(rule)
+        if kind:
+            self._kind = kind
+        if target:
+            self._target, self._target_touched = target, True
         self.changed.emit()
         self.opened.emit()
 
@@ -362,7 +371,7 @@ class RuleEditor(QObject):
 
     @Property(str, notify=changed)
     def targetLabel(self) -> str:
-        return text.target_label(self._target, self._routing.plan())
+        return text.target_label(self._target, self._routing.plan(), self._routing.report())
 
     @Property("QVariantList", notify=changed)  # pyright: ignore[reportArgumentType]
     def targetOptions(self) -> list[dict[str, object]]:

@@ -332,7 +332,7 @@ TUN 与系统代理开关、托盘和关闭窗口的行为都只依赖这个接�
 | `system_proxy` | 布尔 | `false` | 本机 | 概览页的系统代理开关：下一次连接是否设置系统代理 |
 | `mixed_port` | 1024–65535 | 7890 | 本机 | 混合端口，总是覆盖配置里的 `mixed-port` |
 | `allow_lan` | 布尔 | `false` | 本机 | 允许局域网连接（architecture.md §8"局域网暴露"） |
-| `warp_protocol` | `masque-h2`、`masque-h3`、`wireguard` | `masque-h2` | 本机 | M9：WARP 出口的协议，在出口设置对话框里改（exits.md 3.1 节） |
+| `warp_protocol` | `masque-h2`、`masque-h3`、`wireguard` | `masque-h2` | 本机 | WARP 出口的协议，在分流页的出口设置对话框里改，设置页不列出。账户只有一种协议的密钥，改了协议就为它换密钥（exits.md 3.1、3.2 节） |
 | `tor_enabled` | 布尔 | `false` | 本机 | M10：设置页"实验功能"里的"Tor 出口"（exits.md 第 4 节） |
 | `update_check` | 布尔 | `true` | 同步 | 自动检查更新：启动 30 秒后检查一次，之后按 `update_check_hours` 定期检查（release.md 第 2 节） |
 | `update_check_hours` | `24`、`72`、`168` | `24` | 同步 | 自动检查的间隔：每天、每 3 天、每周 |
@@ -446,6 +446,35 @@ TUN 与系统代理开关、托盘和关闭窗口的行为都只依赖这个接�
     时记 `"no_resolve": false`），再由 `ProfileLibrary.add_plan` 校验、存储，勾选"创建后改用"时切到"我的方案"
     并使用它。导出和"查看生成的配置"调用 `export_plan`（`EXPORT_SHARE` / `EXPORT_GENERATED`，后者带运行中的或
     设置里的 `RunOptions`），只读显示；复制进剪贴板，另存为写 UTF-8 文件。
+- **目标下拉框**（规则对话框和"其他流量"，`routing_text.target_options`）：节点选择、自动选择 → 有节点的地区 →
+  自建组 → 组网出站 → WARP 出口 → 直连、拒绝，段之间有分隔线，空段省略。方案没有打开 WARP 出口时，这一项
+  禁用并注明"未启用"。规则行按报告的警告写目标后的提示：`region_empty`"无节点，暂走节点选择"、`group_empty`
+  "没有成员，暂走节点选择"、`egress_unavailable`"不可用，已拒绝连接"、`mesh_missing`"不存在，已拒绝连接"；
+  `via_empty`、`mesh_restricted` 不属于哪条规则，写在出口行和组网行上。
+- **组网出站**（mesh.md 第 5 节）：策略组标签里自建之后是"组网"一节，行来自报告的 `mesh`（只在"我的方案"下），
+  说明写"类型 · 来自「订阅名」"，有 `mesh_restricted` 时加"· 已关闭 选项"；节点池里没有组网出站时整节不显示。
+  名称取报告里生成配置用的名称，报告里没有了（`mesh_missing`）时取 `mesh:` 引用里的原名。"更多"菜单：
+  - "添加常用规则"：Tailscale 把 `plans.common_mesh_rules` 的 IP 段规则（`100.64.0.0/10`、`fd7a:115c:a1e0::/48`，
+    `no-resolve`）和域名规则（`ts.net`）插在最前面，已有一样的条目就跳过，标题栏给出撤销提示；ZeroTier、EasyTier
+    打开添加规则对话框的"IP 段"，目标已选好（`RuleEditor.openAddRanges`）。
+  - "使用它的规则"：把目标筛选设为这个出站，切到规则标签。
+- **链式出口**（exits.md 第 6 节）：组网之后是"链式出口"一节，这一轮只有 WARP 一行，由 `WarpExit`
+  （`viewmodels/routing_exits.py`）提供。说明写"经由 组名 · 协议"，经由组没有成员（`via_empty`）时写"组名，暂经
+  节点选择"；右侧是状态："未启用"、"正在注册…"、"已就绪"、"未注册"、"连接后注册"，注册失败时为 `warning` 色的
+  "不可用"（原因在对话框的账户一栏）。点行或菜单的"设置…"打开出口设置对话框（`WarpDialog.qml`）：
+  - 开关、经由（策略组下拉框）、协议（三选一）都立即生效，没有保存按钮（DESIGN.md"开关"）：开关和经由改的是
+    方案（`plans.egress`，与其他改动一样先校验再存储），协议改的是本机设置 `warp_protocol`。
+  - 打开开关时还没有账户就注册；有账户时改协议就为它换密钥。"注册""重新注册"按钮在账户一栏，重新注册是换一个
+    新设备。删除账户在账户一栏的"更多"菜单里，先确认，只删本机保存的副本。
+  - 注册经 `ProfileLibrary.register_warp`：经由组按报告里的组名传给宿主（没有成员时传节点选择），网络请求不占
+    配置库的锁；账户存进凭据库后，在用的方案重新拼装并重载。隧道没在运行（或在用"订阅自带"）时记下这次请求，
+    状态写"连接后注册"；概览页看到隧道开始运行时（`RoutingViewModel.tunnel_running`）补做，协议在断开时改过的也在
+    这时换密钥。这个请求只在界面进程的内存里，退出界面就不再等。
+  - 账户是凭据，存系统凭据库（`models/credentials.py`，D14）：`KeyringCredentials` 经 `keyring` 直接用平台的后端
+    （macOS 钥匙串、Windows 凭据管理器，不靠入口点发现），`WarpAccounts` 把账户写成一条紧凑的 JSON（远小于
+    Windows 一条凭据 2560 字节的上限）。它不进数据库，也不进备份；读不出来（如钥匙串锁着）时按没有账户处理，
+    WARP 的规则拒绝连接。`ProfileLibrary` 拼装时只给打开了 WARP 出口的方案带上账户（`Composition.egress`）。
+    测试把 `credentials.system_keyring` 换成内存里的实现（`tests/conftest.py`），不碰真实的凭据库。
 - **其他页面**：订阅页的行在说明里写"规则使用中""不加入节点池"；概览页"出站"分组的"当前使用"跳到分流页；
   代理页用报告里的节点池标出每个节点的来源订阅，地区组收进可折叠的"地区"小节；连接页用
   `Connection.rule_entry_id` 显示规则条目名称，第二行是内核的原始规则。

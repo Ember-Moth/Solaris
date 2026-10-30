@@ -290,7 +290,7 @@
 - 实现在 `src/core/internal/compose`，mihomo 的字段写法按钉住的 v1.19.33 源码核实：
   - **节点池**：每份订阅按 mihomo 的 proxy-provider 的方式读：YAML 映射取 `proxies`，否则当作分享链接（逐行或
     base64，`convert.ConvertsV2Ray`）。订阅里的 `proxy-providers` 不读。名称匹配 `info_filter` 的节点不进入
-    节点池。同一份订阅里同名的节点只留第一个，与 mihomo 的 provider 一样。与之前订阅的节点、mihomo 的内置名称
+    节点池。`tailscale`、`zerotier`、`easytier` 出站也不进节点池，写在顶层 `proxies`（组网出站，mesh.md 第 3 节）。同一份订阅里同名的节点只留第一个，与 mihomo 的 provider 一样。与之前订阅的节点、mihomo 的内置名称
     （`DIRECT` 等）或任何策略组同名的节点，名称后加" · 订阅名"，仍然重名再加序号。
   - **provider**：每份有节点的订阅生成一个 `type: inline` 的 proxy-provider，名为 `pool:<订阅 id>`，payload 是
     改名后的节点。没有用 provider 的 `override.additional-suffix`：它给这个 provider 的全部节点加后缀，而 5.2 节
@@ -308,12 +308,17 @@
     `GLOBAL` 都按这个顺序。
   - **规则**：启用的规则条目按顺序，每个匹配项展开成一条 `类型,值,目标[,no-resolve]`；停用的条目跳过；末尾是
     `MATCH,兜底目标`。目标是没有节点的地区或没有成员的策略组时，这一条目改走"节点选择"，并在报告里给出警告；
-    条目本身不改，下一次拼装时目标可用就恢复。
+    条目本身不改，下一次拼装时目标可用就恢复。目标是不可用的链式出口或已经不存在的组网出站时，改写为 `REJECT`
+    （D21，exits.md 3.3 节、mesh.md 第 3 节）。
+  - **链式出口**：有规则指向 `egress:warp` 且 `Composition.egress` 带了 WARP 账户时，生成"WARP 出口"出站，
+    `dialer-proxy` 指向方案 `egress.warp.via` 的组（exits.md 3.3 节）。
 - **报告** `CompositionReport`：用 composition 的 Validate、Start、Reload 返回它（用 `config_yaml` 时仍是 Empty）：
-  - 警告：条目 id（兜底是 `fallback`）、原因（`region_empty` / `group_empty`）、方案里写的目标；
+  - 警告：条目 id（兜底是 `fallback`）、原因（`region_empty` / `group_empty`，以及第二轮的 `egress_unavailable`、
+    `mesh_missing`、`via_empty`、`mesh_restricted`，见 exits.md 3.3 节、mesh.md 第 3、4 节）、方案里写的目标；
   - 生成的策略组：id、名称、种类（内置 / 地区 / 自建）、地区代码、节点数；
   - 生成的每条规则及其条目 id；
-  - 节点池：新名、原名、来源订阅、类型、地区代码。
+  - 节点池：新名、原名、来源订阅、类型、地区代码；
+  - 组网出站：`mesh:` id、名称、类型、来源订阅。
 - **规则条目对照表**：engine 为运行中的配置保存"第 N 条规则 → 条目 id"，覆写插入的规则没有条目 id。
   `ListRules` 的 `Rule.entry_id` 按位置取；连接快照的 `Connection.rule_entry_id` 按连接记录的规则类型、payload
   和链路最外层（规则的目标）查找，同一组键取第一条，与 mihomo 的匹配顺序一致。改用 `config_yaml` 时对照表清空。
@@ -324,7 +329,7 @@
 
 | 方法 | 作用 | 状态 |
 | --- | --- | --- |
-| `InspectSource` | 按 8.1 节的方式读一份订阅：节点（名称、类型、地区代码、是否信息节点）、有没有规则、策略组和规则的数量 | 已实现 |
+| `InspectSource` | 按 8.1 节的方式读一份订阅：节点（名称、类型、地区代码、是否信息节点、是否组网出站）、有没有规则、策略组和规则的数量 | 已实现 |
 | `ListGeoCategories` | 内核 GEO 数据里的 GEOSITE / GEOIP 分类名，以及每个文件的 sha256 和修改时间 | 已实现 |
 | `PreviewGroup` | 按方案草稿和节点池计算一个策略组的成员，供编辑器实时预览 | 已实现（M8b），字段 51 |
 | `MatchRule` | 用当前配置或方案草稿匹配一个域名或 IP（可带端口、协议），返回命中的规则条目、策略组和最终节点 | 已实现（M8b），52 |
@@ -431,7 +436,7 @@
 | `groups` | 内置组、地区组的设置和自建组，见下文 |
 | `rules` | 规则条目，按列表顺序展开 |
 | `fallback` | 兜底目标，不填是 `proxy` |
-| `egress` | 链式出口的经由组和 VPN Gate 的挑选条件，见 exits.md 7.1 节（M9 起） |
+| `egress` | 链式出口的设置，见下文和 exits.md 7.1 节（M9 起） |
 
 **策略组**
 
@@ -473,9 +478,21 @@
     配置（`rule-providers`、`sub-rules`），方案没有地方保存它们，所以不接受，转换时也不带入（8.8 节）；
   - `value`：不能为空或换行；除 `AND`、`OR`、`NOT` 和三种 `-REGEX` 外不能有逗号（mihomo 按逗号切分规则）；
   - `no_resolve`：只对 `GEOIP`、`IP-CIDR`、`IP-CIDR6`、`IP-SUFFIX`、`IP-ASN`。
-- `target`：策略组 id、`region:代码`、`DIRECT`、`REJECT` 或 `REJECT-DROP`；第二轮起还可以是 `egress:warp`、
-  `egress:tor`、`egress:vpngate`（exits.md）和 `mesh:<订阅 id>/<原名>`（mesh.md）。未知的 id 或地区代码是
+- `target`：策略组 id、`region:代码`、`DIRECT`、`REJECT` 或 `REJECT-DROP`；第二轮起还可以是 `egress:warp`
+  （exits.md）和 `mesh:<订阅 id>/<原名>`（mesh.md），`egress:tor`、`egress:vpngate` 随 M10、M12 加入。兜底目标
+  同样可以写这两种；策略组的 `others` 不能写。未知的 id 或地区代码是
   `invalid_config`；地区当前没有节点、自建组没有成员时改走节点选择并警告（8.1 节）。
+
+**链式出口**（`egress`，M9 起）
+
+```json
+"egress": {"warp": {"via": "region:JP"}}
+```
+
+- `warp.via`：WARP 出口经由的组，策略组 id（内置组、`region:代码` 或自建组），不填是 `proxy`。`DIRECT` 等内置出站、
+  `region:*`、不存在的组是 `invalid_config`。经由组没有成员（包括没有节点的地区）时改走节点选择，警告 `via_empty`。
+- 账户不在方案里，随 `Composition.egress` 传，属于本机（exits.md 3.2 节）。
+- `tor`、`vpngate` 现在写了也被忽略，随 M10、M12 加入。
 
 **信息节点表达式**不在方案里，随 `Composition.info_filter` 传，属于节点池设置。内核按给出的表达式原样匹配
 （regexp2，区分大小写），空串表示不排除。所以 5.2 节的默认值带 `(?i)`，否则碰不到常见的 "Expire"。
@@ -541,6 +558,10 @@
   `prepend-rules`（覆写在拼装之后应用，5.6 节）。
 - 条目和组的 id 由位置和内容算出（`g-`、`r-` 加 12 位十六进制），同一份输入每次得到同一个方案。转换结果会按
   8.5 节再解析一遍，保证内核读得回来。
+
+**链式出口与组网出站**（第二轮）：分享导出的规则写"WARP 出口"（或"WARP exit"）和组网出站的名称，不论本机有没有
+WARP 账户；出站本身不导出，导入方的配置要自己定义。转换时，目标是这两个出口名称的规则转成 `egress:warp`；带来源
+订阅 id 时，目标是这份订阅里组网出站的规则转成 `mesh:` 目标，否则跳过（`target`）。
 
 **导出**（`ExportPlan` 的 `SHARE`）：写出与拼装结果相同的组和规则，但成员写成在别人的配置里也能算的条件：
 地区和名称包含写成 `include-all` 加 `filter`（每个条件一段，反引号分隔，地区用地区表的正则），全部节点写成
