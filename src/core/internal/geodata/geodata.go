@@ -1,5 +1,6 @@
 // Package geodata reads the category names out of mihomo's GEO data files (docs/routing.md
-// §8.4), the same files GEOSITE and GEOIP rules match with.
+// §8.4), the same files GEOSITE and GEOIP rules match with, and seeds a home with the files
+// the installers ship.
 package geodata
 
 import (

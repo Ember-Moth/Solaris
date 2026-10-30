@@ -13,6 +13,7 @@ import (
 	"github.com/Ember-Moth/Solaris/src/core/internal/control"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
+	"github.com/Ember-Moth/Solaris/src/core/internal/geodata"
 	"github.com/Ember-Moth/Solaris/src/core/internal/peer"
 	"github.com/Ember-Moth/Solaris/src/core/internal/sysproxy"
 )
@@ -64,8 +65,10 @@ type Service struct {
 var _ control.Host = (*Service)(nil)
 
 // Open secures the service's root and readies its owner's home, which it returns for the
-// engine. With no owner yet the home is "", and the process serves GetInfo and Claim only.
-func Open(root string, platform Platform, log *slog.Logger) (*Service, string, error) {
+// engine: the home gets the GEO data in geodataDir, the files the installer ships, unless
+// it has its own. With no owner yet the home is "", and the process serves GetInfo and
+// Claim only.
+func Open(root, geodataDir string, platform Platform, log *slog.Logger) (*Service, string, error) {
 	for _, dir := range []string{root, filepath.Join(root, usersDir)} {
 		if err := platform.SecureDir(dir, ""); err != nil {
 			return nil, "", err
@@ -83,6 +86,11 @@ func Open(root string, platform Platform, log *slog.Logger) (*Service, string, e
 	home := Home(root, record.SID)
 	if err := platform.SecureDir(home, record.SID); err != nil {
 		return nil, "", err
+	}
+	// Without the data mihomo downloads it the first time a rule needs it, which still
+	// beats a service that does not start.
+	if err := geodata.Seed(geodataDir, home); err != nil {
+		log.Warn("seed the GEO data", "error", err)
 	}
 	s.owner, s.bound, s.home = &record, true, kept{home}
 	if s.profile, err = s.home.profile(); err != nil {

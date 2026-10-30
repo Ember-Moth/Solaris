@@ -11,6 +11,7 @@ import (
 
 	"github.com/Ember-Moth/Solaris/src/core/internal/control"
 	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
+	"github.com/Ember-Moth/Solaris/src/core/internal/geodata"
 	"github.com/Ember-Moth/Solaris/src/core/internal/peer"
 )
 
@@ -44,7 +45,7 @@ func attach(fd int, home, resources string, includeAllNetworks bool) error {
 		return errors.New("a tunnel is already attached")
 	}
 	if resources != "" {
-		if err := seedGeoData(resources, home); err != nil {
+		if err := geodata.Seed(resources, home); err != nil {
 			return err
 		}
 	}

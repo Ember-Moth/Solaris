@@ -375,8 +375,11 @@
 - **附带的数据**：MetaCubeX/meta-rules-dat 的 release 分支，钉在 `be456e5`（2026-10-29 发布）。
   `geosite.dat` 4.4 MB，1563 个分类；`geoip.dat` 16.5 MB，260 个分类；共 20.9 MB。版本、大小和 sha256 写在
   `scripts/fetch_geodata.py`，与发布方的 `.sha256sum` 一致。脚本下载到 `build/geodata/`（已被 git 忽略），文件名
-  已是 mihomo 的写法，打包时原样放进安装包，由内核所在的进程种进 home（macOS 的扩展在 attach 时复制；Windows 服务
-  还没做这一步）；开发服务（`scripts/dev.py`）启动时也会放一份。
+  已是 mihomo 的写法，打包时原样放进安装包，由内核所在的进程种进 home：打开 engine 前把 home 里缺少的文件复制
+  过去（`internal/geodata` 的 `Seed`，先写临时文件再改名，不会留下半个文件），已有的不动，engine 的 GEO 更新会
+  替换它们。macOS 的扩展在 attach 时复制，失败时隧道不启动；Windows 服务在打开属主的 home 时从安装目录的
+  `geodata\` 复制，失败时只记一条警告，照常启动，由 mihomo 在需要时下载。开发服务（`scripts/dev.py`）启动时也会
+  放一份。
 - **兜底清单**：`src/solaris/host/geo_categories.py`，由 `fetch_geodata.py --categories` 从附带的数据生成，
   28 KB，带两个文件的 sha256。内核没有数据或连不上时（例如 macOS 隧道未连接），分类选择器用它。用 Python
   模块而不是数据文件，Nuitka 打包时自动带上。CI 用 `--check` 核对清单与钉住的数据一致。

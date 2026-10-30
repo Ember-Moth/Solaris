@@ -34,47 +34,6 @@ func readDir(t *testing.T, dir string) map[string]string {
 	return files
 }
 
-func TestSeedGeoDataCopiesOnlyWhatTheHomeLacks(t *testing.T) {
-	resources := t.TempDir()
-	writeFiles(t, resources, map[string]string{"GeoSite.dat": "bundled site", "GeoIP.dat": "bundled ip"})
-	home := filepath.Join(t.TempDir(), "Solaris", "core")
-	if err := os.MkdirAll(home, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	writeFiles(t, home, map[string]string{"GeoIP.dat": "updated ip"})
-	if err := seedGeoData(resources, home); err != nil {
-		t.Fatal(err)
-	}
-	want := map[string]string{"GeoSite.dat": "bundled site", "GeoIP.dat": "updated ip"}
-	if got := readDir(t, home); len(got) != len(want) || got["GeoSite.dat"] != want["GeoSite.dat"] || got["GeoIP.dat"] != want["GeoIP.dat"] {
-		t.Fatalf("home = %v, want %v", got, want)
-	}
-}
-
-func TestSeedGeoDataCreatesTheHome(t *testing.T) {
-	resources := t.TempDir()
-	writeFiles(t, resources, map[string]string{"GeoSite.dat": "site", "GeoIP.dat": "ip"})
-	home := filepath.Join(t.TempDir(), "Solaris", "core")
-	if err := seedGeoData(resources, home); err != nil {
-		t.Fatal(err)
-	}
-	if got := readDir(t, home); len(got) != 2 || got["GeoSite.dat"] != "site" || got["GeoIP.dat"] != "ip" {
-		t.Fatalf("home = %v", got)
-	}
-}
-
-func TestSeedGeoDataLeavesNoPartialFile(t *testing.T) {
-	resources := t.TempDir()
-	writeFiles(t, resources, map[string]string{"GeoSite.dat": "site"})
-	home := t.TempDir()
-	if err := seedGeoData(resources, home); err == nil {
-		t.Fatal("seeded without the bundled GeoIP.dat")
-	}
-	if got := readDir(t, home); len(got) != 1 || got["GeoSite.dat"] != "site" {
-		t.Fatalf("home = %v, want GeoSite.dat alone", got)
-	}
-}
-
 func TestAttachSeedsTheHomeBeforeOpeningTheEngine(t *testing.T) {
 	resources := t.TempDir()
 	writeFiles(t, resources, map[string]string{"GeoSite.dat": "site", "GeoIP.dat": "ip"})

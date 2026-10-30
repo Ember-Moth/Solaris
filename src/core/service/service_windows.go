@@ -33,6 +33,8 @@ const (
 	logFile        = "service.log"
 	// logLimit is when service.log moves aside to service.log.1 at start, replacing it.
 	logLimit = 1 << 20
+	// geodataDir, beside the executable, holds the GEO data the installer ships.
+	geodataDir = "geodata"
 	// restartDelay lets the answer to a claim leave before the process stops.
 	restartDelay = 200 * time.Millisecond
 	// stopWait bounds how long the restart helper waits for the old process to stop.
@@ -101,7 +103,7 @@ func serve(ctx context.Context, sessions <-chan sessionEvent, restart func()) er
 	}
 	defer closeLog()
 	slog.SetDefault(logger)
-	host, home, err := owner.Open(root, platform, logger)
+	host, home, err := owner.Open(root, filepath.Join(filepath.Dir(executable), geodataDir), platform, logger)
 	if err != nil {
 		logger.Error("open the owner's home", "error", err)
 		return err
