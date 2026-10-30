@@ -26,6 +26,8 @@ type Composition struct {
 	// InfoFilter matches the names of information nodes, which stay out of the pool.
 	InfoFilter string
 	Plan       []byte
+	// Warp is the WARP exit's device; without it the exit is unavailable (docs/exits.md §3.3).
+	Warp *controlpb.WarpAccount
 }
 
 // Result is a composed configuration with its report. Lines[i] is the rule
@@ -39,6 +41,14 @@ type Result struct {
 const (
 	ReasonRegionEmpty = "region_empty"
 	ReasonGroupEmpty  = "group_empty"
+	// The target exit has nothing to run on, or the target mesh outbound is gone: the
+	// entry rejects its connections rather than go out some other way (decision D21).
+	ReasonEgressUnavailable = "egress_unavailable"
+	ReasonMeshMissing       = "mesh_missing"
+	// An exit's via group has no members, so the exit goes through "proxy" meanwhile.
+	ReasonViaEmpty = "via_empty"
+	// An option of a mesh outbound that serves other devices was turned off (docs/mesh.md §4).
+	ReasonMeshRestricted = "mesh_restricted"
 
 	providerPrefix = "pool:"
 	// compatible is mihomo's stand-in for a group without members; it rejects.
@@ -66,6 +76,15 @@ type composer struct {
 	pool    []*node
 	groups  []*group
 	byID    map[string]*group
+	// mesh are the mesh outbounds, by their plan id too.
+	mesh     []*node
+	meshByID map[string]*node
+	warp     *controlpb.WarpAccount
+	// warpUsed is set once a rule goes to the WARP exit and it has a device.
+	warpUsed bool
+	// share names the exits and mesh outbounds whether or not they run here: an exported
+	// plan goes to configurations that bring their own.
+	share bool
 }
 
 // newComposer reads the plan and the sources, and works out the pool and every group's
@@ -82,13 +101,22 @@ func newComposer(composition Composition) (*composer, error) {
 	if err := checkSources(composition.Sources); err != nil {
 		return nil, err
 	}
-	c := &composer{plan: plan, sources: composition.Sources, byID: map[string]*group{}}
+	c := &composer{
+		plan:     plan,
+		sources:  composition.Sources,
+		byID:     map[string]*group{},
+		meshByID: map[string]*node{},
+		warp:     composition.Warp,
+	}
 	taken, err := c.groupNames()
 	if err != nil {
 		return nil, fmt.Errorf("plan: %w", err)
 	}
-	if c.pool, err = buildPool(composition.Sources, filter, taken); err != nil {
+	if c.pool, c.mesh, err = buildPool(composition.Sources, filter, taken); err != nil {
 		return nil, err
+	}
+	for _, n := range c.mesh {
+		c.meshByID[c.meshID(n)] = n
 	}
 	c.layOutGroups()
 	for _, g := range c.groups {
@@ -114,10 +142,38 @@ func Compose(composition Composition) (*Result, error) {
 	config["proxy-providers"] = c.providers()
 	config["proxy-groups"] = c.groupConfigs(result.Report)
 	config["rules"] = c.rules(result)
+	// The mesh outbounds and the exits are outbounds of their own: no provider holds them,
+	// so no group's use and filter takes them in.
+	var proxies []any
+	for _, n := range c.mesh {
+		proxies = append(proxies, n.mapping)
+		result.Report.Mesh = append(result.Report.Mesh, &controlpb.MeshOutbound{
+			Id:       c.meshID(n),
+			Name:     n.name,
+			Type:     n.kind,
+			SourceId: c.sources[n.source].ID,
+		})
+	}
+	if c.warpUsed {
+		outbound, err := c.warpOutbound(result.Report)
+		if err != nil {
+			return nil, fmt.Errorf("warp account: %w", err)
+		}
+		proxies = append(proxies, outbound)
+	}
+	if len(proxies) != 0 {
+		config["proxies"] = proxies
+	}
 	for _, n := range c.pool {
 		result.Report.Nodes = append(result.Report.Nodes, c.poolNode(n))
 	}
 	return result, nil
+}
+
+// meshID is how a plan names the mesh outbound: by its source and its name there, which
+// a rename for a clashing name does not change.
+func (c *composer) meshID(n *node) string {
+	return meshPrefix + c.sources[n.source].ID + "/" + n.original
 }
 
 func (c *composer) poolNode(n *node) *controlpb.PoolNode {
@@ -188,6 +244,8 @@ func (c *composer) groupNames() (map[string]bool, error) {
 	for _, name := range reservedNames {
 		taken[name] = true
 	}
+	// The exit's name is the plan's whether it runs or not, so turning it on renames nothing.
+	taken[warpName(c.plan.Locale)] = true
 	claim := func(id, name string) error {
 		if taken[name] {
 			return fmt.Errorf("group %q: the name %q is taken", id, name)
@@ -437,10 +495,37 @@ func (c *composer) applyOptions(config map[string]any, planned *PlanGroup) {
 
 // target is the name a rule entry's target has in the configuration. A region without
 // nodes or a group without members cannot take traffic, so the entry goes to the "proxy"
-// group meanwhile and the report says so.
+// group meanwhile and the report says so. An exit or a mesh outbound that is not there
+// rejects instead: going out through a node is what the user picked them to avoid, and
+// a node cannot reach the user's own networks anyway.
 func (c *composer) target(entryID, target string, report *controlpb.CompositionReport) string {
 	if slices.Contains(outbounds, target) {
 		return target
+	}
+	reject := func(reason string) string {
+		report.Warnings = append(report.Warnings, &controlpb.CompositionWarning{
+			EntryId: entryID,
+			Reason:  reason,
+			Target:  target,
+		})
+		return "REJECT"
+	}
+	if target == EgressWarp {
+		switch {
+		case c.share:
+		case c.warp == nil:
+			return reject(ReasonEgressUnavailable)
+		default:
+			c.warpUsed = true
+		}
+		return warpName(c.plan.Locale)
+	}
+	if strings.HasPrefix(target, meshPrefix) {
+		n, ok := c.meshByID[target]
+		if !ok {
+			return reject(ReasonMeshMissing)
+		}
+		return n.name
 	}
 	g, ok := c.byID[target]
 	reason := ""
