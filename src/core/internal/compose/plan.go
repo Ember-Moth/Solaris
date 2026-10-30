@@ -35,6 +35,9 @@ const (
 	// EgressWarp is the WARP exit as a rule target (docs/exits.md §3.3); its settings are in
 	// the plan's egress.warp.
 	EgressWarp = "egress:warp"
+	// EgressVpnGate is the VPN Gate exit as a rule target (docs/exits.md §5.3); its settings
+	// are in the plan's egress.vpngate.
+	EgressVpnGate = "egress:vpngate"
 	// meshPrefix names a mesh outbound as a rule target: "mesh:<subscription id>/<name in
 	// the subscription>" (docs/mesh.md §3).
 	meshPrefix = "mesh:"
@@ -64,15 +67,35 @@ type Plan struct {
 }
 
 // Egress holds what the plan says of the chained exits (docs/exits.md §7.1); the
-// exits' accounts and endpoints come with the composition instead.
+// exits' accounts, endpoints and servers come with the composition instead.
 type Egress struct {
-	Warp ExitSettings `json:"warp,omitzero"`
+	Warp    ExitSettings    `json:"warp,omitzero"`
+	VpnGate VpnGateSettings `json:"vpngate,omitzero"`
 }
 
 type ExitSettings struct {
 	// Via is the group whose node the exit connects through: a group id, "proxy" when empty.
 	Via string `json:"via,omitempty"`
 }
+
+// VpnGateSettings choose the VPN Gate exit's servers (docs/exits.md §5.2). The UI picks them
+// from the list by the countries and the count; the core only reads how the exit's group
+// shares out the sites.
+type VpnGateSettings struct {
+	Via       string   `json:"via,omitempty"`
+	Countries []string `json:"countries,omitempty"` // ISO 3166 codes
+	Count     int      `json:"count,omitempty"`     // servers to use, at most MaxVpnGateServers
+	Mode      string   `json:"mode,omitempty"`      // VpnGatePerSite (the default) or VpnGateSingle
+}
+
+const (
+	// VpnGatePerSite hashes each site to one of the servers; VpnGateSingle uses the first
+	// that works (docs/exits.md §5.3).
+	VpnGatePerSite = "per-site"
+	VpnGateSingle  = "single"
+	// MaxVpnGateServers bounds the count, to spare the volunteers' servers.
+	MaxVpnGateServers = 10
+)
 
 type PlanGroup struct {
 	ID      string       `json:"id"`
@@ -380,13 +403,13 @@ func (p *Plan) checkRules() error {
 }
 
 // checkTarget accepts what a rule or the fallback may send traffic to: what a group may
-// hold, but not every region at once, and also the WARP exit and mesh outbounds, which no
-// group holds.
+// hold, but not every region at once, and also the exits and mesh outbounds, which no group
+// holds.
 func (p *Plan) checkTarget(target string) error {
 	switch name, isMesh := strings.CutPrefix(target, meshPrefix); {
 	case target == allRegions:
 		return fmt.Errorf("%q is not a target", allRegions)
-	case target == EgressWarp:
+	case target == EgressWarp, target == EgressVpnGate:
 		return nil
 	case isMesh:
 		if source, original, ok := strings.Cut(name, "/"); !ok || source == "" || original == "" {
@@ -397,17 +420,38 @@ func (p *Plan) checkTarget(target string) error {
 	return p.checkReference(target)
 }
 
-// checkEgress accepts a group, built-in, region or custom, as an exit's via.
+// checkEgress accepts a group, built-in, region or custom, as an exit's via, and the VPN
+// Gate exit's choice of servers.
 func (p *Plan) checkEgress() error {
-	via := p.Egress.Warp.Via
-	if via == "" {
-		return nil
+	for _, exit := range []struct{ label, via string }{
+		{"warp", p.Egress.Warp.Via}, {"vpngate", p.Egress.VpnGate.Via},
+	} {
+		label, via := exit.label, exit.via
+		if via == "" {
+			continue
+		}
+		if slices.Contains(outbounds, via) || via == allRegions {
+			return fmt.Errorf("egress.%s.via: %q is not a group", label, via)
+		}
+		if err := p.checkReference(via); err != nil {
+			return fmt.Errorf("egress.%s.via: %w", label, err)
+		}
 	}
-	if slices.Contains(outbounds, via) || via == allRegions {
-		return fmt.Errorf("egress.warp.via: %q is not a group", via)
+	vpnGate := &p.Egress.VpnGate
+	switch vpnGate.Mode {
+	case "":
+		vpnGate.Mode = VpnGatePerSite
+	case VpnGatePerSite, VpnGateSingle:
+	default:
+		return fmt.Errorf("egress.vpngate.mode: unknown mode %q", vpnGate.Mode)
 	}
-	if err := p.checkReference(via); err != nil {
-		return fmt.Errorf("egress.warp.via: %w", err)
+	if vpnGate.Count < 0 || vpnGate.Count > MaxVpnGateServers {
+		return fmt.Errorf("egress.vpngate.count: %d is not between 0 and %d", vpnGate.Count, MaxVpnGateServers)
+	}
+	for _, code := range vpnGate.Countries {
+		if len(code) != 2 || strings.ToUpper(code) != code {
+			return fmt.Errorf("egress.vpngate.countries: %q is not a country code", code)
+		}
 	}
 	return nil
 }

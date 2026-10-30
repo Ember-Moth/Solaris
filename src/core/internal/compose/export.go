@@ -21,7 +21,7 @@ import (
 //     listed in proxies, nodes by the names their subscriptions gave them;
 //   - the region groups filter with the region table's patterns; "other regions" has no
 //     pattern, so it lists its nodes;
-//   - rules keep the WARP exit's and the mesh outbounds' names, which the configuration
+//   - rules keep the exits' and the mesh outbounds' names, which the configuration
 //     defines for itself (and ConvertToPlan reads back); neither is part of the plan.
 //
 // mihomo applies exclude-filter to the listed members too, and a node whose name two

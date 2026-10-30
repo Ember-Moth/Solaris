@@ -120,7 +120,7 @@ EXPORT_FORMAT_SHARE: ExportFormat
 EXPORT_FORMAT_GENERATED: ExportFormat
 
 class Request(_message.Message):
-    __slots__ = ("protocol_version", "id", "get_info", "claim", "validate", "start", "reload", "stop", "set_system_proxy", "get_status", "set_mode", "list_groups", "get_group", "select_proxy", "health_check", "test_delay", "list_providers", "update_provider", "list_rules", "close_connection", "close_all_connections", "flush_fake_ip", "flush_dns_cache", "subscribe_logs", "subscribe_traffic", "subscribe_connections", "poll_events", "unsubscribe", "inspect_source", "list_geo_categories", "preview_group", "match_rule", "convert_to_plan", "export_plan", "register_warp")
+    __slots__ = ("protocol_version", "id", "get_info", "claim", "validate", "start", "reload", "stop", "set_system_proxy", "get_status", "set_mode", "list_groups", "get_group", "select_proxy", "health_check", "test_delay", "list_providers", "update_provider", "list_rules", "close_connection", "close_all_connections", "flush_fake_ip", "flush_dns_cache", "subscribe_logs", "subscribe_traffic", "subscribe_connections", "poll_events", "unsubscribe", "inspect_source", "list_geo_categories", "preview_group", "match_rule", "convert_to_plan", "export_plan", "register_warp", "list_vpn_gate")
     PROTOCOL_VERSION_FIELD_NUMBER: _ClassVar[int]
     ID_FIELD_NUMBER: _ClassVar[int]
     GET_INFO_FIELD_NUMBER: _ClassVar[int]
@@ -156,6 +156,7 @@ class Request(_message.Message):
     CONVERT_TO_PLAN_FIELD_NUMBER: _ClassVar[int]
     EXPORT_PLAN_FIELD_NUMBER: _ClassVar[int]
     REGISTER_WARP_FIELD_NUMBER: _ClassVar[int]
+    LIST_VPN_GATE_FIELD_NUMBER: _ClassVar[int]
     protocol_version: int
     id: int
     get_info: GetInfoRequest
@@ -191,10 +192,11 @@ class Request(_message.Message):
     convert_to_plan: ConvertToPlanRequest
     export_plan: ExportPlanRequest
     register_warp: RegisterWarpRequest
-    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., get_info: _Optional[_Union[GetInfoRequest, _Mapping]] = ..., claim: _Optional[_Union[ClaimRequest, _Mapping]] = ..., validate: _Optional[_Union[ValidateRequest, _Mapping]] = ..., start: _Optional[_Union[StartRequest, _Mapping]] = ..., reload: _Optional[_Union[ReloadRequest, _Mapping]] = ..., stop: _Optional[_Union[StopRequest, _Mapping]] = ..., set_system_proxy: _Optional[_Union[SetSystemProxyRequest, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusRequest, _Mapping]] = ..., set_mode: _Optional[_Union[SetModeRequest, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsRequest, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupRequest, _Mapping]] = ..., select_proxy: _Optional[_Union[SelectProxyRequest, _Mapping]] = ..., health_check: _Optional[_Union[HealthCheckRequest, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayRequest, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersRequest, _Mapping]] = ..., update_provider: _Optional[_Union[UpdateProviderRequest, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesRequest, _Mapping]] = ..., close_connection: _Optional[_Union[CloseConnectionRequest, _Mapping]] = ..., close_all_connections: _Optional[_Union[CloseAllConnectionsRequest, _Mapping]] = ..., flush_fake_ip: _Optional[_Union[FlushFakeIPRequest, _Mapping]] = ..., flush_dns_cache: _Optional[_Union[FlushDNSCacheRequest, _Mapping]] = ..., subscribe_logs: _Optional[_Union[SubscribeLogsRequest, _Mapping]] = ..., subscribe_traffic: _Optional[_Union[SubscribeTrafficRequest, _Mapping]] = ..., subscribe_connections: _Optional[_Union[SubscribeConnectionsRequest, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsRequest, _Mapping]] = ..., unsubscribe: _Optional[_Union[UnsubscribeRequest, _Mapping]] = ..., inspect_source: _Optional[_Union[InspectSourceRequest, _Mapping]] = ..., list_geo_categories: _Optional[_Union[ListGeoCategoriesRequest, _Mapping]] = ..., preview_group: _Optional[_Union[PreviewGroupRequest, _Mapping]] = ..., match_rule: _Optional[_Union[MatchRuleRequest, _Mapping]] = ..., convert_to_plan: _Optional[_Union[ConvertToPlanRequest, _Mapping]] = ..., export_plan: _Optional[_Union[ExportPlanRequest, _Mapping]] = ..., register_warp: _Optional[_Union[RegisterWarpRequest, _Mapping]] = ...) -> None: ...
+    list_vpn_gate: ListVpnGateRequest
+    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., get_info: _Optional[_Union[GetInfoRequest, _Mapping]] = ..., claim: _Optional[_Union[ClaimRequest, _Mapping]] = ..., validate: _Optional[_Union[ValidateRequest, _Mapping]] = ..., start: _Optional[_Union[StartRequest, _Mapping]] = ..., reload: _Optional[_Union[ReloadRequest, _Mapping]] = ..., stop: _Optional[_Union[StopRequest, _Mapping]] = ..., set_system_proxy: _Optional[_Union[SetSystemProxyRequest, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusRequest, _Mapping]] = ..., set_mode: _Optional[_Union[SetModeRequest, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsRequest, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupRequest, _Mapping]] = ..., select_proxy: _Optional[_Union[SelectProxyRequest, _Mapping]] = ..., health_check: _Optional[_Union[HealthCheckRequest, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayRequest, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersRequest, _Mapping]] = ..., update_provider: _Optional[_Union[UpdateProviderRequest, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesRequest, _Mapping]] = ..., close_connection: _Optional[_Union[CloseConnectionRequest, _Mapping]] = ..., close_all_connections: _Optional[_Union[CloseAllConnectionsRequest, _Mapping]] = ..., flush_fake_ip: _Optional[_Union[FlushFakeIPRequest, _Mapping]] = ..., flush_dns_cache: _Optional[_Union[FlushDNSCacheRequest, _Mapping]] = ..., subscribe_logs: _Optional[_Union[SubscribeLogsRequest, _Mapping]] = ..., subscribe_traffic: _Optional[_Union[SubscribeTrafficRequest, _Mapping]] = ..., subscribe_connections: _Optional[_Union[SubscribeConnectionsRequest, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsRequest, _Mapping]] = ..., unsubscribe: _Optional[_Union[UnsubscribeRequest, _Mapping]] = ..., inspect_source: _Optional[_Union[InspectSourceRequest, _Mapping]] = ..., list_geo_categories: _Optional[_Union[ListGeoCategoriesRequest, _Mapping]] = ..., preview_group: _Optional[_Union[PreviewGroupRequest, _Mapping]] = ..., match_rule: _Optional[_Union[MatchRuleRequest, _Mapping]] = ..., convert_to_plan: _Optional[_Union[ConvertToPlanRequest, _Mapping]] = ..., export_plan: _Optional[_Union[ExportPlanRequest, _Mapping]] = ..., register_warp: _Optional[_Union[RegisterWarpRequest, _Mapping]] = ..., list_vpn_gate: _Optional[_Union[ListVpnGateRequest, _Mapping]] = ...) -> None: ...
 
 class Response(_message.Message):
-    __slots__ = ("protocol_version", "id", "error", "empty", "get_info", "composition", "get_status", "list_groups", "get_group", "test_delay", "list_providers", "list_rules", "subscribe", "poll_events", "inspect_source", "list_geo_categories", "preview_group", "match_rule", "convert_to_plan", "export_plan", "register_warp")
+    __slots__ = ("protocol_version", "id", "error", "empty", "get_info", "composition", "get_status", "list_groups", "get_group", "test_delay", "list_providers", "list_rules", "subscribe", "poll_events", "inspect_source", "list_geo_categories", "preview_group", "match_rule", "convert_to_plan", "export_plan", "register_warp", "list_vpn_gate")
     PROTOCOL_VERSION_FIELD_NUMBER: _ClassVar[int]
     ID_FIELD_NUMBER: _ClassVar[int]
     ERROR_FIELD_NUMBER: _ClassVar[int]
@@ -216,6 +218,7 @@ class Response(_message.Message):
     CONVERT_TO_PLAN_FIELD_NUMBER: _ClassVar[int]
     EXPORT_PLAN_FIELD_NUMBER: _ClassVar[int]
     REGISTER_WARP_FIELD_NUMBER: _ClassVar[int]
+    LIST_VPN_GATE_FIELD_NUMBER: _ClassVar[int]
     protocol_version: int
     id: int
     error: Error
@@ -237,7 +240,8 @@ class Response(_message.Message):
     convert_to_plan: ConvertToPlanResponse
     export_plan: ExportPlanResponse
     register_warp: RegisterWarpResponse
-    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., error: _Optional[_Union[Error, _Mapping]] = ..., empty: _Optional[_Union[Empty, _Mapping]] = ..., get_info: _Optional[_Union[GetInfoResponse, _Mapping]] = ..., composition: _Optional[_Union[CompositionReport, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusResponse, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsResponse, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupResponse, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayResponse, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersResponse, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesResponse, _Mapping]] = ..., subscribe: _Optional[_Union[SubscribeResponse, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsResponse, _Mapping]] = ..., inspect_source: _Optional[_Union[InspectSourceResponse, _Mapping]] = ..., list_geo_categories: _Optional[_Union[ListGeoCategoriesResponse, _Mapping]] = ..., preview_group: _Optional[_Union[PreviewGroupResponse, _Mapping]] = ..., match_rule: _Optional[_Union[MatchRuleResponse, _Mapping]] = ..., convert_to_plan: _Optional[_Union[ConvertToPlanResponse, _Mapping]] = ..., export_plan: _Optional[_Union[ExportPlanResponse, _Mapping]] = ..., register_warp: _Optional[_Union[RegisterWarpResponse, _Mapping]] = ...) -> None: ...
+    list_vpn_gate: ListVpnGateResponse
+    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., error: _Optional[_Union[Error, _Mapping]] = ..., empty: _Optional[_Union[Empty, _Mapping]] = ..., get_info: _Optional[_Union[GetInfoResponse, _Mapping]] = ..., composition: _Optional[_Union[CompositionReport, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusResponse, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsResponse, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupResponse, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayResponse, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersResponse, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesResponse, _Mapping]] = ..., subscribe: _Optional[_Union[SubscribeResponse, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsResponse, _Mapping]] = ..., inspect_source: _Optional[_Union[InspectSourceResponse, _Mapping]] = ..., list_geo_categories: _Optional[_Union[ListGeoCategoriesResponse, _Mapping]] = ..., preview_group: _Optional[_Union[PreviewGroupResponse, _Mapping]] = ..., match_rule: _Optional[_Union[MatchRuleResponse, _Mapping]] = ..., convert_to_plan: _Optional[_Union[ConvertToPlanResponse, _Mapping]] = ..., export_plan: _Optional[_Union[ExportPlanResponse, _Mapping]] = ..., register_warp: _Optional[_Union[RegisterWarpResponse, _Mapping]] = ..., list_vpn_gate: _Optional[_Union[ListVpnGateResponse, _Mapping]] = ...) -> None: ...
 
 class Empty(_message.Message):
     __slots__ = ()
@@ -336,10 +340,12 @@ class Composition(_message.Message):
     def __init__(self, sources: _Optional[_Iterable[_Union[CompositionSource, _Mapping]]] = ..., info_filter: _Optional[str] = ..., plan_json: _Optional[str] = ..., egress: _Optional[_Union[Egress, _Mapping]] = ...) -> None: ...
 
 class Egress(_message.Message):
-    __slots__ = ("warp",)
+    __slots__ = ("warp", "vpn_gate")
     WARP_FIELD_NUMBER: _ClassVar[int]
+    VPN_GATE_FIELD_NUMBER: _ClassVar[int]
     warp: WarpAccount
-    def __init__(self, warp: _Optional[_Union[WarpAccount, _Mapping]] = ...) -> None: ...
+    vpn_gate: _containers.RepeatedCompositeFieldContainer[VpnGateServer]
+    def __init__(self, warp: _Optional[_Union[WarpAccount, _Mapping]] = ..., vpn_gate: _Optional[_Iterable[_Union[VpnGateServer, _Mapping]]] = ...) -> None: ...
 
 class WarpAccount(_message.Message):
     __slots__ = ("device_id", "token", "protocol", "private_key", "peer_public_key", "endpoint", "address_v4", "address_v6", "client_id", "registered_at_unix_ms")
@@ -792,6 +798,70 @@ class RegisterWarpResponse(_message.Message):
     ACCOUNT_FIELD_NUMBER: _ClassVar[int]
     account: WarpAccount
     def __init__(self, account: _Optional[_Union[WarpAccount, _Mapping]] = ...) -> None: ...
+
+class ListVpnGateRequest(_message.Message):
+    __slots__ = ("via",)
+    VIA_FIELD_NUMBER: _ClassVar[int]
+    via: str
+    def __init__(self, via: _Optional[str] = ...) -> None: ...
+
+class ListVpnGateResponse(_message.Message):
+    __slots__ = ("servers",)
+    SERVERS_FIELD_NUMBER: _ClassVar[int]
+    servers: _containers.RepeatedCompositeFieldContainer[VpnGateServer]
+    def __init__(self, servers: _Optional[_Iterable[_Union[VpnGateServer, _Mapping]]] = ...) -> None: ...
+
+class VpnGateServer(_message.Message):
+    __slots__ = ("host_name", "ip", "country", "score", "ping_ms", "speed_bps", "sessions", "uptime_ms", "operator", "openvpn")
+    HOST_NAME_FIELD_NUMBER: _ClassVar[int]
+    IP_FIELD_NUMBER: _ClassVar[int]
+    COUNTRY_FIELD_NUMBER: _ClassVar[int]
+    SCORE_FIELD_NUMBER: _ClassVar[int]
+    PING_MS_FIELD_NUMBER: _ClassVar[int]
+    SPEED_BPS_FIELD_NUMBER: _ClassVar[int]
+    SESSIONS_FIELD_NUMBER: _ClassVar[int]
+    UPTIME_MS_FIELD_NUMBER: _ClassVar[int]
+    OPERATOR_FIELD_NUMBER: _ClassVar[int]
+    OPENVPN_FIELD_NUMBER: _ClassVar[int]
+    host_name: str
+    ip: str
+    country: str
+    score: int
+    ping_ms: int
+    speed_bps: int
+    sessions: int
+    uptime_ms: int
+    operator: str
+    openvpn: OpenVpnOptions
+    def __init__(self, host_name: _Optional[str] = ..., ip: _Optional[str] = ..., country: _Optional[str] = ..., score: _Optional[int] = ..., ping_ms: _Optional[int] = ..., speed_bps: _Optional[int] = ..., sessions: _Optional[int] = ..., uptime_ms: _Optional[int] = ..., operator: _Optional[str] = ..., openvpn: _Optional[_Union[OpenVpnOptions, _Mapping]] = ...) -> None: ...
+
+class OpenVpnOptions(_message.Message):
+    __slots__ = ("server", "port", "proto", "cipher", "data_ciphers", "auth", "comp_lzo", "ca", "cert", "key", "tls_auth", "key_direction")
+    SERVER_FIELD_NUMBER: _ClassVar[int]
+    PORT_FIELD_NUMBER: _ClassVar[int]
+    PROTO_FIELD_NUMBER: _ClassVar[int]
+    CIPHER_FIELD_NUMBER: _ClassVar[int]
+    DATA_CIPHERS_FIELD_NUMBER: _ClassVar[int]
+    AUTH_FIELD_NUMBER: _ClassVar[int]
+    COMP_LZO_FIELD_NUMBER: _ClassVar[int]
+    CA_FIELD_NUMBER: _ClassVar[int]
+    CERT_FIELD_NUMBER: _ClassVar[int]
+    KEY_FIELD_NUMBER: _ClassVar[int]
+    TLS_AUTH_FIELD_NUMBER: _ClassVar[int]
+    KEY_DIRECTION_FIELD_NUMBER: _ClassVar[int]
+    server: str
+    port: int
+    proto: str
+    cipher: str
+    data_ciphers: _containers.RepeatedScalarFieldContainer[str]
+    auth: str
+    comp_lzo: str
+    ca: str
+    cert: str
+    key: str
+    tls_auth: str
+    key_direction: str
+    def __init__(self, server: _Optional[str] = ..., port: _Optional[int] = ..., proto: _Optional[str] = ..., cipher: _Optional[str] = ..., data_ciphers: _Optional[_Iterable[str]] = ..., auth: _Optional[str] = ..., comp_lzo: _Optional[str] = ..., ca: _Optional[str] = ..., cert: _Optional[str] = ..., key: _Optional[str] = ..., tls_auth: _Optional[str] = ..., key_direction: _Optional[str] = ...) -> None: ...
 
 class ListGeoCategoriesRequest(_message.Message):
     __slots__ = ()
