@@ -21,6 +21,7 @@ ApplicationWindow {
     required property SettingsViewModel settingsViewModel
     required property DesktopViewModel desktopViewModel
     required property AboutViewModel aboutViewModel
+    required property BackupViewModel backupViewModel
 
     // Bring the window back from the tray, the Dock or a second launch.
     function present() {
@@ -153,6 +154,7 @@ ApplicationWindow {
                 settings: window.settingsViewModel
                 overview: window.overviewViewModel
                 about: window.aboutViewModel
+                backup: window.backupViewModel
             }
         }
     }

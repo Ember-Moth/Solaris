@@ -1,8 +1,9 @@
 # 界面
 
 本文描述 Python 界面的结构和各部分的设计：宿主接口、配置存储、订阅、覆写、多语言、外观、连接与日志、设置与桌面行为。
-系统整体的架构见 [architecture.md](architecture.md)，视觉规范见 [DESIGN.md](../DESIGN.md)。云备份的设计见
-[storage.md](storage.md)（界面部分尚未实现），自定义分流的设计见 [routing.md](routing.md)，界面部分见第 9 节。
+系统整体的架构见 [architecture.md](architecture.md)，视觉规范见 [DESIGN.md](../DESIGN.md)。备份的设计见
+[storage.md](storage.md)，界面部分见第 8 节（目前只有导出到文件和从文件恢复）；自定义分流的设计见
+[routing.md](routing.md)，界面部分见第 9 节。
 
 ## 0. 结构
 
@@ -51,6 +52,8 @@
 - `models/store.py`：配置和覆写（`ProfileStore`），以及打开数据库的 `open_database`；
 - `models/settings.py`：设置（第 8 节）；
 - `models/routing.py`：分流数据（routing_state 和方案的三张表）；
+- `models/backup.py`、`models/backup_providers.py`、`models/backup_auto.py`：备份快照与恢复、提供方、自动备份
+  （storage.md 第 3、6 节）；
 - `models/plans.py`、`models/services.py`、`models/regions.py`：方案的默认模板与方案 JSON、服务清单、地区名称（第 9 节）。
 
 ### 2.1 表
@@ -61,10 +64,10 @@
 | `profile_contents` | 配置原文 `yaml`，以及下载时一起得到的信息：`fetched_at`（界面上的"更新于"）、用量四项、`proxy_count`。这是本机缓存 |
 | `overrides` | `scope` 为 `global` 或某份配置的 `id`；`yaml` 是用户写的原文 |
 | `settings` | 见第 8 节 |
-| `state` | 本机状态（键值），目前没有使用 |
+| `state` | 本机状态（键值）：各备份目标上次收下的快照摘要 |
 | `routing_state` | 只有一行：分流方式、"订阅自带"用的配置（也就是当前配置）、"我的方案"用的方案、信息节点表达式 |
 | `plans`、`plan_groups`、`plan_rules` | 分流方案（routing.md 第 9 节），第 9 节 |
-| `backup_targets` | 备份目标，C2 开始使用 |
+| `backup_targets` | 备份目标（`BackupTargets`）；云端提供方接上之前没有行 |
 
 - 时间都用 Unix 秒。每行有 `updated_at`，只在内容确实变化时更新。`profiles`、`overrides`、`plans`、`plan_groups`、
   `plan_rules`、`backup_targets` 删除时只记 `deleted_at`（软删除），留给备份按记录合并；`profile_contents` 是缓存，
@@ -221,7 +224,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 - **注入**：`viewmodels/composition.compose(…, appearance=…)` 创建或接收外观对象，放进 `ViewModels.appearance`，
   作为 Main.qml 的必需属性 `appearance` 注入；Main.qml 用 `Binding` 把它交给 `Theme.appearance`。
   设置页只改设置项 `appearance`（第 8 节）；`compose()` 订阅设置存储，值变化时调用外观对象的 `setMode()`，
-  所以无论改动来自设置页还是将来的备份恢复，外观都立即跟上。
+  所以无论改动来自设置页还是备份恢复，外观都立即跟上。
 - **启动时的模式**（`resolve_mode`）按顺序取第一个有效值：
   1. `app.main(appearance=…)` 的参数，然后是设置项 `appearance`（`system` 视为未指定）；
   2. 环境变量 `SOLARIS_APPEARANCE=system|light|dark`，用于预览和测试，
@@ -303,17 +306,18 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 
 ## 8. 设置与桌面行为
 
-用户的设置由 `models/settings.py` 的 `SettingsStore` 接口提供，只有三件事：读取 `current`、写入
+用户的设置由 `models/settings.py` 的 `SettingsStore` 接口提供：读取 `current`、写入
 `update(**changes)`、订阅变更 `subscribe(listener)`（回调收到改动前后的 `Settings`，在写入的线程上调用，
-返回取消订阅的函数）。设置页（`viewmodels/settings.py`）、概览页的 TUN 与系统代理开关、托盘和关闭窗口的行为
-都只依赖这个接口，并且通过订阅跟上变化，不论改动来自哪一页，还是以后从备份恢复。不接受的值抛
+返回取消订阅的函数），以及别的代码直接写了表之后的 `reload()`。设置页（`viewmodels/settings.py`）、概览页的
+TUN 与系统代理开关、托盘和关闭窗口的行为都只依赖这个接口，并且通过订阅跟上变化，不论改动来自哪一页，还是
+从备份恢复。不接受的值抛
 `ValueError`，写不进去抛 `SettingsError`（`settings_unwritable`），这两种情况都不通知，设置页标题栏显示
 「无法保存设置：…」。
 
 **存储**：`DatabaseSettingsStore` 把设置存在数据库的 `settings` 表里（第 2 节）。每个改过的设置项占一行：`key` 是
 字段名，`value` 是 JSON，`scope` 是这一项的范围，`updated_at` 是修改时间。没有对应行或值不被接受的设置项取默认值。
 一次 `update` 只写有变化的项，在一个事务里完成，失败时一项都不写。应用里每个数据库只有一个设置存储；直接写
-`settings` 表的代码（例如将来的恢复备份）写完后调用 `reload()`，订阅者同样会收到改动前后的 `Settings`。
+`settings` 表的代码（恢复备份）写完后调用 `reload()`，订阅者同样会收到改动前后的 `Settings`。
 
 每个设置项在字段元数据里标明范围（`settings.scope(name)`），供设计备份范围：`synced` 随账户同步，换一台设备
 恢复后照样适用；`local` 只在本机生效，恢复到别的设备上没有意义或有风险。
@@ -364,6 +368,18 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   （release.md 第 7 节）；一行超过 16 KiB 的消息被丢弃。Windows 上后来的界面先调用
   `AllowSetForegroundWindow`，让第一个界面能把窗口带到前台。由锁而不是由服务端名字来判断，是因为 macOS 上
   崩溃的界面会留下 socket 文件，而且两个同时启动的界面拿锁时只有一个能成功。
+- **备份与同步**：设置页左栏的一个分组，由 `viewmodels/backup.py` 的 `BackupViewModel` 提供（storage.md 第 3、6 节）。
+  iCloud、Google Drive 两行在它们的提供方实现之前不显示，目前有两行：
+  - 「导出到文件」：说明写着「不加密，其中有订阅链接」；「导出…」先弹确认框，说明文件不加密、里面有订阅链接、
+    本地文件配置的原文里可能有组网出站的凭据（mesh.md 第 7 节），确认后在系统的保存对话框里选位置，默认文件名
+    `solaris-backup-<时间>.json`。导出后说明处显示「已导出到 …」或失败原因，6 秒后恢复原来的说明。
+  - 「从文件恢复」：「恢复…」打开系统的打开对话框。本机没有配置时直接按"替换"导入；有配置时弹出「从文件恢复」
+    对话框：备份的设备、时间和配置、方案的份数，本机现有的份数，以及"合并"（默认）和"替换"两个选项，「恢复」是
+    默认按钮。恢复期间两行的按钮不可用，说明处显示「正在恢复，并重新下载订阅…」；结束后显示「已从 … 恢复」，
+    有配置更新失败时显示「已恢复；N 份订阅更新失败，已在订阅页标出」，隧道没能切到恢复后的分流时说明原因。这一句
+    一直留到下一次恢复。不是备份文件、版本更新的备份、读不了的文件都在这里说明，数据不动。
+  - 恢复后 `BackupViewModel.restored` 通知订阅页、分流页、概览页和代理页重新读取，设置存储 `reload()`，语言和外观
+    随之切换。
 - **关于**：设置页的「关于」分组除了版本，还有检查更新与下载、自动检查的两个设置项、开源许可和诊断信息导出，
   由 `viewmodels/about.py` 的 `AboutViewModel` 提供，设计见 [release.md](release.md)。
 - **登录时打开**（`desktop/login.py`，平台接口 `LoginItem`）：

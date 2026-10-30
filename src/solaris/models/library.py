@@ -391,7 +391,13 @@ class ProfileLibrary:
         return text, usage, inspection
 
     async def _commit_update(
-        self, profile_id: str, text: str, usage: Usage | None, inspection: SourceInspection
+        self,
+        profile_id: str,
+        text: str,
+        usage: Usage | None,
+        inspection: SourceInspection,
+        *,
+        reload: bool = True,
     ) -> None:
         # The profile may have been removed while it downloaded.
         profile = self._list.get(profile_id)
@@ -414,6 +420,8 @@ class ProfileLibrary:
         await self._save(updated)
         if profile.in_pool:
             self._report = report  # the pool has other nodes
+        if not reload:
+            return
         if pooled or (self._state.mode == MODE_PROFILE and profile_id == self._list.active):
             await self._reload_if_running()
 
@@ -556,6 +564,44 @@ class ProfileLibrary:
                 )
             if reloads:
                 await self._reload_if_running()
+            return self._list
+
+    # -- restoring a backup (docs/storage.md §3) ----------------------------------------------
+    async def restore(self, write: Callable[[], object]) -> ProfileList:
+        """Have ``write`` put a backup into the store, on a worker thread while no change of
+        the library can come between, and take it up. Then the host reads every profile as
+        an import does: subscriptions are downloaded again, a local file's config is the one
+        restored. A profile that fails is kept and marked as a failed update. When the
+        profile in use is gone, the earliest with rules takes over. A running tunnel then
+        runs the restored routing; raises when it cannot, with everything else done."""
+        async with self._lock:
+            await asyncio.to_thread(write)
+            self._list = await asyncio.to_thread(self._store.load)
+            self._state = await asyncio.to_thread(self._routing_store.state)
+            self._plans = await asyncio.to_thread(self._routing_store.plans)
+            self._failed.clear()
+            self._inspections.clear()
+            self._report = None
+        for profile in self._list.profiles:
+            try:
+                if profile.is_subscription:
+                    text, usage, inspection = await self._fetch_again(profile)
+                else:
+                    text, usage = await asyncio.to_thread(self._store.read_config, profile.id), None
+                    inspection = await self._inspect(text)
+                    if inspection.has_rules:
+                        config = TunnelConfig(text, await self._overrides(profile.id))
+                        await self._host.validate(config)
+                async with self._lock:
+                    await self._commit_update(profile.id, text, usage, inspection, reload=False)
+            except Exception:
+                self._mark_failed(profile.id, self._clock())
+        async with self._lock:
+            if self._state.mode == MODE_PROFILE and self._list.active_profile() is None:
+                successor = self._first_with_rules(self._list)
+                if successor is not None:
+                    await self._save(replace(self._list, active=successor.id))
+            await self._reload_if_running()
             return self._list
 
     # -- routing: the mode, the plans, the pool settings --------------------------------------
@@ -855,7 +901,13 @@ class ProfileLibrary:
                 continue
             text = (texts or {}).get(profile.id)
             if text is None:
-                text = await asyncio.to_thread(self._store.read_config, profile.id)
+                try:
+                    text = await asyncio.to_thread(self._store.read_config, profile.id)
+                except ProfileError as error:
+                    # Restored, and not downloaded yet (docs/storage.md §3): no nodes.
+                    if error.code != "config_missing":
+                        raise
+                    continue
             sources.append(CompositionSource(profile.id, profile.name, text))
         plan = plan or plans.default_plan()
         plan_json = plans.plan_json(plan, self._locale())

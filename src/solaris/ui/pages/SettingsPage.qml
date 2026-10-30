@@ -15,6 +15,8 @@ ScrollView {
     required property AboutViewModel about
     // TUN and the system proxy are the overview's switches, shown here as well.
     required property OverviewViewModel overview
+    // The 备份与同步 group.
+    required property BackupViewModel backup
 
     contentWidth: availableWidth
     clip: true
@@ -225,6 +227,89 @@ ScrollView {
                                 current: page.settings.appearance
                                 accessibleName: qsTr("外观")
                                 onPicked: value => page.settings.setAppearance(value)
+                            }
+                        }
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: Theme.space2
+
+                    SectionLabel {
+                        text: qsTr("备份与同步")
+                    }
+
+                    Group {
+                        Layout.fillWidth: true
+
+                        GroupRow {
+                            divider: false
+                            verticalPadding: Theme.space2
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+
+                                UiText {
+                                    Layout.fillWidth: true
+                                    text: qsTr("导出到文件")
+                                }
+
+                                AccessibleText {
+                                    Layout.fillWidth: true
+                                    text: page.backup.exportStatus
+                                    role: Theme.type.caption
+                                    color: page.backup.exportFailed ? Theme.danger : Theme.textMuted
+                                    wrapMode: Text.Wrap
+                                    Accessible.role: Accessible.StatusBar
+                                }
+                            }
+
+                            AppButton {
+                                id: exportButton
+
+                                variant: "compact"
+                                text: qsTr("导出…")
+                                enabled: !page.backup.busy
+                                Accessible.name: qsTr("导出到文件")
+                                Accessible.description: page.backup.exportStatus
+                                onClicked: exportDialog.show(exportButton)
+                            }
+                        }
+
+                        GroupRow {
+                            verticalPadding: Theme.space2
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+
+                                UiText {
+                                    Layout.fillWidth: true
+                                    text: qsTr("从文件恢复")
+                                }
+
+                                AccessibleText {
+                                    Layout.fillWidth: true
+                                    visible: text !== ""
+                                    text: page.backup.restoreStatus
+                                    role: Theme.type.caption
+                                    color: page.backup.restoreFailed ? Theme.danger : Theme.textMuted
+                                    wrapMode: Text.Wrap
+                                    Accessible.role: Accessible.StatusBar
+                                }
+                            }
+
+                            AppButton {
+                                id: restoreFileButton
+
+                                variant: "compact"
+                                text: qsTr("恢复…")
+                                enabled: !page.backup.busy
+                                Accessible.name: qsTr("从文件恢复")
+                                Accessible.description: page.backup.restoreStatus
+                                onClicked: openFileDialog.open()
                             }
                         }
                     }
@@ -554,5 +639,52 @@ ScrollView {
         currentFolder: StandardPaths.writableLocation(StandardPaths.DocumentsLocation)
         nameFilters: [qsTr("zip 压缩文件 (*.zip)")]
         onAccepted: page.about.exportDiagnostics(selectedFile.toString())
+    }
+
+    ConfirmDialog {
+        id: exportDialog
+
+        title: qsTr("导出备份文件？")
+        message: qsTr("备份文件不加密，其中有订阅链接，本地文件配置的原文里还可能有组网出站的凭据。拿到这个文件的人都能看到这些内容。")
+        confirmText: qsTr("继续")
+        onAccepted: {
+            exportFileDialog.selectedFile = exportFileDialog.currentFolder + "/" + page.backup.exportName
+            exportFileDialog.open()
+        }
+    }
+
+    FileDialog {
+        id: exportFileDialog
+
+        title: qsTr("导出到文件")
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "json"
+        currentFolder: StandardPaths.writableLocation(StandardPaths.DocumentsLocation)
+        nameFilters: [qsTr("Solaris 备份 (*.json)")]
+        onAccepted: page.backup.exportBackup(selectedFile.toString())
+    }
+
+    FileDialog {
+        id: openFileDialog
+
+        title: qsTr("从文件恢复")
+        fileMode: FileDialog.OpenFile
+        currentFolder: StandardPaths.writableLocation(StandardPaths.DocumentsLocation)
+        nameFilters: [qsTr("Solaris 备份 (*.json)")]
+        onAccepted: page.backup.openBackup(selectedFile.toString())
+    }
+
+    RestoreDialog {
+        id: restoreDialog
+
+        backup: page.backup
+    }
+
+    Connections {
+        target: page.backup
+
+        function onRestoreRequested() {
+            restoreDialog.show(restoreFileButton)
+        }
     }
 }

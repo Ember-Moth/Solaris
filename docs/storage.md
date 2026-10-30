@@ -3,7 +3,10 @@
 本文描述界面侧用户数据的持久化方式（SQLite），以及如何把这些数据备份到 Google Drive 和 iCloud。
 相关决策是 [roadmap.md](roadmap.md) 中的 D13 和 D14，实施计划见 roadmap 的 M7。
 
-状态：存储层已实现（B1），云备份未实现。存储层的实现细节（线程、迁移）见 [ui.md](ui.md) §2。
+状态：存储层已实现（B1）。备份中不依赖云服务的部分已实现（阶段 D 第二轮）：快照的导出、恢复（替换或合并）、
+提供方接口与内存、本地目录两个提供方、自动备份的逻辑，以及设置页的"导出到文件"和"从文件恢复"。Google Drive
+（第 4 节）和 iCloud（第 5 节）的提供方未实现，自动备份也还没有接到界面上。存储层的实现细节（线程、迁移）见
+[ui.md](ui.md) §2，界面见 ui.md §8。
 
 ## 1. 范围
 
@@ -34,7 +37,7 @@
 | `overrides` | `scope`（`global` 或某个 `profile_id`）、YAML 原文、`updated_at`、`deleted_at` |
 | `routing_state`、`plans`、`plan_groups`、`plan_rules` | 分流方式、当前使用的配置、节点池设置、分流方案及其策略组和规则条目，字段见 routing.md 第 9 节 |
 | `settings` | `key`、`value`（JSON）、`scope`（`synced` / `local`）、`updated_at`。每个设置项属于哪个 scope，由设置页的定义决定 |
-| `state` | 只属于本机的状态（`key`、`value`（JSON）、`updated_at`），目前没有使用 |
+| `state` | 只属于本机的状态（`key`、`value`（JSON）、`updated_at`）：每个备份目标上次上传的快照摘要（`backup_digest:<目标 id>`） |
 | `backup_targets` | 已开启的备份目标：`id`、提供方、显示用的账户名、上次成功备份的时间、上次的错误、`created_at`、`updated_at`、`deleted_at`。不存令牌（见 4 节） |
 
 当前使用的配置存在 `routing_state` 里，作为"订阅自带"时用的配置（routing.md 第 9 节），不在 `state` 里。
@@ -49,16 +52,28 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
 - 新设备登录同一个账户后，可以一键恢复；
 - 几台设备同时修改时，以最后上传的那份快照为准。
 
-**快照内容**：一个 JSON 文档，包含以下字段：
+**快照内容**：一个 UTF-8 的 JSON 文档（`models/backup.py`），包含以下字段：
 
-- `format`（固定为 `"solaris-backup"`）、`version`、`created_at`、`device`（设备名）、`app_version`；
-- `profiles`：配置列表。订阅只存链接和更新设置，不存下载到的内容；本地文件配置存 YAML 原文；
-- `overrides`：全部覆写；
-- `routing`：分流方式、节点池设置和全部分流方案（包括策略组和规则条目）；
-- `settings`：只包含 `synced` 范围的设置；
-- 当前使用的配置或方案。
+- `format`（固定为 `"solaris-backup"`）、`version`（目前为 1）、`created_at`（Unix 秒）、`device`（设备名，取主机名并去掉
+  `.local`）、`app_version`；
+- `profiles`：配置列表，按列表顺序。每条有 `id`、`name`、`kind`、`url`、`path`、`auto_update_hours`、`in_pool`、
+  `position`、`created_at`、`updated_at`。订阅只存链接和更新设置，不存下载到的内容；本地文件配置另有
+  `config`（`yaml` 原文和它的 `updated_at`，即 `profile_contents.updated_at`）；
+- `overrides`：全部覆写，`scope`、`yaml`、`updated_at`；
+- `routing`：`mode`、`profile_id`（当前使用的配置）、`plan_id`（当前使用的方案）、`info_pattern`（信息节点表达式）、
+  `updated_at`，以及 `plans`：全部分流方案，每套带 `groups` 和 `rules`，字段与表相同，`conditions`、`options`、
+  `content` 是 JSON 值而不是字符串；
+- `settings`：只包含 `synced` 范围、改过的设置，`key`、`value`、`updated_at`。
 
-快照不包含用量、缓存、本机范围的设置，也不包含任何令牌和 WARP 账户。
+快照不包含用量、下载缓存（`profile_contents` 里订阅的原文和下载信息）、本机范围的设置、`state` 和 `backup_targets`，
+也不包含任何令牌和 WARP 账户。
+
+- **删除的记录**：配置、覆写、方案、策略组和规则条目删除后只留**墓碑**：主键、`updated_at` 和 `deleted_at`，
+  不带内容，所以删掉的订阅链接不会一直留在备份里。删除的方案不带它的策略组和规则。
+- **摘要**：去掉 `format`、`version`、`created_at`、`device`、`app_version` 之后，按键排序的紧凑 JSON 的 SHA-256。
+  同样的数据不论何时、在哪台设备上导出，摘要都相同；订阅更新、用量变化、本机设置的改动都不改变摘要。
+- **读取**：超过 64 MiB、不是 JSON、`format` 不对或字段类型不对的文件报 `not_a_backup`（或 `too_large`）；`version`
+  比本程序认识的新报 `newer_backup`。所有记录都在写入数据库之前检查过。
 
 **不加密**（D13）：快照里的订阅链接是明文，安全性完全依赖 Google 或 Apple 账户本身。开启备份时，界面要明确告知用户
 "备份中包含订阅链接，任何能访问该云端账户的人都能看到"。本地文件配置的 YAML 原文也在快照里，其中可能有组网出站的
@@ -72,11 +87,40 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
 
 **保留份数**：每个备份目标在云端保留最近 10 份快照，用来找回误删的数据。
 
+这几条由 `models/backup_auto.py` 的 `AutoBackup` 实现，在提供方之上，对每个目标分别执行：数据变化时调用
+`changed()`，记下 30 秒后到期；定时调用 `run_due()`，到期才上传，期间再有变化就顺延；启动时调用 `at_startup()`，
+给上次成功备份超过 24 小时（或从未成功）的目标上传。上传前比较快照摘要和这个目标上次收下的摘要（`state` 里的
+`backup_digest:<目标 id>`），相同就跳过；成功后记下摘要和时间，再删掉第 10 份之后更旧的快照（删除失败不影响这次
+上传，下次再删）。失败时把原因记进 `backup_targets.last_error`，不记摘要，下次照常重试，也不影响其他目标。
+`BackupTargets` 读写 `backup_targets` 表，关掉的目标标记删除。定时器和数据变化的通知随第一个云端提供方接到界面上。
+
+**导出到文件**：设置页可以把快照导出成文件，再从文件恢复，不需要云端账户。文件就是上面的 JSON 文档，同样不加密：
+导出前界面提示文件里有订阅链接，本地文件配置的原文里可能有组网出站的凭据。
+
 **恢复**：
 
-1. 本机没有任何配置时，直接导入快照。
+1. 本机没有任何配置时，直接导入快照（按"替换"）。
 2. 本机已有数据时，让用户选择"替换"或"合并"。合并按 `id` 进行，`updated_at` 较新的一方胜出。
 3. 恢复完成后，重新下载所有订阅，并逐条调用宿主的 `validate`；校验失败的配置会被标出来，不会被丢弃。
+
+实现（`Backups.restore`，一个事务）：
+
+- **替换**：本机变成和快照一样。本机没有的记录按快照原样插入，保留它的时间；本机有、内容不同或已删除的记录改成
+  快照的内容，`updated_at` 记为现在；快照里没有（或是墓碑）的本机记录标记删除，时间也是现在。`synced` 范围的设置
+  取快照里的值，快照里没有的恢复默认值；`routing_state` 取快照的值。这样新设备上恢复出来的数据和原设备的摘要相同，
+  而在已有数据的设备上，"替换"本身算作一次最新的修改。
+- **合并**：每条记录单独比较：本机没有，或者快照里的 `updated_at` 更新，就取快照的（连同它的时间）；墓碑更新时
+  把本机记录标记删除，本机没有这条记录时什么也不做。策略组按（`plan_id`，`id`）、规则条目按 `id`，各自比较；
+  合并出的规则指向已删除的策略组时，内核把它交给"节点选择"并在报告里说明（routing.md 5.3 节）。本地文件配置
+  的原文是单独的一条记录，按它自己的 `updated_at` 比较。`synced` 设置逐项比较，`routing_state` 整行比较。
+  两台设备互相合并对方的快照之后，数据相同。
+- 两种方式都只接受本版本认识的 `synced` 设置和它接受的值；本地设置不动。不再存在的配置的下载缓存一并删除。
+- 写入由 `ProfileLibrary.restore(write)` 在它的锁里执行，所以订阅的自动更新不会拿旧的列表覆盖恢复的数据。写完后
+  它重新读取配置、分流和方案，再逐份检查：订阅重新下载，本地文件配置用快照里的原文，和导入时一样经
+  `inspect_source`，带规则的再经 `validate`，"我的方案"节点池里的还要和方案一起拼装校验。失败的配置保留，记为
+  "更新失败"，在订阅页标出；还没下载到原文的订阅不给节点池提供节点。当前配置不在了时，按第一份带规则的配置接替。
+  最后，隧道在运行就按恢复后的分流重新加载；重新加载失败时，数据仍是恢复后的，界面说明隧道没有切换。设置存储
+  随后 `reload()`，各页重新读取。
 
 ## 4. Google Drive
 
@@ -107,9 +151,17 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
 
 ## 6. 提供方接口
 
-- `BackupProvider` 接口包含 `sign_in()`、`sign_out()`、`account()`、`upload(snapshot)`、`list()`、
-  `download(id)` 和 `delete(id)`。
-- Google Drive 和 CloudKit 各有一个实现。测试用内存实现和本地目录实现，不访问真实的云服务。
+- `BackupProvider` 接口（`models/backup_providers.py`）包含 `sign_in()`、`sign_out()`、`account()`、`upload(snapshot)`、
+  `list()`、`download(id)` 和 `delete(id)`，都是协程，由各实现决定放到哪个线程上执行。`kind` 是存进
+  `backup_targets.provider` 的名字。`list()` 返回 `BackupEntry`（`id`、`info`、`size`），按时间从新到旧；`info` 是
+  `SnapshotInfo`：时间、设备名、版本和配置、方案的份数，供"从云端恢复"的列表显示。`download` 不认识的 id 报
+  `backup_missing`，`delete` 删除已经不在的快照不报错。提供方只在应用自己的空间里存快照（appDataFolder、CloudKit
+  容器、一个目录），所以列出的都是本应用的快照。
+- Google Drive 和 CloudKit 各有一个实现（未做）。已有两个不访问云服务的实现：
+  - `MemoryProvider`：快照放在内存里，测试用；可以模拟退出登录和失败；
+  - `DirectoryProvider`：快照存成目录里的文件，`solaris-backup-<UTC 时间>-<摘要前 12 位>.json`，原子写入。只列出
+    这样命名、能读成快照的文件，别的文件不碰；id 只接受这种文件名，到不了目录之外。
 - 可以同时开启多个备份目标，例如在 macOS 上同时用 iCloud 和 Google Drive，每个目标各自上传、各自保留快照。
 - 设置页新增"备份与同步"分组，内容包括：已登录的账户、上次备份的时间和结果、立即备份、从云端恢复、退出登录、
-  删除云端备份。
+  删除云端备份。目前只有"导出到文件"和"从文件恢复"两行；iCloud、Google Drive 两行在它们的提供方实现之前不显示
+  （ui.md §8）。

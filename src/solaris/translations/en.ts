@@ -152,6 +152,106 @@
     </message>
 </context>
 <context>
+    <name>BackupViewModel</name>
+    <message>
+        <source>这不是 Solaris 的备份文件</source>
+        <translation>This isn’t a Solaris backup file</translation>
+    </message>
+    <message>
+        <source>这份备份来自更新版本的 Solaris，请先更新</source>
+        <translation>This backup is from a newer version of Solaris; update first</translation>
+    </message>
+    <message>
+        <source>备份文件过大</source>
+        <translation>The backup file is too large</translation>
+    </message>
+    <message>
+        <source>合并</source>
+        <translation>Merge</translation>
+    </message>
+    <message>
+        <source>按记录合并，两边都改过的，以较新的修改为准</source>
+        <translation>Record by record; where both sides changed something, the later change wins</translation>
+    </message>
+    <message>
+        <source>替换</source>
+        <translation>Replace</translation>
+    </message>
+    <message>
+        <source>本机的订阅、分流方案、覆写和设置全部换成备份里的内容</source>
+        <translation>This computer’s subscriptions, plans, overrides and settings all become the backup’s</translation>
+    </message>
+    <message>
+        <source>{profiles}、{plans}</source>
+        <translation>{profiles}, {plans}</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 份订阅</source>
+        <translation>
+            <numerusform>%n subscription</numerusform>
+            <numerusform>%n subscriptions</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 套分流方案</source>
+        <translation>
+            <numerusform>%n plan</numerusform>
+            <numerusform>%n plans</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>正在导出…</source>
+        <translation>Exporting…</translation>
+    </message>
+    <message>
+        <source>不加密，其中有订阅链接</source>
+        <translation>Not encrypted; contains subscription links</translation>
+    </message>
+    <message>
+        <source>已导出到 {name}</source>
+        <translation>Exported to {name}</translation>
+    </message>
+    <message>
+        <source>导出失败：{detail}</source>
+        <translation>Export failed: {detail}</translation>
+    </message>
+    <message>
+        <source>正在读取…</source>
+        <translation>Reading…</translation>
+    </message>
+    <message>
+        <source>正在恢复，并重新下载订阅…</source>
+        <translation>Restoring and downloading subscriptions again…</translation>
+    </message>
+    <message>
+        <source>无法恢复：{detail}</source>
+        <translation>Couldn’t restore: {detail}</translation>
+    </message>
+    <message>
+        <source>本机已有 {counts}</source>
+        <translation>This computer has {counts}</translation>
+    </message>
+    <message>
+        <source>已恢复，但隧道未能切换：{detail}</source>
+        <translation>Restored, but the tunnel couldn’t switch: {detail}</translation>
+    </message>
+    <message numerus="yes">
+        <source>已恢复；%n 份订阅更新失败，已在订阅页标出</source>
+        <translation>
+            <numerusform>Restored; %n subscription failed to update and is marked on the Subscriptions page</numerusform>
+            <numerusform>Restored; %n subscriptions failed to update and are marked on the Subscriptions page</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>已从 {name} 恢复</source>
+        <translation>Restored from {name}</translation>
+    </message>
+    <message>
+        <source>恢复失败：{detail}</source>
+        <translation>Restore failed: {detail}</translation>
+    </message>
+</context>
+<context>
     <name>ConfirmDialog</name>
     <message>
         <source>取消</source>
@@ -1769,6 +1869,21 @@ prepend-rules:
     </message>
 </context>
 <context>
+    <name>RestoreDialog</name>
+    <message>
+        <source>从文件恢复</source>
+        <translation>Restore from file</translation>
+    </message>
+    <message>
+        <source>取消</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>恢复</source>
+        <translation>Restore</translation>
+    </message>
+</context>
+<context>
     <name>RoutingPage</name>
     <message>
         <source>分流</source>
@@ -2633,6 +2748,22 @@ prepend-rules:
         <translation>Appearance</translation>
     </message>
     <message>
+        <source>备份与同步</source>
+        <translation>Backup and sync</translation>
+    </message>
+    <message>
+        <source>导出到文件</source>
+        <translation>Export to file</translation>
+    </message>
+    <message>
+        <source>从文件恢复</source>
+        <translation>Restore from file</translation>
+    </message>
+    <message>
+        <source>恢复…</source>
+        <translation>Restore…</translation>
+    </message>
+    <message>
         <source>启动</source>
         <translation>Startup</translation>
     </message>
@@ -2703,6 +2834,22 @@ prepend-rules:
     <message>
         <source>诊断信息</source>
         <translation>Diagnostics</translation>
+    </message>
+    <message>
+        <source>导出备份文件？</source>
+        <translation>Export a backup file?</translation>
+    </message>
+    <message>
+        <source>备份文件不加密，其中有订阅链接，本地文件配置的原文里还可能有组网出站的凭据。拿到这个文件的人都能看到这些内容。</source>
+        <translation>The backup file isn’t encrypted. It holds your subscription links, and local configuration files in it may hold credentials for mesh outbounds. Anyone with the file can read them.</translation>
+    </message>
+    <message>
+        <source>继续</source>
+        <translation>Continue</translation>
+    </message>
+    <message>
+        <source>Solaris 备份 (*.json)</source>
+        <translation>Solaris backup (*.json)</translation>
     </message>
     <message>
         <source>导出…</source>
