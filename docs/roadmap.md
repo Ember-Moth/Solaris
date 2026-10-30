@@ -21,6 +21,7 @@
 | 隐私出口 | 设计完成 | WARP 出口（M9）和 Tor 出口（M10，首发后）的设计见 privacy.md，未实现 |
 | macOS 原生部分 | 部分（M5） | Xcode 工程、管理库 C 接口；系统扩展用 utun 以 fd 模式运行内核（`with_gvisor`）；Developer ID 签名与校验通过；`MacExtensionHost`、组装 .app、公证、测试 Mac 实测未做 |
 | 打包与安装 | 未开始 | 只有 Nuitka 入口文件和资源复制规则 |
+| 发布准备（M6） | 部分 | 检查更新与下载、诊断信息导出、第三方许可证清单、一键导入链接的处理已做（release.md）；Windows 签名方案、发布全流程、向系统注册 scheme 未做 |
 | CI | 全绿 | Python（macOS、Windows）、Go（macOS、Windows、Linux）、网络命名空间 TUN 测试（四种栈和 fd 模式）、macOS 上的 e2e |
 
 ## 2. 下一步开发计划
@@ -241,6 +242,12 @@ PacketTunnel 系统扩展骨架、`scripts/build_apple.py`（签名与不签名�
 
 ### M6 发布准备
 
+**状态**：先行项已完成（2026-10-30，阶段 D 第一轮），设计见 [release.md](release.md)：检查更新与下载（GitHub
+Releases、SHA256SUMS、macOS 的 codesign / spctl 与 Team ID、Windows 的 WinVerifyTrust，确认后才打开安装包）、
+诊断信息导出（按白名单脱敏）、`scripts/gen_licenses.py` 生成的第三方许可证清单、`solaris://` 与 `clash://`
+一键导入链接的解析与转发。还没有任何 Release，更新只对本机的假服务器测过；Windows 的签名者是占位常量。
+许可证清单还缺 Qt Image Formats 两项的全文和 CPython 自带库的逐项列表。
+
 - **命名**：产品名已定为 Solaris（D1），代码里的标识已全部替换（2026-10-30）。
 - **签名与发布**：准备 Windows Authenticode 和 Apple Developer ID 证书；建立发布 CI，负责构建、签名和生成校验和。
 - **诊断**：诊断信息导出、崩溃日志。
@@ -413,5 +420,6 @@ PacketTunnel 系统扩展骨架、`scripts/build_apple.py`（签名与不签名�
 | [storage.md](storage.md) | 计划中的 SQLite 存储与云备份（M7） |
 | [routing.md](routing.md) | 计划中的自定义分流（M8） |
 | [privacy.md](privacy.md) | 计划中的隐私出口：WARP（M9）和 Tor（M10） |
+| [release.md](release.md) | 发布物约定、检查更新与下载、诊断信息、第三方许可证、一键导入（M6） |
 | [DESIGN.md](../DESIGN.md) | 视觉规范，Theme.qml 由它生成 |
 | roadmap.md（本文） | 进度、计划、决策与风险 |

@@ -330,6 +330,8 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 | `allow_lan` | 布尔 | `false` | 本机 | 允许局域网连接（architecture.md §8"局域网暴露"） |
 | `warp_protocol` | `masque-h2`、`masque-h3`、`wireguard` | `masque-h2` | 本机 | M9：WARP 出口的协议，在出口设置对话框里改（privacy.md 3.1 节） |
 | `tor_enabled` | 布尔 | `false` | 本机 | M10：设置页"实验功能"里的"Tor 出口"（privacy.md 第 4 节） |
+| `update_check` | 布尔 | `true` | 同步 | 自动检查更新：启动 30 秒后检查一次，之后按 `update_check_hours` 定期检查（release.md 第 2 节） |
+| `update_check_hours` | `24`、`72`、`168` | `24` | 同步 | 自动检查的间隔：每天、每 3 天、每周 |
 | `include_all_networks` | 布尔 | `false` | 本机 | 仅 macOS，M5 实现（D19）："包含所有网络"，把系统默认绕开隧道的流量也送进隧道。写进 VPN 配置的 `includeAllNetworks`，下次连接时生效；打开后 TUN 协议栈不能用 `system` 和 `mixed`，设置页把这两项置灰，已选的改成 gVisor（architecture.md §3.4） |
 
 - **映射到 `RunOptions`**（第 1 节）：Start 用 `Settings.run_options()` 的四项；Reload 的 TUN 和系统代理取自
@@ -357,9 +359,13 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   点击报告为应用激活）恢复窗口。`quit` 时退出界面进程。两种情况下隧道都继续运行（architecture.md §1）。
 - **单实例**：第一个界面在用户数据目录持有 `ui.lock`（`QLockFile`，进程不在了的锁视为过期），并以
   `solaris-<用户名和数据目录的哈希>` 为名监听 `QLocalServer`（只允许同一用户连接）。后来的界面拿不到
-  锁，就连上这个名字发一行 `activate`，然后退出；第一个界面收到后显示并激活窗口。Windows 上后来的界面先调用
+  锁，就连上这个名字发一行 `activate`，然后退出；第一个界面收到后显示并激活窗口。后来的界面是带着一键导入
+  链接启动的（Windows 上链接是命令行参数），就改发 `open <链接>`，第一个界面显示窗口并预填导入表单
+  （release.md 第 7 节）；一行超过 16 KiB 的消息被丢弃。Windows 上后来的界面先调用
   `AllowSetForegroundWindow`，让第一个界面能把窗口带到前台。由锁而不是由服务端名字来判断，是因为 macOS 上
   崩溃的界面会留下 socket 文件，而且两个同时启动的界面拿锁时只有一个能成功。
+- **关于**：设置页的「关于」分组除了版本，还有检查更新与下载、自动检查的两个设置项、开源许可和诊断信息导出，
+  由 `viewmodels/about.py` 的 `AboutViewModel` 提供，设计见 [release.md](release.md)。
 - **登录时打开**（`desktop/login.py`，平台接口 `LoginItem`）：
   - Windows：为当前用户注册一个计划任务（`schtasks /Create /XML`）：登录触发器只针对该用户，以该用户身份、
     交互式令牌、不提权运行，普通优先级，没有运行时限，动作是 `<界面>.exe --background`（界面只进托盘）。

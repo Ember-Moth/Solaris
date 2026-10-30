@@ -4,9 +4,9 @@
 （决策 D6）。签名与公证的发布工作流见 [apple/README.md](../apple/README.md)（M5），Windows 安装器见
 [architecture.md](architecture.md) 第 9 节（M4）。界面放在设置页的「关于」分组（[ui.md](ui.md) 第 8 节）。
 
-状态：四项的界面部分已实现（2026-10-30）。现在还没有任何 Release，检查更新只用本机的假服务器测过；Windows 的
-签名方案未定，签名者是一个占位常量；向系统注册 `solaris:` 和 `clash:` 两个 scheme 随打包（macOS 的 Info.plist
-由 M5，Windows 的注册表由 M4 的安装器）。
+状态：四项已实现（2026-10-30，阶段 D 第一轮）。现在还没有任何 Release，检查更新只用本机的假服务器测过；Windows
+的签名方案未定，签名者是一个占位常量；向系统注册 `solaris:` 和 `clash:` 两个 scheme 随打包（macOS 的 Info.plist
+由 M5，Windows 的注册表由 M4 的安装器）；许可证清单还缺的几项见第 5 节。
 
 ## 1. 发布物
 
@@ -30,8 +30,9 @@
 
 - **来源**：`GET https://api.github.com/repos/Ember-Moth/Solaris/releases/latest`，不需要认证。请求头
   `Accept: application/vnd.github+json`、`X-GitHub-Api-Version: 2022-11-28`、`User-Agent: solaris/<版本>`。
-  这个接口只返回最新的正式发布，跳过草稿和预发布。未认证的请求每个 IP 每小时 60 次，自动检查一天最多几次，
-  够用；超限时 GitHub 回 403 或 429，界面显示「检查更新失败：HTTP 403」。
+  这个接口只返回最新的正式发布，跳过草稿和预发布；仓库还没有任何发布时它回 404，界面当作已是最新版本。
+  未认证的请求每个 IP 每小时 60 次，自动检查一天最多几次，够用；超限时 GitHub 回 403 或 429，界面显示
+  「检查更新失败：HTTP 403」。
 - **版本比较**：标签去掉开头的 `v` 后必须是 `X.Y.Z`，按三段整数比较；当前版本是 `solaris.__version__`（取自
   安装的包元数据，打包时须保留，见第 6 节）。标签不是这个形式时视为检查失败（「发布的版本号无法识别」），
   不会把它当成新版本。
@@ -111,15 +112,15 @@
 - 分流写方式（订阅自带 / 我的方案）、方案数、正在使用的方案里策略组和规则的条数；不写规则内容和信息节点表达式。
 - 令牌（Google 备份、WARP 账户）存在系统凭据库里，诊断不读凭据库。
 
-内核日志里有访问过的域名和节点名，所以「诊断信息」一行的说明写明「包含最近的内核日志，其中有访问过的网站」，
-由用户决定是否分享。界面自己的 Python 日志和崩溃日志还没有收集，留到 M6 收尾。
+内核日志里有访问过的域名和节点名，所以「诊断信息」一行的说明写明「含内核日志，其中有访问过的网站」，由用户
+决定是否分享。界面自己的 Python 日志和崩溃日志还没有收集，留到 M6 收尾。
 
 ## 5. 第三方许可证
 
 `scripts/gen_licenses.py` 生成两份文件，提交进仓库（与 Theme.qml、`.qm` 一样），打包时随包附带：
 
 - `src/solaris/licenses/third_party.json`：组件清单，每项是名称、版本、SPDX 许可证表达式、类别、主页，以及它的
-  许可证全文在下一个文件里的编号。设置页的「开源许可」对话框读它；
+  各段全文在下一个文件里的编号。设置页的「开源许可」对话框读它；
 - `src/solaris/licenses/THIRD_PARTY_NOTICES.txt`：开头是 Solaris 自己的许可声明和源代码的获取方式，然后是每个
   组件的版权与许可证全文。完全相同的全文只写一次，列出共用它的组件。
 
@@ -133,15 +134,24 @@
 | 字体 | `ui/fonts/` 下的 Inter 和 JetBrains Mono，版本读自字体文件的 name 表，全文是各自的 `OFL.txt` |
 
 - **识别许可证**：先用包元数据里的 SPDX 表达式（`License-Expression`，其次 `License`）；Go 模块和没有元数据的
-  组件按全文的特征句识别 MIT、BSD-2-Clause、BSD-3-Clause、Apache-2.0、ISC、MPL-2.0、Unlicense、CC0-1.0、
-  GPL-3.0、LGPL-3.0。识别不出来时脚本报错，要在脚本的 `LICENSE_OVERRIDES` 里为这个模块写明，而不是写"未知"。
+  组件先看全文开头的标题（GPL、LGPL、Apache、MPL、OFL 等；标题前的声明允许"任何更新的版本"时记为
+  `-or-later`），再按特征句识别 MIT、BSD、ISC、Unlicense、Zlib。先看标题，是因为许可证会互相引用：GPL 的
+  全文提到 LGPL，OFL 的开头与 MIT 相同。识别不出来时脚本报错，要在脚本的 `LICENSE_OVERRIDES` 里为这个模块
+  写明，而不是写"未知"。Qt 文档里的许可证名称按 `QT_LICENSE_NAMES` 换成 SPDX。
+- **现有的特例**：`github.com/metacubex/chacha` 的许可证文件在子目录里（MIT）；`github.com/rasky/go-lzo`
+  （mihomo 的 OpenVPN 传输引入）只附 GPL-2.0 全文，它说明自己沿用 LZO 的许可证，而 LZO 是"GPL 第 2 版或任何
+  更新的版本"，所以记为 `GPL-2.0-or-later`，可以与 GPL-3.0 的代码合并发布。本机没有 Qt Image Formats 的文档，
+  它的 libtiff 和 libwebp 两项只写了名称、许可证和 Qt 在线文档的地址，没有全文；界面不用 TIFF 和 WebP，打包时
+  可以不带这两个插件。CPython 自带的第三方库（OpenSSL、SQLite、libffi 等）还没有逐项列出，只附了 CPython 的
+  `LICENSE.txt`。这几项在首发前补齐（M6 收尾）。
 - **`--check`** 重新生成并与提交的文件比较，需要 Go 和下载好的模块缓存。`tests/test_licenses.py` 不需要 Go：
   它核对清单里 Python 组件的版本与当前环境一致、Go 模块的版本与 `go.mod` 一致、每项都有全文，所以升级依赖后
   忘了重新生成会失败。
 - **源代码**：GPL-3.0 要求随二进制提供对应的源代码。每个 Release 附带第 1 节的源代码包（含 vendor 的 Go 依赖，
   也就包括 mihomo）；Qt 和 PySide6 的源代码在 download.qt.io 的同一版本下。NOTICES 的开头写明这两处。
-- **设置页**：「关于」分组的「开源许可」一行，「查看…」打开对话框：列出全部组件（名称、版本、许可证），对话框
-  底部的「打开全文」用系统的文本查看器打开 NOTICES 文件。
+- **设置页**：「关于」分组的「开源许可」一行写组件的个数，「查看…」打开对话框：搜索框加上按类别分节的列表
+  （名称、版本、许可证），样式与可搜索列表相同，只是没有复选框；「打开全文」用系统的文本查看器打开 NOTICES
+  文件。
 
 ## 6. 打包须知
 
@@ -175,10 +185,15 @@
 
 ## 8. 测试
 
-- `tests/test_update.py`：本机起一个假的 GitHub（`http.server`，回环地址），覆盖有新版本、已是最新、标签无法识别、
-  HTTP 错误、没有本机安装包、没有校验和、哈希不符、超过声明大小、取消下载、签名被拒、签名者不符；签名校验用替身。
-  macOS 上另用系统自带的 App 真实运行一次 `codesign`、`spctl`，确认 Team ID 不符时被拒；Windows 上真实调用
-  `WinVerifyTrust`，未签名的文件被拒，找得到 Microsoft 签名的程序时确认签名者不符被拒。
-- `tests/test_diagnostics.py`：zip 的内容；订阅链接、名称、覆写原文和令牌不出现在任何文件里；设置项全部归了类。
+- `tests/test_update.py`：本机起一个假的 GitHub（`tests/support/releases.py`，`http.server`，回环地址），覆盖有新
+  版本、已是最新、还没有发布、标签无法识别、HTTP 错误、没有本机安装包、没有校验和、哈希不符、大小与声明不符、
+  取消下载、签名被拒、签名者不符、打开前文件被换；签名校验用替身。macOS 上另用系统自带的 App 真实运行
+  `codesign`，确认 Team ID 不符时被拒；Windows 上真实调用 `WinVerifyTrust`，未签名的文件被拒，找得到带内嵌签名的
+  程序（如 PowerShell 7）时确认签名者不符被拒。
+- `tests/test_about.py`：「关于」分组的各个状态与按钮、自动检查的计时与设置项、确认后才打开安装包；诊断 zip
+  的内容，订阅链接、名称、路径、覆写原文和方案内容不出现在任何文件里，设置项全部归了类；许可证列表与搜索。
 - `tests/test_licenses.py`：见第 5 节。
-- `tests/test_links.py`：两种 scheme 的解析和拒绝；单实例转发链接；`QFileOpenEvent`；打开订阅页并预填表单。
+- `tests/test_links.py`：两种 scheme 的解析和拒绝；第二个界面把链接转交给第一个；`QFileOpenEvent`；打开订阅页、
+  预填表单、焦点在订阅链接上、没有自动导入。
+- 组装整个界面的测试和预览都不连 GitHub：测试用 `offline_updater`，`scripts/preview.py` 用回环地址上的假发布，
+  `--update` 时它比当前版本新。
