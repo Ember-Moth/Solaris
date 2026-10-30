@@ -16,6 +16,9 @@ class FakeICloud:
         self.status = AVAILABLE
         self.records: dict[str, tuple[str, bytes]] = {}  # name → (info, snapshot)
         self.failures: dict[str, ManagerError] = {}  # by call, raised once
+        self.broken: ManagerError | None = None  # raised by every save
+        self.gate = threading.Event()  # a save waits until it is set
+        self.gate.set()
         self.calls: list[str] = []
         self.threads: set[threading.Thread] = set()
         self._lock = threading.Lock()
@@ -41,7 +44,10 @@ class FakeICloud:
 
     def icloud_save(self, name: str, info: str, snapshot: bytes, timeout: float) -> None:
         self._record("save")
+        self.gate.wait(10)
         self._account()
+        if self.broken is not None:
+            raise self.broken
         with self._lock:
             self.records[name] = (info, snapshot)
 

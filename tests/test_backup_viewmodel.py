@@ -25,6 +25,7 @@ from pytestqt.qtbot import QtBot
 from solaris.app import load_ui
 from solaris.host.extension import QUOTA_EXCEEDED, ManagerError
 from solaris.models.backup import device_name
+from solaris.models.backup_auto import BackupTargets
 from solaris.models.backup_icloud import AVAILABLE, NO_ACCOUNT, ICloudProvider
 from solaris.models.routing import MODE_PLAN, PlanRule
 from solaris.models.store import ProfileStore
@@ -518,6 +519,132 @@ def test_icloud_needs_the_systems_account(
     assert prop(backup, "icloudSwitchShown")
     assert prop(backup, "icloudSwitchEnabled")
     assert not prop(backup, "cloudReady")
+
+
+def run_ticks(qtbot: QtBot, machine: Machine, seconds: float, step: float = 31) -> None:
+    """Move the clock on by ``seconds``, letting automatic backup look at every step."""
+    for _ in range(int(seconds // step)):
+        machine.clock.now += step
+        qtbot.wait(40)  # two ticks
+        qtbot.waitUntil(lambda: not machine.backup._auto_running, timeout=10_000)
+
+
+def test_icloud_failures_wait_for_the_hourly_catch_up(
+    qtbot: QtBot,
+    machines: list[Machine],
+    served: Subscriptions,
+    tmp_path: Path,
+    fast_ticks: None,
+) -> None:
+    icloud = FakeICloud()
+    machine = Machine(tmp_path / "mac", Clock(1_800_000_000.0), icloud)
+    machines.append(machine)
+    backup = machine.backup
+    set_up(machine, served, tmp_path)
+    qtbot.waitUntil(lambda: prop(backup, "icloudSwitchEnabled"))
+    backup.setICloudEnabled(True)
+    wait_idle(qtbot, machine)
+
+    icloud.broken = ManagerError(QUOTA_EXCEEDED, "Could not save: quota exceeded")
+    machine.vms.settings_store.update(appearance="light")
+    settle(qtbot, machine, lambda: prop(backup, "icloudWarning"))
+    saves = icloud.calls.count("save")
+    statuses = icloud.calls.count("status")
+    # Its own record of the failure is no change, and the next change waits too.
+    run_ticks(qtbot, machine, 15 * 60)
+    machine.vms.settings_store.update(appearance="dark")
+    run_ticks(qtbot, machine, 15 * 60)
+    assert icloud.calls.count("save") == saves
+    assert icloud.calls.count("status") - statuses <= 1  # the one after the failure
+    assert prop(backup, "icloudStatus") == "上次备份失败：储存空间已满"
+
+    icloud.broken = None
+    run_ticks(qtbot, machine, 31 * 60)  # the hourly catch-up tries again, once
+    assert icloud.calls.count("save") == saves + 1
+    assert not prop(backup, "icloudWarning")
+    assert prop(backup, "icloudStatus").endswith(" · 成功")
+
+
+def test_icloud_waits_while_the_system_is_signed_out(
+    qtbot: QtBot,
+    machines: list[Machine],
+    served: Subscriptions,
+    tmp_path: Path,
+    fast_ticks: None,
+) -> None:
+    icloud = FakeICloud()
+    machine = Machine(tmp_path / "mac", Clock(1_800_000_000.0), icloud)
+    machines.append(machine)
+    backup = machine.backup
+    set_up(machine, served, tmp_path)
+    qtbot.waitUntil(lambda: prop(backup, "icloudSwitchEnabled"))
+    backup.setICloudEnabled(True)
+    wait_idle(qtbot, machine)
+    saves = icloud.calls.count("save")
+
+    icloud.status = NO_ACCOUNT
+    backup.refreshCloud()
+    qtbot.waitUntil(lambda: prop(backup, "icloudStatus") == "系统未登录 iCloud")
+    machine.vms.settings_store.update(appearance="light")
+    run_ticks(qtbot, machine, 70 * 60, step=5 * 60)  # past the debounce and a catch-up
+    assert icloud.calls.count("save") == saves  # no attempt, so nothing failed either
+    assert prop(backup, "icloudStatus") == "系统未登录 iCloud"
+
+    # Signed in again: the next minute's look reads it, and the change goes up.
+    icloud.status = AVAILABLE
+    run_ticks(qtbot, machine, 3 * 60)
+    assert icloud.calls.count("save") == saves + 1
+    assert prop(backup, "icloudStatus").endswith(" · 成功")
+
+
+def test_icloud_off_or_deleted_waits_for_an_upload_in_flight(
+    qtbot: QtBot,
+    machines: list[Machine],
+    served: Subscriptions,
+    tmp_path: Path,
+    fast_ticks: None,
+) -> None:
+    icloud = FakeICloud()
+    machine = Machine(tmp_path / "mac", Clock(1_800_000_000.0), icloud)
+    machines.append(machine)
+    backup = machine.backup
+    table = BackupTargets(machine.store.database)
+    set_up(machine, served, tmp_path)
+
+    def upload_in_flight(change: str) -> None:
+        """Turn iCloud on if it is off, then hold the next automatic upload in the air."""
+        if not prop(backup, "icloudOn"):
+            qtbot.waitUntil(lambda: prop(backup, "icloudSwitchEnabled"))
+            backup.setICloudEnabled(True)
+            wait_idle(qtbot, machine)
+        icloud.gate.clear()
+        saves = icloud.calls.count("save")
+        machine.vms.settings_store.update(appearance=change)
+        settle(qtbot, machine, lambda: icloud.calls.count("save") > saves)
+
+    upload_in_flight("light")
+    (target,) = table.targets()
+    backup.setICloudEnabled(False)
+    assert prop(backup, "icloudStatus") == "未开启"  # at once on the page
+    qtbot.wait(100)
+    assert table.targets() == (target,)  # the table waits for the upload
+    icloud.gate.set()
+    wait_idle(qtbot, machine)
+    assert table.targets() == ()
+    assert table.digest(target.id) is None  # nothing left of it
+    assert prop(backup, "icloudStatus") == "未开启"
+
+    upload_in_flight("dark")
+    backup.deleteICloudBackups()
+    assert prop(backup, "icloudStatus") == "正在删除 iCloud 中的备份…"
+    qtbot.wait(100)
+    icloud.gate.set()
+    assert wait_idle(qtbot, machine) == "已删除 iCloud 中的备份"
+    assert icloud.records == {}  # the upload in flight went too
+    backup._clear_cloud_notice()
+    assert prop(backup, "icloudStatus") == "尚未备份"
+    run_ticks(qtbot, machine, 5 * 60)  # forgetting is no change: nothing goes up again
+    assert icloud.records == {}
 
 
 def test_icloud_needs_the_signed_app(qtbot: QtBot, machines: list[Machine], tmp_path: Path) -> None:

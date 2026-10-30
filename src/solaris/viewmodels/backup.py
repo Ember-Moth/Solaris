@@ -11,7 +11,9 @@ the other pages to show the new data.
 
 With a cloud provider, automatic backup (AutoBackup) runs on a timer: every TICK_MS it looks
 whether the database changed and uploads once a change has settled; at start and every
-CATCH_UP_S it catches up with the targets that are a day behind or failed last time.
+CATCH_UP_S it catches up with the targets that are a day behind or failed last time. iCloud
+waits while the system's account cannot be used. One cloud task runs at a time: turning a
+target off or deleting its snapshots waits for an upload in flight.
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ import sys
 import time
 from collections.abc import Callable
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 
 from PySide6.QtCore import Property, QObject, QTimer, QUrl, Signal, Slot
@@ -110,6 +113,7 @@ BACKING_UP = "backing_up"
 LISTING = "listing"
 DOWNLOADING = "downloading"
 DELETING = "deleting"
+DISABLING = "disabling"
 _CLOUD_TASKS = {
     ENABLING: QT_TRANSLATE_NOOP("BackupViewModel", "正在备份…"),
     BACKING_UP: QT_TRANSLATE_NOOP("BackupViewModel", "正在备份…"),
@@ -118,6 +122,10 @@ _CLOUD_TASKS = {
     DELETING: QT_TRANSLATE_NOOP("BackupViewModel", "正在删除 iCloud 中的备份…"),
 }
 FILE = "file"  # where a restore comes from: a file, or a provider's kind
+
+
+def _call[T](write: Callable[[], T]) -> T:
+    return write()
 
 
 def _local_path(url: str) -> Path:
@@ -175,7 +183,9 @@ class BackupViewModel(QObject):
         self._changes = changes
         self._auto: AutoBackup | None = None
         if icloud is not None and targets is not None and changes is not None:
-            self._auto = AutoBackup(backups, targets, self._provider, clock=clock)
+            self._auto = AutoBackup(backups, targets, self._provider, changes=changes, clock=clock)
+        # Held on the asyncio thread by each cloud task, automatic or not, for all of it.
+        self._cloud_lock = asyncio.Lock()
         self._targets: tuple[Target, ...] = ()
         self._auto_running = False
         self._caught_up_at: float | None = None
@@ -451,7 +461,16 @@ class BackupViewModel(QObject):
         self._tick_timer.stop()
 
     def _provider(self, target: Target) -> BackupProvider | None:
-        return self._icloud if target.provider == ICLOUD else None
+        """The provider of a target that can take a snapshot now: iCloud only while the
+        system's account can be used, so that a signed-out Mac makes no attempts."""
+        if target.provider == ICLOUD and self._icloud_status == AVAILABLE:
+            return self._icloud
+        return None
+
+    async def _own[T](self, write: Callable[[], T]) -> T:
+        """A write to the targets' table that is no change of the user's data."""
+        changes = self._changes
+        return await asyncio.to_thread(changes.own if changes else _call, write)
 
     def _icloud_target(self) -> Target | None:
         return next((t for t in self._targets if t.provider == ICLOUD), None)
@@ -466,7 +485,8 @@ class BackupViewModel(QObject):
             if self._icloud_status != AVAILABLE:
                 self.refreshCloud()  # the user may have signed in meanwhile
             self.changed.emit()
-        if self._auto_running or self._task is not None:
+        # Not before the account is read: a catch-up meanwhile would find no provider.
+        if self._auto_running or self._task is not None or self._icloud_status is None:
             return
         starting = self._caught_up_at is None
         catch_up = starting or now - (self._caught_up_at or now) >= CATCH_UP_S
@@ -475,17 +495,18 @@ class BackupViewModel(QObject):
         self._auto_running = True
 
         async def run() -> tuple[list[Outcome], tuple[Target, ...] | None]:
-            if await asyncio.to_thread(changes.changed) or starting:
-                auto.changed()
-            outcomes = await auto.run_due()
-            if catch_up:
-                outcomes += await auto.catch_up()
-            return outcomes, await self._read_targets() if outcomes else None
+            async with self._cloud_lock:
+                if await asyncio.to_thread(changes.changed) or starting:
+                    auto.changed()
+                outcomes = await auto.run_due()
+                if catch_up:
+                    outcomes += await auto.catch_up()
+                return outcomes, await self._read_targets() if outcomes else None
 
         def done(result: tuple[list[Outcome], tuple[Target, ...] | None]) -> None:
             outcomes, targets = result
             self._auto_running = False
-            if targets is not None:
+            if targets is not None and self._task is None:  # a task shows its own
                 self._targets = targets
                 self.changed.emit()
             if any(isinstance(o.error, BackupError) for o in outcomes):
@@ -522,6 +543,8 @@ class BackupViewModel(QObject):
 
         def read(status: int) -> None:
             if status != self._icloud_status:
+                if status == AVAILABLE and self._icloud_status is not None:
+                    self._caught_up_at = None  # signed in again: catch up at the next tick
                 self._icloud_status = status
                 self.changed.emit()
 
@@ -627,23 +650,32 @@ class BackupViewModel(QObject):
         if on == (target is not None):
             return
         if target is not None:
+            # Off at once on the page; the table follows once an upload in flight is over.
+            self._task = DISABLING
             self._targets = tuple(t for t in self._targets if t.id != target.id)
             self.changed.emit()
-            self._runner.submit(
-                asyncio.to_thread(table.remove, target.id),
-                lambda _: self._refresh_targets(),
-                lambda _: self._refresh_targets(),
-            )
+
+            async def disable() -> tuple[Target, ...]:
+                async with self._cloud_lock:
+                    await self._own(partial(table.remove, target.id))
+                    return await self._read_targets()
+
+            def not_disabled(_: BaseException) -> None:
+                self._task = None
+                self._refresh_targets()
+
+            self._runner.submit(disable(), self._finish_cloud, not_disabled)
             return
         self._task = ENABLING
         self._cloud_notice = ""
         self.changed.emit()
 
         async def enable() -> tuple[Target, ...]:
-            await icloud.sign_in()
-            added = await asyncio.to_thread(table.add, ICLOUD, ACCOUNT)
-            await auto.backup([added])
-            return await self._read_targets()
+            async with self._cloud_lock:
+                await icloud.sign_in()
+                added = await self._own(partial(table.add, ICLOUD, ACCOUNT))
+                await auto.backup([added])
+                return await self._read_targets()
 
         def failed(error: BaseException) -> None:
             self._task = None
@@ -665,8 +697,9 @@ class BackupViewModel(QObject):
         self.changed.emit()
 
         async def back_up() -> tuple[list[Outcome], tuple[Target, ...]]:
-            outcomes = await auto.backup(force=True)
-            return outcomes, await self._read_targets()
+            async with self._cloud_lock:
+                outcomes = await auto.backup(force=True)
+                return outcomes, await self._read_targets()
 
         def done(result: tuple[list[Outcome], tuple[Target, ...]]) -> None:
             outcomes, targets = result
@@ -793,15 +826,21 @@ class BackupViewModel(QObject):
         self.changed.emit()
 
         async def delete() -> tuple[Target, ...]:
-            try:
-                for entry in await icloud.list():
-                    await icloud.delete(entry.id)
-            finally:
-                if target is not None:
-                    await asyncio.to_thread(table.forget, target.id)
-            return await self._read_targets()
+            # After an upload in flight, so that its snapshot goes too. Forgetting is no
+            # change of the data: the next upload waits for one, or for the next start.
+            async with self._cloud_lock:
+                try:
+                    for entry in await icloud.list():
+                        await icloud.delete(entry.id)
+                finally:
+                    if target is not None:
+                        await self._own(partial(table.forget, target.id))
+                return await self._read_targets()
 
         def done(targets: tuple[Target, ...]) -> None:
+            # The forgotten target counts as never backed up: not caught up at once, but
+            # with the next change or the next hour's catch-up.
+            self._caught_up_at = self._clock()
             self._finish_cloud(targets)
             self._show_cloud_notice(self.tr("已删除 iCloud 中的备份"))
 
