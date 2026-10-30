@@ -17,7 +17,7 @@
   - 依赖只有 protobuf，不需要 HTTP 或 gRPC 库。
 - **宿主抽象** `TunnelHost` 有两个实现，共用同一个控制客户端：
   - `ServiceHost`：全部方法都走 Windows 命名管道；开发模式下走本地 socket（architecture.md §11）；
-  - `MacExtensionHost`（未实现）：启停和控制消息都通过 ctypes 调用管理库。
+  - `MacExtensionHost`：启停和控制消息都通过 ctypes 调用管理库，请求映射沿用 `ServiceHost`（apple/README.md）。
 
   测试和 `scripts/preview.py` 用 `tests/support/simulated.py` 里的模拟宿主。
 

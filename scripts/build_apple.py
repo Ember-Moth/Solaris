@@ -1,6 +1,7 @@
 """Build the macOS native parts (apple/README.md): the Go dispatcher as a C archive, then
-SolarisManager.dylib and the system extension from apple/project.yml, then a check app that
-bundles both the way the real app will.
+SolarisManager.dylib and the system extension from apple/project.yml, with the GEO data
+(scripts/fetch_geodata.py) in the extension's resources, then a check app that bundles both
+the way Solaris.app does.
 
     uv run python scripts/build_apple.py          # unsigned: CI, machines without the certificate
     uv run python scripts/build_apple.py --sign   # Developer ID, then verify the signatures
@@ -11,17 +12,18 @@ Everything lands in build/apple:
     dev.tschen.solaris.tunnel.systemextension
     check/Solaris.app   the two above in Contents/Frameworks and Contents/Library/SystemExtensions
 
-The check app stands in for the Nuitka app until M5 assembles the real one. Its executable links
-every function in SolarisManager.h and never runs. With --sign, Xcode signs the dylib and the
-extension (the extension with its profile), the script signs the check app with the main app's
-entitlements and profile, and codesign verifies all three. Nothing is installed or activated:
-the extension creates a utun, so it only runs on a separate test Mac.
+The check app's executable links every function in SolarisManager.h and never runs;
+scripts/build_app.py assembles the real Solaris.app around the Nuitka build. With --sign, Xcode
+signs the dylib and the extension (the extension with its profile), the script signs the check
+app with the main app's entitlements and profile, and codesign verifies all three. Nothing is
+installed or activated: the extension creates a utun, so it only runs on a separate test Mac.
 """
 
 from __future__ import annotations
 
 import argparse
 import datetime as dt
+import filecmp
 import hashlib
 import os
 import plistlib
@@ -39,6 +41,8 @@ ROOT = Path(__file__).resolve().parents[1]
 APPLE = ROOT / "apple"
 CORE = ROOT / "src" / "core"
 BUILD = ROOT / "build" / "apple"
+GEODATA = ROOT / "build" / "geodata"  # scripts/fetch_geodata.py keeps the pinned files here
+GEO_FILES = ("GeoSite.dat", "GeoIP.dat")
 HEADER = APPLE / "Manager" / "SolarisManager.h"
 APP_ENTITLEMENTS = APPLE / "App" / "Solaris.entitlements"
 TUNNEL_ENTITLEMENTS = APPLE / "Tunnel" / "SolarisTunnel.entitlements"
@@ -51,6 +55,7 @@ TUNNEL_PROFILE = "Solaris Tunnel Developer ID"
 ARCH = "arm64"  # D2
 DEPLOYMENT_TARGET = "15.0"  # as in apple/project.yml
 GOPROXY = "https://goproxy.cn,direct"
+GO_VERSION_VARIABLE = "github.com/Ember-Moth/Solaris/src/core/internal/product.Version"
 # All four TUN stacks, as on Windows (D3); fd mode defaults to gVisor (docs/architecture.md §3.4).
 GO_TAGS = "with_gvisor"
 PROFILE_DIRECTORIES = (
@@ -114,9 +119,14 @@ def _remove(path: Path) -> None:
         path.unlink(missing_ok=True)
 
 
-def build_go(tags: str) -> None:
+def fetch_geodata() -> None:
+    """The pinned GEO data in build/geodata, which project.yml copies into the extension."""
+    _run([sys.executable, ROOT / "scripts" / "fetch_geodata.py"], stdout=subprocess.DEVNULL)
+
+
+def build_go(tags: str, version: str) -> None:
     """The Go dispatcher (src/core/apple) as an arm64 C archive in SolarisCore.xcframework,
-    which the extension target links."""
+    which the extension target links. GetInfo reports ``version`` as the service version."""
     go = BUILD / "go"
     include = go / "include"
     _remove(go)
@@ -131,7 +141,15 @@ def build_go(tags: str) -> None:
         "CGO_CFLAGS": minimum,
         "CGO_LDFLAGS": minimum,
     }
-    command: list[str | Path] = ["go", "-C", CORE, "build", "-trimpath", "-buildmode=c-archive"]
+    command: list[str | Path] = [
+        "go",
+        "-C",
+        CORE,
+        "build",
+        "-trimpath",
+        "-buildmode=c-archive",
+        f"-ldflags=-X {GO_VERSION_VARIABLE}={version}",
+    ]
     if tags:
         command += ["-tags", tags]
     _run([*command, "-o", go / "libsolaris.a", "./apple"], env=environment)
@@ -214,6 +232,10 @@ def check_products(dylib: Path, extension: Path) -> None:
         raise BuildError(
             f"SolarisManager.dylib exports {sorted(exported)}; the header has {sorted(declared)}"
         )
+    resources = extension / "Contents" / "Resources"
+    for name in GEO_FILES:
+        if not filecmp.cmp(resources / name, GEODATA / name, shallow=False):
+            raise BuildError(f"the extension's {name} is not the pinned GEO data")
     info = plistlib.loads((extension / "Contents" / "Info.plist").read_bytes())
     expected = {
         "CFBundleIdentifier": TUNNEL_ID,
@@ -432,7 +454,8 @@ def main() -> None:
         if arguments.sign:
             profiles = (find_profile(APP_PROFILE), find_profile(TUNNEL_PROFILE))
             identity = find_identity(list(profiles))
-        build_go(arguments.tags)
+        fetch_geodata()
+        build_go(arguments.tags, version)
         products = build_xcode(identity, version, arguments.build_number)
         dylib, extension = collect(products)
         check_products(dylib, extension)

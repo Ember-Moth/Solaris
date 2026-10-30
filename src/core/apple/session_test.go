@@ -66,7 +66,7 @@ func TestAttachRefusesADescriptorThatIsNotATUN(t *testing.T) {
 	}
 	defer reader.Close()
 	defer writer.Close()
-	if err := attach(int(reader.Fd()), t.TempDir()); err == nil {
+	if err := attach(int(reader.Fd()), t.TempDir(), ""); err == nil {
 		detach()
 		t.Fatal("attached a pipe as the TUN")
 	}
