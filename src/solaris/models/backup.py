@@ -50,7 +50,8 @@ _HEADER = ("format", "version", "created_at", "device", "app_version")
 
 class BackupError(ProfileError):
     """A file or a download is no snapshot this version can restore: ``not_a_backup``,
-    ``newer_backup`` or ``too_large``."""
+    ``newer_backup`` or ``too_large``; or a provider failed: ``not_signed_in``,
+    ``backup_missing``, ``cloud_full``, ``cloud_unreachable``, ``cloud_failed``."""
 
 
 @dataclass(frozen=True)
@@ -84,6 +85,14 @@ class Snapshot:
             document["app_version"],
             Counts(profiles, plans),
         )
+
+    @property
+    def empty(self) -> bool:
+        """Whether it holds nothing the user made, as from a database just created."""
+        document = self.document
+        routing = document["routing"]
+        records = (document["profiles"], document["overrides"], routing["plans"])
+        return not any(records) and not document["settings"] and routing["updated_at"] == 0
 
     @property
     def digest(self) -> str:

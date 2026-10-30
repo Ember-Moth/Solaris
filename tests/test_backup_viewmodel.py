@@ -1,6 +1,6 @@
-"""The settings page's 备份与同步 group: exporting a backup file and restoring one, through the
-ViewModels with the simulated host and subscriptions served on this machine (the M7
-acceptance of docs/roadmap.md, without a cloud account)."""
+"""The settings page's 备份与同步 group: exporting a backup file and restoring one, and iCloud
+over a stand-in library, through the ViewModels with the simulated host and subscriptions
+served on this machine (the M7 acceptance of docs/roadmap.md, without a real cloud)."""
 
 # The UI copy asserted here uses fullwidth punctuation, as the ViewModels write it.
 # ruff: noqa: RUF001
@@ -8,6 +8,7 @@ acceptance of docs/roadmap.md, without a cloud account)."""
 from __future__ import annotations
 
 import json
+import sys
 import threading
 from collections.abc import Coroutine, Iterator
 from dataclasses import replace
@@ -17,17 +18,24 @@ from typing import Any
 
 import pytest
 from PySide6.QtCore import QObject, Qt
+from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtQuick import QQuickWindow
 from pytestqt.qtbot import QtBot
 
+from solaris.app import load_ui
+from solaris.host.extension import QUOTA_EXCEEDED, ManagerError
 from solaris.models.backup import device_name
+from solaris.models.backup_icloud import AVAILABLE, NO_ACCOUNT, ICloudProvider
 from solaris.models.routing import MODE_PLAN, PlanRule
 from solaris.models.store import ProfileStore
 from solaris.models.subscription import UrlFetcher
+from solaris.viewmodels import backup as backup_module
 from solaris.viewmodels.backup import BackupViewModel
 from solaris.viewmodels.composition import ViewModels, compose
+from tests.support.icloud import FakeICloud
 from tests.support.releases import offline_updater
-from tests.support.simulated import SAMPLE_CONFIG, SimulatedHost
-from tests.support.window import Loaded, texts
+from tests.support.simulated import SAMPLE_CONFIG, SimulatedFetcher, SimulatedHost, seed_profiles
+from tests.support.window import Loaded, find, find_all, kind, texts
 
 LOCAL_CONFIG = (
     "proxies:\n  - {name: 家里 01, type: ss, server: home.example.net, port: 2}\n"
@@ -99,15 +107,20 @@ class Clock:
 
 
 class Machine:
-    """A data directory with the app's ViewModels on it."""
+    """A data directory with the app's ViewModels on it, and iCloud when given."""
 
-    def __init__(self, directory: Path, clock: Clock) -> None:
+    def __init__(self, directory: Path, clock: Clock, icloud: FakeICloud | None = None) -> None:
         self.directory = directory
         self.clock = clock
         self.host = SimulatedHost(clock=clock)
         self.store = ProfileStore(directory, clock=clock)
         self.vms: ViewModels = compose(
-            self.host, self.store, UrlFetcher(), clock, updater=offline_updater(directory)
+            self.host,
+            self.store,
+            UrlFetcher(),
+            clock,
+            updater=offline_updater(directory),
+            icloud=ICloudProvider(icloud) if icloud else None,
         )
         self.vms.start()
 
@@ -346,12 +359,197 @@ def test_files_that_are_no_backup(qtbot: QtBot, machines: list[Machine], tmp_pat
     assert prop(machine.backup, "exportStatus").startswith("导出失败：")
 
 
+# -- iCloud ------------------------------------------------------------------------------------
+@pytest.fixture
+def fast_ticks(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Automatic backup looks for changes every 20 ms; the machines' clocks still decide
+    when a change has settled."""
+    monkeypatch.setattr(backup_module, "TICK_MS", 20)
+
+
+def wait_idle(qtbot: QtBot, machine: Machine) -> str:
+    qtbot.waitUntil(lambda: not prop(machine.backup, "busy"), timeout=30_000)
+    return prop(machine.backup, "icloudStatus")
+
+
+def settle(qtbot: QtBot, machine: Machine, done: Any) -> None:
+    """Move the clock on until automatic backup has done ``done``."""
+
+    def moved() -> bool:
+        machine.clock.now += 31
+        return bool(done())
+
+    qtbot.waitUntil(moved, timeout=10_000)
+
+
+def test_icloud_backs_up_when_turned_on_and_after_changes(
+    qtbot: QtBot,
+    machines: list[Machine],
+    served: Subscriptions,
+    tmp_path: Path,
+    fast_ticks: None,
+) -> None:
+    icloud = FakeICloud()
+    machine = Machine(tmp_path / "mac", Clock(1_800_000_000.0), icloud)
+    machines.append(machine)
+    backup = machine.backup
+    assert prop(backup, "icloudShown")
+    qtbot.waitUntil(lambda: prop(backup, "icloudSwitchEnabled"))  # the account is read
+    assert prop(backup, "icloudStatus") == "未开启"
+    assert prop(backup, "icloudMenuShown")
+    assert not prop(backup, "cloudReady")  # nothing to back up to yet
+    set_up(machine, served, tmp_path)
+
+    backup.setICloudEnabled(True)
+    assert prop(backup, "icloudStatus") == "正在备份…"
+    assert wait_idle(qtbot, machine) == "上次备份：刚刚 · 成功"
+    assert prop(backup, "icloudOn")
+    assert prop(backup, "cloudReady")
+    assert len(icloud.records) == 1
+
+    # A change goes up once it has settled.
+    machine.call(machine.vms.library.save_override(None, "mode: global\n"))
+    settle(qtbot, machine, lambda: len(icloud.records) == 2)
+    machine.clock.now += 120
+    qtbot.waitUntil(lambda: prop(backup, "icloudStatus") == "上次备份：2 分钟前 · 成功")
+    assert len(icloud.records) == 2  # nothing changed since
+
+    # A failure shows in the row until an upload succeeds.
+    icloud.failures["save"] = ManagerError(QUOTA_EXCEEDED, "Could not save: quota exceeded")
+    machine.vms.settings_store.update(appearance="light")
+    settle(qtbot, machine, lambda: prop(backup, "icloudWarning"))
+    assert prop(backup, "icloudStatus") == "上次备份失败：储存空间已满"
+    backup.backUpNow()
+    assert wait_idle(qtbot, machine) == "上次备份：刚刚 · 成功"
+    assert not prop(backup, "icloudWarning")
+    assert len(icloud.records) == 3
+
+    backup.setICloudEnabled(False)  # the snapshots stay
+    assert prop(backup, "icloudStatus") == "未开启"
+    assert not prop(backup, "cloudReady")
+    machine.vms.settings_store.update(appearance="dark")
+    machine.clock.now += 3600
+    qtbot.wait(200)
+    assert len(icloud.records) == 3
+
+
+def test_icloud_restores_a_new_machine(
+    qtbot: QtBot,
+    machines: list[Machine],
+    served: Subscriptions,
+    tmp_path: Path,
+    fast_ticks: None,
+) -> None:
+    icloud = FakeICloud()  # one account, two machines
+    first = Machine(tmp_path / "first", Clock(1_800_000_000.0), icloud)
+    machines.append(first)
+    set_up(first, served, tmp_path)
+    qtbot.waitUntil(lambda: prop(first.backup, "icloudSwitchEnabled"))
+    first.backup.setICloudEnabled(True)
+    wait_idle(qtbot, first)
+
+    second = Machine(tmp_path / "second", Clock(1_800_003_600.0), icloud)
+    machines.append(second)
+    backup = second.backup
+    qtbot.waitUntil(lambda: prop(backup, "icloudSwitchEnabled"))
+    backup.setICloudEnabled(True)
+    # Nothing here yet: the empty database pushes no snapshot of the first machine out.
+    assert wait_idle(qtbot, second) == "尚未备份"
+    assert len(icloud.records) == 1
+
+    with qtbot.waitSignal(backup.cloudRestoreRequested):
+        backup.openCloudRestore()
+    (listed,) = prop(backup, "cloudSnapshots")
+    assert listed["detail"] == f"{device_name()} · 3 份订阅、1 套分流方案"
+    assert listed["provider"] == "iCloud"
+    assert not prop(backup, "cloudAsksMode")  # no profiles here: it replaces
+
+    backup.confirmCloudRestore()
+    assert wait_idle(qtbot, second) == "已从 iCloud 恢复"
+    assert library_data(second) == library_data(first)
+    settle(qtbot, second, lambda: len(icloud.records) == 2)  # and backs the data up
+
+    # With profiles here, the dialog asks how.
+    with qtbot.waitSignal(backup.cloudRestoreRequested):
+        backup.openCloudRestore()
+    assert prop(backup, "cloudAsksMode")
+    assert prop(backup, "cloudLocalSummary") == "本机已有 3 份订阅、1 套分流方案"
+    assert len(prop(backup, "cloudSnapshots")) == 2
+    backup.cancelCloudRestore()
+    assert prop(backup, "cloudSnapshots") == []
+
+
+def test_icloud_needs_the_systems_account(
+    qtbot: QtBot,
+    machines: list[Machine],
+    served: Subscriptions,
+    tmp_path: Path,
+    fast_ticks: None,
+) -> None:
+    icloud = FakeICloud()
+    icloud.status = NO_ACCOUNT
+    machine = Machine(tmp_path / "mac", Clock(1_800_000_000.0), icloud)
+    machines.append(machine)
+    backup = machine.backup
+    qtbot.waitUntil(lambda: prop(backup, "icloudStatus") == "系统未登录 iCloud")
+    assert prop(backup, "icloudWarning")
+    assert prop(backup, "icloudSettingsShown")
+    assert not prop(backup, "icloudSwitchShown")
+    assert not prop(backup, "icloudMenuShown")
+
+    icloud.status = AVAILABLE  # signed in from System Settings
+    machine.clock.now += 60
+    qtbot.waitUntil(lambda: prop(backup, "icloudStatus") == "未开启")
+    assert not prop(backup, "icloudSettingsShown")
+    set_up(machine, served, tmp_path)
+    backup.setICloudEnabled(True)
+    wait_idle(qtbot, machine)
+    assert len(icloud.records) == 1
+
+    backup.deleteICloudBackups()
+    assert wait_idle(qtbot, machine) == "已删除 iCloud 中的备份"
+    assert icloud.records == {}
+    backup._clear_cloud_notice()  # what the notice's timer does
+    assert prop(backup, "icloudStatus") == "尚未备份"  # it took nothing that is still there
+
+    icloud.status = NO_ACCOUNT  # signed out again: the target stays, and can be turned off
+    backup.refreshCloud()
+    qtbot.waitUntil(lambda: prop(backup, "icloudStatus") == "系统未登录 iCloud")
+    assert prop(backup, "icloudSwitchShown")
+    assert prop(backup, "icloudSwitchEnabled")
+    assert not prop(backup, "cloudReady")
+
+
+def test_icloud_needs_the_signed_app(qtbot: QtBot, machines: list[Machine], tmp_path: Path) -> None:
+    machine = Machine(tmp_path, Clock(1_800_000_000.0))  # from source: no provider
+    machines.append(machine)
+    backup = machine.backup
+    assert prop(backup, "icloudShown") == (sys.platform == "darwin")
+    assert prop(backup, "icloudStatus") == "仅签名的安装版可用"
+    assert not prop(backup, "icloudWarning")
+    assert not prop(backup, "icloudSwitchEnabled")
+    assert not prop(backup, "icloudMenuShown")
+    assert not prop(backup, "cloudReady")
+
+
 # -- the settings page -------------------------------------------------------------------------
+def shown_texts(root: Any) -> set[str]:
+    return {
+        text
+        for item in find_all(root, lambda i: isinstance(i.property("text"), str))
+        if (text := item.property("text"))
+    }
+
+
 def test_the_group_and_the_restore_dialog(qtbot: QtBot, loaded: Loaded, tmp_path: Path) -> None:
     loaded.view_models.shell.setPage("settings")
-    shown = texts(loaded.window.contentItem())
+    shown = shown_texts(loaded.window.contentItem())
     assert {"备份与同步", "导出到文件", "从文件恢复", "不加密，其中有订阅链接"} <= shown
-    assert not {"iCloud", "Google Drive"} & shown  # not until their providers come
+    assert "Google Drive" not in shown  # not until its provider comes
+    if sys.platform == "darwin":
+        assert {"iCloud", "仅签名的安装版可用", "立即备份", "从云端恢复…"} <= shown
+    else:
+        assert not {"iCloud", "立即备份", "从云端恢复…"} & shown
 
     backup = loaded.view_models.backup
     path = tmp_path / "backup.json"
@@ -372,4 +570,92 @@ def test_the_group_and_the_restore_dialog(qtbot: QtBot, loaded: Loaded, tmp_path
     qtbot.waitUntil(
         lambda: prop(backup, "restoreStatus") == "已从 backup.json 恢复", timeout=10_000
     )
+    assert loaded.warnings == []
+
+
+@pytest.fixture
+def icloud_window(
+    qtbot: QtBot, tmp_path: Path, fast_ticks: None
+) -> Iterator[tuple[Loaded, FakeICloud]]:
+    """The main window in Chinese, its settings page shown, with iCloud signed in."""
+    icloud = FakeICloud()
+    store = ProfileStore(tmp_path)
+    seed_profiles(store, 1_800_000_000.0)
+    view_models = compose(
+        SimulatedHost(),
+        store,
+        SimulatedFetcher(),
+        updater=offline_updater(tmp_path),
+        icloud=ICloudProvider(icloud),
+    )
+    engine = QQmlApplicationEngine()
+    warnings: list[str] = []
+    engine.warnings.connect(lambda errors: warnings.extend(e.toString() for e in errors))
+    try:
+        assert load_ui(engine, view_models)
+        (window,) = engine.rootObjects()
+        assert isinstance(window, QQuickWindow)
+        view_models.start()
+        view_models.shell.setPage("settings")
+        yield Loaded(view_models, engine, window, warnings), icloud
+    finally:
+        view_models.shutdown()
+        for root in engine.rootObjects():
+            root.deleteLater()
+        del engine
+
+
+def overlay_texts(loaded: Loaded) -> set[str]:
+    return {t for item in loaded.overlay_items(lambda i: True) for t in shown_texts(item)}
+
+
+def test_the_icloud_row_and_its_dialogs(
+    qtbot: QtBot, icloud_window: tuple[Loaded, FakeICloud]
+) -> None:
+    loaded, icloud = icloud_window
+    backup = loaded.view_models.backup
+    qtbot.waitUntil(lambda: prop(backup, "icloudSwitchEnabled"))
+    assert {"iCloud", "未开启"} <= shown_texts(loaded.window.contentItem())
+
+    row = loaded.item(lambda i: kind(i) == "GroupRow" and "iCloud" in texts(i))
+    switch = find(row, lambda i: kind(i) == "AppSwitch")
+    assert switch is not None
+    loaded.click(qtbot, switch)  # asks first; nothing is on yet
+    assert {
+        "开启 iCloud 备份？",
+        "备份不加密，其中有订阅链接和配置原文，能登录这个 Apple 账户的人都能看到。",
+    } <= overlay_texts(loaded)
+    assert not prop(backup, "icloudOn")
+    assert loaded.focused_text() == "开启"
+    loaded.key(qtbot, Qt.Key.Key_Return)
+    qtbot.waitUntil(lambda: prop(backup, "icloudStatus") == "上次备份：刚刚 · 成功")
+    assert len(icloud.records) == 1
+
+    # The buttons sit below the window's fold: the keyboard scrolls to them.
+    restore = loaded.item(lambda i: i.property("text") == "从云端恢复…")
+    restore.forceActiveFocus(Qt.FocusReason.TabFocusReason)
+    loaded.key(qtbot, Qt.Key.Key_Space)
+    qtbot.waitUntil(lambda: loaded.focused_text() == "恢复")  # the default button
+    shown = overlay_texts(loaded)
+    assert {"从云端恢复", "备份", "iCloud", "合并", "替换", "取消"} <= shown
+    assert "本机已有 3 份订阅、0 套分流方案" in shown
+    loaded.key(qtbot, Qt.Key.Key_Escape)
+    assert prop(backup, "cloudSnapshots") == []  # cancelled
+
+    more = loaded.item(
+        lambda i: (
+            kind(i) == "IconButton" and i.property("accessibleName") == "iCloud 备份的更多操作"
+        )
+    )
+    more.forceActiveFocus(Qt.FocusReason.TabFocusReason)
+    loaded.key(qtbot, Qt.Key.Key_Space)
+    (item,) = loaded.overlay_items(lambda i: kind(i) == "AppMenuItem")
+    assert item.property("text") == "删除云端备份"
+    loaded.key(qtbot, Qt.Key.Key_Down, wait=10)
+    loaded.key(qtbot, Qt.Key.Key_Return)
+    shown = overlay_texts(loaded)
+    assert {"删除 iCloud 中的备份？", "删除", "取消"} <= shown
+    assert loaded.focused_text() == "取消"  # destructive: the safe choice is the default
+    loaded.key(qtbot, Qt.Key.Key_Escape)
+    assert len(icloud.records) == 1
     assert loaded.warnings == []

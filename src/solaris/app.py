@@ -20,6 +20,7 @@ from solaris.host.base import TAKEOVER_NONE, TAKEOVER_SETTINGS, HostError, Tunne
 from solaris.host.service import ServiceHost
 from solaris.host.transport import Opener, Streams
 from solaris.i18n import Translations, resolve_language
+from solaris.models.backup_icloud import bundled_provider
 from solaris.models.settings import DatabaseSettingsStore, SettingsStore
 from solaris.models.store import ProfileStore, default_data_dir
 from solaris.models.subscription import Fetcher, UrlFetcher
@@ -151,6 +152,7 @@ def main(
         tray_available=tray_supported(app.platformName()),
         start_hidden=BACKGROUND_ARG in sys.argv[1:],
         updater=updater,
+        icloud=bundled_provider(),
     )
     engine = QQmlApplicationEngine()
     if not load_ui(engine, view_models):

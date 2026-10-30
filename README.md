@@ -34,7 +34,7 @@ LocalSystem 服务里，macOS 上运行在 NetworkExtension 系统扩展里，�
 | [docs/roadmap.md](docs/roadmap.md) | 进度、下一步计划、决策与风险 |
 | [docs/architecture.md](docs/architecture.md) | 系统架构：engine、控制协议、Windows 服务、macOS 扩展、安全模型、构建与测试 |
 | [docs/ui.md](docs/ui.md) | Python 界面：宿主接口、订阅、覆写、多语言、外观、连接与日志、设置与桌面行为、分流页 |
-| [docs/storage.md](docs/storage.md) | SQLite 存储与备份（Google Drive、iCloud 未做） |
+| [docs/storage.md](docs/storage.md) | SQLite 存储与备份（Google Drive 未做） |
 | [docs/routing.md](docs/routing.md) | 自定义分流 |
 | [docs/exits.md](docs/exits.md) | 链式出口：经用户节点的 WARP（已实现）、Tor 与 VPN Gate（计划中） |
 | [docs/mesh.md](docs/mesh.md) | 组网出站：Tailscale、ZeroTier、EasyTier（应用内组网计划中） |

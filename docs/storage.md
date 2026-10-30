@@ -3,8 +3,8 @@
 本文描述界面侧用户数据的持久化方式（SQLite），以及如何把这些数据备份到 Google Drive 和 iCloud。
 相关决策是 [roadmap.md](roadmap.md) 中的 D13 和 D14，实施计划见 roadmap 的 M7。
 
-状态：存储层和不依赖云服务的备份已实现；Google Drive（第 4 节）和 iCloud（第 5 节）的提供方还没有实现，自动备份
-也还没接到界面上，进度见 roadmap 的 M7。存储层的实现细节（线程、迁移）见 [ui.md](ui.md) §2，界面见 ui.md §8。
+状态：存储层、不依赖云服务的备份、iCloud 提供方（第 5 节，还没在测试 Mac 上实测）和自动备份已实现；Google Drive
+（第 4 节）还没有实现，进度见 roadmap 的 M7。存储层的实现细节（线程、迁移）见 [ui.md](ui.md) §2，界面见 ui.md §8。
 
 ## 1. 范围
 
@@ -98,17 +98,29 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
 **上传时机**：
 
 - 数据变化后去抖 30 秒再上传；
-- 启动时，如果距上次成功备份已超过 24 小时，也上传一次；
-- 只有快照内容的哈希变了才上传。
+- 启动时，如果距上次成功备份已超过 24 小时，或者上次上传失败了，也上传一次；
+- 只有快照内容的哈希变了才上传；
+- 什么数据都还没有的数据库（新装、还没恢复的机器）不上传：它只会把旧机器最新的快照往淘汰的方向挤。
 
 **保留份数**：每个备份目标在云端保留最近 10 份快照，用来找回误删的数据。
 
 这几条由 `models/backup_auto.py` 的 `AutoBackup` 实现，在提供方之上，对每个目标分别执行：数据变化时调用
-`changed()`，记下 30 秒后到期；定时调用 `run_due()`，到期才上传，期间再有变化就顺延；启动时调用 `at_startup()`，
-给上次成功备份超过 24 小时（或从未成功）的目标上传。上传前比较快照摘要和这个目标上次收下的摘要（`state` 里的
-`backup_digest:<目标 id>`），相同就跳过；成功后记下摘要和时间，再删掉第 10 份之后更旧的快照（删除失败不影响这次
-上传，下次再删）。失败时把原因记进 `backup_targets.last_error`，不记摘要，下次照常重试，也不影响其他目标。
-`BackupTargets` 读写 `backup_targets` 表，关掉的目标标记删除。定时器和数据变化的通知随第一个云端提供方接到界面上。
+`changed()`，记下 30 秒后到期；定时调用 `run_due()`，到期才上传，期间再有变化就顺延；启动时和之后每小时调用
+`catch_up()`，给上次成功备份超过 24 小时（或从未成功）、或者上次失败的目标上传。上传前比较快照摘要和这个目标上次
+收下的摘要（`state` 里的 `backup_digest:<目标 id>`），相同就跳过（"立即备份"不比较）；成功后记下摘要和时间，再删掉
+第 10 份之后更旧的快照（删除失败不影响这次上传，下次再删）。失败时把原因（`代码: 说明`）记进
+`backup_targets.last_error`，不记摘要，下次照常重试，也不影响其他目标。`BackupTargets` 读写 `backup_targets` 表，
+关掉的目标标记删除；删除了一个目标的全部云端快照后，`forget()` 清掉它的摘要和上次备份时间。这一版的提供方不在
+（例如从源码运行）的目标原样留着，等到有提供方时再上传。
+
+接到界面上的是 `BackupViewModel`（有云端提供方时才运行）：
+
+- **数据变化**：每 5 秒看一次数据库连接的 `total_changes`（SQLite 记的这个连接插入、修改、删除的累计行数）。所有
+  写入都走这一个连接，所以不论哪个页面、哪条路径改了数据都看得到，不必在每个写入点各发通知。订阅更新、本机设置、
+  备份自己记下的结果也算变化，但它们只会多算一次摘要，不会多传一份。
+- **启动**：先 `catch_up()`，再当作数据刚变过：上次运行在去抖的 30 秒内退出时，最后的修改还没传上去，这样 30 秒后
+  比一次摘要就补上了。
+- 每分钟刷新一次"上次备份"的相对时间；系统没登录 iCloud 时，顺便重新读账户状态，用户在系统设置里登录后不用重开。
 
 **导出到文件**：设置页可以把快照导出成文件，再从文件恢复，不需要云端账户。文件就是上面的 JSON 文档，同样不加密：
 导出前的确认框写「备份文件不加密，含订阅链接和配置原文，请妥善保管。」（本地文件配置的原文里可能有组网出站的凭据）。
@@ -158,12 +170,26 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
 ## 5. iCloud（仅 macOS）
 
 - **方式**：使用 CloudKit 的私有数据库（D13）。数据占用的是用户自己的 iCloud 空间，开发者看不到。
-- **账户**：第三方应用不能自己登录 iCloud，只能使用系统已登录的 Apple ID。系统没有登录 iCloud 时，界面提示用户
-  去系统设置登录。
+- **账户**：第三方应用不能自己登录 iCloud，只能使用系统已登录的 Apple 账户。系统没有登录 iCloud 时，界面提示用户
+  去系统设置登录。CloudKit 不告诉应用账户名，所以备份目标的账户名就写"iCloud"；换了 Apple 账户之后，快照进的是
+  新账户的私有数据库。
 - **依赖条件**：需要 Developer ID 签名、iCloud（CloudKit）entitlement、container（`iCloud.<bundle id>`）以及对应的
-  provisioning profile。因此这部分依赖 M5 的 Xcode 工程和签名流程；container 是 `iCloud.dev.tschen.solaris`。
-- **实现**：在 M5 的管理库（Swift，导出 C ABI）里加几个函数，分别用于保存、列出、下载和删除快照，Python 通过
-  ctypes 调用。每份快照存成一条记录，快照内容放在 `CKAsset` 里。
+  provisioning profile。因此这部分依赖 M5 的 Xcode 工程和签名流程；container 是 `iCloud.dev.tschen.solaris`，
+  环境是 Production（Developer ID 只能用它）。CloudKit 的 schema 要在 CloudKit Console 里建好并部署到 Production，
+  步骤见 [apple/README.md](../apple/README.md)「iCloud 备份」。
+- **管理库**（`apple/Manager/CloudBackup.swift`）：`solaris_manager_icloud_status`、`_save`、`_list`、`_download`、
+  `_delete` 五个函数，和其他函数一样阻塞到完成或超时，在后台线程调用。每份快照是默认 zone 里一条 `Snapshot` 类型的
+  记录：记录名由 Python 给出，快照内容放在 `CKAsset`（字段 `snapshot`），`SnapshotInfo` 和大小作为 JSON 放在
+  字符串字段 `info` 里，列出时只取 `info`，不下载快照。保存用 `.allKeys`，同名记录直接覆盖。CloudKit 的错误映射成
+  结果码：没登录（`NOT_SIGNED_IN`）、没有这条记录（`NOT_FOUND`）、空间已满（`QUOTA_EXCEEDED`）、网络或服务暂时
+  不可用（`UNREACHABLE`），其余是 `FAILED` 加 CloudKit 的说明。没有 iCloud entitlement 的构建（不签名、ad hoc）里
+  CloudKit 会抛出结束进程的 Objective-C 异常，所以管理库先读自己进程的 entitlement，没有这个 container 就不创建
+  `CKContainer`：状态报 `UNSUPPORTED`，其余调用报 `FAILED`。
+- **Python**（`models/backup_icloud.py` 的 `ICloudProvider`）：经 `ManagerLibrary`（ctypes）调用，每次调用在一个
+  daemon 线程里执行，进行中的上传不拖住退出。记录名与目录提供方的文件名相同，只是没有 `.json`；`list()` 只认这样
+  命名、`info` 读得出来的记录。错误变成 `BackupError`：`not_signed_in`、`backup_missing`、`cloud_full`、
+  `cloud_unreachable`、`cloud_failed`。`sign_in()` 只检查系统账户可用，`sign_out()` 什么也不做。打包的 app 里
+  （`Contents/Frameworks` 有管理库）才有这个提供方；从源码运行时没有，设置页写「仅签名的安装版可用」。
 - **Windows**：不提供 iCloud 备份，只能用 Google Drive。
 
 ## 6. 提供方接口
@@ -174,10 +200,11 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
   `SnapshotInfo`：时间、设备名、版本和配置、方案的份数，供"从云端恢复"的列表显示。`download` 不认识的 id 报
   `backup_missing`，`delete` 删除已经不在的快照不报错。提供方只在应用自己的空间里存快照（appDataFolder、CloudKit
   容器、一个目录），所以列出的都是本应用的快照。
-- Google Drive 和 CloudKit 各有一个实现（未做）。已有两个不访问云服务的实现：
+- CloudKit 的实现见第 5 节，Google Drive 的还没做。另有两个不访问云服务的实现：
   - `MemoryProvider`：快照放在内存里，测试用；可以模拟退出登录和失败；
   - `DirectoryProvider`：快照存成目录里的文件，`solaris-backup-<UTC 时间>-<摘要前 12 位>.json`，原子写入。只列出
     这样命名、能读成快照的文件，别的文件不碰；id 只接受这种文件名，到不了目录之外。
 - 可以同时开启多个备份目标，例如在 macOS 上同时用 iCloud 和 Google Drive，每个目标各自上传、各自保留快照。
-- 设置页"备份与同步"分组接上云端后包括：已登录的账户、上次备份的时间和结果、立即备份、从云端恢复、退出登录、
-  删除云端备份。在那之前只有"导出到文件"和"从文件恢复"两行（ui.md §8）。
+- 设置页"备份与同步"分组：导出到文件、从文件恢复，macOS 上还有 iCloud 一行（开关、上次备份的时间和结果、删除云端
+  备份），分组下方是对所有目标的"立即备份"和"从云端恢复"（ui.md §8）。Google Drive 一行（已登录的账户、退出登录）
+  随它的提供方再加。

@@ -25,6 +25,7 @@ from solaris.host.extension import (
     TunnelDownError,
     bundled_host,
 )
+from solaris.models import backup_icloud
 from solaris.protocol import control_pb2
 
 pb = control_pb2
@@ -352,14 +353,16 @@ def test_result_codes_match_the_header() -> None:
     header = HEADER.read_text()
     declared = dict(re.findall(r"^\s*SOLARIS_(\w+) = (\d+),", header, re.MULTILINE))
     for name, value in declared.items():
-        python = name.removeprefix("MANAGER_")
-        assert getattr(extension, python) == int(value), name
-    assert len(declared) == 14
+        module = backup_icloud if name.startswith("ICLOUD_") else extension
+        python = name.removeprefix("MANAGER_").removeprefix("ICLOUD_")
+        assert getattr(module, python) == int(value), name
+    assert len(declared) == 24
 
 
 FAKE_MANAGER_C = r"""
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "SolarisManager.h"
 
 static int outstanding;
@@ -431,6 +434,66 @@ SolarisManagerResult solaris_manager_send(const uint8_t *request, size_t request
   return result;
 }
 
+SolarisManagerResult solaris_manager_icloud_status(double timeout_seconds,
+                                                   SolarisICloudStatus *status, char **error) {
+  last_timeout = timeout_seconds;
+  *status = SOLARIS_ICLOUD_NO_ACCOUNT;
+  return finish(error);
+}
+
+// iCloud holds one snapshot: the last one saved.
+static char saved_name[256];
+static char saved_info[256];
+static uint8_t saved[256];
+static size_t saved_length;
+
+const char *fake_saved_info(void) { return saved_info; }
+
+SolarisManagerResult solaris_manager_icloud_save(const char *name, const char *info,
+                                                 const uint8_t *snapshot, size_t snapshot_length,
+                                                 double timeout_seconds, char **error) {
+  last_timeout = timeout_seconds;
+  snprintf(saved_name, sizeof saved_name, "%s", name);
+  snprintf(saved_info, sizeof saved_info, "%s", info);
+  saved_length = snapshot_length < sizeof saved ? snapshot_length : sizeof saved;
+  memcpy(saved, snapshot, saved_length);
+  return finish(error);
+}
+
+SolarisManagerResult solaris_manager_icloud_list(double timeout_seconds, char **list,
+                                                 char **error) {
+  last_timeout = timeout_seconds;
+  *list = NULL;
+  SolarisManagerResult result = finish(error);
+  if (result != SOLARIS_MANAGER_OK) return result;
+  *list = allocate(512);
+  snprintf(*list, 512, "[{\"name\":\"%s\",\"info\":\"%zu bytes\"}]", saved_name,
+           saved_length);
+  return result;
+}
+
+SolarisManagerResult solaris_manager_icloud_download(const char *name, double timeout_seconds,
+                                                     uint8_t **snapshot, size_t *snapshot_length,
+                                                     char **error) {
+  last_timeout = timeout_seconds;
+  *snapshot = NULL;
+  *snapshot_length = 0;
+  if (saved_name[0] == 0 || strcmp(name, saved_name) != 0) next_result = SOLARIS_MANAGER_NOT_FOUND;
+  SolarisManagerResult result = finish(error);
+  if (result != SOLARIS_MANAGER_OK) return result;
+  *snapshot = allocate(saved_length);
+  memcpy(*snapshot, saved, saved_length);
+  *snapshot_length = saved_length;
+  return result;
+}
+
+SolarisManagerResult solaris_manager_icloud_delete(const char *name, double timeout_seconds,
+                                                   char **error) {
+  last_timeout = timeout_seconds;
+  if (strcmp(name, saved_name) == 0) saved_name[0] = 0;
+  return finish(error);
+}
+
 void solaris_manager_free(void *pointer) {
   if (pointer == NULL) return;
   outstanding--;
@@ -478,6 +541,57 @@ def test_manager_library_calls_and_releases_every_buffer(fake_library: Path) -> 
             "fake failure 4",
         )
     assert fake.fake_outstanding() == 0
+
+
+def test_manager_library_calls_icloud_and_releases_every_buffer(fake_library: Path) -> None:
+    manager = ManagerLibrary(fake_library)
+    fake = ctypes.CDLL(str(fake_library))
+    fake.fake_last_timeout.restype = ctypes.c_double
+    fake.fake_saved_info.restype = ctypes.c_char_p
+
+    assert manager.icloud_status(15.0) == backup_icloud.NO_ACCOUNT
+    assert fake.fake_last_timeout() == 15.0
+    manager.icloud_save("solaris-backup-a", '{"device": "笔记本"}', b"\x00snap\xff", 120.0)
+    assert (fake.fake_last_timeout(), fake.fake_saved_info().decode()) == (
+        120.0,
+        '{"device": "笔记本"}',
+    )
+    assert manager.icloud_list(60.0) == '[{"name":"solaris-backup-a","info":"6 bytes"}]'
+    assert manager.icloud_download("solaris-backup-a", 30.0) == b"\x00snap\xff"
+    manager.icloud_delete("solaris-backup-a", 30.0)
+    for call in (
+        lambda: manager.icloud_download("solaris-backup-a", 1.0),
+        lambda: manager.icloud_download("solaris-backup-b", 1.0),
+    ):
+        with pytest.raises(ManagerError) as raised:
+            call()
+        assert raised.value.result == extension.NOT_FOUND
+    for call in (lambda: manager.icloud_list(1.0), lambda: manager.icloud_save("x", "", b"", 1.0)):
+        fake.fake_fail_next(extension.UNREACHABLE)
+        with pytest.raises(ManagerError) as raised:
+            call()
+        assert (raised.value.result, raised.value.message) == (
+            extension.UNREACHABLE,
+            "fake failure 10",
+        )
+    assert fake.fake_outstanding() == 0
+
+
+def test_bundled_provider_needs_the_manager_in_the_bundle(
+    fake_library: Path, tmp_path: Path
+) -> None:
+    executable = tmp_path / "Solaris.app" / "Contents" / "MacOS" / "SolarisUI"
+    executable.parent.mkdir(parents=True)
+    executable.touch()
+    assert backup_icloud.bundled_provider(executable) is None
+    assert backup_icloud.bundled_provider() is None  # from source
+
+    frameworks = executable.parent.parent / "Frameworks"
+    frameworks.mkdir()
+    shutil.copy(fake_library, frameworks / extension.LIBRARY_NAME)
+    provider = backup_icloud.bundled_provider(executable)
+    assert provider is not None
+    assert asyncio.run(provider.status()) == backup_icloud.NO_ACCOUNT
 
 
 def test_bundled_host_needs_the_manager_in_the_bundle(fake_library: Path, tmp_path: Path) -> None:

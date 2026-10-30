@@ -4,7 +4,7 @@ Xcode 工程由 XcodeGen 从 `project.yml` 生成，包含两个 target（docs/a
 
 | target | 产物 | 职责 |
 | --- | --- | --- |
-| SolarisManager | `SolarisManager.dylib`，C ABI | 激活和替换系统扩展、配置 `NETunnelProviderManager`、启停隧道、查询状态、用 `sendProviderMessage` 收发控制消息 |
+| SolarisManager | `SolarisManager.dylib`，C ABI | 激活和替换系统扩展、配置 `NETunnelProviderManager`、启停隧道、查询状态、用 `sendProviderMessage` 收发控制消息；iCloud 备份（CloudKit） |
 | SolarisTunnel | `dev.tschen.solaris.tunnel.systemextension` | `NEPacketTunnelProvider`：设置隧道网络和 DNS、取得 utun fd、运行内核；`handleAppMessage` 把消息交给 Go 分发器 |
 
 只构建 arm64（D2），最低系统版本 macOS 15.0（主应用实际要求的版本见“组装 Solaris.app”）。
@@ -21,6 +21,7 @@ apple/
 │   ├── Exports.swift                @_cdecl 导出
 │   ├── ExtensionActivation.swift    OSSystemExtensionRequest 的激活与替换
 │   ├── TunnelController.swift       VPN 配置、启停、状态、provider message
+│   ├── CloudBackup.swift            iCloud 备份：CloudKit 私有数据库里的快照
 │   └── ManagerError.swift
 └── Tunnel/                          dev.tschen.solaris.tunnel.systemextension
     ├── Info.plist                   NEProviderClasses、NEMachServiceName
@@ -181,19 +182,25 @@ mihomo home 在扩展容器的 `Application Support/Solaris/core`，`startTunnel
 | `solaris_manager_stop(timeout, &error)` | 停止隧道，等到断开；本来就没运行时直接成功 |
 | `solaris_manager_status(&status, &error)` | 隧道状态：`SOLARIS_TUNNEL_*`，对应 `NEVPNStatus`，另加“未配置” |
 | `solaris_manager_send(request, length, timeout, &response, &response_length, &error)` | 发一条编码好的 Request，取回 Response |
+| `solaris_manager_icloud_status(timeout, &status, &error)` | 系统 iCloud 账户的状态：`SOLARIS_ICLOUD_*`，对应 `CKAccountStatus`，另加"这个构建没有 iCloud entitlement"（`UNSUPPORTED`） |
+| `solaris_manager_icloud_save(name, info, snapshot, length, timeout, &error)` | 把一份快照存成名为 `name` 的记录，同名的覆盖 |
+| `solaris_manager_icloud_list(timeout, &list, &error)` | 列出全部快照，不含内容：`[{"name", "info"}]` 的 JSON |
+| `solaris_manager_icloud_download(name, timeout, &snapshot, &length, &error)` | 下载一份快照；没有时返回 `NOT_FOUND` |
+| `solaris_manager_icloud_delete(name, timeout, &error)` | 删除一份快照；本来就没有时直接成功 |
 | `solaris_manager_free(pointer)` | 释放本库交出的字符串或缓冲区 |
 
 约定：
 
 - **返回值**：除 `solaris_manager_free` 外都返回 `SolarisManagerResult`（`int32_t`）：`OK`、`FAILED`、
   `TIMED_OUT`、`NOT_CONFIGURED`（还没有 VPN 配置）、`NOT_CONNECTED`（隧道未连接，扩展没在运行）、
-  `NEEDS_APPROVAL`（等用户在系统设置里允许扩展）、`NEEDS_REBOOT`（重启后完成激活）。
+  `NEEDS_APPROVAL`（等用户在系统设置里允许扩展）、`NEEDS_REBOOT`（重启后完成激活），以及 iCloud 的
+  `NOT_SIGNED_IN`、`NOT_FOUND`、`QUOTA_EXCEEDED`、`UNREACHABLE`（网络或服务暂时不可用）。
 - **错误信息**：结果不是 `OK` 且 `error` 不为 NULL 时，`*error` 是一段 UTF-8 说明；否则置为 NULL。
 - **内存**：传入的缓冲区归调用方所有，只在调用期间读取；经指针参数交出的字符串和缓冲区归调用方，
   用 `solaris_manager_free` 释放（空的 Response 也是一块要释放的缓冲区）。
 - **线程**：调用会阻塞到完成或超时。NetworkExtension 在主队列上完成回调，所以要在后台线程调用，并且
   主线程在跑 run loop（Qt 的事件循环就是）；在主线程调用会直接返回 `FAILED`。`configure`、`start`、
-  `stop` 依次执行，`status` 和 `send` 可以与它们并行。
+  `stop` 依次执行，`status` 和 `send` 可以与它们并行，`icloud_*` 与所有调用都可以并行。
 - **激活**：系统要用户批准时，`activate` 立即返回 `NEEDS_APPROVAL`，请求继续挂着；之后的调用等同一个请求，
   用户允许后返回 `OK`，到超时仍未允许则再返回 `NEEDS_APPROVAL`。替换时总是用包内的扩展，因为只有它和
   这个 app 的控制协议一致。
@@ -249,6 +256,59 @@ mihomo home 在扩展容器的 `Application Support/Solaris/core`，`startTunnel
 - 单元测试用 Python 写的假管理库，以及用真实头文件编出的假 dylib（检查 ctypes 签名和每块缓冲区都被释放），
   不碰 NetworkExtension。
 
+## iCloud 备份
+
+设计见 docs/storage.md 第 5 节。管理库被加载进主应用的进程，所以 CloudKit 用的是主应用的签名和
+`App/Solaris.entitlements`：container `iCloud.dev.tschen.solaris`、服务 `CloudKit`、环境 `Production`（Developer ID
+只能用 Production）。扩展不访问 iCloud，它的 entitlement 不变。
+
+- 每份快照是私有数据库默认 zone 里一条 `Snapshot` 类型的记录：字符串字段 `info`（Python 写的 JSON：时间、设备、
+  版本、配置和方案的份数、大小），资源字段 `snapshot`（快照本身）。列出用 `CKQuery`（`TRUEPREDICATE`），只取 `info`。
+- 没有这个 container 的 entitlement 时（不签名或 ad hoc 签名的构建），CloudKit 会抛出结束进程的 Objective-C 异常，
+  所以 `CloudBackup` 先用 `SecTaskCopyValueForEntitlement` 读自己进程的 entitlement，没有就不创建 `CKContainer`。
+  这一点在开发机上用不签名的 dylib 试过：状态是 `UNSUPPORTED`，其余调用返回"not signed for iCloud"，进程不受影响。
+- 操作用 `userInitiated` 的服务质量（更低的会被系统推迟），超时时取消操作。
+
+### 要在 CloudKit Console 里做的事（一次）
+
+Production 环境不能由应用自动建 schema，所以 record type 要先在 Development 里建好再部署：
+
+1. 打开 [CloudKit Console](https://icloud.developer.apple.com)，选 container `iCloud.dev.tschen.solaris`，
+   进 Development 环境的 Schema → Record Types，新建 `Snapshot`，加两个字段：`info`（String）、`snapshot`（Asset）。
+2. 同一 record type 的 Indexes 里给 `recordName` 加一个 Queryable 索引（列出快照的查询要用；不加会报
+   "Field 'recordName' is not marked queryable"）。
+3. Deploy Schema Changes，部署到 Production。Production 的 schema 之后只能加不能删。
+
+没部署时，列出快照报"The iCloud container has no Snapshot record type; deploy its schema"，保存报 CloudKit 的
+"Cannot create new type"，都会写在设置页 iCloud 一行。
+
+### 签名材料（不需要改，核对即可）
+
+App ID `dev.tschen.solaris` 已开 iCloud（CloudKit），container 已建（见“Apple Developer 配置”）。`Solaris Developer ID`
+描述文件要授权 `com.apple.developer.icloud-container-identifiers`（含 `iCloud.dev.tschen.solaris`）、
+`icloud-services`（`CloudKit` 或 `*`）和 `icloud-container-environment`（含 `Production`）；`build_app.py` 的签名构建会
+逐项核对 entitlement 与描述文件，现在的签名构建能通过就说明已授权。若报"does not allow
+com.apple.developer.icloud-container-identifiers"，在开发者网站编辑 App ID 的 iCloud → Configure，勾上这个 container，
+重新生成 `Solaris Developer ID`，更新 `MACOS_APP_PROFILE_BASE64`。
+
+### 测试 Mac 上的验证
+
+用签名、公证过的 app，登录一个测试用的 Apple 账户：
+
+1. 设置页「备份与同步」有 iCloud 一行，写「未开启」。打开开关，确认框写明不加密、含订阅链接和配置原文；「开启」后
+   写「上次备份：刚刚 · 成功」。CloudKit Console 的 Production → Records（用同一个 Apple 账户登录，Private
+   Database，`Snapshot`）里有一条记录。
+2. 改一个设置或导入一份订阅，约 35 秒后多一条记录；什么都不改时不再多。「立即备份」每次都多一条；超过 10 条后
+   最旧的被删掉。
+3. 另一台 Mac（或删掉 `~/Library/Application Support/Solaris` 后）打开开关：不上传空数据；「从云端恢复…」列出快照，
+   恢复后订阅、方案、覆写、设置都回来，订阅重新下载。
+4. 「更多」→「删除云端备份」后 Console 里记录全部消失，iCloud 一行写「尚未备份」。
+5. 断网后「立即备份」：写「上次备份失败：无法连接，稍后会再试」；联网后一小时内（或下次启动）自动补上。
+6. 在系统设置里退出 iCloud：一行写「系统未登录 iCloud」，「打开系统设置」打开 Apple 账户那一页；重新登录后一分钟
+   内恢复。
+7. `build_app.py --unsigned` 的 app：一行写「仅签名的安装版可用」，打开设置页不崩溃。
+8. 账户的 iCloud 空间满时，失败原因是「储存空间已满」。
+
 ## 尚未完成
 
 - **最低系统版本**：PySide6 6.12.0 让 app 要求 macOS 26（见“组装 Solaris.app”，roadmap 的 D28）。
@@ -258,6 +318,7 @@ mihomo home 在扩展容器的 `Application Support/Solaris/core`，`startTunnel
   `mips` 和 `gvisor` 栈都能工作，保存配置时系统是否再次请用户允许；断开时导入订阅后连接，`Start` 之前读订阅
   花多久。
 - **发布工作流**还没有运行过（要在 `release` Environment 里批准）；公证结果未知。
+- **iCloud 备份**没在真机上运行过：CloudKit 的 schema 还要部署（见“iCloud 备份”），之后按那里的步骤在测试 Mac 上验证。
 - 批准扩展、需要重启等新错误码的界面文案；卸载前停用扩展（`deactivationRequest`）、扩展说明文字的
   本地化。
 
@@ -296,7 +357,7 @@ mihomo home 在扩展容器的 `Application Support/Solaris/core`，`startTunnel
 
 | 目标 | entitlement |
 | --- | --- |
-| 主应用 | `com.apple.developer.system-extension.install`；`com.apple.developer.networking.networkextension` 含 `packet-tunnel-provider-systemextension`；`com.apple.security.application-groups` 含 `group.dev.tschen.solaris`；iCloud 的 CloudKit 容器 `iCloud.dev.tschen.solaris`；`com.apple.security.cs.allow-jit`（Qt Quick） |
+| 主应用 | `com.apple.developer.system-extension.install`；`com.apple.developer.networking.networkextension` 含 `packet-tunnel-provider-systemextension`；`com.apple.security.application-groups` 含 `group.dev.tschen.solaris`；iCloud 的 CloudKit 容器 `iCloud.dev.tschen.solaris`（环境 Production，管理库的 iCloud 备份在主应用进程里用它）；`com.apple.security.cs.allow-jit`（Qt Quick） |
 | 系统扩展 | `com.apple.developer.networking.networkextension` 含 `packet-tunnel-provider-systemextension`；App Sandbox；`network.client` / `network.server`；同一个 App Group |
 
 两份描述文件分别嵌入为主应用和扩展的 `embedded.provisionprofile`，签名时启用 hardened runtime。

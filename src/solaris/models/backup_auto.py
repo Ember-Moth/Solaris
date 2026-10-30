@@ -6,13 +6,15 @@ this machine's state (``backup_digest:<id>``), so an unchanged database is not u
 again. The rules, for every target on its own:
 
     - after the data changed, wait until it stayed unchanged for DEBOUNCE_S, then upload;
-    - at startup, upload when the last successful upload is older than STALE_S;
-    - only upload a snapshot whose digest differs from the last one the target took;
+    - at startup, upload when the last successful upload is older than STALE_S, or the last
+      upload failed;
+    - only upload a snapshot whose digest differs from the last one the target took, and
+      never the snapshot of a database with nothing of the user's in it yet;
     - keep the newest KEEP snapshots of the target and delete the older ones.
 
-The timing is the caller's: ``changed`` when the data changed, ``run_due`` on a timer,
-``at_startup`` once. Every method runs on the asyncio thread; the database is read and
-written on worker threads, as ProfileLibrary does.
+The timing is the caller's: ``changed`` when the data changed (``Changes`` tells), ``run_due``
+on a timer, ``catch_up`` at startup and now and then. Every method runs on the asyncio thread;
+the database is read and written on worker threads, as ProfileLibrary does.
 """
 
 from __future__ import annotations
@@ -97,6 +99,19 @@ class BackupTargets:
             )
             connection.execute("DELETE FROM state WHERE key = ?", (_digest_key(target_id),))
 
+    def forget(self, target_id: str) -> Target:
+        """Forget what the target took, once its snapshots are deleted: the next backup
+        uploads, whatever the digest."""
+        with self._database.transaction() as connection:
+            now = self._database.clock()
+            connection.execute(
+                "UPDATE backup_targets SET last_backup_at = NULL, last_error = NULL, "
+                "updated_at = ? WHERE id = ?",
+                (now, target_id),
+            )
+            connection.execute("DELETE FROM state WHERE key = ?", (_digest_key(target_id),))
+        return self.target(target_id)
+
     def digest(self, target_id: str) -> str | None:
         """The digest of the last snapshot the target took."""
         with self._database.reading() as connection:
@@ -123,19 +138,40 @@ class BackupTargets:
         return self.target(target_id)
 
 
+class Changes:
+    """Whether the database was written since the last look, from SQLite's count of the rows
+    its connection inserted, updated or deleted. Every write goes through that one connection
+    (database.py), so the count sees them all; the uploads' own records among them lead to no
+    more than a snapshot whose digest the targets have."""
+
+    def __init__(self, database: Database) -> None:
+        self._database = database
+        self._seen = self._count()
+
+    def _count(self) -> int:
+        with self._database.reading() as connection:
+            return connection.total_changes
+
+    def changed(self) -> bool:
+        count = self._count()
+        changed, self._seen = count != self._seen, count
+        return changed
+
+
 class AutoBackup:
     def __init__(
         self,
         backups: Backups,
         targets: BackupTargets,
-        provider: Callable[[Target], BackupProvider],
+        provider: Callable[[Target], BackupProvider | None],
         *,
         clock: Callable[[], float] = time.time,
         debounce_s: float = DEBOUNCE_S,
         stale_s: float = STALE_S,
         keep: int = KEEP,
     ) -> None:
-        """``provider`` gives the provider signed in to a target's account."""
+        """``provider`` gives the provider signed in to a target's account, or None where this
+        build has no such provider; those targets wait."""
         self._backups = backups
         self._targets = targets
         self._provider = provider
@@ -161,34 +197,43 @@ class AutoBackup:
         self._due_at = None
         return await self.backup()
 
-    async def at_startup(self) -> list[Outcome]:
-        """Upload to the targets whose last successful upload is too old, or never was."""
+    async def catch_up(self) -> list[Outcome]:
+        """Upload to the targets whose last successful upload is too old, or never was, and to
+        those whose last upload failed."""
         now = self._clock()
-        stale = [
+        behind = [
             t
             for t in await asyncio.to_thread(self._targets.targets)
-            if t.last_backup_at is None or now - t.last_backup_at > self._stale_s
+            if t.last_backup_at is None
+            or now - t.last_backup_at > self._stale_s
+            or t.last_error is not None
         ]
-        return await self.backup(stale) if stale else []
+        return await self.backup(behind) if behind else []
 
     async def backup(
         self, targets: Sequence[Target] | None = None, *, force: bool = False
     ) -> list[Outcome]:
         """Upload a snapshot to ``targets``, every target when None. A target that took a
         snapshot with the same digest is skipped unless ``force``; a failure is stored
-        with the target and does not stop the others."""
-        chosen = await asyncio.to_thread(self._targets.targets) if targets is None else targets
+        with the target and does not stop the others. An empty database, as on a new
+        machine before its restore, is uploaded nowhere: it would only push the newest
+        snapshot of the old machine towards deletion."""
+        listed = await asyncio.to_thread(self._targets.targets) if targets is None else targets
+        chosen = [(t, p) for t in listed if (p := self._provider(t)) is not None]
         if not chosen:
             return []
         snapshot = await asyncio.to_thread(self._backups.snapshot)
-        return [await self._upload(target, snapshot, force) for target in chosen]
+        if snapshot.empty:
+            return [Outcome(target, uploaded=False) for target, _ in chosen]
+        return [await self._upload(t, p, snapshot, force) for t, p in chosen]
 
-    async def _upload(self, target: Target, snapshot: Snapshot, force: bool) -> Outcome:
+    async def _upload(
+        self, target: Target, provider: BackupProvider, snapshot: Snapshot, force: bool
+    ) -> Outcome:
         record = self._targets.record
         taken = await asyncio.to_thread(self._targets.digest, target.id)
         if not force and taken == snapshot.digest:
             return Outcome(target, uploaded=False)
-        provider = self._provider(target)
         try:
             await provider.upload(snapshot)
         except Exception as error:

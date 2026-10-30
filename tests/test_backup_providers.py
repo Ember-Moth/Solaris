@@ -1,5 +1,5 @@
-"""Backup providers without a cloud account, and automatic backup on top of them
-(docs/storage.md §3, §6)."""
+"""Backup providers, the iCloud one over a stand-in library, and automatic backup on top of
+them (docs/storage.md §3, §5, §6)."""
 
 from __future__ import annotations
 
@@ -11,7 +11,8 @@ from typing import Any
 import pytest
 
 from solaris.models.backup import BackupError, Backups, Snapshot
-from solaris.models.backup_auto import AutoBackup, BackupTargets, Target
+from solaris.models.backup_auto import AutoBackup, BackupTargets, Changes, Target
+from solaris.models.backup_icloud import ICloudProvider
 from solaris.models.backup_providers import (
     BackupProvider,
     DirectoryProvider,
@@ -19,6 +20,7 @@ from solaris.models.backup_providers import (
 )
 from solaris.models.profiles import KIND_SUBSCRIPTION, Profile, ProfileList
 from solaris.models.store import ProfileStore
+from tests.support.icloud import FakeICloud
 
 
 def run[T](scenario: Callable[[], Coroutine[Any, Any, T]]) -> T:
@@ -57,10 +59,12 @@ def snapshot_at(data: Data, clock: Clock, now: float) -> Snapshot:
 
 
 # -- providers ---------------------------------------------------------------------------------
-@pytest.fixture(params=["memory", "directory"])
+@pytest.fixture(params=["memory", "directory", "icloud"])
 def provider(request: pytest.FixtureRequest, tmp_path: Path) -> BackupProvider:
     if request.param == "memory":
         return MemoryProvider()
+    if request.param == "icloud":
+        return ICloudProvider(FakeICloud())
     return DirectoryProvider(tmp_path / "backups")
 
 
@@ -141,8 +145,8 @@ class Scene:
             self.data.backups, self.data.targets, self.provider, clock=self.clock
         )
 
-    def provider(self, target: Target) -> MemoryProvider:
-        return self.providers[target.id]
+    def provider(self, target: Target) -> MemoryProvider | None:
+        return self.providers.get(target.id)
 
     def at(self, now: float) -> Scene:
         self.clock.now = now
@@ -186,20 +190,77 @@ def test_an_unchanged_snapshot_is_not_uploaded_again(tmp_path: Path) -> None:
     assert scene.held() == 3
 
 
-def test_at_startup_backs_up_after_a_day(tmp_path: Path) -> None:
+def test_catching_up_after_a_day_or_a_failure(tmp_path: Path) -> None:
     scene = Scene(tmp_path, targets=2)
     first, second = scene.data.targets.targets()
     scene.data.change()
     run(lambda: scene.auto.backup([first]))  # the second never backed up
 
-    (outcome,) = run(scene.at(100_000 + 3600).auto.at_startup)
+    (outcome,) = run(scene.at(100_000 + 3600).auto.catch_up)
     assert (outcome.target.id, outcome.uploaded) == (second.id, True)
 
     scene.data.change()
-    assert run(scene.at(100_000 + 23 * 3600).auto.at_startup) == []
-    outcomes = run(scene.at(100_000 + 25 * 3600).auto.at_startup)
+    assert run(scene.at(100_000 + 23 * 3600).auto.catch_up) == []
+    outcomes = run(scene.at(100_000 + 25 * 3600).auto.catch_up)
     assert [(o.target.id, o.uploaded) for o in outcomes] == [(first.id, True)]
     assert (scene.held(first), scene.held(second)) == (2, 1)
+
+    # A failed upload is tried again at the next catch-up, not a day later.
+    scene.providers[second.id].fail = BackupError("cloud_unreachable", "offline")
+    scene.data.change()
+    run(scene.at(100_000 + 25 * 3600 + 60).auto.backup)
+    scene.providers[second.id].fail = None
+    (retried,) = run(scene.at(100_000 + 26 * 3600).auto.catch_up)
+    assert (retried.target.id, retried.uploaded, retried.target.last_error) == (
+        second.id,
+        True,
+        None,
+    )
+
+
+def test_an_empty_database_is_uploaded_nowhere(tmp_path: Path) -> None:
+    scene = Scene(tmp_path)
+    assert scene.data.backups.snapshot().empty
+    (outcome,) = run(lambda: scene.auto.backup(force=True))
+    assert (outcome.uploaded, outcome.error) == (False, None)
+    assert outcome.target.last_backup_at is None
+    assert scene.held() == 0
+    scene.data.change()
+    assert not scene.data.backups.snapshot().empty
+    (outcome,) = run(scene.auto.backup)
+    assert outcome.uploaded
+
+
+def test_targets_without_a_provider_wait(tmp_path: Path) -> None:
+    scene = Scene(tmp_path)
+    elsewhere = scene.data.targets.add("drive", "user@example.com")
+    scene.data.change()
+    outcomes = run(scene.auto.catch_up)
+    assert [o.target.provider for o in outcomes] == ["memory"]
+    assert scene.data.targets.target(elsewhere.id).last_backup_at is None
+
+
+def test_forgetting_what_a_target_took(tmp_path: Path) -> None:
+    scene = Scene(tmp_path)
+    (target,) = scene.data.targets.targets()
+    scene.data.change()
+    run(scene.auto.backup)
+    forgotten = scene.data.targets.forget(target.id)
+    assert (forgotten.last_backup_at, forgotten.last_error) == (None, None)
+    assert scene.data.targets.digest(target.id) is None
+    (outcome,) = run(scene.auto.backup)  # the same data goes up again
+    assert outcome.uploaded
+
+
+def test_changes_see_every_write(tmp_path: Path) -> None:
+    data = Data(tmp_path, Clock())
+    changes = Changes(data.store.database)
+    assert not changes.changed()
+    data.change()
+    assert changes.changed()
+    assert not changes.changed()
+    data.targets.add("memory", "user@example.com")
+    assert changes.changed()
 
 
 def test_keeps_the_newest_ten(tmp_path: Path) -> None:

@@ -37,6 +37,9 @@ targets:
     dependencies:
       - sdk: NetworkExtension.framework
       - sdk: SystemExtensions.framework
+      # The iCloud backup (docs/storage.md §5); Security reads the process's entitlements.
+      - sdk: CloudKit.framework
+      - sdk: Security.framework
     settings:
       base:
         PRODUCT_NAME: SolarisManager

@@ -2,7 +2,7 @@ import Foundation
 import SolarisManagerHeader
 
 // The C functions declared in SolarisManager.h. Each converts between C and Swift and leaves the
-// work to ExtensionActivation and TunnelController.
+// work to ExtensionActivation, TunnelController and CloudBackup.
 
 @_cdecl("solaris_manager_activate")
 public func solarisManagerActivate(
@@ -61,13 +61,81 @@ public func solarisManagerSend(
     }
     let message = request.map { Data(bytes: $0, count: requestLength) } ?? Data()
     let reply = try TunnelController.shared.send(message, timeout: timeout)
-    // malloc(0) may return NULL, and an empty Response is still a Response.
-    guard let buffer = malloc(max(reply.count, 1))?.assumingMemoryBound(to: UInt8.self) else {
-      throw ManagerError.failed("Out of memory for the extension's response")
-    }
-    reply.copyBytes(to: buffer, count: reply.count)
-    response.pointee = buffer
+    response.pointee = try copy(reply)
     responseLength.pointee = reply.count
+  }
+}
+
+@_cdecl("solaris_manager_icloud_status")
+public func solarisManagerICloudStatus(
+  _ timeout: Double, _ status: UnsafeMutablePointer<Int32>?,
+  _ error: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
+) -> Int32 {
+  run(error) {
+    guard let status else { throw ManagerError.failed("status must not be NULL") }
+    status.pointee = SolarisICloudStatus(try CloudBackup.shared.status(timeout: timeout))
+  }
+}
+
+@_cdecl("solaris_manager_icloud_save")
+public func solarisManagerICloudSave(
+  _ name: UnsafePointer<CChar>?, _ info: UnsafePointer<CChar>?,
+  _ snapshot: UnsafePointer<UInt8>?, _ snapshotLength: Int, _ timeout: Double,
+  _ error: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
+) -> Int32 {
+  run(error) {
+    guard let name, let info, snapshot != nil || snapshotLength == 0 else {
+      throw ManagerError.failed("name, info and snapshot must not be NULL")
+    }
+    let data = snapshot.map { Data(bytes: $0, count: snapshotLength) } ?? Data()
+    try CloudBackup.shared.save(
+      name: String(cString: name), info: String(cString: info), snapshot: data, timeout: timeout)
+  }
+}
+
+@_cdecl("solaris_manager_icloud_list")
+public func solarisManagerICloudList(
+  _ timeout: Double, _ list: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?,
+  _ error: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
+) -> Int32 {
+  list?.pointee = nil
+  return run(error) {
+    guard let list else { throw ManagerError.failed("list must not be NULL") }
+    let json = try CloudBackup.shared.list(timeout: timeout)
+    guard let copied = strdup(String(decoding: json, as: UTF8.self)) else {
+      throw ManagerError.failed("Out of memory for the list")
+    }
+    list.pointee = copied
+  }
+}
+
+@_cdecl("solaris_manager_icloud_download")
+public func solarisManagerICloudDownload(
+  _ name: UnsafePointer<CChar>?, _ timeout: Double,
+  _ snapshot: UnsafeMutablePointer<UnsafeMutablePointer<UInt8>?>?,
+  _ snapshotLength: UnsafeMutablePointer<Int>?,
+  _ error: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
+) -> Int32 {
+  snapshot?.pointee = nil
+  snapshotLength?.pointee = 0
+  return run(error) {
+    guard let name, let snapshot, let snapshotLength else {
+      throw ManagerError.failed("name, snapshot and snapshot_length must not be NULL")
+    }
+    let data = try CloudBackup.shared.download(name: String(cString: name), timeout: timeout)
+    snapshot.pointee = try copy(data)
+    snapshotLength.pointee = data.count
+  }
+}
+
+@_cdecl("solaris_manager_icloud_delete")
+public func solarisManagerICloudDelete(
+  _ name: UnsafePointer<CChar>?, _ timeout: Double,
+  _ error: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
+) -> Int32 {
+  run(error) {
+    guard let name else { throw ManagerError.failed("name must not be NULL") }
+    try CloudBackup.shared.delete(name: String(cString: name), timeout: timeout)
   }
 }
 
@@ -97,6 +165,16 @@ private func run(
   return SolarisManagerResult(failure.result)
 }
 
+/// `data` in a buffer the caller releases with solaris_manager_free. malloc(0) may return NULL,
+/// and an empty Response is still a Response, so the buffer has at least one byte.
+private func copy(_ data: Data) throws -> UnsafeMutablePointer<UInt8> {
+  guard let buffer = malloc(max(data.count, 1))?.assumingMemoryBound(to: UInt8.self) else {
+    throw ManagerError.failed("Out of memory for \(data.count) bytes")
+  }
+  data.copyBytes(to: buffer, count: data.count)
+  return buffer
+}
+
 private func same<T>(_: T, _: T) {}
 
 // Never called: it compiles only while each export matches its declaration in SolarisManager.h.
@@ -107,5 +185,10 @@ private func checkHeader() {
   same(solaris_manager_stop, solarisManagerStop)
   same(solaris_manager_status, solarisManagerStatus)
   same(solaris_manager_send, solarisManagerSend)
+  same(solaris_manager_icloud_status, solarisManagerICloudStatus)
+  same(solaris_manager_icloud_save, solarisManagerICloudSave)
+  same(solaris_manager_icloud_list, solarisManagerICloudList)
+  same(solaris_manager_icloud_download, solarisManagerICloudDownload)
+  same(solaris_manager_icloud_delete, solarisManagerICloudDelete)
   same(solaris_manager_free, solarisManagerFree)
 }
