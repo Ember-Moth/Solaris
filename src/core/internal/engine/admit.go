@@ -33,12 +33,12 @@ func (e *Engine) admit(profile admission.Profile) (*admittedConfig, error) {
 // admission.Prepare up to the YAML for mihomo → executor.ParseWithBytes → admission.Verify
 // on the parsed result. Parsing is the engine's because it touches mihomo's global state.
 func admitProfile(profile admission.Profile, host admission.Host) (*admittedConfig, error) {
+	// What the pipeline changes beyond what the profile asked goes to mihomo's log as it
+	// happens, whether or not the profile passes.
+	host.Warn = func(message string) { log.Warnln("[engine] %s", message) }
 	prepared, err := admission.Prepare(profile, host)
 	if err != nil {
 		return nil, err
-	}
-	for _, warning := range prepared.Warnings {
-		log.Warnln("[engine] %s", warning)
 	}
 	cfg, err := executor.ParseWithBytes(prepared.YAML)
 	if err != nil {

@@ -74,9 +74,8 @@ func patchOwnedTUN(doc map[string]any, options RunOptions) error {
 // extension routes and sets the system's DNS, so mihomo neither routes nor watches
 // interfaces, and the TUN's addresses are the ones the extension gave the utun: mihomo
 // takes the IPv4 address from the fake-ip range, so the range is pinned too. The engine
-// fills in tun.file-descriptor when it applies the configuration. allNetworks is the
-// host's IncludeAllNetworks; the warning says when it replaced the stack.
-func patchFDTUN(doc map[string]any, options RunOptions, allNetworks bool) (warnings []string, err error) {
+// fills in tun.file-descriptor when it applies the configuration.
+func patchFDTUN(doc map[string]any, options RunOptions, host Host) error {
 	tun := section(doc, "tun")
 	tun["enable"] = true
 	tun["auto-route"] = false
@@ -94,10 +93,12 @@ func patchFDTUN(doc map[string]any, options RunOptions, allNetworks bool) (warni
 	switch stack, _ := tun["stack"].(string); {
 	case stack == "":
 		tun["stack"] = defaultFDStack()
-	case allNetworks && breaksAllNetworks(stack):
+	case host.IncludeAllNetworks && breaksAllNetworks(stack):
 		// mihomo does not pass the setting on to sing-tun, whose own check would refuse these.
-		warnings = append(warnings, fmt.Sprintf("the %s TUN stack does not work while the tunnel includes all networks; using %s",
-			stack, defaultFDStack()))
+		if host.Warn != nil {
+			host.Warn(fmt.Sprintf("the %s TUN stack does not work while the tunnel includes all networks; using %s",
+				stack, defaultFDStack()))
+		}
 		tun["stack"] = defaultFDStack()
 	}
 	dns := section(doc, "dns")
@@ -106,9 +107,9 @@ func patchFDTUN(doc map[string]any, options RunOptions, allNetworks bool) (warni
 	setMixedPort(doc, options)
 	if options.AllowLAN {
 		doc["allow-lan"] = true
-		return warnings, nil
+		return nil
 	}
-	return warnings, restrictToLoopback(doc)
+	return restrictToLoopback(doc)
 }
 
 // defaultFDStack is gVisor when the build has it, mips otherwise: the two stacks

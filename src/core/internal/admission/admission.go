@@ -60,6 +60,9 @@ type Host struct {
 	// IncludeAllNetworks says that the fd-mode host's tunnel includes all networks
 	// (engine.Options.IncludeAllNetworks, D19); outside fd mode it means nothing.
 	IncludeAllNetworks bool
+	// Warn is told of a change the pipeline makes beyond what the profile asked, as it
+	// makes it, for the engine's log; nil drops them.
+	Warn func(message string)
 }
 
 // RunOptions are the host's settings that the pipeline lays over the user's profile.
@@ -100,8 +103,6 @@ type Prepared struct {
 	// ids of the composition's mesh networks, whose state stays in the home.
 	Composed *compose.Result
 	Networks []string
-	// Warnings are changes the pipeline made beyond what the profile asked, for the log.
-	Warnings []string
 }
 
 // Prepare runs a profile through the pipeline up to mihomo's parser: user YAML or the
@@ -119,7 +120,6 @@ func Prepare(profile Profile, host Host) (*Prepared, error) {
 		return nil, invalidConfig(err)
 	}
 	options := profile.Options
-	var warnings []string
 	switch host.Tun {
 	case TunNone:
 		options.TUN, options.AllowLAN = false, false
@@ -129,7 +129,7 @@ func Prepare(profile Profile, host Host) (*Prepared, error) {
 	case TunFD:
 		// The extension only runs while its tunnel is up, so the TUN is always on.
 		options.TUN = true
-		warnings, err = patchFDTUN(doc, options, host.IncludeAllNetworks)
+		err = patchFDTUN(doc, options, host)
 	default:
 		return nil, fmt.Errorf("%w: unknown TUN mode %v", ErrUnsupported, host.Tun)
 	}
@@ -147,7 +147,7 @@ func Prepare(profile Profile, host Host) (*Prepared, error) {
 	if err != nil {
 		return nil, invalidConfig(err)
 	}
-	prepared := &Prepared{Host: host, Options: options, Document: doc, YAML: raw, Composed: composed, Warnings: warnings}
+	prepared := &Prepared{Host: host, Options: options, Document: doc, YAML: raw, Composed: composed}
 	if composed != nil {
 		prepared.Networks = []string{}
 		for _, network := range profile.Composition.Mesh {

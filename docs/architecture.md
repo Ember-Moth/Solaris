@@ -138,7 +138,7 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
   - 分工：解析之前的各步在 `internal/admission`（`admission.Prepare`，拼装调用 `internal/compose`），对解析结果的
     校验也在那里（`admission.Verify`）；中间的 `executor.ParseWithBytes` 和之后的应用由 engine 调用，因为解析也会
     改动 mihomo 的全局状态（见下文覆写一节的 `temporaryUpdateGeneral`）。`admission` 不写日志：fd 模式换栈这类
-    改动作为警告返回，由 engine 以 `[engine]` 前缀记进 mihomo 日志。
+    改动经 `Host.Warn` 当场告诉 engine，由 engine 以 `[engine]` 前缀记进 mihomo 日志。
 - **拼装**（决策 D16，[routing.md](routing.md) 第 8 节）：`admission.Profile.Composition` 取代 YAML 时，
   `internal/compose` 把每份订阅转成内联 proxy-provider，按方案生成内置组、地区组和自建组（成员在内核里算好，
   写成 `use` 加精确的 `filter`），把规则条目展开成规则，再加上基础段（`compose/base.yaml`：fake-ip DNS、嗅探、

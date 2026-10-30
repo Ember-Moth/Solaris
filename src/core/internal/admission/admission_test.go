@@ -85,8 +85,8 @@ func TestPreparedIsWhatGoesToTheParser(t *testing.T) {
 		if fmt.Sprint(decoded) != fmt.Sprint(prepared.Document) {
 			t.Errorf("%v: the YAML is not the document:\n%s", mode, prepared.YAML)
 		}
-		if prepared.Composed != nil || prepared.Networks != nil || prepared.Warnings != nil {
-			t.Errorf("%v: composed %v, networks %v, warnings %v", mode, prepared.Composed, prepared.Networks, prepared.Warnings)
+		if prepared.Composed != nil || prepared.Networks != nil {
+			t.Errorf("%v: composed %v, networks %v", mode, prepared.Composed, prepared.Networks)
 		}
 	}
 	profile.Options.TUN = false
@@ -106,14 +106,16 @@ func TestFDModeWarnsWhenItReplacesTheStack(t *testing.T) {
 	if features.WithGVisor {
 		fallback = "gvisor"
 	}
+	var warnings []string
+	warn := func(message string) { warnings = append(warnings, message) }
 	profile := Profile{Config: []byte(minimal + "tun: {stack: system}\n")}
-	prepared, err := Prepare(profile, Host{Tun: TunFD, IncludeAllNetworks: true})
+	prepared, err := Prepare(profile, Host{Tun: TunFD, IncludeAllNetworks: true, Warn: warn})
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := []string{"the system TUN stack does not work while the tunnel includes all networks; using " + fallback}
-	if !slices.Equal(prepared.Warnings, want) {
-		t.Fatalf("warnings = %q, want %q", prepared.Warnings, want)
+	if !slices.Equal(warnings, want) {
+		t.Fatalf("warnings = %q, want %q", warnings, want)
 	}
 	if stack := prepared.Document["tun"].(map[string]any)["stack"]; stack != fallback {
 		t.Fatalf("tun.stack = %v, want %s", stack, fallback)
@@ -123,16 +125,16 @@ func TestFDModeWarnsWhenItReplacesTheStack(t *testing.T) {
 		profile Profile
 		host    Host
 	}{
-		"without includeAllNetworks": {profile, Host{Tun: TunFD}},
-		"owned TUN":                  {profile, Host{Tun: TunOwned, IncludeAllNetworks: true}},
-		"mips":                       {mips, Host{Tun: TunFD, IncludeAllNetworks: true}},
+		"without includeAllNetworks": {profile, Host{Tun: TunFD, Warn: warn}},
+		"owned TUN":                  {profile, Host{Tun: TunOwned, IncludeAllNetworks: true, Warn: warn}},
+		"mips":                       {mips, Host{Tun: TunFD, IncludeAllNetworks: true, Warn: warn}},
 	} {
-		prepared, err := Prepare(run.profile, run.host)
-		if err != nil {
+		warnings = nil
+		if _, err := Prepare(run.profile, run.host); err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
-		if prepared.Warnings != nil {
-			t.Errorf("%s: warnings = %q", name, prepared.Warnings)
+		if warnings != nil {
+			t.Errorf("%s: warnings = %q", name, warnings)
 		}
 	}
 }
