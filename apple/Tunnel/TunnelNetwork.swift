@@ -1,6 +1,6 @@
 import NetworkExtension
 
-/// The tunnel's network as the Go core defines it (engine.FDNetwork, read with
+/// The tunnel's network as the Go core defines it (admission.FDNetwork, read with
 /// Core.network()). The utun gets the addresses mihomo's TUN uses, and the system's DNS
 /// goes to the address after the TUN's own, which mihomo always hijacks.
 struct TunnelNetwork: Decodable {

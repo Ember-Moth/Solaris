@@ -7,21 +7,21 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
-	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
 	"github.com/Ember-Moth/Solaris/src/core/internal/warp"
 )
 
 // warpEngine registers with fixed answers and keeps what it was asked.
 type warpEngine struct {
 	unlinked
-	profile *engine.Profile
+	profile *admission.Profile
 	via     string
 	request warp.Request
 	err     error
 }
 
-func (e *warpEngine) Validate(profile engine.Profile) (*controlpb.CompositionReport, error) {
+func (e *warpEngine) Validate(profile admission.Profile) (*controlpb.CompositionReport, error) {
 	e.profile = &profile
 	return &controlpb.CompositionReport{}, nil
 }

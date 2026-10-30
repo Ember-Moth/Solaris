@@ -24,6 +24,8 @@ import (
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/constant/features"
 	"github.com/metacubex/mihomo/hub/route"
+
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 )
 
 // Regression tests for the requirements of docs/architecture.md §3.3, in order.
@@ -72,8 +74,8 @@ secret: hunter2
 		[]byte("external-controller: 0.0.0.0:9091\nexternal-controller-pipe: '\\\\.\\pipe\\override'\n"),
 		[]byte("secret: again\nexternal-doh-server: /again\nexternal-ui: ui\n"),
 	}
-	for _, mode := range []TunMode{TunNone, TunOwned} {
-		cfg := admitted(t, mode, Profile{Config: []byte(minimal + controller), Overrides: overrides})
+	for _, mode := range []admission.TunMode{admission.TunNone, admission.TunOwned} {
+		cfg := admitted(t, mode, admission.Profile{Config: []byte(minimal + controller), Overrides: overrides})
 		c := cfg.Controller
 		if c.ExternalController != "" || c.ExternalControllerTLS != "" || c.ExternalControllerUnix != "" ||
 			c.ExternalControllerPipe != "" || c.ExternalDohServer != "" || c.Secret != "" ||
@@ -84,7 +86,7 @@ secret: hunter2
 
 	// And through Start, which hands the admitted configuration to hub.ApplyConfig: that
 	// starts whatever controller the configuration names (#3 starts one the same way).
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	dir, err := os.MkdirTemp("", "md-ctl-")
 	if err != nil {
 		t.Fatal(err)
@@ -110,7 +112,7 @@ secret: hunter2
 // #3: embed mode is on, so even a controller started by mistake cannot restart the
 // process, rewrite the configuration or upgrade the core.
 func TestSecurity3EmbedModeGuardsAStrayController(t *testing.T) {
-	openEngine(t, TunNone)
+	openEngine(t, admission.TunNone)
 	dir, err := os.MkdirTemp("", "md-ctl-")
 	if err != nil {
 		t.Fatal(err)
@@ -202,13 +204,13 @@ func TestSecurity4ProviderPathsStayInHome(t *testing.T) {
 	for _, kind := range []string{"proxy-providers", "rule-providers"} {
 		for _, path := range escapes {
 			source := minimal + kind + ":\n  p:\n    type: file\n    behavior: classical\n    path: '" + path + "'\n"
-			if _, err := admit(profileOf(source), TunNone); !errors.Is(err, ErrInvalidConfig) {
+			if _, err := admit(profileOf(source), admission.TunNone); !errors.Is(err, ErrInvalidConfig) {
 				t.Errorf("%s path %q: admit = %v, want ErrInvalidConfig", kind, path, err)
 			}
 		}
 	}
 	local := minimal + "proxy-providers:\n  p:\n    type: http\n    url: http://127.0.0.1:1/p.yaml\n    path: providers/p.yaml\n"
-	cfg := admitted(t, TunNone, profileOf(local))
+	cfg := admitted(t, admission.TunNone, profileOf(local))
 	if cfg.Providers["p"] == nil {
 		t.Fatal("a local provider path was refused")
 	}
@@ -231,11 +233,11 @@ func TestSecurity4ProviderPathsStayInHome(t *testing.T) {
 func TestSecurity5SelectionSurvivesRestart(t *testing.T) {
 	profile := profileOf(minimal + "profile: {store-selected: false}\n")
 	profile.Overrides = [][]byte{[]byte("profile: {store-selected: false}\n")}
-	if cfg := admitted(t, TunNone, profile); !cfg.Profile.StoreSelected {
+	if cfg := admitted(t, admission.TunNone, profile); !cfg.Profile.StoreSelected {
 		t.Fatal("store-selected is off")
 	}
 
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	server := target(t)
 	profile = directProfile(freePort(t), server.URL+"/generate_204", "profile: {store-selected: false}")
 	if _, err := engine.Start(profile); err != nil {
@@ -276,7 +278,7 @@ func TestSecurity6MeshOutboundsOnlyGoOut(t *testing.T) {
 	} {
 		for _, path := range escapes {
 			source := "mixed-port: 7890\nproxies:\n  - " + fmt.Sprintf(outbound, path) + "\nrules: ['MATCH,DIRECT']\n"
-			_, err := admit(profileOf(source), TunNone)
+			_, err := admit(profileOf(source), admission.TunNone)
 			if !errors.Is(err, ErrInvalidConfig) {
 				t.Errorf("%s: admit = %v, want ErrInvalidConfig", fmt.Sprintf(outbound, path), err)
 				continue
@@ -310,7 +312,7 @@ proxy-providers:
 `
 	profile := profileOf(source)
 	profile.Overrides = [][]byte{[]byte("prepend-proxies:\n  - " + fmt.Sprintf(serving, "et-override") + "\n")}
-	admitted, err := admitProfile(profile, TunNone)
+	admitted, err := admitProfile(profile, noTUN)
 	if err != nil {
 		t.Fatal(err)
 	}

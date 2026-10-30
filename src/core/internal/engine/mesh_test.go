@@ -15,6 +15,7 @@ import (
 	"github.com/metacubex/mihomo/constant/features"
 	"github.com/metacubex/mihomo/tunnel"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/compose"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 )
@@ -30,10 +31,10 @@ func zeroTierNetwork(id, name string) *controlpb.MeshNetwork {
 		NetworkId: "8056c2e21c000001"}}}
 }
 
-func meshProfile(port int, networks ...*controlpb.MeshNetwork) Profile {
+func meshProfile(port int, networks ...*controlpb.MeshNetwork) admission.Profile {
 	composed := composition(`{"version": 1}`)
 	composed.Mesh = networks
-	return Profile{Composition: composed, Options: RunOptions{MixedPort: uint16(port)}}
+	return admission.Profile{Composition: composed, Options: admission.RunOptions{MixedPort: uint16(port)}}
 }
 
 // fakeStarts stands in for startMesh, counting the starts by outbound name and failing
@@ -121,7 +122,7 @@ func TestNetworksAreOutboundsMihomoBuilds(t *testing.T) {
 			Network: &controlpb.MeshNetwork_Tailscale{Tailscale: &controlpb.TailscaleNetwork{
 				AuthKey: "tskey-auth-x", ControlUrl: "https://hs.example", Hostname: "laptop"}}})
 	}
-	admitted, err := admitProfile(meshProfile(17890, networks...), TunNone)
+	admitted, err := admitProfile(meshProfile(17890, networks...), noTUN)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +140,7 @@ func TestNetworksAreOutboundsMihomoBuilds(t *testing.T) {
 
 func TestMeshOutboundsStartAndCarryOver(t *testing.T) {
 	starts := replaceStartMesh(t)
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	port := freePort(t)
 	if _, err := engine.Start(meshProfile(port, easyTierNetwork("et1", "一", "s"), easyTierNetwork("et2", "二", "s"))); err != nil {
 		t.Fatal(err)
@@ -193,7 +194,7 @@ func TestMeshOutboundsStartAndCarryOver(t *testing.T) {
 
 func TestMeshStateOfRemovedNetworksGoes(t *testing.T) {
 	replaceStartMesh(t)
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	root := filepath.Join(testHome, compose.MeshStateRoot)
 	for _, dir := range []string{"gone", "kept", "not a network"} {
 		if err := os.MkdirAll(filepath.Join(root, dir), 0o700); err != nil {
@@ -228,7 +229,7 @@ func TestMeshStateOfRemovedNetworksGoes(t *testing.T) {
 func TestMeshStatus(t *testing.T) {
 	starts := replaceStartMesh(t)
 	starts.failing["公司"] = errors.New("configured ZeroTier identity collides")
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	if _, err := engine.MeshStatus(context.Background()); !errors.Is(err, ErrNotRunning) {
 		t.Fatalf("MeshStatus while stopped = %v", err)
 	}
@@ -346,7 +347,7 @@ func TestEasyTierAddress(t *testing.T) {
 // listens for peers (docs/mesh.md §4).
 func TestSubscriptionMeshOutboundsWaitForTraffic(t *testing.T) {
 	starts := replaceStartMesh(t)
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	profile := meshProfile(freePort(t), easyTierNetwork("et", "实验室", "s"))
 	profile.Composition.Sources = append(profile.Composition.Sources, compose.Source{ID: "m", Name: "M", YAML: []byte(`
 proxies:
@@ -389,7 +390,7 @@ proxies:
 // MeshStatus runs beside reloads: the go test -race of the mesh tests watches it.
 func TestMeshStatusDuringReloads(t *testing.T) {
 	replaceStartMesh(t)
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	port := freePort(t)
 	if _, err := engine.Start(meshProfile(port, easyTierNetwork("et", "实验室", "s"))); err != nil {
 		t.Fatal(err)

@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 )
 
@@ -58,7 +59,7 @@ func requireIsolatedNamespace(t *testing.T) {
 }
 
 func ownedTUN(t *testing.T, stack, target string) {
-	engine := openEngine(t, TunOwned)
+	engine := openEngine(t, admission.TunOwned)
 	var mu sync.Mutex
 	var lines []string
 	stopLogs := engine.WatchLogs(func(entry *controlpb.LogEntry) {
@@ -79,7 +80,7 @@ func ownedTUN(t *testing.T, stack, target string) {
 	// dns-mode disabled: otherwise sing-tun hands the TUN's DNS to systemd-resolved with
 	// resolvectl, which the namespace does not isolate. resolvectl turns mdtun0 into an
 	// index here, and resolved applies it to the host's interface with that index.
-	profile := Profile{Config: []byte(fmt.Sprintf(`mode: rule
+	profile := admission.Profile{Config: []byte(fmt.Sprintf(`mode: rule
 log-level: debug
 proxies: []
 rules: ['MATCH,DIRECT']
@@ -87,7 +88,7 @@ tun:
   stack: %s
   device: %s
   dns-mode: disabled
-`, stack, tunDevice)), Options: RunOptions{TUN: true}}
+`, stack, tunDevice)), Options: admission.RunOptions{TUN: true}}
 
 	if _, err := engine.Start(profile); err != nil {
 		t.Fatalf("Start with the TUN: %v", err)

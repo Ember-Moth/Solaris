@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 	"github.com/Ember-Moth/Solaris/src/core/internal/warp"
 )
@@ -44,7 +45,7 @@ func fakeWarpAPI(t *testing.T) (*httptest.Server, *atomic.Int32) {
 
 // Registration goes out through the group it names: a group that rejects stops it.
 func TestRegisterWarpGoesThroughTheGroup(t *testing.T) {
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	_, calls := fakeWarpAPI(t)
 	request := warp.Request{Protocol: controlpb.WarpProtocol_WARP_PROTOCOL_MASQUE_H2}
 	if _, err := engine.RegisterWarp(context.Background(), "VIA", request); !errors.Is(err, ErrNotRunning) {
@@ -60,7 +61,7 @@ proxy-groups:
 rules:
   - MATCH,VIA
 `, freePort(t))
-	if _, err := engine.Start(Profile{Config: []byte(source)}); err != nil {
+	if _, err := engine.Start(admission.Profile{Config: []byte(source)}); err != nil {
 		t.Fatal(err)
 	}
 	defer engine.Stop()

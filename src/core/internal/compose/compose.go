@@ -1,7 +1,7 @@
 // Package compose assembles a mihomo configuration from the node pool and a plan, for
-// "my plan" routing (docs/routing.md §8). The result goes through the engine's admission
-// pipeline like any profile: the overrides, the platform patches and the security items
-// still apply after it.
+// "my plan" routing (docs/routing.md §8). The result goes through the admission pipeline
+// (internal/admission) like any profile: the overrides, the platform patches and the
+// security items still apply after it.
 package compose
 
 import (

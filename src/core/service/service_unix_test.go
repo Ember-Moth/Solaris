@@ -13,6 +13,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/control"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
@@ -104,7 +105,7 @@ func freePort(t *testing.T) int {
 
 func TestDevelopmentServerRunsWithoutTUN(t *testing.T) {
 	core, _ := developmentServer(t)
-	if core.TunMode() != engine.TunNone {
+	if core.TunMode() != admission.TunNone {
 		t.Fatalf("the development engine runs in %v mode", core.TunMode())
 	}
 }

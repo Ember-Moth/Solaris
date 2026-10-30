@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/control"
 	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
 	"github.com/Ember-Moth/Solaris/src/core/internal/peer"
@@ -81,7 +82,7 @@ func developmentHome() (string, error) {
 // newDevelopmentEngine runs mihomo without a TUN: whatever the profile says, nothing
 // takes over the machine's traffic and every inbound stays on 127.0.0.1.
 func newDevelopmentEngine(home string) (*engine.Engine, error) {
-	return engine.New(engine.Options{HomeDir: home, Tun: engine.TunNone})
+	return engine.New(engine.Options{HomeDir: home, Tun: admission.TunNone})
 }
 
 // newDevelopmentDispatcher serves the host methods so ServiceHost works against it, and

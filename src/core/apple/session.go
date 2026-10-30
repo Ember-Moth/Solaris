@@ -9,6 +9,7 @@ import (
 	"net"
 	"sync"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/control"
 	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
 	"github.com/Ember-Moth/Solaris/src/core/internal/geodata"
@@ -51,7 +52,7 @@ func attach(fd int, home, resources string, includeAllNetworks bool) error {
 	}
 	core, err := engine.New(engine.Options{
 		HomeDir:            home,
-		Tun:                engine.TunFD,
+		Tun:                admission.TunFD,
 		TunFD:              fd,
 		IncludeAllNetworks: includeAllNetworks,
 	})
@@ -100,7 +101,7 @@ func handle(request []byte) []byte {
 	return current.dispatcher.Handle(current.ctx, peer.Identity{}, request)
 }
 
-// network is engine.FDNetwork in the shape the extension's network settings take.
+// network is admission.FDNetwork in the shape the extension's network settings take.
 type network struct {
 	IPv4Address      string `json:"ipv4_address"`
 	IPv4SubnetMask   string `json:"ipv4_subnet_mask"`
@@ -111,7 +112,7 @@ type network struct {
 }
 
 func networkJSON() []byte {
-	fd := engine.FDNetwork
+	fd := admission.FDNetwork
 	data, err := json.Marshal(network{
 		IPv4Address:      fd.Inet4.Addr().String(),
 		IPv4SubnetMask:   net.IP(net.CIDRMask(fd.Inet4.Bits(), 32)).String(),

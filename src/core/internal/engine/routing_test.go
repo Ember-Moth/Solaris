@@ -14,6 +14,7 @@ import (
 
 	"github.com/metacubex/mihomo/config"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/compose"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 )
@@ -63,12 +64,12 @@ func members(t *testing.T, cfg *config.Config, name string) []string {
 
 // mihomo builds the groups with the members the plan computed (docs/routing.md §4.5).
 func TestComposedGroupsHoldThePlannedMembers(t *testing.T) {
-	admitted, err := admitProfile(Profile{Composition: composition(`{"version": 1, "groups": [
+	admitted, err := admitProfile(admission.Profile{Composition: composition(`{"version": 1, "groups": [
 		{"id": "cheap", "kind": "custom", "name": "低倍率", "members": {
 		  "regions": ["HK"], "exclude": {"mode": "keyword", "pattern": "0.1X"},
 		  "nodes": [{"source": "a", "name": "香港 02 0.1x"}], "others": ["DIRECT"]}},
 		{"id": "rest", "kind": "custom", "name": "其余", "members": {"all": true,
-		  "exclude": {"mode": "regex", "pattern": "^香港"}}}]}`)}, TunNone)
+		  "exclude": {"mode": "regex", "pattern": "^香港"}}}]}`)}, noTUN)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,16 +96,16 @@ func TestComposedGroupsHoldThePlannedMembers(t *testing.T) {
 // overrides, then the platform patches and the security items. The subscription only
 // lends its nodes.
 func TestCompositionGoesThroughThePipeline(t *testing.T) {
-	profile := Profile{
+	profile := admission.Profile{
 		Composition: composition(`{"version": 1, "rules": [
 			{"id": "web", "items": [{"type": "DOMAIN-SUFFIX", "value": "example.com"}], "target": "region:JP"}]}`),
 		Overrides: [][]byte{
 			[]byte("prepend-rules: ['DOMAIN,blocked.example,REJECT']\ndns: {enhanced-mode: redir-host}\n"),
 			[]byte("external-controller: 127.0.0.1:9091\ntun: {enable: true, auto-route: true}\nallow-lan: true\n"),
 		},
-		Options: RunOptions{MixedPort: 17890},
+		Options: admission.RunOptions{MixedPort: 17890},
 	}
-	admitted, err := admitProfile(profile, TunNone)
+	admitted, err := admitProfile(profile, noTUN)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +139,7 @@ func TestBrokenCompositionIsAnInvalidConfig(t *testing.T) {
 		"rule":     {Plan: []byte(`{"version": 1, "rules": [{"id": "r", "items": [{"type": "IP-CIDR", "value": "not-a-prefix"}], "target": "DIRECT"}]}`)},
 		"category": {Plan: []byte(`{"version": 1, "rules": [{"id": "r", "items": [{"type": "GEOSITE", "value": "no-such-category"}], "target": "DIRECT"}]}`)},
 	} {
-		_, err := admitProfile(Profile{Composition: composition}, TunNone)
+		_, err := admitProfile(admission.Profile{Composition: composition}, noTUN)
 		if !errors.Is(err, ErrInvalidConfig) {
 			t.Errorf("%s: %v, want ErrInvalidConfig", name, err)
 		}
@@ -175,7 +176,7 @@ func slowTarget(t *testing.T) (*httptest.Server, chan struct{}) {
 // A composed rule sends traffic to its region; the rule list and the open connection
 // name the rule entry.
 func TestComposedRulesRouteAndNameTheirEntries(t *testing.T) {
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	server, release := slowTarget(t)
 	port := freePort(t)
 	serverPort := server.Listener.Addr().String()[strings.LastIndex(server.Listener.Addr().String(), ":")+1:]
@@ -183,10 +184,10 @@ func TestComposedRulesRouteAndNameTheirEntries(t *testing.T) {
 		{"id": "web", "items": [{"type": "DST-PORT", "value": %q}], "target": "region:JP"},
 		{"id": "kr", "items": [{"type": "DOMAIN", "value": "kr.example"}], "target": "region:KR"}],
 		"fallback": "DIRECT"}`, server.URL+"/generate_204", serverPort)
-	profile := Profile{
+	profile := admission.Profile{
 		Composition: composition(plan),
 		Overrides:   [][]byte{[]byte("prepend-rules: ['DOMAIN,blocked.example,REJECT']\n")},
-		Options:     RunOptions{MixedPort: uint16(port)},
+		Options:     admission.RunOptions{MixedPort: uint16(port)},
 	}
 	report, err := engine.Start(profile)
 	if err != nil {
@@ -251,7 +252,7 @@ func TestComposedRulesRouteAndNameTheirEntries(t *testing.T) {
 }
 
 func TestInspectSourceAndGeoCategories(t *testing.T) {
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	inspection, err := engine.InspectSource([]byte(nodesSource), "剩余")
 	if err != nil {
 		t.Fatal(err)
@@ -320,24 +321,24 @@ func TestGeoUpdaterChecksAndStops(t *testing.T) {
 
 // Composed configurations start and stop the updater with the core.
 func TestGeoUpdaterFollowsTheCore(t *testing.T) {
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	server := target(t)
 	port := freePort(t)
 	plan := fmt.Sprintf(`{"version": 1, "test_url": %q, "fallback": "DIRECT"}`, server.URL)
-	if _, err := engine.Start(Profile{Composition: composition(plan), Options: RunOptions{MixedPort: uint16(port)}}); err != nil {
+	if _, err := engine.Start(admission.Profile{Composition: composition(plan), Options: admission.RunOptions{MixedPort: uint16(port)}}); err != nil {
 		t.Fatal(err)
 	}
 	if engine.geo == nil {
 		t.Fatal("no updater for geo-auto-update")
 	}
-	if _, err := engine.Reload(Profile{Composition: composition(plan), Options: RunOptions{MixedPort: uint16(port)},
+	if _, err := engine.Reload(admission.Profile{Composition: composition(plan), Options: admission.RunOptions{MixedPort: uint16(port)},
 		Overrides: [][]byte{[]byte("geo-auto-update: false\n")}}); err != nil {
 		t.Fatal(err)
 	}
 	if engine.geo != nil {
 		t.Fatal("the updater runs after geo-auto-update went off")
 	}
-	if _, err := engine.Reload(Profile{Composition: composition(plan), Options: RunOptions{MixedPort: uint16(port)}}); err != nil {
+	if _, err := engine.Reload(admission.Profile{Composition: composition(plan), Options: admission.RunOptions{MixedPort: uint16(port)}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := engine.Stop(); err != nil {

@@ -11,6 +11,7 @@ import (
 
 	C "github.com/metacubex/mihomo/constant"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/geodata/geodatatest"
 )
 
@@ -21,6 +22,9 @@ var testHome string
 // helperEnv makes the test binary open one engine and report the result, for checks
 // that need environment variables mihomo reads before main.
 const helperEnv = "SOLARIS_ENGINE_HELPER"
+
+// noTUN is the host most tests admit profiles on: the development server's.
+var noTUN = admission.Host{Tun: admission.TunNone}
 
 func TestMain(m *testing.M) {
 	if os.Getenv(helperEnv) != "" {
@@ -50,7 +54,7 @@ func runHelper() {
 	if err == nil {
 		defer os.RemoveAll(home)
 		var engine *Engine
-		if engine, err = New(Options{HomeDir: home, Tun: TunNone}); err == nil {
+		if engine, err = New(Options{HomeDir: home, Tun: admission.TunNone}); err == nil {
 			engine.Close()
 		}
 	}
@@ -61,7 +65,7 @@ func runHelper() {
 	fmt.Println("opened")
 }
 
-func openEngine(t *testing.T, mode TunMode) *Engine {
+func openEngine(t *testing.T, mode admission.TunMode) *Engine {
 	t.Helper()
 	engine, err := New(Options{HomeDir: testHome, Tun: mode})
 	if err != nil {
@@ -96,7 +100,7 @@ func target(t *testing.T) *httptest.Server {
 }
 
 // directProfile has two direct outbounds behind a selector, tested against testURL.
-func directProfile(mixedPort int, testURL string, extra ...string) Profile {
+func directProfile(mixedPort int, testURL string, extra ...string) admission.Profile {
 	source := fmt.Sprintf(`mixed-port: %d
 mode: rule
 log-level: info
@@ -111,5 +115,5 @@ proxy-groups:
 rules:
   - MATCH,PROXY
 %s`, mixedPort, testURL, strings.Join(extra, "\n"))
-	return Profile{Config: []byte(source)}
+	return admission.Profile{Config: []byte(source)}
 }

@@ -9,9 +9,9 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/control"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
-	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
 	"github.com/Ember-Moth/Solaris/src/core/internal/product"
 )
 
@@ -28,8 +28,8 @@ func TestNetworkIsTheFDNetwork(t *testing.T) {
 		IPv4SubnetMask:   "255.255.255.252",
 		IPv6Address:      "fdfe:dcba:9876::1",
 		IPv6PrefixLength: 126,
-		DNSServer:        engine.FDNetwork.DNSServer().String(),
-		MTU:              engine.FDNetwork.MTU,
+		DNSServer:        admission.FDNetwork.DNSServer().String(),
+		MTU:              admission.FDNetwork.MTU,
 	}
 	if got != want || got.DNSServer != "198.18.0.2" {
 		t.Fatalf("network = %+v, want %+v", got, want)
