@@ -3,7 +3,7 @@
 本文规划从现在到首个可发布版本的工作：现在做到了哪里、接下来按什么顺序做、每个里程碑怎样算完成、哪些决定要在
 什么时候做出。各部分的设计见 [文档一览](#8-文档一览)。每完成一个阶段更新本文。
 
-最近一次整理：2026-10-30，M5 第一步（Xcode 工程）合并后。
+最近一次整理：2026-10-30，M5 第二步（fd 模式）合并后。
 
 ## 1. 当前进度
 
@@ -11,16 +11,16 @@
 | --- | --- | --- |
 | 架构与视觉规范 | 完成 | architecture.md、ui.md、DESIGN.md；原型在 Claude Design 画布上（第 19 版，含深色画板与分流 v2） |
 | 控制协议 | v1 | 消息、方法表、帧编解码已定；Go 与 Python 共用样本测试；配置来源可以是订阅原文或拼装（`Composition`）；`InspectSource`、`ListGeoCategories` |
-| engine（内嵌 mihomo） | 完成（M1） | mihomo v1.19.33；无 TUN 与自管 TUN 模式、覆写、§3.3 安全项、开发模式护栏；fd 模式留到 M5 |
+| engine（内嵌 mihomo） | 完成（M1、M5） | mihomo v1.19.33；无 TUN、自管 TUN 和 fd 三种模式，覆写、§3.3 安全项、开发模式护栏 |
 | Go 分发器与服务入口 | 部分 | 全部内核方法、Start / Stop / Reload / Validate、`PollEvents`；`Claim`、系统代理、Authenticode 校验留到 M4 |
 | Python 宿主层 | 完成 | 控制客户端、全部请求映射、日志与连接接口、模拟宿主 |
 | 界面 | 完成（M2、M3、C1） | 七页全部可用（新增分流页，"配置"改名"订阅"）；覆写编辑；中英双语；浅色与深色；托盘、单实例、登录时打开；qmllint 与无障碍检查进了测试 |
 | 端到端联调 | 完成（A2） | 界面连真实开发服务跑通 M1、M2 的验收步骤；`tests/e2e` 自动化，CI 的 `e2e` job 在 macOS 上运行 |
 | 数据存储与云备份 | 存储层完成（B1） | 界面数据在 SQLite；云备份未做 |
 | 自定义分流 | M8a 完成（B2、C1） | 分流方式、节点池、地区组、默认模板、41 个服务、规则编辑与撤销、立即生效；M8b（策略组编辑器、规则测试、导入导出）未做 |
-| macOS 原生部分 | 部分（M5） | Xcode 工程、管理库 C 接口、系统扩展骨架；Developer ID 签名与校验通过；fd 模式、组装 .app、公证未做 |
+| macOS 原生部分 | 部分（M5） | Xcode 工程、管理库 C 接口；系统扩展用 utun 以 fd 模式运行内核（`with_gvisor`）；Developer ID 签名与校验通过；`MacExtensionHost`、组装 .app、公证、测试 Mac 实测未做 |
 | 打包与安装 | 未开始 | 只有 Nuitka 入口文件和资源复制规则 |
-| CI | 全绿 | Python（macOS、Windows）、Go（macOS、Windows、Linux）、网络命名空间 TUN 测试（四种栈）、macOS 上的 e2e |
+| CI | 全绿 | Python（macOS、Windows）、Go（macOS、Windows、Linux）、网络命名空间 TUN 测试（四种栈和 fd 模式）、macOS 上的 e2e |
 
 ## 2. 下一步开发计划
 
@@ -120,7 +120,7 @@ B1、B2 的结果与遗留：
 | Windows 测试机或虚拟机 | B3 开始前 | M4 的安装、wintun、DNS 泄漏测试 |
 | Google Cloud 项目与"桌面应用"类型的 OAuth 客户端 | C2 开始前（同意屏幕审核要时间，越早越好） | Google Drive 备份 |
 | Developer ID Application 证书、两份 Developer ID 描述文件、公证 API Key、单独的测试 Mac（App ID、App Group、iCloud 容器已建好，见 apple/README.md） | 阶段 D 的 M5 开始前 | macOS 系统扩展、iCloud |
-| D5b、D8 | 见第 5 节 | — |
+| D5b、D8、D19 | 见第 5 节 | — |
 
 ## 3. 里程碑
 
@@ -197,7 +197,10 @@ B1、B2 的结果与遗留：
 
 **状态**：第一步已完成（2026-10-30）。XcodeGen 工程（`apple/project.yml`）、`SolarisManager.dylib` 的 C 接口、
 PacketTunnel 系统扩展骨架、`scripts/build_apple.py`（签名与不签名两种模式）、CI 的不签名构建；签名材料齐全，
-本机签名校验通过。剩下：engine 的 fd 模式、`MacExtensionHost`、组装 .app、公证与发布工作流、测试 Mac 实测。
+本机签名校验通过。第二步 fd 模式已完成（2026-10-30）：engine 的 fd 模式、扩展找到 utun 描述符后交给 Go
+（`solaris_attach_tun` / `solaris_detach_tun`）、扩展带 `with_gvisor` 构建、CI 在网络命名空间里测 fd 模式。
+剩下：`MacExtensionHost`、把 GEO 数据放进扩展的数据目录、组装 .app、公证与发布工作流、测试 Mac 实测（找 utun
+描述符、四种栈、重连时描述符的归属、D8、D19）。
 部署目标暂定 macOS 15.0。
 
 范围：
@@ -296,8 +299,9 @@ PacketTunnel 系统扩展骨架、`scripts/build_apple.py`（签名与不签名�
 | --- | --- | --- | --- |
 | D5b | 内核运行中能否由管理员接管其他用户的隧道（倾向可以，需 UAC 确认） | M4 | 服务的属主逻辑 |
 | D8 | provider message 单条大小上限 | M5 原型 | `Reload` 能否直接携带大配置 |
+| D19 | 扩展是否开启 `includeAllNetworks`（开启后 sing-tun 拒绝 `system` 和 `mixed` 栈） | M5 测试 Mac 实测 | macOS 设置页的栈选项、扩展的网络设置 |
 
-### 5.2 已决定（均为 2026-10-29）
+### 5.2 已决定（2026-10-29 至 10-30）
 
 | # | 决定 | 详见 |
 | --- | --- | --- |
@@ -313,11 +317,12 @@ PacketTunnel 系统扩展骨架、`scripts/build_apple.py`（签名与不签名�
 | D14 | Google 令牌存放在系统凭据库（macOS 钥匙串、Windows 凭据管理器），新增 `keyring` 依赖 | storage.md 第 4 节 |
 | D18 | GEO 数据全量随安装包附带（geosite 4.4 MB、geoip 16.5 MB） | routing.md 第 8 节 |
 | D2 | 构建架构：Windows 只做 x64，macOS 先只做 arm64 | 本文 M4、M5 |
-| D3 | Windows 带 `with_gvisor` 构建，四种 TUN 栈都提供，由用户在设置里选择 | architecture.md §3.4 |
+| D3 | Windows 带 `with_gvisor` 构建，四种 TUN 栈都提供，由用户在设置里选择；macOS 系统扩展同样带 `with_gvisor`，fd 模式默认 gVisor 栈 | architecture.md §3.4 |
 | D5 | 属主注销时停止隧道，下次登录后恢复 | architecture.md §5.4 |
 | D6 | 订阅一键导入注册 `solaris://install-config?url=…` 和 `clash://install-config` | 本文 M6 |
 | D7 | macOS 的配置和 Windows 一样，经控制协议的 `Start` / `Reload` 传入 | architecture.md §6.2 |
 | D11 | 内置检查更新与下载：安装包来自 GitHub Releases，校验签名，由用户确认安装 | 本文 M6 |
+| D20 | fd 模式的 `dns.fake-ip-range` 固定为 `198.18.0.1/16`（TUN 地址由它得出）；用户关掉 `ipv6` 时，进入隧道的 IPv6 流量被丢弃 | architecture.md §3.1 |
 
 ## 6. 风险
 
