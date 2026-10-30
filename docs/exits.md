@@ -4,8 +4,9 @@
 才到达目标网站。决策是 [roadmap.md](roadmap.md) 的 D21、D22、D23、D25，实施计划是 M9（WARP）、M10（Tor）和
 M12（VPN Gate）。这一组功能原名"隐私出口"；加入 VPN Gate 后改名，因为 VPN Gate 的用途是换 IP，不是隐私。
 
-状态：设计稿（2026-10-30）。WARP 出口的界面部分已实现（第二轮，只用模拟宿主验证过，见 ui.md 第 9 节）；
-内核部分由 M9 的内核会话实现；Tor、VPN Gate 未实现。原型在 Claude Design 画布上（WARP 与 Tor；VPN Gate 还没画）。
+状态：设计稿（2026-10-30）。M9 已实现（第二轮）：内核部分的 3.2、3.3、7.1、7.2 节按实现写成，只对本机的假服务器
+测试过；界面部分只用模拟宿主验证过（ui.md 第 9 节）。真实注册的验收要一个真实节点。Tor、VPN Gate 未实现。原型在
+Claude Design 画布上（WARP 与 Tor；VPN Gate 还没画）。
 
 ## 1. 目标与边界
 
@@ -120,21 +121,37 @@ WARP 出口是 mihomo 的一个出站，`dialer-proxy` 指向"经由"组。mihom
 
 所以注册需要内核在运行，"经由"组在运行中的配置里。
 
-**流程**（与 warp 仓库 `api.sh` 的做法一致，接口不是官方公开的）：
+**流程**（`internal/warp`，与 warp 仓库 `api.sh` 的做法一致，接口不是官方公开的）：
 
-1. 生成密钥：MASQUE 用 ECDSA P-256（`key_type: secp256r1`、`tunnel_type: masque`），WireGuard 用 X25519。
-2. `POST /v0a<版本>/reg`，带公钥、随机的 `install_id` 和 `fcm_token`、`tos` 时间、`locale`。
-3. `PATCH /v0a<版本>/reg/<id>`，`{"warp_enabled": true}`。注册返回时 WARP 默认关闭，不打开就连不通。
-4. 从返回里取：设备 `id` 和 `token`、对端公钥、端点、隧道内的 IPv4 / IPv6 地址、`client_id`
-   （WireGuard 的 `reserved` 是它 base64 解码后的 3 个字节）。
+1. 生成密钥：MASQUE 用 ECDSA P-256（`key_type: secp256r1`、`tunnel_type: masque`；私钥是 SEC 1 DER、公钥是
+   PKIX DER，都写成 base64，正是 mihomo `masque` 出站的读法），WireGuard 用 X25519（`curve25519`、`wireguard`，
+   各 32 字节的 base64）。
+2. `POST /v0a4471/reg`，带公钥、`key_type`、`tunnel_type`、随机的 `install_id`（22 位字母数字）和 `fcm_token`
+   （`install_id` 加 `:APA91b` 和 134 位字母数字）、`tos` 时间、`type: Android`、`model: PC`、`locale: en-US`。
+   api.sh 的 MASQUE 注册在这一步发的是私钥，再用下一步的 PATCH 换成公钥；这里只发公钥。
+3. `PATCH /v0a4471/reg/<id>`，`{"warp_enabled": true}`，带 `Authorization: Bearer <token>`。注册返回时 WARP
+   默认关闭，不打开就连不通；PATCH 之后仍是关闭就算失败。
+4. 从返回里取：设备 `id` 和 `token`（只有注册的返回带 token）、对端公钥、端点、隧道内的 IPv4 / IPv6 地址、
+   `client_id`（WireGuard 的 `reserved` 是它 base64 解码后的 3 个字节，拼装时算）、`created`（作为注册时间）。
+   - MASQUE 的对端公钥是 PEM，转成 base64 的 DER；WireGuard 的原样保存。
+   - 端点：返回里的端口是 0，取 `v4` 的地址（没有时取 `v6`），MASQUE 配 443，WireGuard 配 `host` 里的端口
+     （通常 2408）。
 
-- 在 MASQUE 和 WireGuard 之间切换不重新注册：`PATCH /reg/<id>` 换成另一种密钥。
-- 接口路径里的版本号、`CF-Client-Version`、`User-Agent` 集中在 `internal/warp` 的常量里。Cloudflare 改动后
+- 在 MASQUE 和 WireGuard 之间切换不重新注册：`PATCH /reg/<id>` 带新密钥的 `key`、`key_type`、`tunnel_type`，
+  设备 id 和 token 不变；返回里 WARP 已开着就不再 PATCH。
+- 版本 `v0a4471`、`CF-Client-Version: a-6.35-4471`、`User-Agent: WARP for Android`（api.sh 的 MASQUE 部分用的
+  一组；它的 WireGuard 部分还在用旧的 `v0a2158`）集中在 `internal/warp/warp.go` 开头的常量里。Cloudflare 改动后
   只改这一处。
-- 测试只对本机的假服务器，CI 从不访问真实接口。
+- 每次请求 30 秒超时。连接经 `proxydialer.NewByName(经由, tunnel.Tunnel)` 发出，计入连接统计，所以注册时连接页
+  会出现发往 `api.cloudflareclient.com` 的连接。注册不持有 engine 的锁，期间的 Reload 只改变出去的路。
+- 测试只对本机的假服务器（`internal/warp` 的测试，engine 的 `TestRegisterWarpGoesThroughTheGroup`），CI 从不访问
+  真实接口。
 
-**错误**：返回 `operation_failed`，`message` 写 Cloudflare 的原文。限流（HTTP 429，或正文 `error code: 1015`）
-单独说明："Cloudflare 限制了注册频率，稍后再试，或换一个经由的节点"。许多用户共用同一个节点 IP 时容易遇到。
+**错误**：返回 `operation_failed`（`retryable`），`message` 写 Cloudflare 的原文：`Cloudflare answered 400 Bad
+Request: <正文>`，正文最多 1 KiB。限流（HTTP 429，或正文含 `error code: 1015`）单独说明，`message` 以
+`Cloudflare is limiting how often devices register; try again later, or through another node` 开头，后面括号里是
+Cloudflare 的状态码和原文；界面按这个开头换成本地化的"Cloudflare 限制了注册频率，稍后再试，或换一个经由的节点"。
+许多用户共用同一个节点 IP 时容易遇到。连不上 Cloudflare（经由的节点不通）时 `message` 是拨号的错误。
 
 **保存**：
 
@@ -150,15 +167,16 @@ WARP 出口是 mihomo 的一个出站，`dialer-proxy` 指向"经由"组。mihom
 
 ```yaml
 proxies:
-  - name: WARP 出口          # 按 locale，英文为 "WARP exit"
-    type: masque             # WireGuard 时为 wireguard，并写 reserved、端口
-    server: <注册返回的端点>
-    port: 443
+  - name: WARP 出口          # 按方案的 locale，英文为 "WARP exit"
+    type: masque             # WireGuard 时为 wireguard
+    server: <端点的地址>
+    port: 443                # WireGuard 时是端点的端口，通常 2408
     private-key: <私钥>
     public-key: <对端公钥>
-    ip: <隧道内 IPv4>
+    ip: <隧道内 IPv4>         # 有才写，ipv6 同
     ipv6: <隧道内 IPv6>
-    network: h2              # HTTP/3 时不写
+    network: h2              # 只有 MASQUE（HTTP/2）写；HTTP/3 不写
+    reserved: [83, 128, 39]  # 只有 WireGuard 写，由 client_id 算出
     mtu: 1280
     udp: true
     remote-dns-resolve: true
@@ -166,10 +184,21 @@ proxies:
     dialer-proxy: <经由组的名称>
 ```
 
-- 规则目标 `egress:warp` 展开成这个出站的名称。
-- **没有账户时**：指向它的规则改写为 `REJECT`，报告里给出警告 `egress_unavailable`（D21）。
-- **经由组没有节点时**：经由改走"节点选择"，报告里给出警告 `via_empty`。这只换了跳板，不影响隐私性质。
-- 出站名称和"Tor 出口"一样是保留名称：自建组不能用，重名的节点按 routing.md 8.1 节加后缀。
+实现在 `internal/compose/egress.go`，字段按钉住的 v1.19.33 的 `MasqueOption`、`WireGuardOption` 核实；engine 的
+`TestWarpExitIsAnOutboundMihomoBuilds` 让 mihomo 实际解析三种协议生成的出站。
+
+- 规则目标 `egress:warp` 展开成这个出站的名称。至少有一条启用的规则（或兜底）指向它、并且带了账户才生成；只有
+  账户没有规则时不生成。出站写在顶层 `proxies`，不在任何 provider 里，所以不进任何策略组。
+- **没有账户时**：指向它的规则改写为 `REJECT`，报告里给出警告 `egress_unavailable`（`entry_id` 是条目 id 或
+  `fallback`，`target` 是 `egress:warp`；D21）。
+- **经由组没有成员时**（包括经由是没有节点的地区）：经由改走"节点选择"，报告里给出警告 `via_empty`（`entry_id`
+  是 `egress:warp`，`target` 是经由组的 id）。这只换了跳板，不影响隐私性质。
+- **账户不完整时**（端点没有端口、缺密钥或地址、`client_id` 解码后不是 3 个字节）：`invalid_config`，message
+  以 `warp account: ` 开头。只在生成出站时检查。
+- 出站名称是保留名称，按方案的 `locale` 取"WARP 出口"或"WARP exit"，不论是否生成都保留：自建组用它时
+  `invalid_config`，重名的节点和组网出站按 routing.md 8.1 节加后缀。"Tor 出口""VPN Gate 出口"随 M10、M12 加入。
+- 分享导出（routing.md 8.8 节）写出口的名称，不写出站本身；`ConvertToPlan` 把"WARP 出口""WARP exit"读回
+  `egress:warp`。
 - 覆写、平台补丁和安全项照常在拼装之后应用。
 
 ### 3.4 风险
@@ -367,9 +396,10 @@ listeners:
 
 ### 7.1 `Composition` 与方案 JSON
 
-WARP 部分的字段已写进 `control.proto`（`Egress`、`WarpAccount`、`RegisterWarp`），Python 侧是 `host/base.py` 的
-`Egress`、`WarpAccount` 和 `TunnelHost.register_warp`；Tor 和 VPN Gate 的字段号 2、3 已预留。
-
+WARP 部分已实现：`control.proto` 的 `Egress`、`WarpAccount`、`RegisterWarp`，Python 侧是 `host/base.py` 的
+`Egress`、`WarpAccount` 和 `TunnelHost.register_warp`；方案 JSON 的 `egress.warp.via` 和目标 `egress:warp`。
+Tor 和 VPN Gate 的字段号 2、3 已预留；`egress.tor`、`egress.vpngate` 现在写了也被忽略，目标 `egress:tor`、
+`egress:vpngate` 是 `invalid_config`（未知目标），随 M10、M12 加入。
 
 - `Composition` 新增 `egress`：
   - `warp`：账户（3.2 节的各项）和协议；
@@ -384,7 +414,8 @@ WARP 部分的字段已写进 `control.proto`（`Egress`、`WarpAccount`、`Regi
              "vpngate": {"via": "proxy", "countries": ["JP", "KR"], "count": 5, "mode": "per-site"}}
   ```
 
-  `via` 是策略组 id，默认 `proxy`。VPN Gate 的 `mode` 是 `per-site`（按网站分配，默认）或 `single`（只用一台）。
+  `via` 是策略组 id（内置组、`region:代码` 或自建组），默认 `proxy`；`DIRECT` 等内置出站、`region:*`、不存在的
+  组是 `invalid_config`。VPN Gate 的 `mode` 是 `per-site`（按网站分配，默认）或 `single`（只用一台）。
   WARP 的开关不进方案 JSON：方案打开了 WARP 出口才写 `egress.warp`，关着时界面也不在 `Composition` 里带账户，
   指向它的规则照样按 D21 拒绝连接。界面把开关和经由一起存在 `plans.egress` 列：
   `{"warp": {"enabled": true, "via": "proxy"}}`。
@@ -396,10 +427,13 @@ WARP 部分的字段已写进 `control.proto`（`Egress`、`WarpAccount`、`Regi
 
 | 方法 | 作用 |
 | --- | --- |
-| `RegisterWarp` | 请求带经由组名、协议，以及可选的已有账户（只有设备 id 和 token）。不带已有账户就注册新设备；带了就为这台设备换密钥。返回完整账户。需要内核在运行，否则 `not_running` |
+| `RegisterWarp` | 请求带经由组名、协议，以及可选的已有账户（只有设备 id 和 token）。不带已有账户就注册新设备；带了就为这台设备换密钥。返回完整账户。需要内核在运行，否则 `not_running`。已实现 |
 | `ListVpnGate` | 请求带经由组名。经它拉取 VPN Gate 列表，返回服务器和转换好的 `openvpn` 出站参数（5.2 节）。需要内核在运行 |
 
 - 字段号：`RegisterWarp` 用 55，`ListVpnGate` 用 56（51 到 54 是 M8b 的四个方法）。
+- `RegisterWarp` 的请求：经由组名必填；设备 id 和 token 要么都有、要么都没有；协议是已知的值（不填为 MASQUE
+  HTTP/2）。不符合是 `invalid_request`；运行中的配置里没有这个名称也是 `invalid_request`。返回的账户 `protocol`
+  是实际用的协议，`registered_at_unix_ms` 取 Cloudflare 记的设备创建时间。
 - 两种宿主都提供；模拟宿主返回一个固定的假账户。
 - 实现放在 `src/core/internal/warp`。HTTP 客户端的连接经 `proxydialer.NewByName(经由组, tunnel)` 发出，超时 30 秒。
 
@@ -421,7 +455,9 @@ WARP 部分的字段已写进 `control.proto`（`Egress`、`WarpAccount`、`Regi
 - 经一个只有 TCP 的节点，mihomo 的 MASQUE（HTTP/2）能否连上 WARP，延迟和吞吐各是多少。
 - WARP 的出口 IP 是否随经由节点的地区变化。
 - 注册接口当前的版本号；同一个节点 IP 上的注册限流。
-- 连接页对 `dialer-proxy` 链路的显示。
+- `POST /reg` 直接带 `secp256r1` 公钥能否注册（3.2 节）。不能的话，改成 usque 的做法：先用 X25519 公钥注册，再用
+  `PATCH /reg/<id>` 换成 MASQUE 的密钥，也就是换密钥那一段。
+- 连接页对 `dialer-proxy` 链路的显示，以及注册时经由组的那条连接。
 - `solaris_tor` 的体积，界面进程增加的内存，经节点首次连上 Tor 网络的时间，按目标主机隔离线路的开销。
 - macOS：系统扩展与界面进程互连回环端口，包括开启 `includeAllNetworks` 时。
 - VPN Gate：使用条款是否允许本用法；服务器是否接受来自机房 IP 的连接；经节点的 TCP 服务器实际吞吐；
@@ -431,7 +467,7 @@ WARP 部分的字段已写进 `control.proto`（`Egress`、`WarpAccount`、`Regi
 
 **M9 WARP 出口**（首发前，阶段 D）
 
-- 内核：`internal/warp` 的注册、`RegisterWarp`、拼装 `egress`、两种警告。
+- 内核（已完成，2026-10-30）：`internal/warp` 的注册、`RegisterWarp`、拼装 `egress`、两种警告。
 - 界面：链式出口一节、出口设置对话框、规则目标、账户存取（`keyring`）、模拟宿主。
 
 两部分改动的文件不重叠，可以并行。
@@ -441,6 +477,13 @@ WARP 部分的字段已写进 `control.proto`（`Egress`、`WarpAccount`、`Regi
 2. 添加"ifconfig.me → WARP 出口"，访问得到的是 Cloudflare 的 IP，而不是节点 IP；
 3. 删除账户后，同一规则的连接被拒绝，不会经节点直接出去；
 4. 协议切到 WireGuard（节点支持 UDP 时），结果相同。
+
+做法：两个会话合并后，用开发服务做，不建 TUN（`uv run python scripts/dev.py --data ~/md-dev`）。导入含这个节点的
+订阅，切到"我的方案"并连接，在节点选择里选中它；打开 WARP 出口完成注册；加一条 `ifconfig.me` 的域名规则，目标
+"WARP 出口"。然后经混合端口访问：`curl -x http://127.0.0.1:<混合端口> https://ifconfig.me` 应是 Cloudflare 的
+地址（与节点直接出去的地址不同；`https://www.cloudflare.com/cdn-cgi/trace` 经同一条规则时应有 `warp=on`）。
+删除账户后同一条命令应失败；节点支持 UDP 时把协议换成 WireGuard 再测一次。同时记下第 9 节的待验证项：注册接口
+的版本、连接页的链路显示、只有 TCP 的节点上 MASQUE（HTTP/2）的延迟和吞吐。
 
 **M10 Tor 出口**（首发后，实验功能）
 

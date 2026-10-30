@@ -31,6 +31,13 @@ const (
 
 	// FallbackEntry is the entry id of the fallback rule, MATCH.
 	FallbackEntry = "fallback"
+
+	// EgressWarp is the WARP exit as a rule target (docs/exits.md §3.3); its settings are in
+	// the plan's egress.warp.
+	EgressWarp = "egress:warp"
+	// meshPrefix names a mesh outbound as a rule target: "mesh:<subscription id>/<name in
+	// the subscription>" (docs/mesh.md §3).
+	meshPrefix = "mesh:"
 )
 
 var groupTypes = []string{"select", "url-test", "fallback", "load-balance"}
@@ -53,6 +60,18 @@ type Plan struct {
 	Groups   []PlanGroup `json:"groups,omitempty"`
 	Rules    []RuleEntry `json:"rules,omitempty"`
 	Fallback string      `json:"fallback"`
+	Egress   Egress      `json:"egress,omitzero"`
+}
+
+// Egress holds what the plan says of the chained exits (docs/exits.md §7.1); the
+// exits' accounts and endpoints come with the composition instead.
+type Egress struct {
+	Warp ExitSettings `json:"warp,omitzero"`
+}
+
+type ExitSettings struct {
+	// Via is the group whose node the exit connects through: a group id, "proxy" when empty.
+	Via string `json:"via,omitempty"`
 }
 
 type PlanGroup struct {
@@ -167,6 +186,9 @@ func ParsePlan(data []byte) (*Plan, error) {
 		return nil, err
 	}
 	if err := plan.checkRules(); err != nil {
+		return nil, err
+	}
+	if err := plan.checkEgress(); err != nil {
 		return nil, err
 	}
 	return &plan, nil
@@ -336,10 +358,7 @@ func (p *Plan) checkRules() error {
 		}
 		seen[entry.ID] = true
 		label := fmt.Sprintf("rule %q", entry.ID)
-		if entry.Target == allRegions {
-			return fmt.Errorf("%s: %q is not a target", label, allRegions)
-		}
-		if err := p.checkReference(entry.Target); err != nil {
+		if err := p.checkTarget(entry.Target); err != nil {
 			return fmt.Errorf("%s: %w", label, err)
 		}
 		if len(entry.Items) == 0 {
@@ -354,11 +373,41 @@ func (p *Plan) checkRules() error {
 	if p.Fallback == "" {
 		p.Fallback = GroupProxy
 	}
-	if p.Fallback == allRegions {
-		return fmt.Errorf("fallback: %q is not a target", allRegions)
-	}
-	if err := p.checkReference(p.Fallback); err != nil {
+	if err := p.checkTarget(p.Fallback); err != nil {
 		return fmt.Errorf("fallback: %w", err)
+	}
+	return nil
+}
+
+// checkTarget accepts what a rule or the fallback may send traffic to: what a group may
+// hold, but not every region at once, and also the WARP exit and mesh outbounds, which no
+// group holds.
+func (p *Plan) checkTarget(target string) error {
+	switch name, isMesh := strings.CutPrefix(target, meshPrefix); {
+	case target == allRegions:
+		return fmt.Errorf("%q is not a target", allRegions)
+	case target == EgressWarp:
+		return nil
+	case isMesh:
+		if source, original, ok := strings.Cut(name, "/"); !ok || source == "" || original == "" {
+			return fmt.Errorf("mesh target %q is not %q, a subscription id, / and a name", target, meshPrefix)
+		}
+		return nil
+	}
+	return p.checkReference(target)
+}
+
+// checkEgress accepts a group, built-in, region or custom, as an exit's via.
+func (p *Plan) checkEgress() error {
+	via := p.Egress.Warp.Via
+	if via == "" {
+		return nil
+	}
+	if slices.Contains(outbounds, via) || via == allRegions {
+		return fmt.Errorf("egress.warp.via: %q is not a group", via)
+	}
+	if err := p.checkReference(via); err != nil {
+		return fmt.Errorf("egress.warp.via: %w", err)
 	}
 	return nil
 }

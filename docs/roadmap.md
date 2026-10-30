@@ -331,10 +331,14 @@ fake-ip 下的一致性留到 M5 / M4 实测（routing.md 第 12 节）。
 目标：流量经用户的节点再进入 Cloudflare WARP，机场看不到访问的网站，网站看不到节点 IP。设计见
 [exits.md](exits.md) 第 3 节（D22）。
 
-**状态**：界面部分已完成（2026-10-30，第二轮）：链式出口一节、WARP 出口设置对话框（立即生效）、规则目标与
-"未启用"、`egress_unavailable` / `mesh_missing` 的规则行提示、账户经 `keyring` 存系统凭据库、本机设置
-`warp_protocol`、方案的 `plans.egress`；组网出站的界面部分（"组网"一节、添加常用规则、按目标筛选）同时完成。
-只用模拟宿主验证过（`tests/test_routing_exits.py`），真实注册和下面四项验收要等内核部分合并、有真实节点后再做。
+**状态**：内核和界面都已完成（2026-10-30，第二轮）。
+- 内核：`internal/warp` 的注册与换密钥、`RegisterWarp`、拼装 MASQUE / WireGuard 出站、`egress_unavailable` 和
+  `via_empty`，只对本机的假服务器测试过。
+- 界面：链式出口一节、WARP 出口设置对话框（立即生效）、规则目标与"未启用"、`egress_unavailable` / `mesh_missing`
+  的规则行提示、账户经 `keyring` 存系统凭据库、本机设置 `warp_protocol`、方案的 `plans.egress`，只用模拟宿主验证过
+  （`tests/test_routing_exits.py`）。
+- 同一轮的组网出站（mesh.md 第 3 到 5 节）内核和界面都已完成。
+- 真实注册和下面四项验收要一个真实节点，在开发服务上做（不建 TUN，exits.md 第 10 节）。
 
 范围：
 
