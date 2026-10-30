@@ -1607,13 +1607,6 @@ prepend-rules:
     </message>
 </context>
 <context>
-    <name>PlaceholderPage</name>
-    <message>
-        <source>尚未实现</source>
-        <translation>Not implemented yet</translation>
-    </message>
-</context>
-<context>
     <name>PlanDialog</name>
     <message>
         <source>重命名「%1」</source>

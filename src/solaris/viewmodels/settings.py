@@ -249,14 +249,6 @@ class SettingsViewModel(QObject):
     def mixedPort(self) -> int:
         return self._current().mixed_port
 
-    @Property(int, constant=True)
-    def minPort(self) -> int:
-        return MIN_MIXED_PORT
-
-    @Property(int, constant=True)
-    def maxPort(self) -> int:
-        return MAX_MIXED_PORT
-
     @Property(str, notify=changed)
     def portError(self) -> str:
         return self._port_error

@@ -109,7 +109,7 @@ def test_a_first_import_with_nodes_only_routes_with_the_default_plan(tmp_path: P
     assert (source.name, source.yaml) == ("机场", NODES_ONLY)
     assert config.composition.info_filter == DEFAULT_INFO_PATTERN
     assert scene.running_plan()["locale"] == "zh"
-    # The information node stays out of the pool; the US rules have no nodes for now.
+    # The information node stays out of the pool; the US rules have no nodes at the moment.
     routing = run(scene.library.routing)
     assert routing.report is not None
     assert [node.original_name for node in routing.report.nodes] == ["🇭🇰 香港 01", "🇯🇵 日本 01"]

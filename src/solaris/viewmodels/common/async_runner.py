@@ -103,16 +103,6 @@ class AsyncRunner(QObject):
     def _alive(self) -> bool:
         return not self._stopping and not self._loop.is_closed() and self._thread.is_alive()
 
-    def call_on_qt_thread(self, callback: Callable[[], None]) -> None:
-        self._deliver.emit(callback)
-
-    def call_on_loop(self, callback: Callable[[], None]) -> None:
-        """Run ``callback`` on the asyncio thread (for code that creates tasks itself)."""
-        if not self._started and not self._stopping:
-            self.start()
-        if self._alive():
-            self._loop.call_soon_threadsafe(callback)
-
     def _finished(
         self,
         on_result: Callback | None,

@@ -37,7 +37,7 @@ def backups(tmp_path: Path) -> Backups:
     store = ProfileStore(tmp_path, clock=lambda: 1_800_000_000.0)
     profile = Profile(id="a", name="订阅", kind=KIND_SUBSCRIPTION, url="https://a.example/s")
     store.save(ProfileList((profile,), "a"))
-    return Backups(store.database, device="laptop", app_version="0.1.0")
+    return Backups(store.database, device="laptop", app_version="1.0.0")
 
 
 def test_the_account_is_the_systems() -> None:
@@ -73,7 +73,7 @@ def test_records_carry_their_info(backups: Backups) -> None:
     assert json.loads(info) == {
         "created_at": 1_800_000_000.0,
         "device": "laptop",
-        "app_version": "0.1.0",
+        "app_version": "1.0.0",
         "profiles": 1,
         "plans": 0,
         "size": len(data),

@@ -5,7 +5,7 @@ registers the app as a login item with ``SMAppService.mainAppService``. Both onl
 the packaged app: run from source there is no app to register, and registering the Python
 interpreter instead would leave a login item on the developer's machine. So a source run
 gets ``UnavailableLoginItem`` and tests use doubles; the real registration is verified on the
-test machines with the packaged builds (roadmap M4, M5).
+test machines with the packaged builds.
 
 The methods block (``schtasks`` runs as a child process): call them off the Qt thread.
 """

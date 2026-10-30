@@ -1,4 +1,4 @@
-"""The routing page's M8b parts (docs/routing.md §4.3, §4.5, §4.7, §5.5): the group editor,
+"""The routing page's editors (docs/routing.md §4.3, §4.5, §4.7, §5.5): the group editor,
 the rule test, the search and the target filter, and plans in and out."""
 
 from collections.abc import Iterator
@@ -235,7 +235,7 @@ def test_the_rule_test_names_the_entry_and_the_chain(qtbot: QtBot, planned: View
     routing._test_timer.setInterval(10)
     routing.setTestText("https://chat.openai.com/c/1")
     qtbot.waitUntil(lambda: prop(routing, "testResult") != "")
-    # The simulated core runs the prototype's groups, not the plan's region groups.
+    # The simulated core runs its sample groups, not the plan's region groups.
     assert prop(routing, "testResult") == "命中「OpenAI」 → 🇺🇸 美国"
     hits = [r.name for r in rows(routing, "rules") if r.hit]
     assert hits == ["OpenAI"]

@@ -631,18 +631,13 @@ class ProfilesViewModel(QObject):
         path = QUrl(file_url).toLocalFile() or file_url
         self._import(self._library.import_file(Path(path)), from_link=False)
 
-    # -- active profile (overview and sidebar) -----------------------------------------------
+    # -- active profile ----------------------------------------------------------------------
     def _active(self) -> Profile | None:
         return self._list.active_profile()
 
     @Property(bool, notify=changed)
     def hasActive(self) -> bool:
         return self._active() is not None
-
-    @Property(str, notify=changed)
-    def activeId(self) -> str:
-        active = self._active()
-        return active.id if active else ""
 
     @Property(str, notify=changed)
     def activeName(self) -> str:
@@ -676,24 +671,9 @@ class ProfilesViewModel(QObject):
         return active is not None and active.id in self._updating
 
     @Property(str, notify=changed)
-    def activeRefreshLabel(self) -> str:
-        active = self._active()
-        return self._refresh_label(active) if active else self.tr("更新")
-
-    @Property(bool, notify=changed)
-    def activeHasQuota(self) -> bool:
-        active = self._active()
-        return active is not None and _usage(active)[1] is not None
-
-    @Property(str, notify=changed)
     def activeUsage(self) -> str:
         active = self._active()
         return _usage(active)[0] if active else ""
-
-    @Property(float, notify=changed)
-    def activeUsedFraction(self) -> float:
-        active = self._active()
-        return (_usage(active)[1] or 0.0) if active else 0.0
 
     @Property(str, notify=changed)
     def activeExpiry(self) -> str:

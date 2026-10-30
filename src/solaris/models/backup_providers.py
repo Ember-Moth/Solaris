@@ -1,6 +1,6 @@
 """Where snapshots go (docs/storage.md §6): the ``BackupProvider`` interface, and the
 providers that need no cloud account, one in memory for the tests and one in a local
-directory. Google Drive (§4) and iCloud (§5) implement the same interface later.
+directory. The iCloud provider (§5, backup_icloud.py) implements the same interface.
 
 A provider holds the snapshots of one account in a space of the app's own (Drive's
 appDataFolder, the CloudKit container, a directory), so every snapshot it lists is one of

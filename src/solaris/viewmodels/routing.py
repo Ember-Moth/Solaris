@@ -77,7 +77,7 @@ class RuleRow:
     target: str
     targetId: str
     active: bool  # enabled; ``enabled`` is an Item's own property in QML
-    warning: str  # the target is unavailable for now; empty otherwise
+    warning: str  # the target is unavailable at the moment; empty otherwise
     first: bool
     last: bool
     editable: bool

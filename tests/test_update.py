@@ -36,9 +36,9 @@ from solaris.update.signature import (
 from solaris.update.updater import Updater
 from tests.support.releases import FakeGitHub, FakeVerifier, fake_github
 
-MAC_DMG = "Solaris-0.2.0-macos-arm64.dmg"
+MAC_DMG = "Solaris-1.1.0-macos-arm64.dmg"
 SIGNER = "Ember Moth"  # a Windows signer, for the signed path
-WINDOWS_EXE = "Solaris-0.2.0-windows-x64-setup.exe"
+WINDOWS_EXE = "Solaris-1.1.0-windows-x64-setup.exe"
 BODY = b"installer " * 100_000  # a little under 1 MB: several chunks
 
 
@@ -56,7 +56,7 @@ def updater(
     tmp_path: Path,
     verifier: FakeVerifier | None = None,
     *,
-    current: str = "0.1.0",
+    current: str = "1.0.0",
     system: str = "darwin",
     machine: str = "arm64",
 ) -> Updater:
@@ -105,7 +105,7 @@ def test_versions_compare_as_numbers() -> None:
     ],
 )
 def test_installer_per_platform(system: str, machine: str, name: str | None) -> None:
-    assert installer_name("0.2.0", system, machine) == name
+    assert installer_name("1.1.0", system, machine) == name
 
 
 def test_downloads_only_over_https() -> None:
@@ -136,9 +136,9 @@ def test_check_finds_the_newer_release(github: FakeGitHub, tmp_path: Path) -> No
     check = updater(github, tmp_path).check()
     assert check.newer
     assert check.release is not None
-    assert check.release.version == "0.2.0"
+    assert check.release.version == "1.1.0"
     assert check.installer == MAC_DMG
-    assert check.release.page_url.endswith("/releases/tag/v0.2.0")
+    assert check.release.page_url.endswith("/releases/tag/v1.1.0")
     path, headers = github.requests[0]
     assert path == "/repos/Ember-Moth/Solaris/releases/latest"
     assert headers["accept"] == "application/vnd.github+json"
@@ -148,8 +148,8 @@ def test_check_finds_the_newer_release(github: FakeGitHub, tmp_path: Path) -> No
 
 
 def test_check_when_already_current(github: FakeGitHub, tmp_path: Path) -> None:
-    assert not updater(github, tmp_path, current="0.2.0").check().newer
-    assert not updater(github, tmp_path, current="0.3.0").check().newer
+    assert not updater(github, tmp_path, current="1.1.0").check().newer
+    assert not updater(github, tmp_path, current="1.2.0").check().newer
 
 
 def test_check_without_an_installer_for_this_machine(github: FakeGitHub, tmp_path: Path) -> None:
@@ -224,7 +224,7 @@ def windows_updater(github: FakeGitHub, tmp_path: Path, signer: str) -> Updater:
         tmp_path,
         ReleaseSource(github.latest_url),
         default_verifier("win32", signer),
-        current="0.1.0",
+        current="1.0.0",
         system="win32",
         machine="AMD64",
     )
@@ -279,7 +279,7 @@ def test_without_a_windows_signer_the_checksum_is_required(
 def test_with_a_windows_signer_an_unsigned_installer_is_refused(
     github: FakeGitHub, tmp_path: Path
 ) -> None:
-    # The signed path for later: the fake installer carries no signature (and off Windows
+    # The path for signed Windows releases: the fake installer carries no signature (and off Windows
     # there is no WinVerifyTrust), so it is refused after its checksum matched.
     update = windows_updater(github, tmp_path, SIGNER)
     with pytest.raises(UpdateError) as caught:

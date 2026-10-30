@@ -1,4 +1,4 @@
-"""Roadmap B2: "my plan" routing on the development service (docs/routing.md §8). The core
+"""Routing with "my plan" on the development service (docs/routing.md §8). The core
 composes the configuration from a subscription with only nodes and a plan; requests through
 the mixed port go where the plan's rules send them, and the connections name the rule entry.
 

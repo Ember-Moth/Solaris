@@ -153,7 +153,7 @@ def test_start_activates_connects_and_sends_the_config() -> None:
             return pb.Response(
                 get_info=pb.GetInfoResponse(
                     protocol_version=1,
-                    service_version="0.1.0",
+                    service_version="1.0.0",
                     core_version="v1.19.33",
                     state=pb.RUN_STATE_RUNNING,
                 )

@@ -1,4 +1,4 @@
-"""The routing data of docs/routing.md §9; the routing page comes with C1."""
+"""The routing data of docs/routing.md §9."""
 
 from dataclasses import replace
 from pathlib import Path

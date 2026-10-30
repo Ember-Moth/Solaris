@@ -16,8 +16,8 @@ against Solaris/ and an uninstall list of exactly its files; package/windows/set
 part that closes the UI and registers, stops and removes the service. wintun is not shipped on
 its own: sing-tun embeds wintun.dll in the service and loads it from memory.
 
-Nothing is signed yet: the Windows signing scheme is pending (docs/roadmap.md). When it is
-chosen, the release workflow signs the executables and DLLs in Solaris/ between
+Nothing is signed: Windows releases are unsigned (docs/decisions.md D29). Once a signing
+scheme is chosen, the release workflow signs the executables and DLLs in Solaris/ between
 --skip-installer and --installer-only (the service checks that the UI has its signer), and the
 installer and its uninstaller through makensis' !finalize and !uninstfinalize. Nothing here
 installs or runs anything; package/windows/smoke-test.ps1 does that on a disposable CI runner.

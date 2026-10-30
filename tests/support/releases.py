@@ -1,5 +1,5 @@
 """A fake GitHub on a loopback port: the latest release's JSON and its assets
-(docs/release.md §8). No Release exists yet, so every update test talks to this."""
+(docs/release.md §8). Every update test talks to this, never to GitHub."""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ LATEST_PATH = "/repos/Ember-Moth/Solaris/releases/latest"
 @dataclass
 class FakeGitHub:
     base: str  # http://127.0.0.1:<port>
-    tag: str = "v0.2.0"
+    tag: str = "v1.1.0"
     files: dict[str, bytes] = field(default_factory=dict)  # asset name to body
     declared: dict[str, int] = field(default_factory=dict)  # a size other than the body's
     status: int = 200  # of the release's JSON

@@ -1,7 +1,7 @@
 """Notarize a signed app archive or disk image and wait for Apple's verdict; only the release
 workflow (.github/workflows/release.yml) runs it, never a developer's machine.
 
-    python scripts/notarize.py build/release/Solaris-0.1.0-macos-arm64.dmg
+    python scripts/notarize.py build/release/Solaris-1.0.0-macos-arm64.dmg
 
 The App Store Connect API key is $SIGNING/AuthKey.p8, its id APP_STORE_CONNECT_KEY_ID and its
 issuer APP_STORE_CONNECT_ISSUER_ID. When Apple does not accept the file, Apple's log is printed.

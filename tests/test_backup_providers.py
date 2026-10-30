@@ -41,7 +41,7 @@ class Data:
 
     def __init__(self, directory: Path, clock: Clock) -> None:
         self.store = ProfileStore(directory, clock=clock)
-        self.backups = Backups(self.store.database, device="laptop", app_version="0.1.0")
+        self.backups = Backups(self.store.database, device="laptop", app_version="1.0.0")
         self.targets = BackupTargets(self.store.database)
         self.names = 0
 

@@ -1,5 +1,5 @@
 """The routing data of docs/routing.md §9: the routing mode and the user's plans, each with
-its policy groups and rule entries. Only the data for now; the routing page comes with C1.
+its policy groups and rule entries.
 
 A plan is written whole, as the routing page saves it once the host has validated the
 change (routing.md §5.4): groups and rules missing from it are marked deleted, so putting

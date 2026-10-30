@@ -1,4 +1,4 @@
-"""Run the UI against the simulated host and the prototype's sample profiles.
+"""Run the UI against the simulated host and sample profiles.
 
     uv run python scripts/preview.py             # the system's language
     uv run python scripts/preview.py --lang en   # or zh; SOLARIS_LANG works too

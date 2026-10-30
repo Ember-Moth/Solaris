@@ -561,11 +561,6 @@ class ServiceHost:
     async def set_mode(self, mode: str) -> None:
         await self._call(pb.Request(set_mode=pb.SetModeRequest(mode=MODES[mode])))
 
-    async def set_tun(self, enabled: bool) -> None:
-        # Toggling TUN is a Reload with new RunOptions; the settings page (roadmap M3)
-        # owns RunOptions and will send that Reload.
-        raise HostError("not_implemented", "changing TUN goes through the settings page")
-
     async def set_system_proxy(self, enabled: bool) -> None:
         request = pb.Request(set_system_proxy=pb.SetSystemProxyRequest(enabled=enabled))
         await self._call(request)

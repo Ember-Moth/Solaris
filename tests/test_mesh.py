@@ -98,7 +98,7 @@ def test_a_backup_holds_the_networks_without_their_secrets(tmp_path: Path) -> No
     store.put(HOME)
     store.put(LAB)
     store.delete(LAB.id)
-    snapshot = Backups(profiles.database, device="laptop", app_version="0.1.0").snapshot()
+    snapshot = Backups(profiles.database, device="laptop", app_version="1.0.0").snapshot()
     home, lab = snapshot.document["mesh"]
     assert home == {
         "id": "net-home",
@@ -117,7 +117,7 @@ def test_a_backup_holds_the_networks_without_their_secrets(tmp_path: Path) -> No
 
     # Restored elsewhere: the network is back, waiting for its secrets.
     target_profiles, target = store_at(tmp_path / "b", Clock(5_000))
-    backups = Backups(target_profiles.database, device="desktop", app_version="0.1.0")
+    backups = Backups(target_profiles.database, device="desktop", app_version="1.0.0")
     backups.restore(Snapshot.decode(snapshot.encode()), REPLACE)
     assert target.networks() == (mesh.without_secrets(HOME),)
     # A tombstone for what this machine never had leaves nothing (storage.md §3).
@@ -127,12 +127,12 @@ def test_a_backup_holds_the_networks_without_their_secrets(tmp_path: Path) -> No
 def test_merging_keeps_the_later_network(tmp_path: Path) -> None:
     profiles, store = store_at(tmp_path / "a", Clock(1_000))
     store.put(HOME)
-    snapshot = Backups(profiles.database, device="laptop", app_version="0.1.0").snapshot()
+    snapshot = Backups(profiles.database, device="laptop", app_version="1.0.0").snapshot()
     clock = Clock(2_000)
     target_profiles, target = store_at(tmp_path / "b", clock)
     target.put(OFFICE)
     target.put(MeshNetwork(HOME.id, "改过的家", HOME.settings))
-    Backups(target_profiles.database, device="desktop", app_version="0.1.0").restore(
+    Backups(target_profiles.database, device="desktop", app_version="1.0.0").restore(
         snapshot, MERGE
     )
     assert [n.name for n in target.networks()] == ["公司", "改过的家"]
@@ -160,7 +160,7 @@ def test_merging_keeps_the_later_network(tmp_path: Path) -> None:
 def test_a_snapshot_with_broken_networks_is_refused(tmp_path: Path, change: object) -> None:
     profiles, store = store_at(tmp_path, Clock(1_000))
     store.put(HOME)
-    document = Backups(profiles.database, device="laptop", app_version="0.1.0").snapshot().document
+    document = Backups(profiles.database, device="laptop", app_version="1.0.0").snapshot().document
     change(document)  # type: ignore[operator]
     with pytest.raises(Exception, match="not_a_backup"):
         Snapshot.decode(json.dumps(document).encode())

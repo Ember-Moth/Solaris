@@ -21,7 +21,8 @@ from solaris.update.releases import UpdateError
 APPLE_TEAM_ID = "GY9ZKZMAZA"  # apple/README.md
 # The display name of the Authenticode certificate that signs the Windows installer. Empty
 # while releases are unsigned (D29): the installer is then trusted by its SHA-256 in the
-# release's SHA256SUMS alone. Once signing exists this takes product.WindowsSigner's value.
+# release's SHA256SUMS alone. Signing them means setting this to WindowsSigner's value in
+# src/core/internal/product/product.go.
 WINDOWS_SIGNER = ""
 
 CODESIGN = "/usr/bin/codesign"

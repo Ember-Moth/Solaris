@@ -163,7 +163,7 @@ def test_simulated_match() -> None:
     assert lan.rule.entry_id == "lan"
     other = asyncio.run(host.match_rule("example.org", config=config))
     assert other.rule == Rule("MATCH", "", "节点选择", "fallback")
-    # The prototype's groups run, so the chain goes down to their node.
+    # The sample groups run, so the chain goes down to their node.
     assert other.chain == ("节点选择", "香港 01")
     with pytest.raises(HostError):
         asyncio.run(host.match_rule("not a host", config=config))

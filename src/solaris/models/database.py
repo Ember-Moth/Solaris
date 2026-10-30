@@ -52,7 +52,7 @@ class UnusableDatabaseError(Exception):
     """The file is damaged, or a newer version's database this one cannot read."""
 
 
-# Version 1: the storage layer of M7 (storage.md §2) with the routing tables of M8a
+# Version 1, the schema of 1.0.0: the storage layer (storage.md §2) with the routing tables
 # (routing.md §9). Positions order a list; times are unix seconds; flags are 0 or 1.
 _SCHEMA_1 = """
 CREATE TABLE profiles (
@@ -181,7 +181,7 @@ CREATE TABLE plan_rules (
 CREATE INDEX plan_rules_by_plan ON plan_rules (plan_id, position);
 """
 
-# Version 1, mesh networks (M11, docs/mesh.md §10.2): the networks the user added in the app.
+# Version 1, mesh networks (docs/mesh.md §10.2): the networks the user added in the app.
 # kind: 'tailscale', 'zerotier' or 'easytier'; via: '' to connect directly, or a group id of
 # the plan in use; settings: the kind's settings as JSON. Their secrets are in the system's
 # credential store, never here.
@@ -205,6 +205,9 @@ def _schema_1(connection: sqlite3.Connection) -> None:
     connection.executescript(_SCHEMA_1_MESH)
 
 
+# A released schema is never edited in place. From 1.0.0 on, a schema change appends a
+# migration from the version before, with a test that migrates a database of that version
+# with data in it, so that a database any release wrote stays readable.
 MIGRATIONS: tuple[Migration, ...] = (_schema_1,)
 SCHEMA_VERSION = len(MIGRATIONS)
 
@@ -220,8 +223,8 @@ class Database:
         """Open ``path``, creating it, and migrate it to the last of ``migrations``.
 
         A file that is not a database, or holds a newer schema than ``migrations``, is set
-        aside as ``<name>.<timestamp>.bad`` and an empty database takes its place, as the
-        file store did with an index it could not read. ``clock`` dates the records."""
+        aside as ``<name>.<timestamp>.bad`` and an empty database takes its place. ``clock``
+        dates the records."""
         self.path = path
         self.clock = clock
         self._lock = threading.RLock()
