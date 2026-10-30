@@ -45,6 +45,17 @@ func securityOf(t *testing.T, dir string) string {
 	return descriptor.String()
 }
 
+// ace is an access entry as Windows writes it back, which may name a SID by its alias: the
+// runner's built-in Administrator comes back as "LA".
+func ace(t *testing.T, entry string) string {
+	t.Helper()
+	descriptor, err := windows.SecurityDescriptorFromString("D:" + entry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return strings.TrimPrefix(descriptor.String(), "D:")
+}
+
 func TestSecureDir(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "Solaris")
 	openUp(t, root)
@@ -68,10 +79,10 @@ func TestSecureDir(t *testing.T) {
 	}
 	got := securityOf(t, home)
 	if !strings.HasPrefix(got, "O:BAD:P") || !strings.Contains(got, "(A;OICI;FA;;;SY)") ||
-		strings.Contains(got, ";BA)") || !strings.Contains(got, ";"+user+")") {
+		strings.Contains(got, ";BA)") || !strings.Contains(got, ace(t, "(A;OICI;FR;;;"+user+")")) {
 		t.Fatalf("home = %s", got)
 	}
-	if strings.Contains(got, "(A;OICI;FA;;;"+user+")") {
+	if strings.Contains(got, ace(t, "(A;OICI;FA;;;"+user+")")) {
 		t.Fatalf("the owner may write their home: %s", got)
 	}
 	if err := secureDir(home, "not a SID"); err == nil {
