@@ -5,50 +5,20 @@ import QtQuick.Dialogs
 import QtQuick.Layouts
 import Solaris
 import "../components"
+import "routing"
 
 // The routing page (docs/routing.md §4.3): the page switch 订阅自带 / 我的方案 in the title
 // bar; under it, the rules of the profile in use, or the user's plan with its rules and its
-// groups.
+// groups. The sections are in routing/; the dialogs that more than one of them opens, and
+// the plan's own, are here.
 ScrollView {
     id: page
 
     required property RoutingViewModel routing
     required property ShellViewModel shell
     property string tab: "rules"
-    property string removingRule  // whose removal hands its focus on
-    property Item dialogTrigger  // gets focus back when a dialog closes
-    property int dialogFocusReason: Qt.OtherFocusReason
 
-    readonly property int targetWidth: 184
     readonly property bool planMode: routing.mode === "plan"
-
-    function rowAt(index: int): RuleRow {
-        return ruleRepeater.itemAt(Math.max(0, Math.min(index, ruleRepeater.count - 1))) as RuleRow
-    }
-
-    // A removed rule takes the focus with it: it goes to the rule that takes its place, the
-    // one above when it was the last, or 添加规则 when none is left.
-    function ruleRemoved(index: int, row: RuleRow) {
-        if (row.ruleId !== removingRule)
-            return
-        removingRule = ""
-        if (row.activeFocus || ruleMenu.trigger === row.moreButton) {
-            const next = ruleRepeater.count > 0 ? rowAt(index).nameButton : addButton
-            next.forceActiveFocus(ruleMenu.triggerFocusReason)
-        }
-    }
-
-    // The read-only rule table scrolls the page with the arrows.
-    function scrollBy(dy: real) {
-        const view = page.contentItem as Flickable
-        view.contentY = Math.max(0, Math.min(view.contentHeight - view.height, view.contentY + dy))
-    }
-
-    function openDialog(dialog: AppDialog, trigger: Item, reason: int) {
-        dialogTrigger = trigger
-        dialogFocusReason = reason
-        dialog.showFor(trigger, reason)
-    }
 
     contentWidth: availableWidth
     clip: true
@@ -57,11 +27,15 @@ ScrollView {
         flickable: page.contentItem as Flickable
     }
 
+    DialogOpener {
+        id: dialogOpener
+    }
+
     Connections {
         target: page.routing.editor
 
         function onOpened() {
-            ruleDialog.showFor(page.dialogTrigger, page.dialogFocusReason)
+            dialogOpener.show(ruleDialog)
         }
 
         function onSaved() {
@@ -73,7 +47,7 @@ ScrollView {
         target: page.routing.groupEditor
 
         function onOpened() {
-            groupDialog.showFor(page.dialogTrigger, page.dialogFocusReason)
+            dialogOpener.show(groupDialog)
         }
 
         function onSaved() {
@@ -82,34 +56,10 @@ ScrollView {
     }
 
     Connections {
-        target: page.routing.warp
-
-        function onOpened() {
-            warpDialog.showFor(page.dialogTrigger, page.dialogFocusReason)
-        }
-    }
-
-    Connections {
-        target: page.routing.vpngate
-
-        function onOpened() {
-            vpngateDialog.showFor(page.dialogTrigger, page.dialogFocusReason)
-        }
-    }
-
-    Connections {
-        target: page.routing.planGroups
-
-        function onRemovalRequested() {
-            removeGroupDialog.showFor(customGroupMenu.trigger, customGroupMenu.triggerFocusReason)
-        }
-    }
-
-    Connections {
         target: page.routing.transfer
 
         function onConversionReady() {
-            convertDialog.showFor(page.dialogTrigger, page.dialogFocusReason)
+            dialogOpener.show(convertDialog)
         }
 
         function onConverted() {
@@ -117,7 +67,7 @@ ScrollView {
         }
 
         function onYamlReady() {
-            yamlDialog.showFor(page.dialogTrigger, page.dialogFocusReason)
+            dialogOpener.show(yamlDialog)
         }
     }
 
@@ -164,343 +114,16 @@ ScrollView {
         }
 
         // -- 订阅自带 ----------------------------------------------------------------------
-        ColumnLayout {
+        ProfileSection {
             Layout.fillWidth: true
             Layout.leftMargin: Theme.pageX
             Layout.rightMargin: Theme.pageX
             Layout.bottomMargin: Theme.pageBottom
             visible: !page.planMode
-            spacing: Theme.space5
-
-            RowLayout {
-                Layout.fillWidth: true
-                visible: page.routing.profileRoutes.hasProfiles && page.routing.profileRoutes.hasRules
-                spacing: Theme.space3
-
-                UiText {
-                    text: qsTr("使用的订阅")
-                    role: Theme.type.bodySm
-                    color: Theme.textSecondary
-                }
-
-                AppSelect {
-                    Layout.preferredWidth: 220
-                    options: page.routing.profileRoutes.options
-                    current: page.routing.profileRoutes.profileId
-                    accessibleName: qsTr("使用的订阅")
-                    enabled: !page.routing.busy
-                    onPicked: value => page.routing.profileRoutes.use(value)
-                }
-
-                SearchField {
-                    Layout.preferredWidth: Math.max(180, placeholderWidth)
-                    implicitHeight: Theme.controlSm
-                    visible: page.routing.profileRoutes.running
-                    placeholderText: qsTr("搜索规则")
-                    text: page.routing.profileRoutes.query
-                    onTextEdited: page.routing.profileRoutes.setQuery(text)
-                }
-
-                Item {
-                    Layout.fillWidth: true
-                }
-
-                // At the top: a profile's rules run to hundreds of lines (routing.md §4.3).
-                AppButton {
-                    id: convertButton
-
-                    visible: page.routing.profileRoutes.profileId !== "" && page.routing.coreAvailable
-                    text: qsTr("以此创建我的方案")
-                    enabled: !page.routing.busy && !page.routing.transfer.busy
-                    onClicked: {
-                        page.dialogTrigger = convertButton
-                        page.dialogFocusReason = Focus.reasonAfter(convertButton)
-                        page.routing.transfer.convertProfile()
-                    }
-                }
-            }
-
-            AccessibleText {
-                Layout.fillWidth: true
-                visible: text !== ""
-                text: page.routing.transfer.error
-                role: Theme.type.caption
-                color: Theme.danger
-                wrapMode: Text.Wrap
-            }
-
-            // Every profile has nodes only.
-            Group {
-                Layout.fillWidth: true
-                Layout.maximumWidth: 720
-                visible: !page.routing.profileRoutes.hasRules
-
-                GroupRow {
-                    divider: false
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 0
-
-                        AccessibleText {
-                            Layout.fillWidth: true
-                            text: page.routing.profileRoutes.hasProfiles ? qsTr("订阅里没有规则") : qsTr("尚未导入订阅")
-                            role: Theme.type.labelMd
-                        }
-
-                        AccessibleText {
-                            Layout.fillWidth: true
-                            text: page.routing.profileRoutes.hasProfiles ? qsTr("这些订阅只有节点；改用我的方案后，它们的节点组成节点池") : qsTr("导入订阅后才能使用它的规则")
-                            role: Theme.type.caption
-                            color: Theme.textMuted
-                            elide: Text.ElideRight
-                        }
-                    }
-
-                    AppButton {
-                        variant: "compact"
-                        text: page.routing.profileRoutes.hasProfiles ? qsTr("改用我的方案") : qsTr("导入订阅")
-                        onClicked: {
-                            if (page.routing.profileRoutes.hasProfiles)
-                                page.routing.setMode("plan")
-                            else
-                                page.shell.setPage("profiles")
-                        }
-                    }
-                }
-            }
-
-            // The profile is not running: what the core read from it.
-            Group {
-                Layout.fillWidth: true
-                Layout.maximumWidth: 720
-                visible: page.routing.profileRoutes.hasRules && !page.routing.profileRoutes.running && page.routing.profileRoutes.counts !== ""
-
-                GroupRow {
-                    divider: false
-                    rowHeight: Theme.rowSingle
-
-                    AccessibleText {
-                        Layout.fillWidth: true
-                        text: page.routing.profileRoutes.counts
-                        role: Theme.type.bodySm
-                        color: Theme.textSecondary
-                        elide: Text.ElideRight
-                    }
-                }
-            }
-
-            // The profile runs: its groups and rules, read only.
-            GridLayout {
-                id: sourcePanes
-
-                readonly property bool twoPanes: width >= 260 + Theme.space6 + 440
-
-                Layout.fillWidth: true
-                visible: page.routing.profileRoutes.running
-                columns: twoPanes ? 2 : 1
-                columnSpacing: Theme.space6
-                rowSpacing: Theme.space5
-
-                ColumnLayout {
-                    Layout.preferredWidth: sourcePanes.twoPanes ? 260 : sourcePanes.width
-                    Layout.fillWidth: !sourcePanes.twoPanes
-                    Layout.alignment: Qt.AlignTop
-                    spacing: Theme.space2
-
-                    RowLayout {
-                        Layout.fillWidth: true
-
-                        SectionLabel {
-                            Layout.fillWidth: true
-                            text: qsTr("策略组")
-                        }
-
-                        UiText {
-                            text: page.routing.profileRoutes.groupCount
-                            role: Theme.type.caption
-                            color: Theme.textMuted
-                        }
-                    }
-
-                    Group {
-                        Layout.fillWidth: true
-
-                        Repeater {
-                            model: page.routing.profileRoutes.groups
-
-                            GroupRow {
-                                id: sourceGroup
-
-                                required property int index
-                                required property string name
-                                required property string caption
-
-                                divider: index > 0
-
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 0
-
-                                    UiText {
-                                        Layout.fillWidth: true
-                                        text: sourceGroup.name
-                                        role: Theme.type.labelMd
-                                        elide: Text.ElideRight
-                                    }
-
-                                    UiText {
-                                        Layout.fillWidth: true
-                                        text: sourceGroup.caption
-                                        role: Theme.type.caption
-                                        color: Theme.textMuted
-                                        elide: Text.ElideRight
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignTop
-                    spacing: Theme.space2
-
-                    RowLayout {
-                        Layout.fillWidth: true
-
-                        SectionLabel {
-                            Layout.fillWidth: true
-                            text: qsTr("规则")
-                        }
-
-                        UiText {
-                            text: page.routing.profileRoutes.ruleCount
-                            role: Theme.type.caption
-                            color: Theme.textMuted
-                        }
-                    }
-
-                    // The read-only rule table (DESIGN.md "只读规则表"): one Tab stop; the
-                    // arrows scroll the page.
-                    Item {
-                        id: sourceRules
-
-                        Layout.fillWidth: true
-                        implicitHeight: sourceRuleGroup.implicitHeight
-                        activeFocusOnTab: true
-                        Accessible.role: Accessible.Table
-                        Accessible.name: qsTr("规则")
-                        Accessible.focusable: true
-                        Keys.onUpPressed: page.scrollBy(-36)
-                        Keys.onDownPressed: page.scrollBy(36)
-                        Keys.onPressed: event => {
-                            if (event.key === Qt.Key_PageUp || event.key === Qt.Key_PageDown) {
-                                page.scrollBy((event.key === Qt.Key_PageUp ? -1 : 1) * page.height * 0.9)
-                                event.accepted = true
-                            }
-                        }
-
-                        FocusRing {
-                            targetRadius: Theme.radiusMd
-                            visible: sourceRules.activeFocus
-                        }
-
-                    Group {
-                        id: sourceRuleGroup
-
-                        width: parent.width
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            implicitHeight: Theme.rowHeader
-                            topLeftRadius: Theme.radiusMd - 1
-                            topRightRadius: Theme.radiusMd - 1
-                            color: Theme.surfaceSubtle
-                            Accessible.ignored: true
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: Theme.space4
-                                anchors.rightMargin: Theme.space4
-                                spacing: Theme.space3
-
-                                UiText {
-                                    Layout.fillWidth: true
-                                    text: qsTr("匹配")
-                                    role: Theme.type.caption
-                                    color: Theme.textMuted
-                                }
-
-                                UiText {
-                                    Layout.preferredWidth: 140
-                                    text: qsTr("目标")
-                                    role: Theme.type.caption
-                                    color: Theme.textMuted
-                                }
-                            }
-                        }
-
-                        Repeater {
-                            model: page.routing.profileRoutes.rules
-
-                            Item {
-                                id: sourceRule
-
-                                required property string match
-                                required property string target
-
-                                Layout.fillWidth: true
-                                implicitHeight: 36
-                                Accessible.role: Accessible.Row
-                                Accessible.name: qsTr("%1，%2").arg(match).arg(target)
-
-                                Rectangle {
-                                    width: parent.width
-                                    height: 1
-                                    color: Theme.divider
-                                }
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: Theme.space4
-                                    anchors.rightMargin: Theme.space4
-                                    spacing: Theme.space3
-
-                                    UiText {
-                                        Layout.fillWidth: true
-                                        text: sourceRule.match
-                                        role: Theme.type.dataSm
-                                        color: Theme.textSecondary
-                                        elide: Text.ElideRight
-                                    }
-
-                                    UiText {
-                                        Layout.preferredWidth: 140
-                                        text: sourceRule.target
-                                        role: Theme.type.bodySm
-                                        elide: Text.ElideRight
-                                    }
-                                }
-                            }
-                        }
-
-                        GroupRow {
-                            visible: page.routing.profileRoutes.rulesEmpty
-                            rowHeight: Theme.rowSingle
-
-                            AccessibleText {
-                                Layout.fillWidth: true
-                                text: qsTr("没有匹配的规则")
-                                role: Theme.type.bodySm
-                                color: Theme.textMuted
-                            }
-                        }
-                    }
-                    }
-                }
-            }
+            routing: page.routing
+            shell: page.shell
+            opener: dialogOpener
+            view: page
         }
 
         // -- 我的方案 ----------------------------------------------------------------------
@@ -571,8 +194,7 @@ ScrollView {
                     variant: "primary"
                     enabled: !page.routing.busy && page.routing.planId !== ""
                     onClicked: {
-                        page.dialogTrigger = addButton
-                        page.dialogFocusReason = Focus.reasonAfter(addButton)
+                        dialogOpener.from(addButton, Focus.reasonAfter(addButton))
                         page.routing.editor.openAdd()
                     }
                 }
@@ -585,8 +207,7 @@ ScrollView {
                     variant: "primary"
                     enabled: !page.routing.busy && page.routing.planId !== ""
                     onClicked: {
-                        page.dialogTrigger = newGroupButton
-                        page.dialogFocusReason = Focus.reasonAfter(newGroupButton)
+                        dialogOpener.from(newGroupButton, Focus.reasonAfter(newGroupButton))
                         page.routing.groupEditor.openAdd()
                     }
                 }
@@ -601,61 +222,13 @@ ScrollView {
                 wrapMode: Text.Wrap
             }
 
-            // The rule test, the search and the target filter (routing.md §4.3).
-            ColumnLayout {
+            RuleTools {
                 Layout.fillWidth: true
                 visible: page.tab === "rules"
-                spacing: Theme.space2
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: Theme.space2
-
-                    SearchField {
-                        id: testField
-
-                        Layout.fillWidth: true
-                        Layout.minimumWidth: 200
-                        implicitHeight: Theme.controlSm
-                        // MatchRule needs a core: on macOS, while the tunnel runs.
-                        enabled: page.routing.coreAvailable
-                        placeholderText: enabled ? qsTr("输入域名或 IP 测试") : qsTr("连接后可测试域名或 IP")
-                        accessibleName: qsTr("测试域名或 IP")
-                        text: enabled ? page.routing.planRules.testText : ""
-                        onTextEdited: page.routing.planRules.setTestText(text)
-                        onAccepted: page.routing.planRules.runTest()
-                    }
-
-                    SearchField {
-                        Layout.preferredWidth: Math.max(160, placeholderWidth)
-                        implicitHeight: Theme.controlSm
-                        placeholderText: qsTr("搜索规则")
-                        text: page.routing.planRules.query
-                        onTextEdited: page.routing.planRules.setQuery(text)
-                    }
-
-                    AppSelect {
-                        Layout.preferredWidth: 160
-                        options: page.routing.planRules.targetFilterOptions
-                        current: page.routing.planRules.targetFilter
-                        displayText: page.routing.planRules.targetFilterLabel
-                        accessibleName: qsTr("按目标筛选")
-                        onPicked: value => page.routing.planRules.setTargetFilter(value)
-                    }
-                }
-
-                AccessibleText {
-                    Layout.fillWidth: true
-                    visible: text !== ""
-                    text: page.routing.planRules.testResult
-                    role: Theme.type.bodySm
-                    color: page.routing.planRules.testFailed ? Theme.danger : Theme.textSecondary
-                    wrapMode: Text.Wrap
-                    Accessible.role: Accessible.StaticText
-                }
+                routing: page.routing
             }
 
-            // The pool has no nodes yet.
+            // The pool has no nodes yet; under either tab.
             Group {
                 Layout.fillWidth: true
                 visible: page.routing.poolEmpty
@@ -690,904 +263,34 @@ ScrollView {
                 }
             }
 
-            // The rules, then other traffic.
-            Group {
-                id: ruleList
-
+            RuleList {
                 Layout.fillWidth: true
                 visible: page.tab === "rules"
-                Accessible.role: Accessible.List
-                Accessible.name: qsTr("规则，从上到下匹配")
-
-                Item {
-                    id: rulesBox
-
-                    // The drop position while a rule is dragged; -1 otherwise.
-                    property int dropIndex: -1
-                    property string dragged
-
-                    Layout.fillWidth: true
-                    implicitHeight: ruleColumn.implicitHeight
-
-                    function dropAt(y: real): int {
-                        return Math.max(0, Math.min(ruleRepeater.count, Math.round(y / Theme.rowDouble)))
-                    }
-
-                    Column {
-                        id: ruleColumn
-
-                        width: parent.width
-
-                        Repeater {
-                            id: ruleRepeater
-
-                            model: page.routing.planRules.rows
-                            delegate: RuleRow {}
-                            onItemRemoved: (index, item) => page.ruleRemoved(index, item as RuleRow)
-                        }
-                    }
-
-                    // The insertion line (DESIGN.md "可排序列表").
-                    Rectangle {
-                        visible: rulesBox.dropIndex >= 0
-                        x: 12
-                        y: rulesBox.dropIndex * Theme.rowDouble - height / 2
-                        z: 1
-                        width: parent.width - 24
-                        height: Theme.insertionLine
-                        color: Theme.primary
-                    }
-                }
-
-                GroupRow {
-                    visible: page.routing.planRules.filteredEmpty
-                    rowHeight: Theme.rowSingle
-                    divider: false
-
-                    AccessibleText {
-                        Layout.fillWidth: true
-                        text: qsTr("没有匹配的规则")
-                        role: Theme.type.bodySm
-                        color: Theme.textMuted
-                    }
-                }
-
-                // Other traffic: always last; only its target changes. Laid out as the rules
-                // are, without their handle, box and menu.
-                Item {
-                    Layout.fillWidth: true
-                    implicitHeight: Theme.rowDouble
-
-                    Rectangle {
-                        anchors.fill: parent
-                        visible: page.routing.planRules.fallbackHit
-                        color: Theme.surfaceSelected
-                        bottomLeftRadius: Theme.radiusMd - 1
-                        bottomRightRadius: Theme.radiusMd - 1
-                    }
-
-                    Rectangle {
-                        visible: ruleRepeater.count > 0 || page.routing.planRules.filteredEmpty
-                        width: parent.width
-                        height: 1
-                        color: Theme.divider
-                    }
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: Theme.space3
-                        anchors.rightMargin: Theme.space2
-                        spacing: 10
-
-                        Item {
-                            implicitWidth: 16
-                        }
-
-                        Item {
-                            implicitWidth: 16
-                        }
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 0
-
-                            UiText {
-                                Layout.fillWidth: true
-                                text: qsTr("其他流量")
-                                role: Theme.type.labelMd
-                            }
-
-                            UiText {
-                                Layout.fillWidth: true
-                                text: qsTr("以上规则都不匹配时")
-                                role: Theme.type.caption
-                                color: Theme.textMuted
-                                elide: Text.ElideRight
-                            }
-                        }
-
-                        ColumnLayout {
-                            Layout.preferredWidth: page.targetWidth
-                            Layout.fillWidth: false
-                            spacing: 2
-
-                            AppSelect {
-                                Layout.fillWidth: true
-                                options: page.routing.planRules.targetOptions
-                                current: page.routing.planRules.fallbackTarget
-                                displayText: page.routing.planRules.fallbackLabel
-                                accessibleName: qsTr("其他流量的目标")
-                                onPicked: value => page.routing.planRules.setFallback(value)
-                            }
-
-                            AccessibleText {
-                                Layout.fillWidth: true
-                                visible: text !== ""
-                                text: page.routing.planRules.fallbackWarning
-                                role: Theme.type.caption
-                                color: Theme.warning
-                                elide: Text.ElideRight
-                            }
-                        }
-
-                        Item {
-                            implicitWidth: 28
-                        }
-                    }
-                }
+                routing: page.routing
+                opener: dialogOpener
+                emptyFocus: addButton
             }
 
-            // The groups: built in, one per region with nodes, and custom.
-            Repeater {
-                model: [
-                    {
-                        "title": qsTr("内置"),
-                        "hint": "",
-                        "rows": page.routing.planGroups.builtin,
-                        "empty": ""
-                    },
-                    {
-                        "title": qsTr("地区"),
-                        "hint": qsTr("按节点名称自动生成"),
-                        "rows": page.routing.planGroups.regions,
-                        "empty": qsTr("节点池为空，没有地区组")
-                    },
-                    {
-                        "title": qsTr("自建"),
-                        "hint": "",
-                        "rows": page.routing.planGroups.custom,
-                        "empty": qsTr("还没有自建策略组")
-                    }
-                ]
-
-                ColumnLayout {
-                    id: groupSection
-
-                    required property var modelData
-
-                    Layout.fillWidth: true
-                    visible: page.tab === "groups"
-                    spacing: Theme.space2
-
-                    RowLayout {
-                        Layout.fillWidth: true
-
-                        SectionLabel {
-                            Layout.fillWidth: true
-                            text: groupSection.modelData.title
-                        }
-
-                        UiText {
-                            text: groupSection.modelData.hint
-                            role: Theme.type.caption
-                            color: Theme.textMuted
-                        }
-                    }
-
-                    Group {
-                        Layout.fillWidth: true
-
-                        Repeater {
-                            id: groupRepeater
-
-                            model: groupSection.modelData.rows
-
-                            GroupRow {
-                                id: groupRow
-
-                                required property int index
-                                required property string groupId
-                                required property string name
-                                required property string caption
-                                required property string type
-                                required property bool hidden
-                                readonly property bool custom: groupSection.modelData.rows === page.routing.planGroups.custom
-
-                                divider: index > 0
-
-                                // A custom group's name opens its editor.
-                                AbstractButton {
-                                    id: groupName
-
-                                    Layout.fillWidth: true
-                                    Layout.fillHeight: true
-                                    padding: 0
-                                    focusPolicy: groupRow.custom ? Qt.StrongFocus : Qt.NoFocus
-                                    Accessible.role: groupRow.custom ? Accessible.Button : Accessible.StaticText
-                                    Accessible.name: groupRow.custom ? qsTr("编辑「%1」").arg(groupRow.name) : groupRow.name
-                                    Accessible.description: groupRow.caption
-                                    onClicked: {
-                                        if (!groupRow.custom)
-                                            return
-                                        page.dialogTrigger = groupName
-                                        page.dialogFocusReason = Focus.reasonAfter(groupName)
-                                        page.routing.groupEditor.openEdit(groupRow.groupId)
-                                    }
-
-                                    contentItem: Item {
-                                        ColumnLayout {
-                                            anchors.left: parent.left
-                                            anchors.right: parent.right
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            spacing: 0
-
-                                            UiText {
-                                                Layout.fillWidth: true
-                                                text: groupRow.name
-                                                role: Theme.type.labelMd
-                                                color: groupRow.hidden ? Theme.textMuted : Theme.text
-                                                elide: Text.ElideRight
-                                            }
-
-                                            UiText {
-                                                Layout.fillWidth: true
-                                                text: groupRow.caption
-                                                role: Theme.type.caption
-                                                color: Theme.textMuted
-                                                elide: Text.ElideRight
-                                            }
-                                        }
-                                    }
-
-                                    background: Item {
-                                        FocusRing {
-                                            targetRadius: 4
-                                            visible: groupName.visualFocus
-                                        }
-                                    }
-                                }
-
-                                IconButton {
-                                    id: groupMore
-
-                                    iconName: "more"
-                                    accessibleName: qsTr("%1 的更多操作").arg(groupRow.name)
-                                    onClicked: {
-                                        if (groupRow.custom)
-                                            customGroupMenu.openFor(groupRow.groupId, groupMore)
-                                        else
-                                            groupMenu.openFor(groupRow.groupId, groupRow.type, groupRow.hidden, groupMore)
-                                    }
-                                }
-                            }
-                        }
-
-                        GroupRow {
-                            visible: groupRepeater.count === 0
-                            divider: false
-                            rowHeight: Theme.rowSingle
-
-                            AccessibleText {
-                                Layout.fillWidth: true
-                                text: groupSection.modelData.empty
-                                role: Theme.type.bodySm
-                                color: Theme.textMuted
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Mesh networks: the ones added in the app (docs/mesh.md §10.7), then the pool's
-            // mesh outbounds (§5); rule targets of their own, in no group. The dialogs and the
-            // networks' menu live here too.
-            ColumnLayout {
-                id: meshSection
-
-                readonly property MeshNetworks networks: page.routing.meshNetworks
-
-                Layout.fillWidth: true
-                visible: page.tab === "groups" && networks.available
-                spacing: Theme.space2
-
-                // How the networks stand is asked for while the section is on screen.
-                onVisibleChanged: networks.setWatching(visible)
-                Component.onCompleted: networks.setWatching(visible)
-
-                Connections {
-                    target: meshSection.networks
-
-                    function onOpened() {
-                        meshDialog.showFor(page.dialogTrigger, page.dialogFocusReason)
-                    }
-
-                    function onSaved() {
-                        meshDialog.close()
-                    }
-
-                    function onRemovalRequested() {
-                        removeNetworkDialog.showFor(networkMenu.trigger, networkMenu.triggerFocusReason)
-                    }
-                }
-
-                SectionLabel {
-                    Layout.fillWidth: true
-                    text: qsTr("组网")
-                }
-
-                Group {
-                    Layout.fillWidth: true
-
-                    Repeater {
-                        model: meshSection.networks.rows
-
-                        GroupRow {
-                            id: networkRow
-
-                            required property int index
-                            required property string networkId
-                            required property string name
-                            required property string caption
-                            required property string status
-                            required property string tone
-                            required property bool canLogin
-                            required property string address
-
-                            divider: index > 0
-
-                            // The name opens the network's settings.
-                            AbstractButton {
-                                id: networkName
-
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                padding: 0
-                                Accessible.role: Accessible.Button
-                                Accessible.name: qsTr("编辑「%1」").arg(networkRow.name)
-                                Accessible.description: qsTr("%1。%2").arg(networkRow.caption).arg(networkRow.status)
-                                onClicked: {
-                                    page.dialogTrigger = networkName
-                                    page.dialogFocusReason = Focus.reasonAfter(networkName)
-                                    meshSection.networks.openEdit(networkRow.networkId)
-                                }
-
-                                contentItem: Item {
-                                    ColumnLayout {
-                                        anchors.left: parent.left
-                                        anchors.right: parent.right
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        spacing: 0
-
-                                        UiText {
-                                            Layout.fillWidth: true
-                                            text: networkRow.name
-                                            role: Theme.type.labelMd
-                                            elide: Text.ElideRight
-                                        }
-
-                                        UiText {
-                                            Layout.fillWidth: true
-                                            text: networkRow.caption
-                                            role: Theme.type.caption
-                                            color: Theme.textMuted
-                                            elide: Text.ElideRight
-                                        }
-                                    }
-                                }
-
-                                background: Item {
-                                    FocusRing {
-                                        targetRadius: 4
-                                        visible: networkName.visualFocus
-                                    }
-                                }
-                            }
-
-                            UiText {
-                                text: networkRow.status
-                                role: Theme.type.bodySm
-                                color: networkRow.tone === "warning" ? Theme.warning : networkRow.tone === "muted" ? Theme.textMuted : Theme.text
-                            }
-
-                            IconButton {
-                                id: networkMore
-
-                                iconName: "more"
-                                accessibleName: qsTr("%1 的更多操作").arg(networkRow.name)
-                                onClicked: networkMenu.openFor(networkRow.networkId, networkRow.canLogin, networkRow.address, networkMore)
-                            }
-                        }
-                    }
-
-                    Repeater {
-                        model: page.routing.meshNetworks.outbounds
-
-                        GroupRow {
-                            id: meshRow
-
-                            required property int index
-                            required property string meshId
-                            required property string name
-                            required property string caption
-
-                            divider: index > 0 || meshSection.networks.hasRows
-
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 0
-                                Accessible.role: Accessible.StaticText
-                                Accessible.name: meshRow.name
-                                Accessible.description: meshRow.caption
-
-                                UiText {
-                                    Layout.fillWidth: true
-                                    text: meshRow.name
-                                    role: Theme.type.labelMd
-                                    elide: Text.ElideRight
-                                }
-
-                                UiText {
-                                    Layout.fillWidth: true
-                                    text: meshRow.caption
-                                    role: Theme.type.caption
-                                    color: Theme.textMuted
-                                    elide: Text.ElideRight
-                                }
-                            }
-
-                            IconButton {
-                                id: meshMore
-
-                                iconName: "more"
-                                accessibleName: qsTr("%1 的更多操作").arg(meshRow.name)
-                                onClicked: meshMenu.openFor(meshRow.meshId, meshMore)
-                            }
-                        }
-                    }
-
-                    GroupRow {
-                        divider: meshSection.networks.hasRows || page.routing.meshNetworks.hasOutbounds
-                        rowHeight: Theme.rowSingle
-
-                        AccessibleText {
-                            Layout.fillWidth: true
-                            text: meshSection.networks.hasRows || page.routing.meshNetworks.hasOutbounds ? qsTr("Tailscale、ZeroTier、EasyTier") : qsTr("还没有组网：访问自己的设备和内网")
-                            role: Theme.type.bodySm
-                            color: Theme.textMuted
-                            elide: Text.ElideRight
-                        }
-
-                        AppButton {
-                            id: addNetworkButton
-
-                            variant: "compact"
-                            text: qsTr("添加网络…")
-                            enabled: !meshSection.networks.busy
-                            onClicked: {
-                                page.dialogTrigger = addNetworkButton
-                                page.dialogFocusReason = Focus.reasonAfter(addNetworkButton)
-                                meshSection.networks.openAdd()
-                            }
-                        }
-                    }
-                }
-
-                AccessibleText {
-                    Layout.fillWidth: true
-                    visible: text !== ""
-                    text: meshSection.networks.notice
-                    role: Theme.type.caption
-                    color: Theme.danger
-                    wrapMode: Text.Wrap
-                }
-
-                AppMenu {
-                    id: networkMenu
-
-                    property string networkId
-                    property bool canLogin
-                    property string address
-
-                    function openFor(id: string, login: bool, at: string, anchor: Item) {
-                        networkId = id
-                        canLogin = login
-                        address = at
-                        openBelow(anchor)
-                    }
-
-                    AppMenuItem {
-                        text: qsTr("登录…")
-                        visible: networkMenu.canLogin
-                        onTriggered: meshSection.networks.login(networkMenu.networkId)
-                    }
-
-                    AppMenuItem {
-                        text: qsTr("复制本机地址")
-                        enabled: networkMenu.address !== ""
-                        onTriggered: meshSection.networks.copyAddress(networkMenu.networkId)
-                    }
-
-                    AppMenuSeparator {}
-
-                    AppMenuItem {
-                        text: qsTr("添加常用规则")
-                        enabled: !page.routing.busy
-                        onTriggered: {
-                            page.dialogTrigger = networkMenu.trigger
-                            page.dialogFocusReason = networkMenu.triggerFocusReason
-                            meshSection.networks.addCommonRules(networkMenu.networkId)
-                        }
-                    }
-
-                    AppMenuItem {
-                        text: qsTr("使用它的规则")
-                        onTriggered: {
-                            meshSection.networks.showRules(networkMenu.networkId)
-                            page.tab = "rules"
-                        }
-                    }
-
-                    AppMenuSeparator {}
-
-                    AppMenuItem {
-                        text: qsTr("编辑…")
-                        onTriggered: {
-                            page.dialogTrigger = networkMenu.trigger
-                            page.dialogFocusReason = networkMenu.triggerFocusReason
-                            meshSection.networks.openEdit(networkMenu.networkId)
-                        }
-                    }
-
-                    AppMenuItem {
-                        text: qsTr("删除…")
-                        destructive: true
-                        onTriggered: meshSection.networks.requestRemove(networkMenu.networkId)
-                    }
-                }
-
-                MeshDialog {
-                    id: meshDialog
-
-                    networks: meshSection.networks
-                }
-
-                ConfirmDialog {
-                    id: removeNetworkDialog
-
-                    title: meshSection.networks.removalTitle
-                    message: meshSection.networks.removalText
-                    confirmText: qsTr("删除")
-                    destructive: true
-                    onAccepted: meshSection.networks.confirmRemove()
-                }
-            }
-
-            // Chained exits: WARP and VPN Gate (docs/exits.md §6).
-            ColumnLayout {
+            GroupsSection {
                 Layout.fillWidth: true
                 visible: page.tab === "groups"
-                spacing: Theme.space2
-
-                SectionLabel {
-                    Layout.fillWidth: true
-                    text: qsTr("链式出口")
-                }
-
-                Group {
-                    Layout.fillWidth: true
-
-                    GroupRow {
-                        divider: false
-
-                        AbstractButton {
-                            id: warpButton
-
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            padding: 0
-                            Accessible.role: Accessible.Button
-                            Accessible.name: qsTr("设置「%1」").arg(page.routing.warp.name)
-                            Accessible.description: qsTr("%1。%2").arg(page.routing.warp.caption).arg(page.routing.warp.status)
-                            onClicked: {
-                                page.dialogTrigger = warpButton
-                                page.dialogFocusReason = Focus.reasonAfter(warpButton)
-                                page.routing.warp.open()
-                            }
-
-                            contentItem: Item {
-                                ColumnLayout {
-                                    anchors.left: parent.left
-                                    anchors.right: parent.right
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    spacing: 0
-
-                                    UiText {
-                                        Layout.fillWidth: true
-                                        text: page.routing.warp.name
-                                        role: Theme.type.labelMd
-                                        color: page.routing.warp.active ? Theme.text : Theme.textMuted
-                                        elide: Text.ElideRight
-                                    }
-
-                                    UiText {
-                                        Layout.fillWidth: true
-                                        text: page.routing.warp.caption
-                                        role: Theme.type.caption
-                                        color: Theme.textMuted
-                                        elide: Text.ElideRight
-                                    }
-                                }
-                            }
-
-                            background: Item {
-                                FocusRing {
-                                    targetRadius: 4
-                                    visible: warpButton.visualFocus
-                                }
-                            }
-                        }
-
-                        UiText {
-                            text: page.routing.warp.status
-                            role: Theme.type.bodySm
-                            color: page.routing.warp.statusTone === "warning" ? Theme.warning : page.routing.warp.statusTone === "muted" ? Theme.textMuted : Theme.text
-                        }
-
-                        IconButton {
-                            id: warpMore
-
-                            iconName: "more"
-                            accessibleName: qsTr("%1 的更多操作").arg(page.routing.warp.name)
-                            onClicked: exitMenu.openBelow(warpMore)
-                        }
-                    }
-
-                    GroupRow {
-                        AbstractButton {
-                            id: vpngateButton
-
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            padding: 0
-                            Accessible.role: Accessible.Button
-                            Accessible.name: qsTr("设置「%1」").arg(page.routing.vpngate.name)
-                            Accessible.description: qsTr("%1。%2").arg(page.routing.vpngate.caption).arg(page.routing.vpngate.status)
-                            onClicked: {
-                                page.dialogTrigger = vpngateButton
-                                page.dialogFocusReason = Focus.reasonAfter(vpngateButton)
-                                page.routing.vpngate.open()
-                            }
-
-                            contentItem: Item {
-                                ColumnLayout {
-                                    anchors.left: parent.left
-                                    anchors.right: parent.right
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    spacing: 0
-
-                                    UiText {
-                                        Layout.fillWidth: true
-                                        text: page.routing.vpngate.name
-                                        role: Theme.type.labelMd
-                                        color: page.routing.vpngate.active ? Theme.text : Theme.textMuted
-                                        elide: Text.ElideRight
-                                    }
-
-                                    UiText {
-                                        Layout.fillWidth: true
-                                        text: page.routing.vpngate.caption
-                                        role: Theme.type.caption
-                                        color: Theme.textMuted
-                                        elide: Text.ElideRight
-                                    }
-                                }
-                            }
-
-                            background: Item {
-                                FocusRing {
-                                    targetRadius: 4
-                                    visible: vpngateButton.visualFocus
-                                }
-                            }
-                        }
-
-                        UiText {
-                            text: page.routing.vpngate.status
-                            role: Theme.type.bodySm
-                            color: page.routing.vpngate.statusTone === "warning" ? Theme.warning : page.routing.vpngate.statusTone === "muted" ? Theme.textMuted : Theme.text
-                        }
-
-                        IconButton {
-                            id: vpngateMore
-
-                            iconName: "more"
-                            accessibleName: qsTr("%1 的更多操作").arg(page.routing.vpngate.name)
-                            onClicked: vpngateMenu.openBelow(vpngateMore)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // One rule entry: the drag handle, the enable box, its name (which edits it), the target
-    // and its menu (DESIGN.md "可排序列表", "列表行里的启用复选框").
-    component RuleRow: Item {
-        id: ruleRow
-
-        required property int index
-        required property string ruleId
-        required property string name
-        required property string caption
-        required property bool mono
-        required property string target
-        required property bool active
-        required property string warning
-        required property bool first
-        required property bool last
-        required property bool editable
-        required property bool hit
-        readonly property alias nameButton: nameButton
-        readonly property alias moreButton: moreButton
-
-        width: ruleColumn.width
-        height: Theme.rowDouble
-        opacity: rulesBox.dragged === ruleId ? Theme.disabledOpacity : 1
-
-        // The rule the test matched.
-        Rectangle {
-            anchors.fill: parent
-            visible: ruleRow.hit
-            color: Theme.surfaceSelected
-            topLeftRadius: ruleRow.index === 0 ? Theme.radiusMd - 1 : 0
-            topRightRadius: ruleRow.index === 0 ? Theme.radiusMd - 1 : 0
-        }
-
-        Rectangle {
-            visible: ruleRow.index > 0
-            width: parent.width
-            height: 1
-            color: Theme.divider
-        }
-
-        RowLayout {
-            anchors.fill: parent
-            anchors.leftMargin: Theme.space3
-            anchors.rightMargin: Theme.space2
-            spacing: 10
-
-            // The handle: the mouse's grip only; the keyboard moves rules from the menu. A
-            // filtered list shows part of the rules, so it cannot be dragged.
-            Icon {
-                id: grip
-
-                name: "grip"
-                size: 16
-                opacity: page.routing.planRules.filtering ? Theme.disabledOpacity : 1
-
-                MouseArea {
-                    anchors.fill: parent
-                    anchors.margins: -6
-                    enabled: !page.routing.planRules.filtering
-                    cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
-                    preventStealing: true
-                    onPressed: rulesBox.dragged = ruleRow.ruleId
-                    onPositionChanged: mouse => {
-                        const y = mapToItem(rulesBox, mouse.x, mouse.y).y
-                        rulesBox.dropIndex = rulesBox.dropAt(y)
-                    }
-                    onReleased: {
-                        const drop = rulesBox.dropIndex
-                        rulesBox.dragged = ""
-                        rulesBox.dropIndex = -1
-                        if (drop >= 0 && drop !== ruleRow.index && drop !== ruleRow.index + 1)
-                            page.routing.planRules.moveRule(ruleRow.ruleId, drop > ruleRow.index ? drop - 1 : drop)
-                    }
-                    onCanceled: {
-                        rulesBox.dragged = ""
-                        rulesBox.dropIndex = -1
-                    }
-                }
+                routing: page.routing
+                opener: dialogOpener
             }
 
-            AppCheckBox {
-                spacing: 0  // no text: the box alone
-                checked: ruleRow.active
-                Accessible.name: qsTr("启用「%1」").arg(ruleRow.name)
-                onToggled: page.routing.planRules.setRuleEnabled(ruleRow.ruleId, checked)
-            }
-
-            AbstractButton {
-                id: nameButton
-
+            MeshSection {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
-                padding: 0
-                Accessible.role: Accessible.Button
-                Accessible.name: qsTr("编辑「%1」").arg(ruleRow.name)
-                Accessible.description: qsTr("%1。目标 %2").arg(ruleRow.caption).arg(ruleRow.target)
-                onClicked: {
-                    if (!ruleRow.editable)
-                        return
-                    page.dialogTrigger = nameButton
-                    page.dialogFocusReason = Focus.reasonAfter(nameButton)
-                    page.routing.editor.openEdit(ruleRow.ruleId)
-                }
-                Keys.onUpPressed: page.rowAt(ruleRow.index - 1).nameButton.forceActiveFocus(Qt.TabFocusReason)
-                Keys.onDownPressed: page.rowAt(ruleRow.index + 1).nameButton.forceActiveFocus(Qt.TabFocusReason)
-
-                contentItem: Item {
-                    ColumnLayout {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 0
-
-                        UiText {
-                            Layout.fillWidth: true
-                            text: ruleRow.name
-                            role: ruleRow.mono ? Theme.type.dataMd : Theme.type.labelMd
-                            color: ruleRow.active ? Theme.text : Theme.textMuted
-                            elide: Text.ElideRight
-                        }
-
-                        UiText {
-                            Layout.fillWidth: true
-                            text: ruleRow.caption
-                            role: Theme.type.caption
-                            color: Theme.textMuted
-                            elide: Text.ElideRight
-                        }
-                    }
-                }
-
-                background: Item {
-                    FocusRing {
-                        targetRadius: 4
-                        visible: nameButton.visualFocus
-                    }
-                }
+                visible: page.tab === "groups" && page.routing.meshNetworks.available
+                routing: page.routing
+                opener: dialogOpener
+                onRulesRequested: page.tab = "rules"
             }
 
-            ColumnLayout {
-                Layout.preferredWidth: page.targetWidth
-                Layout.fillWidth: false
-                spacing: 2
-
-                UiText {
-                    Layout.fillWidth: true
-                    text: ruleRow.target
-                    role: Theme.type.bodySm
-                    color: ruleRow.active ? Theme.text : Theme.textMuted
-                    elide: Text.ElideRight
-                }
-
-                AccessibleText {
-                    Layout.fillWidth: true
-                    visible: text !== ""
-                    text: ruleRow.warning
-                    role: Theme.type.caption
-                    color: Theme.warning
-                    elide: Text.ElideRight
-                }
-            }
-
-            IconButton {
-                id: moreButton
-
-                iconName: "more"
-                accessibleName: qsTr("「%1」的更多操作").arg(ruleRow.name)
-                onClicked: ruleMenu.openFor(ruleRow, moreButton)
+            ExitsSection {
+                Layout.fillWidth: true
+                visible: page.tab === "groups"
+                routing: page.routing
+                opener: dialogOpener
             }
         }
     }
@@ -1622,7 +325,7 @@ ScrollView {
             onTriggered: {
                 planDialog.renaming = false
                 planDialog.copying = false
-                page.openDialog(planDialog, planMenu.trigger, planMenu.triggerFocusReason)
+                dialogOpener.open(planDialog, planMenu.trigger, planMenu.triggerFocusReason)
             }
         }
 
@@ -1631,7 +334,7 @@ ScrollView {
             onTriggered: {
                 planDialog.renaming = false
                 planDialog.copying = true
-                page.openDialog(planDialog, planMenu.trigger, planMenu.triggerFocusReason)
+                dialogOpener.open(planDialog, planMenu.trigger, planMenu.triggerFocusReason)
             }
         }
 
@@ -1640,7 +343,7 @@ ScrollView {
             onTriggered: {
                 planDialog.renaming = true
                 planDialog.copying = false
-                page.openDialog(planDialog, planMenu.trigger, planMenu.triggerFocusReason)
+                dialogOpener.open(planDialog, planMenu.trigger, planMenu.triggerFocusReason)
             }
         }
 
@@ -1650,8 +353,7 @@ ScrollView {
             visible: page.routing.coreAvailable
             enabled: !page.routing.transfer.busy
             onTriggered: {
-                page.dialogTrigger = planMenu.trigger
-                page.dialogFocusReason = planMenu.triggerFocusReason
+                dialogOpener.from(planMenu.trigger, planMenu.triggerFocusReason)
                 importDialog.open()
             }
         }
@@ -1661,8 +363,7 @@ ScrollView {
             visible: page.routing.coreAvailable
             enabled: !page.routing.transfer.busy
             onTriggered: {
-                page.dialogTrigger = planMenu.trigger
-                page.dialogFocusReason = planMenu.triggerFocusReason
+                dialogOpener.from(planMenu.trigger, planMenu.triggerFocusReason)
                 page.routing.transfer.exportPlan()
             }
         }
@@ -1685,224 +386,14 @@ ScrollView {
             visible: page.routing.coreAvailable
             enabled: !page.routing.transfer.busy
             onTriggered: {
-                page.dialogTrigger = moreMenu.trigger
-                page.dialogFocusReason = moreMenu.triggerFocusReason
+                dialogOpener.from(moreMenu.trigger, moreMenu.triggerFocusReason)
                 page.routing.transfer.showGenerated()
             }
         }
 
         AppMenuItem {
             text: qsTr("节点池设置…")
-            onTriggered: page.openDialog(infoDialog, moreMenu.trigger, moreMenu.triggerFocusReason)
-        }
-    }
-
-    AppMenu {
-        id: ruleMenu
-
-        // What the items act on, copied when the menu opens: the row may go meanwhile.
-        property string ruleId
-        property int index
-        property bool first
-        property bool last
-        property bool editable
-
-        function openFor(row: RuleRow, anchor: Item) {
-            ruleId = row.ruleId
-            index = row.index
-            first = row.first
-            last = row.last
-            editable = row.editable
-            openBelow(anchor)
-        }
-
-        AppMenuItem {
-            text: qsTr("编辑…")
-            enabled: ruleMenu.editable
-            onTriggered: {
-                page.dialogTrigger = ruleMenu.trigger
-                page.dialogFocusReason = ruleMenu.triggerFocusReason
-                page.routing.editor.openEdit(ruleMenu.ruleId)
-            }
-        }
-
-        AppMenuItem {
-            text: qsTr("上移")
-            enabled: !ruleMenu.first
-            onTriggered: page.routing.planRules.moveRuleBy(ruleMenu.ruleId, -1)
-        }
-
-        AppMenuItem {
-            text: qsTr("下移")
-            enabled: !ruleMenu.last
-            onTriggered: page.routing.planRules.moveRuleBy(ruleMenu.ruleId, 1)
-        }
-
-        AppMenuSeparator {}
-
-        AppMenuItem {
-            text: qsTr("删除")
-            destructive: true
-            onTriggered: {
-                page.removingRule = ruleMenu.ruleId
-                page.routing.planRules.removeRule(ruleMenu.ruleId)
-            }
-        }
-    }
-
-    AppMenu {
-        id: groupMenu
-
-        property string groupId
-        property string type
-        property bool hidden
-
-        function openFor(id: string, groupType: string, isHidden: bool, anchor: Item) {
-            groupId = id
-            type = groupType
-            hidden = isHidden
-            openBelow(anchor)
-        }
-
-        Instantiator {
-            model: page.routing.planGroups.typeOptions
-            onObjectAdded: (index, object) => groupMenu.insertItem(index, object)
-            onObjectRemoved: (index, object) => groupMenu.removeItem(object)
-
-            delegate: AppMenuItem {
-                id: typeChoice
-
-                required property var modelData
-
-                text: typeChoice.modelData.label
-                checkable: true
-                checked: typeChoice.modelData.value === groupMenu.type
-                onTriggered: {
-                    page.routing.planGroups.setType(groupMenu.groupId, typeChoice.modelData.value)
-                    checked = Qt.binding(() => typeChoice.modelData.value === groupMenu.type)
-                }
-            }
-        }
-
-        AppMenuSeparator {}
-
-        AppMenuItem {
-            text: groupMenu.hidden ? qsTr("显示") : qsTr("隐藏")
-            onTriggered: page.routing.planGroups.setHidden(groupMenu.groupId, !groupMenu.hidden)
-        }
-
-        AppMenuItem {
-            text: qsTr("复制为自建策略组…")
-            onTriggered: {
-                page.dialogTrigger = groupMenu.trigger
-                page.dialogFocusReason = groupMenu.triggerFocusReason
-                page.routing.groupEditor.openCopy(groupMenu.groupId)
-            }
-        }
-    }
-
-    AppMenu {
-        id: customGroupMenu
-
-        property string groupId
-
-        function openFor(id: string, anchor: Item) {
-            groupId = id
-            openBelow(anchor)
-        }
-
-        AppMenuItem {
-            text: qsTr("编辑…")
-            onTriggered: {
-                page.dialogTrigger = customGroupMenu.trigger
-                page.dialogFocusReason = customGroupMenu.triggerFocusReason
-                page.routing.groupEditor.openEdit(customGroupMenu.groupId)
-            }
-        }
-
-        AppMenuItem {
-            text: qsTr("复制…")
-            onTriggered: {
-                page.dialogTrigger = customGroupMenu.trigger
-                page.dialogFocusReason = customGroupMenu.triggerFocusReason
-                page.routing.groupEditor.openCopy(customGroupMenu.groupId)
-            }
-        }
-
-        AppMenuSeparator {}
-
-        AppMenuItem {
-            text: qsTr("删除")
-            destructive: true
-            onTriggered: page.routing.planGroups.requestRemove(customGroupMenu.groupId)
-        }
-    }
-
-    AppMenu {
-        id: meshMenu
-
-        property string meshId
-
-        function openFor(id: string, anchor: Item) {
-            meshId = id
-            openBelow(anchor)
-        }
-
-        // Tailscale's rules go in at once; the others open the rule dialog.
-        AppMenuItem {
-            text: qsTr("添加常用规则")
-            enabled: !page.routing.busy
-            onTriggered: {
-                page.dialogTrigger = meshMenu.trigger
-                page.dialogFocusReason = meshMenu.triggerFocusReason
-                page.routing.meshNetworks.addOutboundRules(meshMenu.meshId)
-            }
-        }
-
-        AppMenuItem {
-            text: qsTr("使用它的规则")
-            onTriggered: {
-                page.routing.meshNetworks.showOutboundRules(meshMenu.meshId)
-                page.tab = "rules"
-            }
-        }
-    }
-
-    AppMenu {
-        id: exitMenu
-
-        AppMenuItem {
-            text: qsTr("设置…")
-            onTriggered: {
-                page.dialogTrigger = exitMenu.trigger
-                page.dialogFocusReason = exitMenu.triggerFocusReason
-                page.routing.warp.open()
-            }
-        }
-
-        AppMenuItem {
-            text: page.routing.warp.registerLabel
-            enabled: page.routing.warp.canRegister
-            onTriggered: page.routing.warp.register()
-        }
-    }
-
-    AppMenu {
-        id: vpngateMenu
-
-        AppMenuItem {
-            text: qsTr("设置…")
-            onTriggered: {
-                page.dialogTrigger = vpngateMenu.trigger
-                page.dialogFocusReason = vpngateMenu.triggerFocusReason
-                page.routing.vpngate.open()
-            }
-        }
-
-        AppMenuItem {
-            text: qsTr("立即刷新")
-            enabled: page.routing.vpngate.canRefresh
-            onTriggered: page.routing.vpngate.refresh()
+            onTriggered: dialogOpener.open(infoDialog, moreMenu.trigger, moreMenu.triggerFocusReason)
         }
     }
 
@@ -1936,32 +427,10 @@ ScrollView {
         transfer: page.routing.transfer
     }
 
-    WarpDialog {
-        id: warpDialog
-
-        warp: page.routing.warp
-    }
-
-    VpnGateDialog {
-        id: vpngateDialog
-
-        vpngate: page.routing.vpngate
-    }
-
     YamlDialog {
         id: yamlDialog
 
         transfer: page.routing.transfer
-    }
-
-    ConfirmDialog {
-        id: removeGroupDialog
-
-        title: page.routing.planGroups.removalTitle
-        message: page.routing.planGroups.removalText
-        confirmText: qsTr("删除")
-        destructive: true
-        onAccepted: page.routing.planGroups.confirmRemove()
     }
 
     FileDialog {
