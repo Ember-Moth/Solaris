@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import Solaris
 import "../components"
@@ -69,6 +70,34 @@ ScrollView {
     }
 
     Connections {
+        target: page.routing.groupEditor
+
+        function onOpened() {
+            groupDialog.showFor(page.dialogTrigger, page.dialogFocusReason)
+        }
+
+        function onSaved() {
+            groupDialog.close()
+        }
+    }
+
+    Connections {
+        target: page.routing.transfer
+
+        function onConversionReady() {
+            convertDialog.showFor(page.dialogTrigger, page.dialogFocusReason)
+        }
+
+        function onConverted() {
+            convertDialog.close()
+        }
+
+        function onYamlReady() {
+            yamlDialog.showFor(page.dialogTrigger, page.dialogFocusReason)
+        }
+    }
+
+    Connections {
         target: page.routing
 
         function onPlanSaved() {
@@ -77,6 +106,10 @@ ScrollView {
 
         function onPlanRemovalRequested() {
             removePlanDialog.showFor(planMenu.trigger, planMenu.triggerFocusReason)
+        }
+
+        function onGroupRemovalRequested() {
+            removeGroupDialog.showFor(customGroupMenu.trigger, customGroupMenu.triggerFocusReason)
         }
 
         function onInfoPatternSaved() {
@@ -151,6 +184,29 @@ ScrollView {
                 Item {
                     Layout.fillWidth: true
                 }
+
+                // At the top: a profile's rules run to hundreds of lines (routing.md §4.3).
+                AppButton {
+                    id: convertButton
+
+                    visible: page.routing.profileId !== ""
+                    text: qsTr("以此创建我的方案")
+                    enabled: !page.routing.busy && !page.routing.transfer.busy
+                    onClicked: {
+                        page.dialogTrigger = convertButton
+                        page.dialogFocusReason = Focus.reasonAfter(convertButton)
+                        page.routing.transfer.convertProfile()
+                    }
+                }
+            }
+
+            AccessibleText {
+                Layout.fillWidth: true
+                visible: text !== ""
+                text: page.routing.transfer.error
+                role: Theme.type.caption
+                color: Theme.danger
+                wrapMode: Text.Wrap
             }
 
             // Every profile has nodes only.
@@ -500,6 +556,81 @@ ScrollView {
                         page.routing.editor.openAdd()
                     }
                 }
+
+                AppButton {
+                    id: newGroupButton
+
+                    visible: page.tab === "groups"
+                    text: qsTr("新建策略组")
+                    variant: "primary"
+                    enabled: !page.routing.busy && page.routing.planId !== ""
+                    onClicked: {
+                        page.dialogTrigger = newGroupButton
+                        page.dialogFocusReason = Focus.reasonAfter(newGroupButton)
+                        page.routing.groupEditor.openAdd()
+                    }
+                }
+            }
+
+            AccessibleText {
+                Layout.fillWidth: true
+                visible: text !== ""
+                text: page.routing.transfer.error
+                role: Theme.type.caption
+                color: Theme.danger
+                wrapMode: Text.Wrap
+            }
+
+            // The rule test, the search and the target filter (routing.md §4.3).
+            ColumnLayout {
+                Layout.fillWidth: true
+                visible: page.tab === "rules"
+                spacing: Theme.space2
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Theme.space2
+
+                    SearchField {
+                        id: testField
+
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 200
+                        implicitHeight: Theme.controlSm
+                        placeholderText: qsTr("输入域名或 IP 测试")
+                        accessibleName: qsTr("测试域名或 IP")
+                        text: page.routing.testText
+                        onTextEdited: page.routing.setTestText(text)
+                        onAccepted: page.routing.runTest()
+                    }
+
+                    SearchField {
+                        Layout.preferredWidth: Math.max(160, placeholderWidth)
+                        implicitHeight: Theme.controlSm
+                        placeholderText: qsTr("搜索规则")
+                        text: page.routing.planRuleQuery
+                        onTextEdited: page.routing.setPlanRuleQuery(text)
+                    }
+
+                    AppSelect {
+                        Layout.preferredWidth: 160
+                        options: page.routing.targetFilterOptions
+                        current: page.routing.targetFilter
+                        displayText: page.routing.targetFilterLabel
+                        accessibleName: qsTr("按目标筛选")
+                        onPicked: value => page.routing.setTargetFilter(value)
+                    }
+                }
+
+                AccessibleText {
+                    Layout.fillWidth: true
+                    visible: text !== ""
+                    text: page.routing.testResult
+                    role: Theme.type.bodySm
+                    color: page.routing.testFailed ? Theme.danger : Theme.textSecondary
+                    wrapMode: Text.Wrap
+                    Accessible.role: Accessible.StaticText
+                }
             }
 
             // The pool has no nodes yet.
@@ -586,6 +717,19 @@ ScrollView {
                     }
                 }
 
+                GroupRow {
+                    visible: page.routing.rulesFilteredEmpty
+                    rowHeight: Theme.rowSingle
+                    divider: false
+
+                    AccessibleText {
+                        Layout.fillWidth: true
+                        text: qsTr("没有匹配的规则")
+                        role: Theme.type.bodySm
+                        color: Theme.textMuted
+                    }
+                }
+
                 // Other traffic: always last; only its target changes. Laid out as the rules
                 // are, without their handle, box and menu.
                 Item {
@@ -593,7 +737,15 @@ ScrollView {
                     implicitHeight: Theme.rowDouble
 
                     Rectangle {
-                        visible: ruleRepeater.count > 0
+                        anchors.fill: parent
+                        visible: page.routing.fallbackHit
+                        color: Theme.surfaceSelected
+                        bottomLeftRadius: Theme.radiusMd - 1
+                        bottomRightRadius: Theme.radiusMd - 1
+                    }
+
+                    Rectangle {
+                        visible: ruleRepeater.count > 0 || page.routing.rulesFilteredEmpty
                         width: parent.width
                         height: 1
                         color: Theme.divider
@@ -677,6 +829,12 @@ ScrollView {
                         "hint": qsTr("按节点名称自动生成"),
                         "rows": page.routing.regionGroups,
                         "empty": qsTr("节点池为空，没有地区组")
+                    },
+                    {
+                        "title": qsTr("自建"),
+                        "hint": "",
+                        "rows": page.routing.customGroups,
+                        "empty": qsTr("还没有自建策略组")
                     }
                 ]
 
@@ -721,27 +879,59 @@ ScrollView {
                                 required property string caption
                                 required property string type
                                 required property bool hidden
+                                readonly property bool custom: groupSection.modelData.rows === page.routing.customGroups
 
                                 divider: index > 0
 
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 0
+                                // A custom group's name opens its editor.
+                                AbstractButton {
+                                    id: groupName
 
-                                    UiText {
-                                        Layout.fillWidth: true
-                                        text: groupRow.name
-                                        role: Theme.type.labelMd
-                                        color: groupRow.hidden ? Theme.textMuted : Theme.text
-                                        elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    padding: 0
+                                    focusPolicy: groupRow.custom ? Qt.StrongFocus : Qt.NoFocus
+                                    Accessible.role: groupRow.custom ? Accessible.Button : Accessible.StaticText
+                                    Accessible.name: groupRow.custom ? qsTr("编辑「%1」").arg(groupRow.name) : groupRow.name
+                                    Accessible.description: groupRow.caption
+                                    onClicked: {
+                                        if (!groupRow.custom)
+                                            return
+                                        page.dialogTrigger = groupName
+                                        page.dialogFocusReason = Focus.reasonAfter(groupName)
+                                        page.routing.groupEditor.openEdit(groupRow.groupId)
                                     }
 
-                                    UiText {
-                                        Layout.fillWidth: true
-                                        text: groupRow.caption
-                                        role: Theme.type.caption
-                                        color: Theme.textMuted
-                                        elide: Text.ElideRight
+                                    contentItem: Item {
+                                        ColumnLayout {
+                                            anchors.left: parent.left
+                                            anchors.right: parent.right
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            spacing: 0
+
+                                            UiText {
+                                                Layout.fillWidth: true
+                                                text: groupRow.name
+                                                role: Theme.type.labelMd
+                                                color: groupRow.hidden ? Theme.textMuted : Theme.text
+                                                elide: Text.ElideRight
+                                            }
+
+                                            UiText {
+                                                Layout.fillWidth: true
+                                                text: groupRow.caption
+                                                role: Theme.type.caption
+                                                color: Theme.textMuted
+                                                elide: Text.ElideRight
+                                            }
+                                        }
+                                    }
+
+                                    background: Item {
+                                        FocusRing {
+                                            targetRadius: 4
+                                            visible: groupName.visualFocus
+                                        }
                                     }
                                 }
 
@@ -750,7 +940,12 @@ ScrollView {
 
                                     iconName: "more"
                                     accessibleName: qsTr("%1 的更多操作").arg(groupRow.name)
-                                    onClicked: groupMenu.openFor(groupRow.groupId, groupRow.type, groupRow.hidden, groupMore)
+                                    onClicked: {
+                                        if (groupRow.custom)
+                                            customGroupMenu.openFor(groupRow.groupId, groupMore)
+                                        else
+                                            groupMenu.openFor(groupRow.groupId, groupRow.type, groupRow.hidden, groupMore)
+                                    }
                                 }
                             }
                         }
@@ -789,12 +984,22 @@ ScrollView {
         required property bool first
         required property bool last
         required property bool editable
+        required property bool hit
         readonly property alias nameButton: nameButton
         readonly property alias moreButton: moreButton
 
         width: ruleColumn.width
         height: Theme.rowDouble
         opacity: rulesBox.dragged === ruleId ? Theme.disabledOpacity : 1
+
+        // The rule the test matched.
+        Rectangle {
+            anchors.fill: parent
+            visible: ruleRow.hit
+            color: Theme.surfaceSelected
+            topLeftRadius: ruleRow.index === 0 ? Theme.radiusMd - 1 : 0
+            topRightRadius: ruleRow.index === 0 ? Theme.radiusMd - 1 : 0
+        }
 
         Rectangle {
             visible: ruleRow.index > 0
@@ -809,16 +1014,19 @@ ScrollView {
             anchors.rightMargin: Theme.space2
             spacing: 10
 
-            // The handle: the mouse's grip only; the keyboard moves rules from the menu.
+            // The handle: the mouse's grip only; the keyboard moves rules from the menu. A
+            // filtered list shows part of the rules, so it cannot be dragged.
             Icon {
                 id: grip
 
                 name: "grip"
                 size: 16
+                opacity: page.routing.filtering ? Theme.disabledOpacity : 1
 
                 MouseArea {
                     anchors.fill: parent
                     anchors.margins: -6
+                    enabled: !page.routing.filtering
                     cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
                     preventStealing: true
                     onPressed: rulesBox.dragged = ruleRow.ruleId
@@ -961,6 +1169,16 @@ ScrollView {
             text: qsTr("新建…")
             onTriggered: {
                 planDialog.renaming = false
+                planDialog.copying = false
+                page.openDialog(planDialog, planMenu.trigger, planMenu.triggerFocusReason)
+            }
+        }
+
+        AppMenuItem {
+            text: qsTr("复制…")
+            onTriggered: {
+                planDialog.renaming = false
+                planDialog.copying = true
                 page.openDialog(planDialog, planMenu.trigger, planMenu.triggerFocusReason)
             }
         }
@@ -969,7 +1187,28 @@ ScrollView {
             text: qsTr("重命名…")
             onTriggered: {
                 planDialog.renaming = true
+                planDialog.copying = false
                 page.openDialog(planDialog, planMenu.trigger, planMenu.triggerFocusReason)
+            }
+        }
+
+        AppMenuItem {
+            text: qsTr("导入…")
+            enabled: !page.routing.transfer.busy
+            onTriggered: {
+                page.dialogTrigger = planMenu.trigger
+                page.dialogFocusReason = planMenu.triggerFocusReason
+                importDialog.open()
+            }
+        }
+
+        AppMenuItem {
+            text: qsTr("导出…")
+            enabled: !page.routing.transfer.busy
+            onTriggered: {
+                page.dialogTrigger = planMenu.trigger
+                page.dialogFocusReason = planMenu.triggerFocusReason
+                page.routing.transfer.exportPlan()
             }
         }
 
@@ -985,6 +1224,16 @@ ScrollView {
 
     AppMenu {
         id: moreMenu
+
+        AppMenuItem {
+            text: qsTr("查看生成的配置…")
+            enabled: !page.routing.transfer.busy
+            onTriggered: {
+                page.dialogTrigger = moreMenu.trigger
+                page.dialogFocusReason = moreMenu.triggerFocusReason
+                page.routing.transfer.showGenerated()
+            }
+        }
 
         AppMenuItem {
             text: qsTr("节点池设置…")
@@ -1085,6 +1334,52 @@ ScrollView {
             text: groupMenu.hidden ? qsTr("显示") : qsTr("隐藏")
             onTriggered: page.routing.setGroupHidden(groupMenu.groupId, !groupMenu.hidden)
         }
+
+        AppMenuItem {
+            text: qsTr("复制为自建策略组…")
+            onTriggered: {
+                page.dialogTrigger = groupMenu.trigger
+                page.dialogFocusReason = groupMenu.triggerFocusReason
+                page.routing.groupEditor.openCopy(groupMenu.groupId)
+            }
+        }
+    }
+
+    AppMenu {
+        id: customGroupMenu
+
+        property string groupId
+
+        function openFor(id: string, anchor: Item) {
+            groupId = id
+            openBelow(anchor)
+        }
+
+        AppMenuItem {
+            text: qsTr("编辑…")
+            onTriggered: {
+                page.dialogTrigger = customGroupMenu.trigger
+                page.dialogFocusReason = customGroupMenu.triggerFocusReason
+                page.routing.groupEditor.openEdit(customGroupMenu.groupId)
+            }
+        }
+
+        AppMenuItem {
+            text: qsTr("复制…")
+            onTriggered: {
+                page.dialogTrigger = customGroupMenu.trigger
+                page.dialogFocusReason = customGroupMenu.triggerFocusReason
+                page.routing.groupEditor.openCopy(customGroupMenu.groupId)
+            }
+        }
+
+        AppMenuSeparator {}
+
+        AppMenuItem {
+            text: qsTr("删除")
+            destructive: true
+            onTriggered: page.routing.requestRemoveGroup(customGroupMenu.groupId)
+        }
     }
 
     RuleDialog {
@@ -1103,6 +1398,42 @@ ScrollView {
         id: infoDialog
 
         routing: page.routing
+    }
+
+    GroupDialog {
+        id: groupDialog
+
+        editor: page.routing.groupEditor
+    }
+
+    ConvertDialog {
+        id: convertDialog
+
+        transfer: page.routing.transfer
+    }
+
+    YamlDialog {
+        id: yamlDialog
+
+        transfer: page.routing.transfer
+    }
+
+    ConfirmDialog {
+        id: removeGroupDialog
+
+        title: page.routing.groupRemovalTitle
+        message: page.routing.groupRemovalText
+        confirmText: qsTr("删除")
+        destructive: true
+        onAccepted: page.routing.confirmRemoveGroup()
+    }
+
+    FileDialog {
+        id: importDialog
+
+        title: qsTr("导入方案")
+        nameFilters: [qsTr("YAML 配置 (*.yaml *.yml)"), qsTr("所有文件 (*)")]
+        onAccepted: page.routing.transfer.importFile(selectedFile.toString())
     }
 
     ConfirmDialog {

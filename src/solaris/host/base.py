@@ -110,6 +110,54 @@ class CompositionReport:
 
 
 @dataclass(frozen=True)
+class GroupPreview:
+    """The members a group of a draft plan gets with the pool (routing.md §4.5)."""
+
+    nodes: tuple[PoolNode, ...]  # in pool order
+    # The other members by id: group ids, "region:JP" for each region group with nodes,
+    # DIRECT, REJECT.
+    others: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class RuleMatch:
+    """The rule a connection would match (routing.md §8.3)."""
+
+    matched: bool  # False: no rule matched, so mihomo goes DIRECT
+    index: int  # the rule's position in the configuration
+    rule: Rule | None
+    # The rule's target first, then each group's current choice down to the node, as
+    # Connection.chains; the target alone when the core does not run that group.
+    chain: tuple[str, ...]
+    resolved_ip: str  # what the domain resolved to for an IP rule; "" otherwise
+
+
+@dataclass(frozen=True)
+class SkippedRule:
+    rule: str  # as the configuration wrote it
+    # "rule_set", "sub_rule", "target" (neither a group nor an outbound), "after_match",
+    # "invalid"
+    reason: str
+
+
+@dataclass(frozen=True)
+class PlanConversion:
+    """A subscription's groups and rules as a plan (routing.md §4.7)."""
+
+    plan_json: str
+    group_count: int
+    merged_group_count: int  # merged into 节点选择 or 自动选择
+    rule_count: int  # MATCH included
+    raw_rule_count: int
+    entry_count: int  # neighbouring rules may share an entry
+    skipped: tuple[SkippedRule, ...]
+
+
+EXPORT_SHARE = "share"  # proxy-groups and rules for another configuration
+EXPORT_GENERATED = "generated"  # the whole configuration the core would run
+
+
+@dataclass(frozen=True)
 class SourceNode:
     name: str
     type: str  # mihomo adapter type, as in Proxy.type
@@ -247,6 +295,31 @@ class TunnelHost(Protocol):
     async def list_geo_categories(self) -> GeoCategories:
         """The GEOSITE and GEOIP categories of the core's GEO data; the installer's list for
         a kind the core has no data of."""
+        ...
+
+    async def preview_group(self, composition: Composition, group_id: str) -> GroupPreview:
+        """The members of a group of the composition's plan; raises
+        HostError("invalid_config") for a plan the core refuses."""
+        ...
+
+    async def match_rule(
+        self, host: str, port: int = 0, network: str = "tcp", config: TunnelConfig | None = None
+    ) -> RuleMatch:
+        """The rule a connection to ``host`` (a domain or an IP) would match: in ``config``
+        built on the side, or in the running configuration for None, which raises
+        HostError("not_running") while the core is stopped. Port 0 means 443."""
+        ...
+
+    async def convert_to_plan(
+        self, yaml: str, *, source_id: str = "", locale: str = "zh", info_filter: str = ""
+    ) -> PlanConversion:
+        """A subscription's or a configuration's groups and rules as a plan. ``source_id``
+        is the pool's subscription it came from; "" matches its nodes by name."""
+        ...
+
+    async def export_plan(self, config: TunnelConfig, export: str = EXPORT_SHARE) -> str:
+        """The composition's plan as YAML: EXPORT_SHARE or EXPORT_GENERATED, which applies
+        ``config``'s overrides and options."""
         ...
 
     async def stop(self) -> None: ...

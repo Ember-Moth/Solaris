@@ -49,20 +49,20 @@ type Plan struct {
 	Version int    `json:"version"`
 	Locale  string `json:"locale"`
 	// TestURL is the delay test URL of every group that does not set its own.
-	TestURL  string      `json:"test_url"`
-	Groups   []PlanGroup `json:"groups"`
-	Rules    []RuleEntry `json:"rules"`
+	TestURL  string      `json:"test_url,omitempty"`
+	Groups   []PlanGroup `json:"groups,omitempty"`
+	Rules    []RuleEntry `json:"rules,omitempty"`
 	Fallback string      `json:"fallback"`
 }
 
 type PlanGroup struct {
 	ID      string       `json:"id"`
 	Kind    string       `json:"kind"`
-	Name    string       `json:"name"`
-	Type    string       `json:"type"`
-	Hidden  bool         `json:"hidden"`
-	Members *Members     `json:"members"`
-	Options GroupOptions `json:"options"`
+	Name    string       `json:"name,omitempty"`
+	Type    string       `json:"type,omitempty"`
+	Hidden  bool         `json:"hidden,omitempty"`
+	Members *Members     `json:"members,omitempty"`
+	Options GroupOptions `json:"options,omitzero"`
 }
 
 // Members chooses a built-in or custom group's members (docs/routing.md §4.5): the nodes
@@ -70,14 +70,14 @@ type PlanGroup struct {
 // Exclude matches; then the picked nodes and the other members, which Exclude never removes.
 // All starts from every node in the pool instead.
 type Members struct {
-	All     bool       `json:"all"`
-	Regions []string   `json:"regions"`
-	Sources []string   `json:"sources"`
-	Name    *NameMatch `json:"name"`
-	Exclude *NameMatch `json:"exclude"`
-	Nodes   []NodeRef  `json:"nodes"`
+	All     bool       `json:"all,omitempty"`
+	Regions []string   `json:"regions,omitempty"`
+	Sources []string   `json:"sources,omitempty"`
+	Name    *NameMatch `json:"name,omitempty"`
+	Exclude *NameMatch `json:"exclude,omitempty"`
+	Nodes   []NodeRef  `json:"nodes,omitempty"`
 	// Others are group ids, "region:*" for every region group, DIRECT, REJECT or REJECT-DROP.
-	Others []string `json:"others"`
+	Others []string `json:"others,omitempty"`
 }
 
 // NameMatch tests node names as the subscription wrote them: a keyword, ignoring case,
@@ -97,12 +97,12 @@ type NodeRef struct {
 }
 
 type GroupOptions struct {
-	URL       string `json:"url"`
-	Interval  int    `json:"interval"`  // seconds between delay tests
-	Tolerance int    `json:"tolerance"` // url-test: milliseconds a faster node must win by
-	Timeout   int    `json:"timeout"`   // milliseconds per delay test
-	Lazy      *bool  `json:"lazy"`      // test only while the group is in use; mihomo's default is true
-	Strategy  string `json:"strategy"`  // load-balance only
+	URL       string `json:"url,omitempty"`
+	Interval  int    `json:"interval,omitempty"`  // seconds between delay tests
+	Tolerance int    `json:"tolerance,omitempty"` // url-test: milliseconds a faster node must win by
+	Timeout   int    `json:"timeout,omitempty"`   // milliseconds per delay test
+	Lazy      *bool  `json:"lazy,omitempty"`      // test only while the group is in use; mihomo's default is true
+	Strategy  string `json:"strategy,omitempty"`  // load-balance only
 }
 
 // RuleEntry is one line of the rule list: an intent the core expands into one rule per item.
@@ -110,8 +110,8 @@ type RuleEntry struct {
 	ID string `json:"id"`
 	// Kind is the UI's: "service", "category", "domain", "ip" or "raw". The core only reads
 	// the items.
-	Kind    string     `json:"kind"`
-	Enabled *bool      `json:"enabled"` // absent means enabled
+	Kind    string     `json:"kind,omitempty"`
+	Enabled *bool      `json:"enabled,omitempty"` // absent means enabled
 	Items   []RuleItem `json:"items"`
 	Target  string     `json:"target"`
 }
@@ -122,7 +122,7 @@ func (e *RuleEntry) enabled() bool { return e.Enabled == nil || *e.Enabled }
 type RuleItem struct {
 	Type      string `json:"type"`
 	Value     string `json:"value"`
-	NoResolve bool   `json:"no_resolve"`
+	NoResolve bool   `json:"no_resolve,omitempty"`
 }
 
 // itemTypes are the rule types an item may have: every one that needs nothing outside the

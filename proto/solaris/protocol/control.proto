@@ -43,12 +43,14 @@ message Request {
     UnsubscribeRequest unsubscribe = 48;
 
     // Routing methods (docs/routing.md §8.2), served on both platforms. They only read
-    // and need no running core. 51 to 54 are kept for PreviewGroup, MatchRule,
-    // ConvertToPlan and ExportPlan (M8b).
+    // and need no running core.
     InspectSourceRequest inspect_source = 49;
     ListGeoCategoriesRequest list_geo_categories = 50;
+    PreviewGroupRequest preview_group = 51;
+    MatchRuleRequest match_rule = 52;
+    ConvertToPlanRequest convert_to_plan = 53;
+    ExportPlanRequest export_plan = 54;
   }
-  reserved 51 to 54;
 }
 
 message Response {
@@ -70,8 +72,11 @@ message Response {
     PollEventsResponse poll_events = 47;
     InspectSourceResponse inspect_source = 49;
     ListGeoCategoriesResponse list_geo_categories = 50;
+    PreviewGroupResponse preview_group = 51;
+    MatchRuleResponse match_rule = 52;
+    ConvertToPlanResponse convert_to_plan = 53;
+    ExportPlanResponse export_plan = 54;
   }
-  reserved 51 to 54;
 }
 
 message Empty {}
@@ -376,3 +381,86 @@ message GeoCategories {
   string sha256 = 2; // of the file, which identifies the data release
   uint64 updated_at_unix_ms = 3;
 }
+
+// The members a group of a plan draft gets with the pool, for the group editor's preview
+// (docs/routing.md §4.5).
+message PreviewGroupRequest {
+  Composition composition = 1; // the pool, and the draft plan that holds the group
+  string group_id = 2;         // "proxy", "auto", "region:HK" or a custom group's id
+}
+message PreviewGroupResponse {
+  repeated PoolNode nodes = 1; // the member nodes, in pool order
+  // The other members by id, as the group lists them in the configuration: group ids,
+  // "region:JP" for each region group with nodes, DIRECT, REJECT, REJECT-DROP.
+  repeated string others = 2;
+}
+
+// Which rule a connection to host would match (docs/routing.md §8.3), with mihomo's own
+// rule matching. Without a source the running configuration answers; with one, the core
+// builds that configuration on the side as Validate does and never applies it.
+message MatchRuleRequest {
+  oneof source {
+    string config_yaml = 1;
+    Composition composition = 2;
+  }
+  repeated string overrides = 3;
+  string host = 4;    // a domain or an IP address
+  uint32 port = 5;    // 0 means 443
+  string network = 6; // "tcp" (the default) or "udp"
+}
+message MatchRuleResponse {
+  bool matched = 1; // false: no rule matched, and mihomo sends the connection DIRECT
+  uint32 index = 2; // the rule's position in the configuration's rules
+  Rule rule = 3;    // with the plan's rule entry when the configuration is a composition
+  // From the node to the rule's target, as Connection.chains: the running core's current
+  // choice in each group on the way. When the core does not run that group, the chain is
+  // the target alone.
+  repeated string chain = 4;
+  // The address the domain resolved to when a rule needed one; empty otherwise, or when
+  // the lookup failed.
+  string resolved_ip = 5;
+}
+
+// A subscription's or a mihomo configuration's groups and rules as a plan (docs/routing.md
+// §4.7).
+message ConvertToPlanRequest {
+  string yaml = 1;
+  // The subscription in the pool the YAML came from, so groups can pick its nodes; empty
+  // for a configuration imported on its own, whose nodes are matched by name.
+  string source_id = 2;
+  string locale = 3;      // the plan's: "zh" (the default) or "en"
+  string info_filter = 4; // as in Composition
+}
+message ConvertToPlanResponse {
+  string plan_json = 1; // format version 1 (docs/routing.md §8.5)
+  uint32 group_count = 2;  // the groups the YAML has
+  uint32 merged_group_count = 3; // of them, merged into 节点选择 or 自动选择
+  uint32 rule_count = 4;   // the rules the YAML has, MATCH included
+  uint32 raw_rule_count = 5; // of them, kept as raw rule entries
+  uint32 entry_count = 6;  // the rule entries of the plan; neighbouring rules may share one
+  repeated SkippedRule skipped = 7; // the rules the plan does not keep
+}
+message SkippedRule {
+  string rule = 1; // as the YAML wrote it
+  // "rule_set": RULE-SET, or a logical rule with one; "sub_rule": SUB-RULE, or a logical
+  // rule with one; "target": a target that is neither a group nor an outbound;
+  // "after_match": after MATCH, so never reached; "invalid": a rule mihomo would refuse.
+  string reason = 2;
+}
+
+enum ExportFormat {
+  EXPORT_FORMAT_UNSPECIFIED = 0; // as SHARE
+  // proxy-groups and rules for another mihomo configuration: members as include-all with
+  // filters where the conditions allow it, nodes by their names in the subscription.
+  EXPORT_FORMAT_SHARE = 1;
+  // The whole configuration the core would run, after the overrides, the platform patches
+  // and the security items; nodes show their name, type, server and port only.
+  EXPORT_FORMAT_GENERATED = 2;
+}
+message ExportPlanRequest {
+  Composition composition = 1;
+  ExportFormat format = 2;
+  repeated string overrides = 3; // GENERATED only
+  RunOptions options = 4;        // GENERATED only
+}
+message ExportPlanResponse { string yaml = 1; }

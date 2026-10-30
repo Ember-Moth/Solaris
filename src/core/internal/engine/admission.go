@@ -107,6 +107,8 @@ func takesOverSystem(listener C.InboundListener) bool {
 // admission is a configuration that passed the pipeline.
 type admission struct {
 	cfg *config.Config
+	// doc is the configuration as it went to mihomo's parser.
+	doc map[string]any
 	// report and entries come with a composition.
 	report  *controlpb.CompositionReport
 	entries *ruleEntries
@@ -169,7 +171,7 @@ func admitProfile(profile Profile, mode TunMode) (*admission, error) {
 	if err := verifyAdmitted(cfg, mode, options); err != nil {
 		return nil, invalidConfig(err)
 	}
-	admitted := &admission{cfg: cfg}
+	admitted := &admission{cfg: cfg, doc: doc}
 	if composed != nil {
 		admitted.report = composed.Report
 		admitted.entries = newRuleEntries(composed, doc, cfg)

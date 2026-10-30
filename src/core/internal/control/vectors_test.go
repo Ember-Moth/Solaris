@@ -24,6 +24,50 @@ type vectorEngine struct {
 	profile    *engine.Profile
 	inspected  string
 	infoFilter string
+	preview    *compose.Composition
+	groupID    string
+	match      *engine.MatchRequest
+	converted  string
+	conversion compose.Conversion
+	exported   *engine.Profile
+	format     controlpb.ExportFormat
+}
+
+func (e *vectorEngine) PreviewGroup(composition compose.Composition, groupID string) (*controlpb.PreviewGroupResponse, error) {
+	e.preview, e.groupID = &composition, groupID
+	return &controlpb.PreviewGroupResponse{
+		Nodes:  []*controlpb.PoolNode{{Name: "香港 01", OriginalName: "香港 01", SourceId: "sub-a", Type: "Shadowsocks", Region: "HK"}},
+		Others: []string{"DIRECT"},
+	}, nil
+}
+
+func (e *vectorEngine) MatchRule(request engine.MatchRequest) (*controlpb.MatchRuleResponse, error) {
+	e.match = &request
+	return &controlpb.MatchRuleResponse{
+		Matched:    true,
+		Index:      2,
+		Rule:       &controlpb.Rule{Type: "DOMAIN-SUFFIX", Payload: "example.com", Proxy: "节点选择", EntryId: "web"},
+		Chain:      []string{"香港 01", "节点选择"},
+		ResolvedIp: "192.0.2.1",
+	}, nil
+}
+
+func (e *vectorEngine) ConvertToPlan(source []byte, options compose.Conversion) (*controlpb.ConvertToPlanResponse, error) {
+	e.converted, e.conversion = string(source), options
+	return &controlpb.ConvertToPlanResponse{
+		PlanJson:         `{"version":1}`,
+		GroupCount:       3,
+		MergedGroupCount: 1,
+		RuleCount:        5,
+		RawRuleCount:     1,
+		EntryCount:       3,
+		Skipped:          []*controlpb.SkippedRule{{Rule: "RULE-SET,ads,REJECT", Reason: "rule_set"}},
+	}, nil
+}
+
+func (e *vectorEngine) ExportPlan(profile engine.Profile, format controlpb.ExportFormat) ([]byte, error) {
+	e.exported, e.format = &profile, format
+	return []byte("proxy-groups: []\n"), nil
 }
 
 func (e *vectorEngine) Validate(profile engine.Profile) (*controlpb.CompositionReport, error) {
@@ -73,7 +117,8 @@ func TestSharedVectors(t *testing.T) {
 	}
 	fake := &vectorEngine{}
 	dispatcher := New(Options{Engine: fake, HostMethods: true})
-	for _, name := range []string{"get_info", "validate_composition", "inspect_source", "list_geo_categories"} {
+	for _, name := range []string{"get_info", "validate_composition", "inspect_source", "list_geo_categories",
+		"preview_group", "match_rule", "convert_to_plan", "export_plan"} {
 		requestFrame, err := hex.DecodeString(vectors[name+"_request_frame"])
 		if err != nil {
 			t.Fatal(err)
@@ -113,5 +158,24 @@ func TestSharedVectors(t *testing.T) {
 	}
 	if fake.inspected != "proxies: []\n" || fake.infoFilter != "剩余" {
 		t.Fatalf("inspected %q with %q", fake.inspected, fake.infoFilter)
+	}
+	sameComposition := func(got *compose.Composition) bool {
+		return got != nil && len(got.Sources) == 1 && got.Sources[0].ID == "sub-a" &&
+			bytes.Equal(got.Plan, wantComposition.Plan) && got.InfoFilter == wantComposition.InfoFilter
+	}
+	if !sameComposition(fake.preview) || fake.groupID != "g-1" {
+		t.Fatalf("preview of %q in %+v", fake.groupID, fake.preview)
+	}
+	if match := fake.match; match == nil || match.Draft == nil || !sameComposition(match.Draft.Composition) ||
+		len(match.Draft.Overrides) != 1 || match.Host != "example.com" || match.Port != 80 || !match.UDP {
+		t.Fatalf("match = %+v", fake.match)
+	}
+	if conversion := fake.conversion; fake.converted != "rules: []\n" || conversion.SourceID != "sub-a" ||
+		conversion.Locale != "en" || conversion.InfoFilter != "剩余" {
+		t.Fatalf("converted %q with %+v", fake.converted, fake.conversion)
+	}
+	if exported := fake.exported; exported == nil || !sameComposition(exported.Composition) || len(exported.Overrides) != 1 ||
+		exported.Options.MixedPort != 7890 || fake.format != controlpb.ExportFormat_EXPORT_FORMAT_GENERATED {
+		t.Fatalf("exported %+v as %v", fake.exported, fake.format)
 	}
 }

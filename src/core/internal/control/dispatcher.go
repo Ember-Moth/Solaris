@@ -62,6 +62,10 @@ type Engine interface {
 	WatchLogs(emit func(*controlpb.LogEntry)) (stop func())
 	InspectSource(source []byte, infoFilter string) (*controlpb.InspectSourceResponse, error)
 	ListGeoCategories() (*controlpb.ListGeoCategoriesResponse, error)
+	PreviewGroup(composition compose.Composition, groupID string) (*controlpb.PreviewGroupResponse, error)
+	MatchRule(engine.MatchRequest) (*controlpb.MatchRuleResponse, error)
+	ConvertToPlan(source []byte, options compose.Conversion) (*controlpb.ConvertToPlanResponse, error)
+	ExportPlan(profile engine.Profile, format controlpb.ExportFormat) ([]byte, error)
 }
 
 type Options struct {
@@ -372,8 +376,91 @@ func (d *Dispatcher) coreMethod(ctx context.Context, caller peer.Identity, reque
 			return engineFailure(err)
 		}
 		return &controlpb.Response{Result: &controlpb.Response_ListGeoCategories{ListGeoCategories: categories}}
+	case *controlpb.Request_PreviewGroup:
+		preview := method.PreviewGroup
+		if preview.GetComposition() == nil || preview.GetGroupId() == "" {
+			return failure(CodeInvalidRequest, "preview_group needs a composition and a group id")
+		}
+		members, err := d.engine.PreviewGroup(*composition(preview.GetComposition()), preview.GetGroupId())
+		if err != nil {
+			return engineFailure(err)
+		}
+		return &controlpb.Response{Result: &controlpb.Response_PreviewGroup{PreviewGroup: members}}
+	case *controlpb.Request_MatchRule:
+		return d.matchRule(method.MatchRule)
+	case *controlpb.Request_ConvertToPlan:
+		convert := method.ConvertToPlan
+		converted, err := d.engine.ConvertToPlan([]byte(convert.GetYaml()), compose.Conversion{
+			SourceID:   convert.GetSourceId(),
+			Locale:     convert.GetLocale(),
+			InfoFilter: convert.GetInfoFilter(),
+		})
+		if err != nil {
+			return engineFailure(err)
+		}
+		return &controlpb.Response{Result: &controlpb.Response_ConvertToPlan{ConvertToPlan: converted}}
+	case *controlpb.Request_ExportPlan:
+		export := method.ExportPlan
+		if export.GetComposition() == nil {
+			return failure(CodeInvalidRequest, "export_plan needs a composition")
+		}
+		if _, ok := controlpb.ExportFormat_name[int32(export.GetFormat())]; !ok {
+			return failure(CodeInvalidRequest, "unknown export format")
+		}
+		profile, response := d.draftProfile("", export.GetComposition(), export.GetOverrides(), export.GetOptions())
+		if response != nil {
+			return response
+		}
+		exported, err := d.engine.ExportPlan(profile, export.GetFormat())
+		if err != nil {
+			return engineFailure(err)
+		}
+		return &controlpb.Response{Result: &controlpb.Response_ExportPlan{ExportPlan: &controlpb.ExportPlanResponse{Yaml: string(exported)}}}
 	}
 	return failure(CodeNotImplemented, methodName(request)+" is not implemented")
+}
+
+func (d *Dispatcher) matchRule(match *controlpb.MatchRuleRequest) *controlpb.Response {
+	request := engine.MatchRequest{Host: match.GetHost(), Port: 443, UDP: match.GetNetwork() == "udp"}
+	switch port := match.GetPort(); {
+	case port > 0xffff:
+		return failure(CodeInvalidRequest, "match_rule needs a TCP or UDP port")
+	case port != 0:
+		request.Port = uint16(port)
+	}
+	if network := match.GetNetwork(); network != "" && network != "tcp" && network != "udp" {
+		return failure(CodeInvalidRequest, "match_rule's network is tcp or udp")
+	}
+	if match.Source != nil {
+		profile, response := d.draftProfile(match.GetConfigYaml(), match.GetComposition(), match.GetOverrides(), nil)
+		if response != nil {
+			return response
+		}
+		request.Draft = &profile
+	}
+	matched, err := d.engine.MatchRule(request)
+	if err != nil {
+		return engineFailure(err)
+	}
+	return &controlpb.Response{Result: &controlpb.Response_MatchRule{MatchRule: matched}}
+}
+
+// draftProfile is a configuration the routing methods build on the side; unlike profile,
+// it never touches the system proxy.
+func (d *Dispatcher) draftProfile(configYAML string, source *controlpb.Composition, overrideYAML []string, options *controlpb.RunOptions) (engine.Profile, *controlpb.Response) {
+	if options.GetMixedPort() > 0xffff {
+		return engine.Profile{}, failure(CodeInvalidRequest, "mixed_port must be a TCP port")
+	}
+	return engine.Profile{
+		Config:      []byte(configYAML),
+		Composition: composition(source),
+		Overrides:   overrides(overrideYAML),
+		Options: engine.RunOptions{
+			TUN:       options.GetTunEnabled(),
+			MixedPort: uint16(options.GetMixedPort()),
+			AllowLAN:  options.GetAllowLan(),
+		},
+	}, nil
 }
 
 func (d *Dispatcher) subscribe(ctx context.Context, caller peer.Identity, kind topic, level controlpb.LogLevel) *controlpb.Response {

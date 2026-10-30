@@ -39,10 +39,13 @@ from solaris.host.base import (
     CompositionReport,
     CompositionSource,
     GeoCategories,
+    GroupPreview,
     HostError,
     HostStatus,
+    PlanConversion,
     ProxyGroup,
     Rule,
+    RuleMatch,
     RunOptions,
     SourceInspection,
     TunnelConfig,
@@ -65,6 +68,7 @@ from solaris.models.routing import (
     MODE_PROFILE,
     MODES,
     Plan,
+    PlanGroup,
     RoutingState,
     RoutingStore,
 )
@@ -651,6 +655,69 @@ class ProfileLibrary:
             return await self._host.list_geo_categories()
         except HostError:
             return bundled_geo_categories()
+
+    # -- the routing editor: previews, the rule test, conversion and export ------------------
+    async def preview_group(self, plan: Plan, group: PlanGroup) -> GroupPreview:
+        """The members ``group`` gets in ``plan`` with the pool, as the group editor previews
+        them (routing.md §4.5)."""
+        groups = list(plan.groups)
+        index = next((i for i, g in enumerate(groups) if g.id == group.id), None)
+        if index is None:
+            groups.append(group)
+        else:
+            groups[index] = group
+        draft = replace(plan, groups=tuple(groups))
+        composition = await self._composition(draft, self._list, info=self._info_filter())
+        return await self._host.preview_group(composition, group.id)
+
+    async def node_delays(self) -> dict[str, int | None]:
+        """The delays the running core measured, by node name; empty while it is stopped."""
+        if await self._running() is None:
+            return {}
+        groups = await self._host.list_groups()
+        return {proxy.name: proxy.delay_ms for group in groups for proxy in group.proxies}
+
+    async def match_rule(self, plan: Plan, host: str, port: int = 0) -> RuleMatch:
+        """The rule of ``plan`` a connection to ``host`` matches, with the pool and the global
+        override as the tunnel would run it (routing.md §8.3)."""
+        composition = await self._composition(plan, self._list, info=self._info_filter())
+        config = TunnelConfig(overrides=await self._global_override(), composition=composition)
+        return await self._host.match_rule(host, port, config=config)
+
+    async def convert_profile(self, profile_id: str) -> PlanConversion:
+        """The profile's groups and rules as a plan whose groups pick its nodes (§4.7)."""
+        self._list.get(profile_id)
+        text = await asyncio.to_thread(self._store.read_config, profile_id)
+        return await self._host.convert_to_plan(
+            text, source_id=profile_id, locale=self._locale(), info_filter=self._info_filter()
+        )
+
+    async def convert_file(self, path: Path) -> PlanConversion:
+        """A mihomo configuration's groups and rules as a plan; its nodes count by name."""
+        text = await asyncio.to_thread(read_config_file, path)
+        return await self._host.convert_to_plan(
+            text, locale=self._locale(), info_filter=self._info_filter()
+        )
+
+    async def add_plan(self, plan: Plan, use: bool) -> Routing:
+        """Store a plan made elsewhere, such as a conversion; ``use`` routes with it from now."""
+        async with self._lock:
+            await self._apply_plan(plan, current=use, routing=use)
+            if use:
+                await self._store_mode(MODE_PLAN, plan)
+            return self._routing()
+
+    async def export_plan(self, plan: Plan, export: str) -> str:
+        """``plan`` as YAML to share (EXPORT_SHARE), or the whole configuration the core would
+        run with it, the global override and the run options (EXPORT_GENERATED)."""
+        composition = await self._composition(plan, self._list, info=self._info_filter())
+        status = await self._running()
+        settings = self._settings()
+        options = live_options(status, settings) if status else settings.run_options()
+        config = TunnelConfig(
+            overrides=await self._global_override(), options=options, composition=composition
+        )
+        return await self._host.export_plan(config, export)
 
     def _current_plan(self) -> Plan | None:
         return self._routing().plan()

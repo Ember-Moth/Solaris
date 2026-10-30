@@ -56,6 +56,12 @@ class LogLevel(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     LOG_LEVEL_INFO: _ClassVar[LogLevel]
     LOG_LEVEL_WARNING: _ClassVar[LogLevel]
     LOG_LEVEL_ERROR: _ClassVar[LogLevel]
+
+class ExportFormat(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    EXPORT_FORMAT_UNSPECIFIED: _ClassVar[ExportFormat]
+    EXPORT_FORMAT_SHARE: _ClassVar[ExportFormat]
+    EXPORT_FORMAT_GENERATED: _ClassVar[ExportFormat]
 RUN_STATE_UNSPECIFIED: RunState
 RUN_STATE_STOPPED: RunState
 RUN_STATE_STARTING: RunState
@@ -85,9 +91,12 @@ LOG_LEVEL_DEBUG: LogLevel
 LOG_LEVEL_INFO: LogLevel
 LOG_LEVEL_WARNING: LogLevel
 LOG_LEVEL_ERROR: LogLevel
+EXPORT_FORMAT_UNSPECIFIED: ExportFormat
+EXPORT_FORMAT_SHARE: ExportFormat
+EXPORT_FORMAT_GENERATED: ExportFormat
 
 class Request(_message.Message):
-    __slots__ = ("protocol_version", "id", "get_info", "claim", "validate", "start", "reload", "stop", "set_system_proxy", "get_status", "set_mode", "list_groups", "get_group", "select_proxy", "health_check", "test_delay", "list_providers", "update_provider", "list_rules", "close_connection", "close_all_connections", "flush_fake_ip", "flush_dns_cache", "subscribe_logs", "subscribe_traffic", "subscribe_connections", "poll_events", "unsubscribe", "inspect_source", "list_geo_categories")
+    __slots__ = ("protocol_version", "id", "get_info", "claim", "validate", "start", "reload", "stop", "set_system_proxy", "get_status", "set_mode", "list_groups", "get_group", "select_proxy", "health_check", "test_delay", "list_providers", "update_provider", "list_rules", "close_connection", "close_all_connections", "flush_fake_ip", "flush_dns_cache", "subscribe_logs", "subscribe_traffic", "subscribe_connections", "poll_events", "unsubscribe", "inspect_source", "list_geo_categories", "preview_group", "match_rule", "convert_to_plan", "export_plan")
     PROTOCOL_VERSION_FIELD_NUMBER: _ClassVar[int]
     ID_FIELD_NUMBER: _ClassVar[int]
     GET_INFO_FIELD_NUMBER: _ClassVar[int]
@@ -118,6 +127,10 @@ class Request(_message.Message):
     UNSUBSCRIBE_FIELD_NUMBER: _ClassVar[int]
     INSPECT_SOURCE_FIELD_NUMBER: _ClassVar[int]
     LIST_GEO_CATEGORIES_FIELD_NUMBER: _ClassVar[int]
+    PREVIEW_GROUP_FIELD_NUMBER: _ClassVar[int]
+    MATCH_RULE_FIELD_NUMBER: _ClassVar[int]
+    CONVERT_TO_PLAN_FIELD_NUMBER: _ClassVar[int]
+    EXPORT_PLAN_FIELD_NUMBER: _ClassVar[int]
     protocol_version: int
     id: int
     get_info: GetInfoRequest
@@ -148,10 +161,14 @@ class Request(_message.Message):
     unsubscribe: UnsubscribeRequest
     inspect_source: InspectSourceRequest
     list_geo_categories: ListGeoCategoriesRequest
-    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., get_info: _Optional[_Union[GetInfoRequest, _Mapping]] = ..., claim: _Optional[_Union[ClaimRequest, _Mapping]] = ..., validate: _Optional[_Union[ValidateRequest, _Mapping]] = ..., start: _Optional[_Union[StartRequest, _Mapping]] = ..., reload: _Optional[_Union[ReloadRequest, _Mapping]] = ..., stop: _Optional[_Union[StopRequest, _Mapping]] = ..., set_system_proxy: _Optional[_Union[SetSystemProxyRequest, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusRequest, _Mapping]] = ..., set_mode: _Optional[_Union[SetModeRequest, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsRequest, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupRequest, _Mapping]] = ..., select_proxy: _Optional[_Union[SelectProxyRequest, _Mapping]] = ..., health_check: _Optional[_Union[HealthCheckRequest, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayRequest, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersRequest, _Mapping]] = ..., update_provider: _Optional[_Union[UpdateProviderRequest, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesRequest, _Mapping]] = ..., close_connection: _Optional[_Union[CloseConnectionRequest, _Mapping]] = ..., close_all_connections: _Optional[_Union[CloseAllConnectionsRequest, _Mapping]] = ..., flush_fake_ip: _Optional[_Union[FlushFakeIPRequest, _Mapping]] = ..., flush_dns_cache: _Optional[_Union[FlushDNSCacheRequest, _Mapping]] = ..., subscribe_logs: _Optional[_Union[SubscribeLogsRequest, _Mapping]] = ..., subscribe_traffic: _Optional[_Union[SubscribeTrafficRequest, _Mapping]] = ..., subscribe_connections: _Optional[_Union[SubscribeConnectionsRequest, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsRequest, _Mapping]] = ..., unsubscribe: _Optional[_Union[UnsubscribeRequest, _Mapping]] = ..., inspect_source: _Optional[_Union[InspectSourceRequest, _Mapping]] = ..., list_geo_categories: _Optional[_Union[ListGeoCategoriesRequest, _Mapping]] = ...) -> None: ...
+    preview_group: PreviewGroupRequest
+    match_rule: MatchRuleRequest
+    convert_to_plan: ConvertToPlanRequest
+    export_plan: ExportPlanRequest
+    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., get_info: _Optional[_Union[GetInfoRequest, _Mapping]] = ..., claim: _Optional[_Union[ClaimRequest, _Mapping]] = ..., validate: _Optional[_Union[ValidateRequest, _Mapping]] = ..., start: _Optional[_Union[StartRequest, _Mapping]] = ..., reload: _Optional[_Union[ReloadRequest, _Mapping]] = ..., stop: _Optional[_Union[StopRequest, _Mapping]] = ..., set_system_proxy: _Optional[_Union[SetSystemProxyRequest, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusRequest, _Mapping]] = ..., set_mode: _Optional[_Union[SetModeRequest, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsRequest, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupRequest, _Mapping]] = ..., select_proxy: _Optional[_Union[SelectProxyRequest, _Mapping]] = ..., health_check: _Optional[_Union[HealthCheckRequest, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayRequest, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersRequest, _Mapping]] = ..., update_provider: _Optional[_Union[UpdateProviderRequest, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesRequest, _Mapping]] = ..., close_connection: _Optional[_Union[CloseConnectionRequest, _Mapping]] = ..., close_all_connections: _Optional[_Union[CloseAllConnectionsRequest, _Mapping]] = ..., flush_fake_ip: _Optional[_Union[FlushFakeIPRequest, _Mapping]] = ..., flush_dns_cache: _Optional[_Union[FlushDNSCacheRequest, _Mapping]] = ..., subscribe_logs: _Optional[_Union[SubscribeLogsRequest, _Mapping]] = ..., subscribe_traffic: _Optional[_Union[SubscribeTrafficRequest, _Mapping]] = ..., subscribe_connections: _Optional[_Union[SubscribeConnectionsRequest, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsRequest, _Mapping]] = ..., unsubscribe: _Optional[_Union[UnsubscribeRequest, _Mapping]] = ..., inspect_source: _Optional[_Union[InspectSourceRequest, _Mapping]] = ..., list_geo_categories: _Optional[_Union[ListGeoCategoriesRequest, _Mapping]] = ..., preview_group: _Optional[_Union[PreviewGroupRequest, _Mapping]] = ..., match_rule: _Optional[_Union[MatchRuleRequest, _Mapping]] = ..., convert_to_plan: _Optional[_Union[ConvertToPlanRequest, _Mapping]] = ..., export_plan: _Optional[_Union[ExportPlanRequest, _Mapping]] = ...) -> None: ...
 
 class Response(_message.Message):
-    __slots__ = ("protocol_version", "id", "error", "empty", "get_info", "composition", "get_status", "list_groups", "get_group", "test_delay", "list_providers", "list_rules", "subscribe", "poll_events", "inspect_source", "list_geo_categories")
+    __slots__ = ("protocol_version", "id", "error", "empty", "get_info", "composition", "get_status", "list_groups", "get_group", "test_delay", "list_providers", "list_rules", "subscribe", "poll_events", "inspect_source", "list_geo_categories", "preview_group", "match_rule", "convert_to_plan", "export_plan")
     PROTOCOL_VERSION_FIELD_NUMBER: _ClassVar[int]
     ID_FIELD_NUMBER: _ClassVar[int]
     ERROR_FIELD_NUMBER: _ClassVar[int]
@@ -168,6 +185,10 @@ class Response(_message.Message):
     POLL_EVENTS_FIELD_NUMBER: _ClassVar[int]
     INSPECT_SOURCE_FIELD_NUMBER: _ClassVar[int]
     LIST_GEO_CATEGORIES_FIELD_NUMBER: _ClassVar[int]
+    PREVIEW_GROUP_FIELD_NUMBER: _ClassVar[int]
+    MATCH_RULE_FIELD_NUMBER: _ClassVar[int]
+    CONVERT_TO_PLAN_FIELD_NUMBER: _ClassVar[int]
+    EXPORT_PLAN_FIELD_NUMBER: _ClassVar[int]
     protocol_version: int
     id: int
     error: Error
@@ -184,7 +205,11 @@ class Response(_message.Message):
     poll_events: PollEventsResponse
     inspect_source: InspectSourceResponse
     list_geo_categories: ListGeoCategoriesResponse
-    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., error: _Optional[_Union[Error, _Mapping]] = ..., empty: _Optional[_Union[Empty, _Mapping]] = ..., get_info: _Optional[_Union[GetInfoResponse, _Mapping]] = ..., composition: _Optional[_Union[CompositionReport, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusResponse, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsResponse, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupResponse, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayResponse, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersResponse, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesResponse, _Mapping]] = ..., subscribe: _Optional[_Union[SubscribeResponse, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsResponse, _Mapping]] = ..., inspect_source: _Optional[_Union[InspectSourceResponse, _Mapping]] = ..., list_geo_categories: _Optional[_Union[ListGeoCategoriesResponse, _Mapping]] = ...) -> None: ...
+    preview_group: PreviewGroupResponse
+    match_rule: MatchRuleResponse
+    convert_to_plan: ConvertToPlanResponse
+    export_plan: ExportPlanResponse
+    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., error: _Optional[_Union[Error, _Mapping]] = ..., empty: _Optional[_Union[Empty, _Mapping]] = ..., get_info: _Optional[_Union[GetInfoResponse, _Mapping]] = ..., composition: _Optional[_Union[CompositionReport, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusResponse, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsResponse, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupResponse, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayResponse, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersResponse, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesResponse, _Mapping]] = ..., subscribe: _Optional[_Union[SubscribeResponse, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsResponse, _Mapping]] = ..., inspect_source: _Optional[_Union[InspectSourceResponse, _Mapping]] = ..., list_geo_categories: _Optional[_Union[ListGeoCategoriesResponse, _Mapping]] = ..., preview_group: _Optional[_Union[PreviewGroupResponse, _Mapping]] = ..., match_rule: _Optional[_Union[MatchRuleResponse, _Mapping]] = ..., convert_to_plan: _Optional[_Union[ConvertToPlanResponse, _Mapping]] = ..., export_plan: _Optional[_Union[ExportPlanResponse, _Mapping]] = ...) -> None: ...
 
 class Empty(_message.Message):
     __slots__ = ()
@@ -693,3 +718,105 @@ class GeoCategories(_message.Message):
     sha256: str
     updated_at_unix_ms: int
     def __init__(self, names: _Optional[_Iterable[str]] = ..., sha256: _Optional[str] = ..., updated_at_unix_ms: _Optional[int] = ...) -> None: ...
+
+class PreviewGroupRequest(_message.Message):
+    __slots__ = ("composition", "group_id")
+    COMPOSITION_FIELD_NUMBER: _ClassVar[int]
+    GROUP_ID_FIELD_NUMBER: _ClassVar[int]
+    composition: Composition
+    group_id: str
+    def __init__(self, composition: _Optional[_Union[Composition, _Mapping]] = ..., group_id: _Optional[str] = ...) -> None: ...
+
+class PreviewGroupResponse(_message.Message):
+    __slots__ = ("nodes", "others")
+    NODES_FIELD_NUMBER: _ClassVar[int]
+    OTHERS_FIELD_NUMBER: _ClassVar[int]
+    nodes: _containers.RepeatedCompositeFieldContainer[PoolNode]
+    others: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, nodes: _Optional[_Iterable[_Union[PoolNode, _Mapping]]] = ..., others: _Optional[_Iterable[str]] = ...) -> None: ...
+
+class MatchRuleRequest(_message.Message):
+    __slots__ = ("config_yaml", "composition", "overrides", "host", "port", "network")
+    CONFIG_YAML_FIELD_NUMBER: _ClassVar[int]
+    COMPOSITION_FIELD_NUMBER: _ClassVar[int]
+    OVERRIDES_FIELD_NUMBER: _ClassVar[int]
+    HOST_FIELD_NUMBER: _ClassVar[int]
+    PORT_FIELD_NUMBER: _ClassVar[int]
+    NETWORK_FIELD_NUMBER: _ClassVar[int]
+    config_yaml: str
+    composition: Composition
+    overrides: _containers.RepeatedScalarFieldContainer[str]
+    host: str
+    port: int
+    network: str
+    def __init__(self, config_yaml: _Optional[str] = ..., composition: _Optional[_Union[Composition, _Mapping]] = ..., overrides: _Optional[_Iterable[str]] = ..., host: _Optional[str] = ..., port: _Optional[int] = ..., network: _Optional[str] = ...) -> None: ...
+
+class MatchRuleResponse(_message.Message):
+    __slots__ = ("matched", "index", "rule", "chain", "resolved_ip")
+    MATCHED_FIELD_NUMBER: _ClassVar[int]
+    INDEX_FIELD_NUMBER: _ClassVar[int]
+    RULE_FIELD_NUMBER: _ClassVar[int]
+    CHAIN_FIELD_NUMBER: _ClassVar[int]
+    RESOLVED_IP_FIELD_NUMBER: _ClassVar[int]
+    matched: bool
+    index: int
+    rule: Rule
+    chain: _containers.RepeatedScalarFieldContainer[str]
+    resolved_ip: str
+    def __init__(self, matched: _Optional[bool] = ..., index: _Optional[int] = ..., rule: _Optional[_Union[Rule, _Mapping]] = ..., chain: _Optional[_Iterable[str]] = ..., resolved_ip: _Optional[str] = ...) -> None: ...
+
+class ConvertToPlanRequest(_message.Message):
+    __slots__ = ("yaml", "source_id", "locale", "info_filter")
+    YAML_FIELD_NUMBER: _ClassVar[int]
+    SOURCE_ID_FIELD_NUMBER: _ClassVar[int]
+    LOCALE_FIELD_NUMBER: _ClassVar[int]
+    INFO_FILTER_FIELD_NUMBER: _ClassVar[int]
+    yaml: str
+    source_id: str
+    locale: str
+    info_filter: str
+    def __init__(self, yaml: _Optional[str] = ..., source_id: _Optional[str] = ..., locale: _Optional[str] = ..., info_filter: _Optional[str] = ...) -> None: ...
+
+class ConvertToPlanResponse(_message.Message):
+    __slots__ = ("plan_json", "group_count", "merged_group_count", "rule_count", "raw_rule_count", "entry_count", "skipped")
+    PLAN_JSON_FIELD_NUMBER: _ClassVar[int]
+    GROUP_COUNT_FIELD_NUMBER: _ClassVar[int]
+    MERGED_GROUP_COUNT_FIELD_NUMBER: _ClassVar[int]
+    RULE_COUNT_FIELD_NUMBER: _ClassVar[int]
+    RAW_RULE_COUNT_FIELD_NUMBER: _ClassVar[int]
+    ENTRY_COUNT_FIELD_NUMBER: _ClassVar[int]
+    SKIPPED_FIELD_NUMBER: _ClassVar[int]
+    plan_json: str
+    group_count: int
+    merged_group_count: int
+    rule_count: int
+    raw_rule_count: int
+    entry_count: int
+    skipped: _containers.RepeatedCompositeFieldContainer[SkippedRule]
+    def __init__(self, plan_json: _Optional[str] = ..., group_count: _Optional[int] = ..., merged_group_count: _Optional[int] = ..., rule_count: _Optional[int] = ..., raw_rule_count: _Optional[int] = ..., entry_count: _Optional[int] = ..., skipped: _Optional[_Iterable[_Union[SkippedRule, _Mapping]]] = ...) -> None: ...
+
+class SkippedRule(_message.Message):
+    __slots__ = ("rule", "reason")
+    RULE_FIELD_NUMBER: _ClassVar[int]
+    REASON_FIELD_NUMBER: _ClassVar[int]
+    rule: str
+    reason: str
+    def __init__(self, rule: _Optional[str] = ..., reason: _Optional[str] = ...) -> None: ...
+
+class ExportPlanRequest(_message.Message):
+    __slots__ = ("composition", "format", "overrides", "options")
+    COMPOSITION_FIELD_NUMBER: _ClassVar[int]
+    FORMAT_FIELD_NUMBER: _ClassVar[int]
+    OVERRIDES_FIELD_NUMBER: _ClassVar[int]
+    OPTIONS_FIELD_NUMBER: _ClassVar[int]
+    composition: Composition
+    format: ExportFormat
+    overrides: _containers.RepeatedScalarFieldContainer[str]
+    options: RunOptions
+    def __init__(self, composition: _Optional[_Union[Composition, _Mapping]] = ..., format: _Optional[_Union[ExportFormat, str]] = ..., overrides: _Optional[_Iterable[str]] = ..., options: _Optional[_Union[RunOptions, _Mapping]] = ...) -> None: ...
+
+class ExportPlanResponse(_message.Message):
+    __slots__ = ("yaml",)
+    YAML_FIELD_NUMBER: _ClassVar[int]
+    yaml: str
+    def __init__(self, yaml: _Optional[str] = ...) -> None: ...

@@ -13,6 +13,7 @@ import asyncio
 import base64
 import binascii
 import contextlib
+import ipaddress
 import json
 import random
 import re
@@ -28,6 +29,8 @@ from urllib.parse import unquote, urlsplit
 import yaml
 
 from solaris.host.base import (
+    EXPORT_GENERATED,
+    EXPORT_SHARE,
     LOG_LEVELS,
     ComposedGroup,
     Composition,
@@ -35,20 +38,25 @@ from solaris.host.base import (
     CompositionWarning,
     Connection,
     GeoCategories,
+    GroupPreview,
     HostError,
     HostInfo,
     HostStatus,
     LogEntry,
+    PlanConversion,
     PoolNode,
     Proxy,
     ProxyGroup,
     Rule,
+    RuleMatch,
+    SkippedRule,
     SourceInspection,
     SourceNode,
     TrafficSample,
     TunnelConfig,
     bundled_geo_categories,
 )
+from solaris.models.plans import GROUP_TYPES
 from solaris.models.profiles import (
     KIND_FILE,
     KIND_SUBSCRIPTION,
@@ -283,10 +291,7 @@ def inspect(text: str, info_filter: str = "") -> SourceInspection:
     )
 
 
-def compose(composition: Composition) -> tuple[dict[str, Any], CompositionReport]:
-    """A small stand-in for the core's composition (docs/routing.md §8): the pool, the
-    built-in and region groups, and the rules with their entry ids. Custom groups only
-    take their other members."""
+def _plan(composition: Composition) -> dict[str, Any]:
     try:
         plan = json.loads(composition.plan_json)
     except json.JSONDecodeError as error:
@@ -295,6 +300,60 @@ def compose(composition: Composition) -> tuple[dict[str, Any], CompositionReport
         version = plan.get("version") if isinstance(plan, dict) else None
         message = f"plan: plan version {version} is not supported; this core reads version 1"
         raise HostError("invalid_config", message)
+    return plan
+
+
+def _name_match(condition: Any, label: str) -> re.Pattern[str] | None:
+    """A name condition as Python reads it; the core uses mihomo's regexp2."""
+    if not condition:
+        return None
+    pattern = str(condition.get("pattern", ""))
+    if condition.get("mode") == "keyword":
+        return re.compile(re.escape(pattern), re.IGNORECASE)
+    try:
+        return re.compile(pattern)
+    except re.error as error:
+        raise HostError("invalid_config", f"plan: group {label!r}: {error}") from error
+
+
+def _members(
+    group: dict[str, Any], nodes: list[PoolNode], groups: list[ComposedGroup]
+) -> tuple[list[PoolNode], list[str]]:
+    """A group's members by routing.md §4.5: regions, sources and the name add up, the
+    exclusion takes away, picked nodes and other members always join."""
+    members = group.get("members") or {}
+    name = _name_match(members.get("name"), group["id"])
+    exclude = _name_match(members.get("exclude"), group["id"])
+    picked = {(n.get("source"), n.get("name")) for n in members.get("nodes") or ()}
+    chosen = [
+        node
+        for node in nodes
+        if (
+            (
+                members.get("all")
+                or node.region in (members.get("regions") or ())
+                or node.source_id in (members.get("sources") or ())
+                or (name is not None and name.search(node.original_name))
+            )
+            and not (exclude is not None and exclude.search(node.original_name))
+        )
+        or (node.source_id, node.original_name) in picked
+    ]
+    others: list[str] = []
+    for other in members.get("others") or ():
+        ids = [g.id for g in groups if g.kind == "region"] if other == "region:*" else [other]
+        for found in ids:
+            known = found in BUILT_IN_PROXIES or any(g.id == found for g in groups)
+            if known and found not in others and found != group["id"]:
+                others.append(found)
+    return chosen, others
+
+
+def compose(composition: Composition) -> tuple[dict[str, Any], CompositionReport]:
+    """A small stand-in for the core's composition (docs/routing.md §8): the pool, the
+    built-in and region groups, custom groups with their members, and the rules with their
+    entry ids."""
+    plan = _plan(composition)
     info = _info(composition.info_filter)
     nodes: list[PoolNode] = []
     proxies: list[dict[str, Any]] = []
@@ -316,16 +375,19 @@ def compose(composition: Composition) -> tuple[dict[str, Any], CompositionReport
         count = sum(node.region == code for node in nodes)
         if count:
             groups.append(ComposedGroup(f"region:{code}", f"{flag} {name}", "region", code, count))
-    for group in plan.get("groups") or []:
-        if group.get("kind") == "custom":
-            groups.append(ComposedGroup(group["id"], group["name"], "custom", "", 0))
+    custom = [g for g in plan.get("groups") or [] if g.get("kind") == "custom"]
+    groups.extend(ComposedGroup(g["id"], g.get("name", ""), "custom", "", 0) for g in custom)
+    members = {g["id"]: _members(g, nodes, groups) for g in custom}
+    groups = [
+        replace(g, node_count=len(members[g.id][0])) if g.id in members else g for g in groups
+    ]
     names = {group.id: group.name for group in groups}
     warnings: list[CompositionWarning] = []
 
     def target(entry_id: str, wanted: str) -> str:
         if wanted in BUILT_IN_PROXIES:
             return wanted
-        if wanted in names:
+        if wanted in names and members.get(wanted, ([None], [None])) != ([], []):
             return names[wanted]
         reason = "region_empty" if wanted.startswith("region:") else "group_empty"
         warnings.append(CompositionWarning(entry_id, reason, wanted))
@@ -339,20 +401,231 @@ def compose(composition: Composition) -> tuple[dict[str, Any], CompositionReport
                 Rule(i["type"].upper(), i["value"], to, entry["id"]) for i in entry["items"]
             )
     rules.append(Rule("MATCH", "", target("fallback", plan.get("fallback") or "proxy"), "fallback"))
+
+    def group_proxies(group: ComposedGroup) -> list[str]:
+        if group.id not in members:
+            return [p["name"] for p in proxies] or ["DIRECT"]
+        chosen, others = members[group.id]
+        listed = [names.get(other, other) for other in others] + [n.name for n in chosen]
+        return listed or ["COMPATIBLE"]
+
     document = {
         "proxies": proxies,
         "proxy-groups": [
-            {
-                "name": g.name,
-                "type": "select",
-                "proxies": [p["name"] for p in proxies] or ["DIRECT"],
-            }
-            for g in groups
+            {"name": g.name, "type": "select", "proxies": group_proxies(g)} for g in groups
         ],
         "rules": [",".join(part for part in (r.type, r.payload, r.proxy) if part) for r in rules],
     }
     report = CompositionReport(tuple(warnings), tuple(groups), tuple(rules), tuple(nodes))
     return document, report
+
+
+def preview(composition: Composition, group_id: str) -> GroupPreview:
+    """The members compose gives the group; a region without nodes has none."""
+    _, report = compose(composition)
+    plan = _plan(composition)
+    nodes, groups = list(report.nodes), list(report.groups)
+    found = next((g for g in groups if g.id == group_id), None)
+    if found is None:
+        if group_id.startswith("region:"):
+            return GroupPreview((), ())
+        raise HostError("invalid_config", f"plan: no group {group_id!r}")
+    if found.kind == "region":
+        return GroupPreview(tuple(n for n in nodes if n.region == found.region), ())
+    planned = next((g for g in plan.get("groups") or [] if g.get("id") == group_id), None)
+    if planned is None:
+        default = {"proxy": {"others": ["auto", "region:*", "DIRECT"]}, "auto": {"all": True}}
+        planned = {"id": group_id, "members": default[group_id]}
+    chosen, others = _members(planned, nodes, groups)
+    return GroupPreview(tuple(chosen), tuple(others))
+
+
+# A few categories of the GEO data, enough for the rule test; the core reads the real data.
+SIMULATED_GEOSITE = {
+    "telegram": ("telegram.org", "t.me"),
+    "cn": ("baidu.com", "qq.com", "bilibili.com"),
+    "category-ads-all": ("doubleclick.net",),
+    "openai": ("openai.com", "chatgpt.com"),
+    "anthropic": ("anthropic.com", "claude.ai"),
+    "google-gemini": ("gemini.google.com",),
+    "google": ("google.com",),
+    "youtube": ("youtube.com",),
+    "netflix": ("netflix.com",),
+    "github": ("github.com",),
+    "private": ("localhost", "lan"),
+}
+SIMULATED_GEOIP = {
+    "private": ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8"),
+    "telegram": ("91.108.4.0/22",),
+    "cn": ("1.2.4.0/24",),
+}
+
+
+def _suffix(host: str, domain: str) -> bool:
+    return host == domain or host.endswith("." + domain)
+
+
+def _in_ranges(address: str, ranges: Iterable[str]) -> bool:
+    try:
+        ip = ipaddress.ip_address(address)
+    except ValueError:
+        return False
+    return any(ip in ipaddress.ip_network(cidr, strict=False) for cidr in ranges)
+
+
+def _matches(kind: str, payload: str, host: str, address: str, port: int, network: str) -> bool:
+    payload = payload.lower()
+    match kind:
+        case "DOMAIN":
+            return host == payload
+        case "DOMAIN-SUFFIX":
+            return bool(host) and _suffix(host, payload)
+        case "DOMAIN-KEYWORD":
+            return bool(host) and payload in host
+        case "GEOSITE":
+            return bool(host) and any(_suffix(host, d) for d in SIMULATED_GEOSITE.get(payload, ()))
+        case "IP-CIDR" | "IP-CIDR6":
+            return _in_ranges(address, (payload,))
+        case "GEOIP":
+            return _in_ranges(address, SIMULATED_GEOIP.get(payload, ()))
+        case "DST-PORT":
+            low, _, high = payload.partition("-")
+            return int(low) <= port <= int(high or low)
+        case "NETWORK":
+            return payload == network
+        case "MATCH":
+            return True
+    return False
+
+
+def match(
+    lines: Iterable[str], entries: dict[str, str], host: str, port: int, network: str
+) -> tuple[int, Rule] | None:
+    """The first rule line that matches; mihomo's hosts table has localhost."""
+    host = host.strip().lower().rstrip(".")
+    try:
+        address, host = str(ipaddress.ip_address(host)), ""
+    except ValueError:
+        address = "127.0.0.1" if host == "localhost" else ""
+    for index, line in enumerate(lines):
+        parts = [part.strip() for part in str(line).split(",")]
+        if parts[-1] == "no-resolve":
+            parts.pop()
+        kind = parts[0].upper()
+        payload, target = ("", parts[1]) if kind == "MATCH" else (",".join(parts[1:-1]), parts[-1])
+        if _matches(kind, payload, host, address, port or 443, network):
+            return index, Rule(kind, payload, target, entries.get(str(line), ""))
+    return None
+
+
+BUILTIN_ALIASES = {"节点选择": "proxy", "Proxy": "proxy", "自动选择": "auto", "Auto": "auto"}
+CONVERTED_KINDS = {
+    "DOMAIN": "domain",
+    "DOMAIN-SUFFIX": "domain",
+    "DOMAIN-KEYWORD": "domain",
+    "IP-CIDR": "ip",
+    "IP-CIDR6": "ip",
+    "GEOSITE": "category",
+    "GEOIP": "category",
+}
+
+
+def convert(text: str, source_id: str = "", locale: str = "zh") -> PlanConversion:
+    """A stand-in for the core's conversion (routing.md §4.7): groups by name, rules by
+    kind with neighbouring domains and ranges of one target together, RULE-SET and SUB-RULE
+    skipped."""
+    proxies, document = _subscription(text, "")
+    groups = [
+        g for g in document.get("proxy-groups") or [] if isinstance(g, dict) and g.get("name")
+    ]
+    lines = [str(line) for line in document.get("rules") or []]
+    if not groups and not lines:
+        raise HostError("invalid_config", "it has neither groups nor rules")
+    nodes = {p["name"] for p in proxies}
+    ids = {g["name"]: BUILTIN_ALIASES.get(g["name"], f"g-{n:012x}") for n, g in enumerate(groups)}
+    planned: list[dict[str, Any]] = []
+    for group in groups:
+        group_id = ids[group["name"]]
+        if group_id in ("proxy", "auto"):
+            continue
+        members: dict[str, Any] = {}
+        for item in group.get("proxies") or ():
+            if item in BUILT_IN_PROXIES or (item in ids and ids[item] != group_id):
+                members.setdefault("others", []).append(ids.get(item, item))
+            elif item in nodes and source_id:
+                members.setdefault("nodes", []).append({"source": source_id, "name": item})
+        kind = group.get("type") if group.get("type") in GROUP_TYPES else "select"
+        planned.append(
+            {
+                "id": group_id,
+                "kind": "custom",
+                "name": group["name"],
+                "type": kind,
+                "members": members,
+            }
+        )
+    rules: list[dict[str, Any]] = []
+    skipped: list[SkippedRule] = []
+    raw = 0
+    fallback = "proxy"
+    for number, line in enumerate(lines):
+        parts = [part.strip() for part in line.split(",")]
+        kind = parts[0].upper()
+        if kind in ("RULE-SET", "SUB-RULE"):
+            skipped.append(SkippedRule(line, "rule_set" if kind == "RULE-SET" else "sub_rule"))
+            continue
+        target = parts[1] if kind == "MATCH" else parts[2] if len(parts) > 2 else ""
+        target = ids.get(target, target)
+        if target not in BUILT_IN_PROXIES and target not in ids.values():
+            skipped.append(SkippedRule(line, "target"))
+            continue
+        if kind == "MATCH":
+            fallback = target
+            skipped.extend(SkippedRule(rest, "after_match") for rest in lines[number + 1 :])
+            break
+        item: dict[str, Any] = {"type": kind, "value": parts[1]}
+        if parts[-1] == "no-resolve":
+            item["no_resolve"] = True
+        entry_kind = CONVERTED_KINDS.get(kind, "raw")
+        raw += entry_kind == "raw"
+        last = rules[-1] if rules else None
+        if (
+            last is not None
+            and entry_kind in ("domain", "ip")
+            and last["kind"] == entry_kind
+            and last["target"] == target
+        ):
+            last["items"].append(item)
+            continue
+        rules.append(
+            {"id": f"r-{number:012x}", "kind": entry_kind, "items": [item], "target": target}
+        )
+    plan = {"version": 1, "locale": locale, "groups": planned, "rules": rules, "fallback": fallback}
+    return PlanConversion(
+        plan_json=json.dumps(plan, ensure_ascii=False),
+        group_count=len(groups),
+        merged_group_count=sum(ids[g["name"]] in ("proxy", "auto") for g in groups),
+        rule_count=len(lines),
+        raw_rule_count=raw,
+        entry_count=len(rules),
+        skipped=tuple(skipped),
+    )
+
+
+def export_yaml(config: TunnelConfig, kind: str) -> str:
+    """The plan's groups and rules, or the whole configuration with nodes reduced to what
+    tells them apart."""
+    assert config.composition is not None
+    if kind == EXPORT_GENERATED:
+        document = check_config(config)
+        document["proxies"] = [
+            {key: node[key] for key in ("name", "type", "server", "port") if key in node}
+            for node in document.get("proxies") or ()
+        ]
+    else:
+        composed, _ = compose(config.composition)
+        document = {"proxy-groups": composed["proxy-groups"], "rules": composed["rules"]}
+    return yaml.safe_dump(document, allow_unicode=True, sort_keys=False)
 
 
 # Each type with the fields mihomo requires of it, so the real core accepts the sample too
@@ -756,6 +1029,46 @@ class SimulatedHost:
             replace(bundled.geosite, updated_at_unix_ms=at, bundled=False),
             replace(bundled.geoip, updated_at_unix_ms=at, bundled=False),
         )
+
+    async def preview_group(self, composition: Composition, group_id: str) -> GroupPreview:
+        return preview(composition, group_id)
+
+    async def match_rule(
+        self, host: str, port: int = 0, network: str = "tcp", config: TunnelConfig | None = None
+    ) -> RuleMatch:
+        if not host.strip() or re.search(r"[\s/,]", host.strip()):
+            raise HostError("invalid_request", f"{host!r} is neither a domain nor an IP address")
+        if config is None:
+            if not self._running:
+                raise HostError("not_running", "the core is not running")
+            rules = await self.list_rules()
+            lines = [",".join(p for p in (r.type, r.payload, r.proxy) if p) for r in rules]
+            entries = {line: r.entry_id for line, r in zip(lines, rules, strict=True)}
+        else:
+            document = check_config(config)
+            lines = [str(line) for line in document.get("rules") or ()]
+            report = compose(config.composition)[1] if config.composition is not None else None
+            entries = {}
+            for rule in report.rules if report else ():
+                line = ",".join(p for p in (rule.type, rule.payload, rule.proxy) if p)
+                entries.setdefault(line, rule.entry_id)
+        found = match(lines, entries, host, port, network)
+        if found is None:
+            return RuleMatch(False, 0, None, ("DIRECT",), "")
+        index, rule = found
+        chain = self._chains(rule.proxy) if self._running else (rule.proxy,)
+        return RuleMatch(True, index, rule, chain, "")
+
+    async def convert_to_plan(
+        self, yaml: str, *, source_id: str = "", locale: str = "zh", info_filter: str = ""
+    ) -> PlanConversion:
+        _info(info_filter)
+        return convert(yaml, source_id, locale)
+
+    async def export_plan(self, config: TunnelConfig, export: str = EXPORT_SHARE) -> str:
+        if config.composition is None:
+            raise ValueError("export_plan needs a composition")
+        return export_yaml(config, export)
 
     async def stop(self) -> None:
         self._running = False

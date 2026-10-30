@@ -3,21 +3,21 @@
 本文规划从现在到首个可发布版本的工作：现在做到了哪里、接下来按什么顺序做、每个里程碑怎样算完成、哪些决定要在
 什么时候做出。各部分的设计见 [文档一览](#8-文档一览)。每完成一个阶段更新本文。
 
-最近一次整理：2026-10-30，定下阶段 D 的三轮计划后。
+最近一次整理：2026-10-30，阶段 D 第一轮的 M8b 完成后。
 
 ## 1. 当前进度
 
 | 部分 | 状态 | 说明 |
 | --- | --- | --- |
 | 架构与视觉规范 | 完成 | architecture.md、ui.md、DESIGN.md；原型在 Claude Design 画布上（第 23 版，含深色画板、分流 v2 与链式出口） |
-| 控制协议 | v1 | 消息、方法表、帧编解码已定；Go 与 Python 共用样本测试；配置来源可以是订阅原文或拼装（`Composition`）；`InspectSource`、`ListGeoCategories` |
+| 控制协议 | v1 | 消息、方法表、帧编解码已定；Go 与 Python 共用样本测试；配置来源可以是订阅原文或拼装（`Composition`）；`InspectSource`、`ListGeoCategories`、`PreviewGroup`、`MatchRule`、`ConvertToPlan`、`ExportPlan` |
 | engine（内嵌 mihomo） | 完成（M1、M5） | mihomo v1.19.33；无 TUN、自管 TUN 和 fd 三种模式，覆写、§3.3 安全项、开发模式护栏 |
 | Go 分发器与服务入口 | 部分 | 全部内核方法、Start / Stop / Reload / Validate、`PollEvents`；`Claim`、系统代理、Authenticode 校验留到 M4 |
 | Python 宿主层 | 完成 | 控制客户端、全部请求映射、日志与连接接口、模拟宿主 |
 | 界面 | 完成（M2、M3、C1） | 七页全部可用（新增分流页，"配置"改名"订阅"）；覆写编辑；中英双语；浅色与深色；托盘、单实例、登录时打开；qmllint 与无障碍检查进了测试 |
 | 端到端联调 | 完成（A2） | 界面连真实开发服务跑通 M1、M2 的验收步骤；`tests/e2e` 自动化，CI 的 `e2e` job 在 macOS 上运行 |
 | 数据存储与云备份 | 存储层完成（B1） | 界面数据在 SQLite；云备份未做 |
-| 自定义分流 | M8a 完成（B2、C1） | 分流方式、节点池、地区组、默认模板、41 个服务、规则编辑与撤销、立即生效；M8b（策略组编辑器、规则测试、导入导出）未做 |
+| 自定义分流 | 完成（M8a：B2、C1；M8b） | 分流方式、节点池、地区组、默认模板、41 个服务、规则编辑与撤销、立即生效；策略组编辑器与实时预览、规则测试、搜索与按目标筛选、以此创建方案、导入导出、查看生成的配置 |
 | 链式出口 | 设计完成 | WARP 出口（M9）、Tor 出口（M10，首发后）、VPN Gate 出口（M12）的设计见 exits.md，未实现 |
 | macOS 原生部分 | 部分（M5） | Xcode 工程、管理库 C 接口；系统扩展用 utun 以 fd 模式运行内核（`with_gvisor`），带 GEO 数据；`MacExtensionHost`；测试 Mac 实测未做 |
 | 打包与安装 | macOS 部分 | `scripts/build_app.py` 组装并签名 `Solaris.app`；发布工作流（签名、公证、.dmg）已写好，未运行；Windows 未开始 |
@@ -79,7 +79,8 @@ B1、B2 的结果与遗留：
 - B2：拼装、方案 JSON（第 1 版）、地区表（26 个地区）、GEO 数据脚本和兜底分类清单；engine 自己运行 GEO 自动
   更新（更新后要等下一次 Start 或 Reload 才生效）。重名改为直接改节点名，成员在内核里算好后用精确 `filter`
   列出，见 routing.md 8.1 节。空的自建组也改走节点选择并警告；订阅自带的 `proxy-providers` 不进节点池。
-- 遗留给后续：`RULE-SET`、`SUB-RULE` 不能作为规则条目的匹配项（M8b 的"原始规则"要处理）；升级用户的分流方式
+- 遗留给后续：`RULE-SET`、`SUB-RULE` 不能作为规则条目的匹配项（M8b 定为转换时跳过并在摘要里列出，见 routing.md
+  8.8 节）；升级用户的分流方式
   还没选过，默认给哪种在 C1 定；GEO 数据全量随安装包附带（D18）；都只用本机代理节点验证过，没用真实订阅跑过。
 
 ### 改名为 Solaris（已完成，2026-10-30）
@@ -310,6 +311,11 @@ Releases、SHA256SUMS、macOS 的 codesign / spctl 与 Team ID、Windows 的 Win
 3. 再导入一份带规则的订阅，切到"订阅自带"，流量按订阅的规则走。
 
 ### M8b 自定义分流：进阶
+
+**状态**：已完成（2026-10-30，阶段 D 第一轮）。四个方法在内核和两种宿主的分发器里实现，模拟宿主同步；界面见
+routing.md 4.3、4.5、4.7 节的"实现"注和 ui.md 第 9 节。三项验收由 `tests/e2e/test_plans_ui.py` 在开发服务上经界面
+完成。`RULE-SET`、`SUB-RULE` 转换时跳过并在摘要里列出（routing.md 8.8 节）。规则测试只经混合端口验证过，TUN 和
+fake-ip 下的一致性留到 M5 / M4 实测（routing.md 第 12 节）。
 
 - **策略组**：编辑器的全部条件和实时预览（`PreviewGroup`）。
 - **排查**：规则测试（`MatchRule`）、规则搜索与筛选、连接页显示规则条目名称、查看生成的配置。

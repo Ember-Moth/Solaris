@@ -325,6 +325,40 @@
     </message>
 </context>
 <context>
+    <name>ConvertDialog</name>
+    <message>
+        <source>无法转换的规则</source>
+        <translation>Rules that can’t be converted</translation>
+    </message>
+    <message>
+        <source>方案名称</source>
+        <translation>Plan name</translation>
+    </message>
+    <message>
+        <source>创建后改用这套方案</source>
+        <translation>Use this plan once it’s created</translation>
+    </message>
+    <message>
+        <source>取消</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>创建</source>
+        <translation>Create</translation>
+    </message>
+</context>
+<context>
+    <name>Disclosure</name>
+    <message>
+        <source>已展开</source>
+        <translation>Expanded</translation>
+    </message>
+    <message>
+        <source>已收起</source>
+        <translation>Collapsed</translation>
+    </message>
+</context>
+<context>
     <name>Feedback</name>
     <message>
         <source>该功能尚未实现</source>
@@ -483,6 +517,216 @@
         <source>M 月 d 日</source>
         <comment>date pattern, this year</comment>
         <translation>MMM d</translation>
+    </message>
+</context>
+<context>
+    <name>GroupDialog</name>
+    <message>
+        <source>名称</source>
+        <translation>Name</translation>
+    </message>
+    <message>
+        <source>类型</source>
+        <translation>Type</translation>
+    </message>
+    <message>
+        <source>地区</source>
+        <translation>Regions</translation>
+    </message>
+    <message>
+        <source>节点池为空，没有地区可选</source>
+        <translation>The node pool is empty, so there are no regions to choose</translation>
+    </message>
+    <message>
+        <source>来源订阅</source>
+        <translation>Subscriptions</translation>
+    </message>
+    <message>
+        <source>名称包含</source>
+        <translation>Name contains</translation>
+    </message>
+    <message>
+        <source>关键字或正则，如 IPLC|专线</source>
+        <translation>A keyword or a regex, such as IPLC|Premium</translation>
+    </message>
+    <message>
+        <source>手动挑选</source>
+        <translation>Picked nodes</translation>
+    </message>
+    <message>
+        <source>收起</source>
+        <translation>Done</translation>
+    </message>
+    <message>
+        <source>挑选</source>
+        <translation>Pick</translation>
+    </message>
+    <message>
+        <source>收起手动挑选</source>
+        <translation>Hide the node list</translation>
+    </message>
+    <message>
+        <source>挑选节点</source>
+        <translation>Pick nodes</translation>
+    </message>
+    <message>
+        <source>搜索节点</source>
+        <translation>Search nodes</translation>
+    </message>
+    <message>
+        <source>没有匹配的节点</source>
+        <translation>No matching nodes</translation>
+    </message>
+    <message>
+        <source>其他成员</source>
+        <translation>Other members</translation>
+    </message>
+    <message>
+        <source>排除</source>
+        <translation>Exclude</translation>
+    </message>
+    <message>
+        <source>名称包含的关键字或正则</source>
+        <translation>A keyword or a regex in the name</translation>
+    </message>
+    <message>
+        <source>地区、来源订阅、名称包含三者取并集，再减去排除；手动挑选和其他成员不受排除影响</source>
+        <translation>Nodes from the regions, the subscriptions and the name match add up, less the excluded ones; picked nodes and other members are never excluded</translation>
+    </message>
+    <message>
+        <source>高级</source>
+        <translation>Advanced</translation>
+    </message>
+    <message>
+        <source>测速地址</source>
+        <translation>Test URL</translation>
+    </message>
+    <message>
+        <source>间隔</source>
+        <translation>Interval</translation>
+    </message>
+    <message>
+        <source>间隔（秒）</source>
+        <translation>Interval (seconds)</translation>
+    </message>
+    <message>
+        <source>秒</source>
+        <translation>s</translation>
+    </message>
+    <message>
+        <source>容差</source>
+        <translation>Tolerance</translation>
+    </message>
+    <message>
+        <source>容差（毫秒）</source>
+        <translation>Tolerance (milliseconds)</translation>
+    </message>
+    <message>
+        <source>策略</source>
+        <translation>Strategy</translation>
+    </message>
+    <message>
+        <source>负载均衡的策略</source>
+        <translation>Load balancing strategy</translation>
+    </message>
+    <message>
+        <source>预览</source>
+        <translation>Preview</translation>
+    </message>
+    <message>
+        <source>取消</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>%1的写法</source>
+        <translation>How %1 is written</translation>
+    </message>
+    <message>
+        <source>正则无效</source>
+        <translation>Invalid regex</translation>
+    </message>
+</context>
+<context>
+    <name>GroupEditor</name>
+    <message>
+        <source>关键字</source>
+        <translation>Keyword</translation>
+    </message>
+    <message>
+        <source>正则</source>
+        <translation>Regex</translation>
+    </message>
+    <message>
+        <source>{name} 副本</source>
+        <translation>{name} copy</translation>
+    </message>
+    <message>
+        <source>编辑策略组「{name}」</source>
+        <translation>Edit group “{name}”</translation>
+    </message>
+    <message>
+        <source>新建策略组</source>
+        <translation>New group</translation>
+    </message>
+    <message>
+        <source>保存</source>
+        <translation>Save</translation>
+    </message>
+    <message>
+        <source>添加</source>
+        <translation>Add</translation>
+    </message>
+    <message numerus="yes">
+        <source>更多条件（已设置 %n 项）</source>
+        <translation>
+            <numerusform>More conditions (%n set)</numerusform>
+            <numerusform>More conditions (%n set)</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>更多条件</source>
+        <translation>More conditions</translation>
+    </message>
+    <message>
+        <source>未挑选</source>
+        <translation>None picked</translation>
+    </message>
+    <message numerus="yes">
+        <source>已挑选 %n 个节点</source>
+        <translation>
+            <numerusform>%n node picked</numerusform>
+            <numerusform>%n nodes picked</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 个节点</source>
+        <translation>
+            <numerusform>%n node</numerusform>
+            <numerusform>%n nodes</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 个其他成员</source>
+        <translation>
+            <numerusform>%n other member</numerusform>
+            <numerusform>%n other members</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>{nodes}、{others}</source>
+        <translation>{nodes}, {others}</translation>
+    </message>
+    <message>
+        <source>全部地区组</source>
+        <translation>All region groups</translation>
+    </message>
+    <message>
+        <source>策略组</source>
+        <translation>Group</translation>
+    </message>
+    <message>
+        <source>全部节点</source>
+        <translation>All nodes</translation>
     </message>
 </context>
 <context>
@@ -903,6 +1147,134 @@ prepend-rules:
     <message>
         <source>创建</source>
         <translation>Create</translation>
+    </message>
+</context>
+<context>
+    <name>PlanTransfer</name>
+    <message>
+        <source>以「{name}」创建方案</source>
+        <translation>Create a plan from “{name}”</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 个策略组</source>
+        <translation>
+            <numerusform>%n group</numerusform>
+            <numerusform>%n groups</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>（其中 %n 个并入内置组）</source>
+        <translation>
+            <numerusform> (%n merged into a built-in group)</numerusform>
+            <numerusform> (%n merged into built-in groups)</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 条规则</source>
+        <translation>
+            <numerusform>%n rule</numerusform>
+            <numerusform>%n rules</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>其中 %n 条保留为原始规则</source>
+        <translation>
+            <numerusform>%n of them kept as a raw rule</numerusform>
+            <numerusform>%n of them kept as raw rules</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>{groups}、{rules}，{raw}。</source>
+        <translation>{groups} and {rules}; {raw}. </translation>
+    </message>
+    <message>
+        <source>{groups}、{rules}。</source>
+        <translation>{groups} and {rules}. </translation>
+    </message>
+    <message numerus="yes">
+        <source>方案里有 %n 条规则条目（相邻的同类规则合为一条）。</source>
+        <translation>
+            <numerusform>The plan has %n rule entry (neighbouring rules of one kind share an entry). </numerusform>
+            <numerusform>The plan has %n rule entries (neighbouring rules of one kind share an entry). </numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>、</source>
+        <translation>, </translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 条无法转换，不会带入方案</source>
+        <translation>
+            <numerusform>%n rule can’t be converted and stays out</numerusform>
+            <numerusform>%n rules can’t be converted and stay out</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>{skipped}：{reasons}。</source>
+        <translation>{skipped}: {reasons}.</translation>
+    </message>
+    <message numerus="yes">
+        <source>规则集 %n 条</source>
+        <translation>
+            <numerusform>%n rule set</numerusform>
+            <numerusform>%n rule sets</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>子规则 %n 条</source>
+        <translation>
+            <numerusform>%n sub-rule</numerusform>
+            <numerusform>%n sub-rules</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>目标不存在 %n 条</source>
+        <translation>
+            <numerusform>%n with an unknown target</numerusform>
+            <numerusform>%n with unknown targets</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>在 MATCH 之后 %n 条</source>
+        <translation>
+            <numerusform>%n after MATCH</numerusform>
+            <numerusform>%n after MATCH</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>无法识别 %n 条</source>
+        <translation>
+            <numerusform>%n unrecognized</numerusform>
+            <numerusform>%n unrecognized</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>导出「{name}」</source>
+        <translation>Export “{name}”</translation>
+    </message>
+    <message>
+        <source>生成的配置</source>
+        <translation>Generated configuration</translation>
+    </message>
+    <message>
+        <source>mihomo 兼容的 proxy-groups 和 rules 片段，节点按订阅里的名称列出，不含节点本身。暂时没有节点的地区，规则已改写为节点选择。</source>
+        <translation>mihomo-compatible proxy-groups and rules. Nodes are listed by the names their subscriptions give them; the nodes themselves aren’t included. Rules for regions without nodes now go to Proxy.</translation>
+    </message>
+    <message>
+        <source>交给内核的完整配置：方案、基础段、全局覆写、平台补丁和安全项都已应用。节点只显示名称、类型、地址和端口。</source>
+        <translation>The whole configuration the core gets, with the plan, the base section, the global override, the platform patches and the security items applied. Nodes show only their name, type, server and port.</translation>
+    </message>
+    <message>
+        <source>已复制</source>
+        <translation>Copied</translation>
+    </message>
+    <message>
+        <source>保存失败：{detail}</source>
+        <translation>Couldn’t save: {detail}</translation>
+    </message>
+    <message>
+        <source>已保存到 {path}</source>
+        <translation>Saved to {path}</translation>
     </message>
 </context>
 <context>
@@ -1415,6 +1787,10 @@ prepend-rules:
         <translation>Search rules</translation>
     </message>
     <message>
+        <source>以此创建我的方案</source>
+        <translation>Create my plan from it</translation>
+    </message>
+    <message>
         <source>订阅里没有规则</source>
         <translation>No subscription has rules</translation>
     </message>
@@ -1479,6 +1855,22 @@ prepend-rules:
         <translation>Add rule</translation>
     </message>
     <message>
+        <source>新建策略组</source>
+        <translation>New group</translation>
+    </message>
+    <message>
+        <source>输入域名或 IP 测试</source>
+        <translation>Test a domain or IP</translation>
+    </message>
+    <message>
+        <source>测试域名或 IP</source>
+        <translation>Test a domain or IP</translation>
+    </message>
+    <message>
+        <source>按目标筛选</source>
+        <translation>Filter by target</translation>
+    </message>
+    <message>
         <source>节点池里还没有节点</source>
         <translation>The node pool has no nodes yet</translation>
     </message>
@@ -1519,12 +1911,36 @@ prepend-rules:
         <translation>The node pool is empty, so there are no region groups</translation>
     </message>
     <message>
+        <source>自建</source>
+        <translation>Custom</translation>
+    </message>
+    <message>
+        <source>还没有自建策略组</source>
+        <translation>No custom groups yet</translation>
+    </message>
+    <message>
         <source>%1 的更多操作</source>
         <translation>More actions for %1</translation>
     </message>
     <message>
         <source>启用「%1」</source>
         <translation>Enable “%1”</translation>
+    </message>
+    <message>
+        <source>复制为自建策略组…</source>
+        <translation>Copy as custom group…</translation>
+    </message>
+    <message>
+        <source>导入方案</source>
+        <translation>Import plan</translation>
+    </message>
+    <message>
+        <source>YAML 配置 (*.yaml *.yml)</source>
+        <translation>YAML profiles (*.yaml *.yml)</translation>
+    </message>
+    <message>
+        <source>所有文件 (*)</source>
+        <translation>All files (*)</translation>
     </message>
     <message>
         <source>编辑「%1」</source>
@@ -1543,12 +1959,28 @@ prepend-rules:
         <translation>New…</translation>
     </message>
     <message>
+        <source>复制…</source>
+        <translation>Duplicate…</translation>
+    </message>
+    <message>
         <source>重命名…</source>
         <translation>Rename…</translation>
     </message>
     <message>
+        <source>导入…</source>
+        <translation>Import…</translation>
+    </message>
+    <message>
+        <source>导出…</source>
+        <translation>Export…</translation>
+    </message>
+    <message>
         <source>删除</source>
         <translation>Delete</translation>
+    </message>
+    <message>
+        <source>查看生成的配置…</source>
+        <translation>View generated configuration…</translation>
     </message>
     <message>
         <source>节点池设置…</source>
@@ -1712,6 +2144,50 @@ prepend-rules:
         <translation>Undo deleting “{name}”</translation>
     </message>
     <message>
+        <source>「{text}」不是域名或 IP</source>
+        <translation>“{text}” is neither a domain nor an IP address</translation>
+    </message>
+    <message>
+        <source>没有规则匹配 → {chain}</source>
+        <translation>No rule matches → {chain}</translation>
+    </message>
+    <message>
+        <source>命中「{name}」 → {chain}</source>
+        <translation>Matches “{name}” → {chain}</translation>
+    </message>
+    <message>
+        <source>命中覆写的规则 {rule} → {chain}</source>
+        <translation>Matches the override’s rule {rule} → {chain}</translation>
+    </message>
+    <message>
+        <source>{line}（解析为 {ip}）</source>
+        <translation>{line} (resolved to {ip})</translation>
+    </message>
+    <message>
+        <source>全部目标</source>
+        <translation>All targets</translation>
+    </message>
+    <message>
+        <source>删除策略组「{name}」？</source>
+        <translation>Delete group “{name}”?</translation>
+    </message>
+    <message>
+        <source>「{name}」</source>
+        <translation>“{name}” </translation>
+    </message>
+    <message>
+        <source>规则{names}以它为目标，删除后改走「节点选择」。</source>
+        <translation>The rules {names}send traffic to it; they go to “Proxy” afterwards. </translation>
+    </message>
+    <message>
+        <source>策略组{names}里不再包含它。</source>
+        <translation>The groups {names}no longer hold it.</translation>
+    </message>
+    <message>
+        <source>没有规则或策略组引用它。</source>
+        <translation>No rule or group uses it.</translation>
+    </message>
+    <message>
         <source>自动选择、{regions}、直连</source>
         <translation>Auto, {regions}, direct</translation>
     </message>
@@ -1728,6 +2204,17 @@ prepend-rules:
             <numerusform>%n node</numerusform>
             <numerusform>%n nodes</numerusform>
         </translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 个其他成员</source>
+        <translation>
+            <numerusform>%n other member</numerusform>
+            <numerusform>%n other members</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>没有成员</source>
+        <translation>No members</translation>
     </message>
     <message>
         <source>自动 · 已隐藏</source>
@@ -2311,6 +2798,29 @@ Protocol v{protocol}</translation>
     <message>
         <source>已用 %1%</source>
         <translation>%1% used</translation>
+    </message>
+</context>
+<context>
+    <name>YamlDialog</name>
+    <message>
+        <source>关闭</source>
+        <translation>Close</translation>
+    </message>
+    <message>
+        <source>另存为…</source>
+        <translation>Save as…</translation>
+    </message>
+    <message>
+        <source>复制</source>
+        <translation>Copy</translation>
+    </message>
+    <message>
+        <source>导出方案</source>
+        <translation>Export plan</translation>
+    </message>
+    <message>
+        <source>YAML 配置 (*.yaml *.yml)</source>
+        <translation>YAML profiles (*.yaml *.yml)</translation>
     </message>
 </context>
 </TS>

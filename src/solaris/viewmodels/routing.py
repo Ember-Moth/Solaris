@@ -6,6 +6,9 @@ reloads a running tunnel (§5.4). The page shows the change straight away; a rej
 puts the stored plan back and says why in the header. Moves, by dragging or from the menu,
 wait about a second for the next one and go as one change. A removed rule can be brought
 back for eight seconds, or until the next change.
+
+The rule test asks the core which rule a domain or an IP matches in the plan as shown
+(MatchRule, routing.md §8.3); the search and the target filter only narrow the list.
 """
 
 from __future__ import annotations
@@ -17,7 +20,7 @@ from typing import Any
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
-from solaris.host.base import CompositionReport, HostError
+from solaris.host.base import CompositionReport, HostError, RuleMatch
 from solaris.i18n import QT_TRANSLATE_NOOP
 from solaris.models import plans
 from solaris.models.library import ProfileLibrary, ProfileRules, Routing
@@ -25,8 +28,10 @@ from solaris.models.profiles import ProfileError, ProfileList
 from solaris.models.regions import region_code, region_name
 from solaris.models.routing import (
     DEFAULT_INFO_PATTERN,
+    DIRECT,
     MODE_PLAN,
     MODE_PROFILE,
+    REJECT,
     Plan,
     PlanGroup,
     PlanRule,
@@ -35,6 +40,8 @@ from solaris.viewmodels import routing_text as text
 from solaris.viewmodels.common.async_runner import AsyncRunner
 from solaris.viewmodels.common.keyed_list import KeyedListModel
 from solaris.viewmodels.feedback import failure_text
+from solaris.viewmodels.routing_groups import GroupEditor
+from solaris.viewmodels.routing_transfer import PlanTransfer
 from solaris.viewmodels.rule_editor import RuleEditor
 
 QML_IMPORT_NAME = "Solaris"
@@ -46,6 +53,8 @@ MODE_LABELS = {
 }
 MERGE_MS = 1000  # moves that follow each other within this go as one change
 UNDO_MS = 8000
+TEST_MS = 400  # the rule test runs once typing pauses this long
+ALL_TARGETS = ""  # the target filter's 全部目标
 
 
 @dataclass(frozen=True)
@@ -61,6 +70,7 @@ class RuleRow:
     first: bool
     last: bool
     editable: bool
+    hit: bool  # the rule test matched it
 
     @property
     def ruleId(self) -> str:  # QML reserves ``id``
@@ -111,7 +121,9 @@ class RoutingViewModel(QObject):
     applied = Signal()  # the tunnel may run another configuration now
     planSaved = Signal()  # a plan was created or renamed; the view closes its dialog
     planRemovalRequested = Signal()  # a plan's removal awaits confirmation
+    groupRemovalRequested = Signal()  # a group's removal awaits confirmation
     infoPatternSaved = Signal()
+    testChanged = Signal()
 
     def __init__(
         self,
@@ -133,6 +145,17 @@ class RoutingViewModel(QObject):
         self._plan_error = ""
         self._info_error = ""
         self._removing_plan: Plan | None = None
+        self._removing_group: str | None = None
+        self._plan_query = ""
+        self._target_filter = ALL_TARGETS
+        self._test_text = ""
+        self._test: RuleMatch | None = None
+        self._test_error = ""
+        self._testing = False
+        self._test_timer = QTimer(self)
+        self._test_timer.setSingleShot(True)
+        self._test_timer.setInterval(TEST_MS)
+        self._test_timer.timeout.connect(self._run_test)
         self._merge = QTimer(self)
         self._merge.setSingleShot(True)
         self._merge.setInterval(MERGE_MS)
@@ -144,16 +167,23 @@ class RoutingViewModel(QObject):
         self._rules = KeyedListModel(_fields(RuleRow, "ruleId"), self)
         self._builtin_groups = KeyedListModel(_fields(GroupRow, "groupId"), self)
         self._region_groups = KeyedListModel(_fields(GroupRow, "groupId"), self)
+        self._custom_groups = KeyedListModel(_fields(GroupRow, "groupId"), self)
         self._source_groups = KeyedListModel(_fields(SourceGroupRow), self)
         self._source_rules = KeyedListModel(_fields(SourceRuleRow), self)
         self._editor = RuleEditor(self, runner, library, self)
+        self._group_editor = GroupEditor(self, runner, library, self)
+        self._transfer = PlanTransfer(self, runner, library, self)
         self.changed.connect(self._sync_rows)
+        self.testChanged.connect(self._sync_rows)
         self._sync_rows()
 
     def retranslate(self) -> None:
         self.optionsChanged.emit()
         self.changed.emit()
+        self.testChanged.emit()
         self._editor.retranslate()
+        self._group_editor.retranslate()
+        self._transfer.retranslate()
 
     # -- loading -----------------------------------------------------------------------------
     @Slot()
@@ -223,6 +253,7 @@ class RoutingViewModel(QObject):
             self._loaded(routing)
             self.routingChanged.emit()
             self.applied.emit()
+            self._retest()
             if done is not None:
                 done()
             self.refresh()
@@ -443,6 +474,17 @@ class RoutingViewModel(QObject):
 
     def report(self) -> CompositionReport | None:
         return self._routing.report
+
+    def profile_names(self) -> dict[str, str]:
+        """The profiles' names by id, for the subscriptions a pool node came from."""
+        return {p.id: p.name for p in self._list.profiles}
+
+    def active_profile_id(self) -> str:
+        return self._list.active or ""
+
+    def active_profile_name(self) -> str:
+        active = self._list.active_profile()
+        return active.name if active else ""
 
     @Property("QVariantList", notify=changed)  # pyright: ignore[reportArgumentType]
     def planOptions(self) -> list[dict[str, str]]:
@@ -684,6 +726,182 @@ class RoutingViewModel(QObject):
             changed = tuple(rules[0] if r.id == replacing else r for r in plan.rules)
         self._commit(replace(plan, rules=changed), done=done, failed=failed, shown=False)
 
+    # -- the rule test, the search and the target filter (routing.md §4.3) --------------------
+    @Property(str, notify=testChanged)
+    def testText(self) -> str:
+        return self._test_text
+
+    @Slot(str)
+    def setTestText(self, value: str) -> None:
+        """Test what was typed once typing pauses; an empty box clears the result."""
+        if value == self._test_text:
+            return
+        self._test_text = value
+        if not value.strip():
+            self._test_timer.stop()
+            self._test, self._test_error = None, ""
+        else:
+            self._test_timer.start()
+        self.testChanged.emit()
+
+    @Slot()
+    def runTest(self) -> None:
+        """Test now, as Enter in the box does."""
+        self._test_timer.stop()
+        self._run_test()
+
+    def _run_test(self) -> None:
+        plan = self._plan()
+        written = self._test_text
+        if plan is None or not written.strip():
+            return
+        target = plans.match_target(written)
+        if target is None:
+            self._test, self._test_error = (
+                None,
+                self.tr("「{text}」不是域名或 IP").format(text=written.strip()),
+            )
+            self.testChanged.emit()
+            return
+        self._testing = True
+        self.testChanged.emit()
+
+        def matched(result: RuleMatch) -> None:
+            self._testing = False
+            if written == self._test_text:
+                self._test, self._test_error = result, ""
+            self.testChanged.emit()
+
+        def failed(error: BaseException) -> None:
+            self._testing = False
+            if written == self._test_text:
+                self._test, self._test_error = None, failure_text(error)
+            self.testChanged.emit()
+
+        self._runner.submit(self._library.match_rule(plan, *target), matched, failed)
+
+    @Property(str, notify=testChanged)
+    def testResult(self) -> str:
+        """命中「Telegram」 → 🇯🇵 日本 → 东京 03, as routing.md §4.3 writes it."""
+        if self._test_error:
+            return self._test_error
+        result = self._test
+        if result is None:
+            return ""
+        chain = " → ".join(text.outbound_label(name) for name in result.chain)
+        if not result.matched or result.rule is None:
+            line = self.tr("没有规则匹配 → {chain}").format(chain=chain)
+        elif result.rule.entry_id:
+            name = self._entry_name(result.rule.entry_id)
+            line = self.tr("命中「{name}」 → {chain}").format(name=name, chain=chain)
+        else:
+            rule = text.rule_line(result.rule)
+            line = self.tr("命中覆写的规则 {rule} → {chain}").format(rule=rule, chain=chain)
+        if result.resolved_ip:
+            line = self.tr("{line}（解析为 {ip}）").format(line=line, ip=result.resolved_ip)
+        return line
+
+    def _entry_name(self, entry_id: str) -> str:
+        if entry_id == plans.FALLBACK_ENTRY:
+            return self.tr("其他流量")
+        plan = self._plan()
+        rule = next((r for r in plan.rules if r.id == entry_id), None) if plan else None
+        return text.rule_name(rule) if rule else entry_id
+
+    @Property(bool, notify=testChanged)
+    def testFailed(self) -> bool:
+        return bool(self._test_error)
+
+    @Property(bool, notify=testChanged)
+    def testing(self) -> bool:
+        return self._testing
+
+    def _test_hit(self) -> str:
+        """The entry the test matched: a rule's id, the fallback's, or ""."""
+        result = self._test
+        if result is None or result.rule is None or self._test_error:
+            return ""
+        return result.rule.entry_id
+
+    @Property(bool, notify=testChanged)
+    def fallbackHit(self) -> bool:
+        return self._test_hit() == plans.FALLBACK_ENTRY
+
+    def _retest(self) -> None:
+        """The plan changed under the result: test the same text again."""
+        if self._test_text.strip():
+            self._test_timer.start()
+
+    @Property(str, notify=changed)
+    def planRuleQuery(self) -> str:
+        return self._plan_query
+
+    @Slot(str)
+    def setPlanRuleQuery(self, query: str) -> None:
+        if query != self._plan_query:
+            self._plan_query = query
+            self.changed.emit()
+
+    @Property(str, notify=changed)
+    def targetFilter(self) -> str:
+        return self._target_filter
+
+    @Slot(str)
+    def setTargetFilter(self, target: str) -> None:
+        if target != self._target_filter:
+            self._target_filter = target
+            self.changed.emit()
+
+    @Property("QVariantList", notify=changed)  # pyright: ignore[reportArgumentType]
+    def targetFilterOptions(self) -> list[dict[str, object]]:
+        """全部目标, then the targets the rules use, in the target dropdown's order."""
+        plan = self._plan()
+        used = {r.target for r in plan.rules} if plan else set()
+        if self._target_filter:
+            used.add(self._target_filter)
+        options: list[dict[str, object]] = [{"value": ALL_TARGETS, "label": self.tr("全部目标")}]
+        known = text.target_options(plan, self._routing.report)
+        listed = [o for o in known if o["value"] in used]
+        listed += [
+            {"value": t, "label": text.target_label(t, plan)}
+            for t in sorted(used - {str(o["value"]) for o in known})
+        ]
+        for n, option in enumerate(listed):
+            options.append(
+                {"value": option["value"], "label": option["label"], "separator": n == 0}
+            )
+        return options
+
+    @Property(str, notify=changed)
+    def targetFilterLabel(self) -> str:
+        if not self._target_filter:
+            return self.tr("全部目标")
+        return text.target_label(self._target_filter, self._plan())
+
+    @Property(bool, notify=changed)
+    def filtering(self) -> bool:
+        """The list shows part of the rules, so dragging is off (DESIGN.md "可排序列表")."""
+        return bool(self._plan_query.strip() or self._target_filter)
+
+    def _shown_count(self) -> int:
+        plan = self._plan()
+        return sum(self._shown(rule, plan) for rule in plan.rules) if plan else 0
+
+    @Property(bool, notify=changed)
+    def rulesFilteredEmpty(self) -> bool:
+        return self.filtering and self._shown_count() == 0
+
+    def _shown(self, rule: PlanRule, plan: Plan) -> bool:
+        if self._target_filter and rule.target != self._target_filter:
+            return False
+        query = self._plan_query.strip().lower()
+        if not query:
+            return True
+        haystack = " ".join(
+            (text.rule_name(rule), text.rule_caption(rule), text.target_label(rule.target, plan))
+        )
+        return query in haystack.lower()
+
     # -- groups ------------------------------------------------------------------------------
     @Property(QObject, constant=True)
     def builtinGroups(self) -> KeyedListModel:
@@ -692,6 +910,121 @@ class RoutingViewModel(QObject):
     @Property(QObject, constant=True)
     def regionGroups(self) -> KeyedListModel:
         return self._region_groups
+
+    @Property(QObject, constant=True)
+    def customGroups(self) -> KeyedListModel:
+        return self._custom_groups
+
+    @Property(GroupEditor, constant=True)
+    def groupEditor(self) -> GroupEditor:
+        return self._group_editor
+
+    @Property(PlanTransfer, constant=True)
+    def transfer(self) -> PlanTransfer:
+        return self._transfer
+
+    def put_group(
+        self, group: PlanGroup, done: Callable[[], None], failed: Callable[[str], None]
+    ) -> None:
+        """For the group editor: an edited group keeps its place, a new one comes last. The
+        dialog stays open with the core's error when the change is refused."""
+        plan = self._plan()
+        if plan is None:
+            return
+        self._flush_timer_only()
+        groups = list(plan.groups)
+        index = next((i for i, g in enumerate(groups) if g.id == group.id), None)
+        if index is None:
+            groups.append(group)
+        else:
+            groups[index] = group
+        self._commit(replace(plan, groups=tuple(groups)), done=done, failed=failed, shown=False)
+
+    def adopt_plan(
+        self, plan: Plan, use: bool, done: Callable[[], None], failed: Callable[[str], None]
+    ) -> None:
+        """For a converted plan: store it, and route with it when ``use``."""
+        self._flush()
+        self._clear_undo()
+        self._act(self._library.add_plan(plan, use), done, failed)
+
+    def _references(self, group_id: str) -> tuple[list[str], list[str]]:
+        """The rule entries that send traffic to the group, and the groups that hold it."""
+        plan = self._plan()
+        if plan is None:
+            return [], []
+        rules = [text.rule_name(r) for r in plan.rules if r.target == group_id]
+        if plan.fallback == group_id:
+            rules.append(self.tr("其他流量"))
+        groups = [
+            text.group_name(g, g.id)
+            for g in plan.groups
+            if isinstance(g.conditions, dict) and group_id in g.conditions.get("others", ())
+        ]
+        return rules, groups
+
+    @Slot(str)
+    def requestRemoveGroup(self, group_id: str) -> None:
+        plan = self._plan()
+        group = next((g for g in plan.groups if g.id == group_id), None) if plan else None
+        if group is not None and group.kind == "custom":
+            self._removing_group = group_id
+            self.changed.emit()
+            self.groupRemovalRequested.emit()
+
+    @Property(str, notify=changed)
+    def groupRemovalTitle(self) -> str:
+        plan = self._plan()
+        group = (
+            next((g for g in plan.groups if g.id == self._removing_group), None) if plan else None
+        )
+        return self.tr("删除策略组「{name}」？").format(name=group.name) if group else ""
+
+    @Property(str, notify=changed)
+    def groupRemovalText(self) -> str:
+        """Every place that names the group (routing.md §5.5)."""
+        if self._removing_group is None:
+            return ""
+        rules, groups = self._references(self._removing_group)
+        quoted = self.tr("「{name}」")
+        parts = []
+        if rules:
+            names = "".join(quoted.format(name=n) for n in rules)
+            parts.append(
+                self.tr("规则{names}以它为目标，删除后改走「节点选择」。").format(names=names)
+            )
+        if groups:
+            names = "".join(quoted.format(name=n) for n in groups)
+            parts.append(self.tr("策略组{names}里不再包含它。").format(names=names))
+        return "".join(parts) or self.tr("没有规则或策略组引用它。")
+
+    @Slot()
+    def confirmRemoveGroup(self) -> None:
+        group_id, self._removing_group = self._removing_group, None
+        plan = self._plan()
+        group = next((g for g in plan.groups if g.id == group_id), None) if plan else None
+        if plan is None or group is None:
+            return
+        self._flush_timer_only()
+
+        def without(g: PlanGroup) -> PlanGroup:
+            if not isinstance(g.conditions, dict) or group.id not in g.conditions.get("others", ()):
+                return g
+            others = [o for o in g.conditions["others"] if o != group.id]
+            conditions = {k: v for k, v in g.conditions.items() if k != "others"}
+            return replace(g, conditions={**conditions, "others": others} if others else conditions)
+
+        removed = replace(
+            plan,
+            groups=tuple(without(g) for g in plan.groups if g.id != group.id),
+            rules=tuple(
+                replace(r, target=plans.PROXY) if r.target == group.id else r for r in plan.rules
+            ),
+            fallback=plans.PROXY if plan.fallback == group.id else plan.fallback,
+        )
+        status = self.tr("已删除「{name}」").format(name=group.name)
+        action = self.tr("撤销删除「{name}」").format(name=group.name)
+        self._commit(removed, undo=(status, action, plan))
 
     @Property("QVariantList", notify=optionsChanged)  # pyright: ignore[reportArgumentType]
     def groupTypeOptions(self) -> list[dict[str, str]]:
@@ -782,6 +1115,7 @@ class RoutingViewModel(QObject):
             self._loaded(routing)
             self.routingChanged.emit()
             self.applied.emit()
+            self._retest()
             if done is not None:
                 done()
 
@@ -814,9 +1148,12 @@ class RoutingViewModel(QObject):
     def _sync_rows(self) -> None:
         plan = self._plan()
         warnings = self._warnings()
+        hit = self._test_hit()
         rows = []
         rules = plan.rules if plan else ()
         for n, rule in enumerate(rules):
+            if plan is None or not self._shown(rule, plan):
+                continue
             rows.append(
                 RuleRow(
                     id=rule.id,
@@ -827,9 +1164,11 @@ class RoutingViewModel(QObject):
                     targetId=rule.target,
                     active=rule.enabled,
                     warning=warnings.get(rule.id, "") if rule.enabled else "",
+                    # Moves go by the whole list, filtered or not.
                     first=n == 0,
                     last=n == len(rules) - 1,
                     editable=rule.kind != "raw",
+                    hit=rule.id == hit,
                 )
             )
         self._rules.sync(rows)
@@ -864,6 +1203,23 @@ class RoutingViewModel(QObject):
                 self._group_row(group_id, group, group.type if group else "url-test", members)
             )
         self._region_groups.sync(region_rows)
+        custom_rows = []
+        for group in plan.groups if plan else ():
+            if group.kind != "custom":
+                continue
+            others = (
+                group.conditions.get("others", ()) if isinstance(group.conditions, dict) else ()
+            )
+            parts = []
+            if counts.get(group.id):
+                parts.append(self.tr("%n 个节点", "", counts[group.id]))
+            named = [o for o in others if o not in (DIRECT, REJECT)]
+            if named:
+                parts.append(self.tr("%n 个其他成员", "", len(named)))
+            parts += [text.target_label(o, plan) for o in others if o in (DIRECT, REJECT)]
+            members = self.tr("、").join(parts) if parts else self.tr("没有成员")
+            custom_rows.append(self._group_row(group.id, group, group.type, members))
+        self._custom_groups.sync(custom_rows)
 
     def _group_row(
         self, group_id: str, group: PlanGroup | None, group_type: str, members: str
@@ -877,7 +1233,7 @@ class RoutingViewModel(QObject):
         elif hidden:
             caption = self.tr("已隐藏 · {caption}").format(caption=caption)
         code = region_code(group_id)
-        name = region_name(code) if code else text.target_label(group_id, None)
+        name = region_name(code) if code else text.group_name(group, group_id)
         return GroupRow(group_id, name, caption, group_type, hidden)
 
     def _sync_source(self) -> None:

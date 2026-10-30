@@ -309,9 +309,13 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 | `Unsubscribe` | 结束订阅 |
 | `InspectSource` | 按拼装的方式读一份订阅：节点及其地区、有没有规则、策略组和规则的数量 |
 | `ListGeoCategories` | home 里 GEO 数据的 GEOSITE / GEOIP 分类名，以及文件的 sha256 和修改时间 |
+| `PreviewGroup` | 按方案草稿和节点池算出一个策略组的成员，供策略组编辑器预览 |
+| `MatchRule` | 用运行中的配置或另行构建的草稿匹配一个域名或 IP，返回命中的规则、条目 id 和出站链路 |
+| `ConvertToPlan` | 把一份订阅或 mihomo 配置的策略组和规则转成方案，附摘要和没能转换的规则 |
+| `ExportPlan` | 把方案写成可分享的 `proxy-groups` 和 `rules`，或写出内核会运行的完整配置 |
 
-`PreviewGroup`、`MatchRule`、`ConvertToPlan`、`ExportPlan`（routing.md 8.2 节，M8b）在 `Request` / `Response` 里预留了
-字段号 51 到 54。计划中的 `RegisterWarp`（[exits.md](exits.md) 7.2 节，M9）用 55。
+后四个（字段号 51 到 54）的约定见 routing.md 8.2、8.3、8.8 节。计划中的 `RegisterWarp`、`ListVpnGate`
+（[exits.md](exits.md) 7.2 节，M9、M12）用 55、56。
 
 方法的行为约定：
 

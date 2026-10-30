@@ -54,6 +54,8 @@ type group struct {
 	plan   *PlanGroup
 	nodes  []*node
 	others []string // names of the group's other members
+	// otherIDs are the ids of the other members, in the same order.
+	otherIDs []string
 }
 
 func (g *group) empty() bool { return len(g.nodes) == 0 && len(g.others) == 0 }
@@ -66,9 +68,9 @@ type composer struct {
 	byID    map[string]*group
 }
 
-// Compose assembles the configuration: the base section, one inline provider per
-// source, the groups and the rules.
-func Compose(composition Composition) (*Result, error) {
+// newComposer reads the plan and the sources, and works out the pool and every group's
+// members.
+func newComposer(composition Composition) (*composer, error) {
 	plan, err := ParsePlan(composition.Plan)
 	if err != nil {
 		return nil, fmt.Errorf("plan: %w", err)
@@ -94,6 +96,16 @@ func Compose(composition Composition) (*Result, error) {
 			c.resolveMembers(g)
 		}
 	}
+	return c, nil
+}
+
+// Compose assembles the configuration: the base section, one inline provider per
+// source, the groups and the rules.
+func Compose(composition Composition) (*Result, error) {
+	c, err := newComposer(composition)
+	if err != nil {
+		return nil, err
+	}
 	var config map[string]any
 	if err := yaml.Unmarshal(baseYAML, &config); err != nil {
 		return nil, fmt.Errorf("base section: %w", err)
@@ -103,15 +115,42 @@ func Compose(composition Composition) (*Result, error) {
 	config["proxy-groups"] = c.groupConfigs(result.Report)
 	config["rules"] = c.rules(result)
 	for _, n := range c.pool {
-		result.Report.Nodes = append(result.Report.Nodes, &controlpb.PoolNode{
-			Name:         n.name,
-			OriginalName: n.original,
-			SourceId:     c.sources[n.source].ID,
-			Type:         n.kind,
-			Region:       n.region,
-		})
+		result.Report.Nodes = append(result.Report.Nodes, c.poolNode(n))
 	}
 	return result, nil
+}
+
+func (c *composer) poolNode(n *node) *controlpb.PoolNode {
+	return &controlpb.PoolNode{
+		Name:         n.name,
+		OriginalName: n.original,
+		SourceId:     c.sources[n.source].ID,
+		Type:         n.kind,
+		Region:       n.region,
+	}
+}
+
+// Preview works out one group's members for the group editor (PreviewGroup). A region
+// without nodes has no group, and so no members.
+func Preview(composition Composition, groupID string) (*controlpb.PreviewGroupResponse, error) {
+	c, err := newComposer(composition)
+	if err != nil {
+		return nil, err
+	}
+	g, ok := c.byID[groupID]
+	if !ok {
+		if code, isRegion := strings.CutPrefix(groupID, regionPrefix); isRegion {
+			if _, err := regionByCode(code); err == nil {
+				return &controlpb.PreviewGroupResponse{}, nil
+			}
+		}
+		return nil, fmt.Errorf("plan: no group %q", groupID)
+	}
+	preview := &controlpb.PreviewGroupResponse{Others: slices.Clone(g.otherIDs)}
+	for _, n := range g.nodes {
+		preview.Nodes = append(preview.Nodes, c.poolNode(n))
+	}
+	return preview, nil
 }
 
 func checkSources(sources []Source) error {
@@ -278,9 +317,10 @@ func (c *composer) resolveMembers(g *group) {
 			g.nodes = append(g.nodes, n)
 		}
 	}
-	add := func(name string) {
+	add := func(id, name string) {
 		if !slices.Contains(g.others, name) {
 			g.others = append(g.others, name)
+			g.otherIDs = append(g.otherIDs, id)
 		}
 	}
 	for _, other := range members.Others {
@@ -288,15 +328,15 @@ func (c *composer) resolveMembers(g *group) {
 		case other == allRegions:
 			for _, candidate := range c.groups {
 				if candidate.kind == controlpb.GroupKind_GROUP_KIND_REGION {
-					add(candidate.name)
+					add(candidate.id, candidate.name)
 				}
 			}
 		case slices.Contains(outbounds, other):
-			add(other)
+			add(other, other)
 		default:
 			// A region without nodes has no group to join.
 			if member, ok := c.byID[other]; ok {
-				add(member.name)
+				add(member.id, member.name)
 			}
 		}
 	}
