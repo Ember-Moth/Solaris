@@ -9,6 +9,9 @@ back for eight seconds, or until the next change.
 
 The rule test asks the core which rule a domain or an IP matches in the plan as shown
 (MatchRule, routing.md §8.3); the search and the target filter only narrow the list.
+
+The groups tab also lists the mesh outbounds the pool brought (docs/mesh.md §5) and the
+chained exits (routing_exits.py).
 """
 
 from __future__ import annotations
@@ -20,7 +23,7 @@ from typing import Any
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
-from solaris.host.base import CompositionReport, HostError, RuleMatch
+from solaris.host.base import CompositionReport, HostError, RuleMatch, WarpAccount
 from solaris.i18n import QT_TRANSLATE_NOOP
 from solaris.models import plans
 from solaris.models.library import ProfileLibrary, ProfileRules, Routing
@@ -36,10 +39,12 @@ from solaris.models.routing import (
     PlanGroup,
     PlanRule,
 )
+from solaris.models.settings import SettingsStore
 from solaris.viewmodels import routing_text as text
 from solaris.viewmodels.common.async_runner import AsyncRunner
 from solaris.viewmodels.common.keyed_list import KeyedListModel
 from solaris.viewmodels.feedback import failure_text
+from solaris.viewmodels.routing_exits import WarpExit
 from solaris.viewmodels.routing_groups import GroupEditor
 from solaris.viewmodels.routing_transfer import PlanTransfer
 from solaris.viewmodels.rule_editor import RuleEditor
@@ -91,6 +96,20 @@ class GroupRow:
 
 
 @dataclass(frozen=True)
+class MeshRow:
+    """A Tailscale, ZeroTier or EasyTier outbound of the pool (docs/mesh.md §5)."""
+
+    id: str  # the plan's target, mesh:<profile id>/<name>
+    name: str
+    caption: str
+    type: str  # the adapter type: Tailscale, ZeroTier, EasyTier
+
+    @property
+    def meshId(self) -> str:
+        return self.id
+
+
+@dataclass(frozen=True)
 class SourceGroupRow:
     """A group of the profile in use, as the core runs it."""
 
@@ -129,6 +148,7 @@ class RoutingViewModel(QObject):
         self,
         library: ProfileLibrary,
         runner: AsyncRunner,
+        settings: SettingsStore,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
@@ -168,11 +188,13 @@ class RoutingViewModel(QObject):
         self._builtin_groups = KeyedListModel(_fields(GroupRow, "groupId"), self)
         self._region_groups = KeyedListModel(_fields(GroupRow, "groupId"), self)
         self._custom_groups = KeyedListModel(_fields(GroupRow, "groupId"), self)
+        self._mesh = KeyedListModel(_fields(MeshRow, "meshId"), self)
         self._source_groups = KeyedListModel(_fields(SourceGroupRow), self)
         self._source_rules = KeyedListModel(_fields(SourceRuleRow), self)
         self._editor = RuleEditor(self, runner, library, self)
         self._group_editor = GroupEditor(self, runner, library, self)
         self._transfer = PlanTransfer(self, runner, library, self)
+        self._warp = WarpExit(self, runner, library, settings, self)
         self.changed.connect(self._sync_rows)
         self.testChanged.connect(self._sync_rows)
         self._sync_rows()
@@ -184,6 +206,7 @@ class RoutingViewModel(QObject):
         self._editor.retranslate()
         self._group_editor.retranslate()
         self._transfer.retranslate()
+        self._warp.retranslate()
 
     # -- loading -----------------------------------------------------------------------------
     @Slot()
@@ -475,6 +498,24 @@ class RoutingViewModel(QObject):
     def report(self) -> CompositionReport | None:
         return self._routing.report
 
+    def warp_account(self) -> WarpAccount | None:
+        return self._routing.warp
+
+    def routes_with_plan(self) -> bool:
+        return self._routing.mode == MODE_PLAN
+
+    def tunnel_running(self, running: bool) -> None:
+        """The overview saw the tunnel start or stop; the WARP exit may have waited for it."""
+        self._warp.set_running(running)
+
+    def adopt(self, routing: Routing) -> None:
+        """Take up what a library action outside the plan changed, such as the WARP account:
+        the report, and the configuration a running tunnel reloaded."""
+        self._loaded(routing)
+        self.routingChanged.emit()
+        self.applied.emit()
+        self._retest()
+
     def profile_names(self) -> dict[str, str]:
         """The profiles' names by id, for the subscriptions a pool node came from."""
         return {p.id: p.name for p in self._list.profiles}
@@ -611,17 +652,20 @@ class RoutingViewModel(QObject):
     @Property(str, notify=changed)
     def fallbackLabel(self) -> str:
         plan = self._plan()
-        return text.target_label(plan.fallback if plan else plans.PROXY, plan)
+        return text.target_label(plan.fallback if plan else plans.PROXY, plan, self._routing.report)
 
     @Property(str, notify=changed)
     def fallbackWarning(self) -> str:
         return self._warnings().get(plans.FALLBACK_ENTRY, "")
 
     def _warnings(self) -> dict[str, str]:
+        """What the rule rows say of their targets' warnings, by entry id."""
         report = self._routing.report
         if report is None:
             return {}
-        return {w.entry_id: text.warning_text(w.reason) for w in report.warnings}
+        return {
+            w.entry_id: warning for w in report.warnings if (warning := text.warning_text(w.reason))
+        }
 
     def entry_names(self) -> dict[str, str]:
         """The names of the rule entries in use, for the connections page (§4.6)."""
@@ -863,7 +907,7 @@ class RoutingViewModel(QObject):
         known = text.target_options(plan, self._routing.report)
         listed = [o for o in known if o["value"] in used]
         listed += [
-            {"value": t, "label": text.target_label(t, plan)}
+            {"value": t, "label": text.target_label(t, plan, self._routing.report)}
             for t in sorted(used - {str(o["value"]) for o in known})
         ]
         for n, option in enumerate(listed):
@@ -876,7 +920,7 @@ class RoutingViewModel(QObject):
     def targetFilterLabel(self) -> str:
         if not self._target_filter:
             return self.tr("全部目标")
-        return text.target_label(self._target_filter, self._plan())
+        return text.target_label(self._target_filter, self._plan(), self._routing.report)
 
     @Property(bool, notify=changed)
     def filtering(self) -> bool:
@@ -898,7 +942,11 @@ class RoutingViewModel(QObject):
         if not query:
             return True
         haystack = " ".join(
-            (text.rule_name(rule), text.rule_caption(rule), text.target_label(rule.target, plan))
+            (
+                text.rule_name(rule),
+                text.rule_caption(rule),
+                text.target_label(rule.target, plan, self._routing.report),
+            )
         )
         return query in haystack.lower()
 
@@ -922,6 +970,60 @@ class RoutingViewModel(QObject):
     @Property(PlanTransfer, constant=True)
     def transfer(self) -> PlanTransfer:
         return self._transfer
+
+    @Property(WarpExit, constant=True)
+    def warp(self) -> WarpExit:
+        return self._warp
+
+    def put_plan(self, plan: Plan, done: Callable[[], None], failed: Callable[[str], None]) -> None:
+        """For the exit dialog: a change of the plan's exits, shown at once; a refusal puts
+        the stored plan back and goes to ``failed``."""
+        self._flush_timer_only()
+        self._commit(plan, done=done, failed=failed)
+
+    # -- mesh outbounds (docs/mesh.md §5) ----------------------------------------------------
+    @Property(QObject, constant=True)
+    def meshOutbounds(self) -> KeyedListModel:
+        return self._mesh
+
+    @Property(bool, notify=changed)
+    def hasMesh(self) -> bool:
+        return bool(self._mesh.rows)
+
+    @Slot(str)
+    def addMeshRules(self, mesh_id: str) -> None:
+        """添加常用规则: Tailscale's ranges and domain go ahead of the other rules; ZeroTier and
+        EasyTier networks choose their own ranges, so the rule dialog opens for them with
+        the outbound as the target."""
+        plan = self._plan()
+        report = self._routing.report
+        outbound = next((m for m in report.mesh if m.id == mesh_id), None) if report else None
+        if plan is None or outbound is None:
+            return
+        rules = plans.common_mesh_rules(outbound.type, mesh_id)
+        if not rules:
+            self._editor.openAddRanges(mesh_id)
+            return
+        added = [
+            rule
+            for rule in rules
+            if not any(
+                (r.kind, r.content, r.target) == (rule.kind, rule.content, rule.target)
+                for r in plan.rules
+            )
+        ]
+        if added:
+            self._flush_timer_only()
+            status = self.tr("已为「{name}」添加 %n 条规则", "", len(added)).format(
+                name=outbound.name
+            )
+            action = self.tr("撤销添加「{name}」的规则").format(name=outbound.name)
+            self._commit(replace(plan, rules=(*added, *plan.rules)), undo=(status, action, plan))
+
+    @Slot(str)
+    def showMeshRules(self, mesh_id: str) -> None:
+        """使用它的规则: the rules that send traffic to the outbound."""
+        self.setTargetFilter(mesh_id)
 
     def put_group(
         self, group: PlanGroup, done: Callable[[], None], failed: Callable[[str], None]
@@ -988,6 +1090,7 @@ class RoutingViewModel(QObject):
         rules, groups = self._references(self._removing_group)
         quoted = self.tr("「{name}」")
         parts = []
+        via = plans.warp_exit(self._plan()).via == self._removing_group
         if rules:
             names = "".join(quoted.format(name=n) for n in rules)
             parts.append(
@@ -996,6 +1099,8 @@ class RoutingViewModel(QObject):
         if groups:
             names = "".join(quoted.format(name=n) for n in groups)
             parts.append(self.tr("策略组{names}里不再包含它。").format(names=names))
+        if via:
+            parts.append(self.tr("WARP 出口经由它，删除后改经「节点选择」。"))
         return "".join(parts) or self.tr("没有规则或策略组引用它。")
 
     @Slot()
@@ -1022,6 +1127,9 @@ class RoutingViewModel(QObject):
             ),
             fallback=plans.PROXY if plan.fallback == group.id else plan.fallback,
         )
+        warp = plans.warp_exit(plan)
+        if warp.via == group.id:
+            removed = plans.with_warp_exit(removed, replace(warp, via=plans.PROXY))
         status = self.tr("已删除「{name}」").format(name=group.name)
         action = self.tr("撤销删除「{name}」").format(name=group.name)
         self._commit(removed, undo=(status, action, plan))
@@ -1160,7 +1268,7 @@ class RoutingViewModel(QObject):
                     name=text.rule_name(rule),
                     caption=text.rule_caption(rule),
                     mono=rule.kind == "raw",
-                    target=text.target_label(rule.target, plan),
+                    target=text.target_label(rule.target, plan, self._routing.report),
                     targetId=rule.target,
                     active=rule.enabled,
                     warning=warnings.get(rule.id, "") if rule.enabled else "",
@@ -1173,6 +1281,7 @@ class RoutingViewModel(QObject):
             )
         self._rules.sync(rows)
         self._sync_groups(plan)
+        self._sync_mesh()
         self._sync_source()
 
     def _sync_groups(self, plan: Plan | None) -> None:
@@ -1220,6 +1329,28 @@ class RoutingViewModel(QObject):
             members = self.tr("、").join(parts) if parts else self.tr("没有成员")
             custom_rows.append(self._group_row(group.id, group, group.type, members))
         self._custom_groups.sync(custom_rows)
+
+    def _sync_mesh(self) -> None:
+        report = self._routing.report
+        if self._routing.mode != MODE_PLAN or report is None:
+            self._mesh.sync([])
+            return
+        names = {p.id: p.name for p in self._list.profiles}
+        turned_off: dict[str, list[str]] = {}
+        for warning in report.warnings:
+            if warning.reason == "mesh_restricted":
+                turned_off.setdefault(warning.entry_id, []).append(warning.target)
+        rows = []
+        for outbound in report.mesh:
+            source = names.get(outbound.source_id, outbound.source_id)
+            caption = self.tr("{type} · 来自「{source}」").format(type=outbound.type, source=source)
+            if outbound.id in turned_off:
+                options = self.tr("、").join(turned_off[outbound.id])
+                caption = self.tr("{caption} · 已关闭 {options}").format(
+                    caption=caption, options=options
+                )
+            rows.append(MeshRow(outbound.id, outbound.name, caption, outbound.type))
+        self._mesh.sync(rows)
 
     def _group_row(
         self, group_id: str, group: PlanGroup | None, group_type: str, members: str
