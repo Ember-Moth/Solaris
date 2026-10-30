@@ -331,6 +331,10 @@ fake-ip 下的一致性留到 M5 / M4 实测（routing.md 第 12 节）。
 目标：流量经用户的节点再进入 Cloudflare WARP，机场看不到访问的网站，网站看不到节点 IP。设计见
 [exits.md](exits.md) 第 3 节（D22）。
 
+**状态**：内核部分已完成（2026-10-30）：`internal/warp` 的注册与换密钥、`RegisterWarp`、拼装 MASQUE / WireGuard
+出站、`egress_unavailable` 和 `via_empty`，都只对本机的假服务器测试过。同一轮的组网出站内核部分（mesh.md 第 3、4 节）
+也已完成。界面部分在另一个会话；真实注册和下面的验收要一个真实节点，合并后在开发服务上做（exits.md 第 10 节）。
+
 范围：
 
 - **内核**：`internal/warp` 经"经由"组注册账户（`RegisterWarp`）；拼装 MASQUE 或 WireGuard 出站，`dialer-proxy`

@@ -71,6 +71,8 @@ type converter struct {
 	// takes, with their regions.
 	nodes    []string
 	eligible map[string]string
+	// mesh are the mesh outbounds' names, which rules may target but no group holds.
+	mesh []string
 }
 
 // Convert makes a plan from a subscription's or a mihomo configuration's groups and rules
@@ -119,9 +121,13 @@ func Convert(data []byte, options Conversion) (*controlpb.ConvertToPlanResponse,
 		ids:      map[string]string{},
 		eligible: map[string]string{},
 	}
-	for name := range parsed.named {
+	for name, mapping := range parsed.named {
 		c.nodes = append(c.nodes, name)
-		if !filter.matches(name) {
+		switch {
+		case isMesh(mapping):
+			// Not a pool node; rules reach it by its own target.
+			c.mesh = append(c.mesh, name)
+		case !filter.matches(name):
 			c.eligible[name] = RegionOf(name)
 		}
 	}
@@ -503,8 +509,17 @@ func (c *converter) target(name string) (string, bool) {
 	if slices.Contains(outbounds, name) {
 		return name, true
 	}
-	id, ok := c.ids[name]
-	return id, ok && id != ""
+	if id, ok := c.ids[name]; ok {
+		return id, id != ""
+	}
+	switch {
+	case name == warpName(localeZH) || name == warpName(localeEN):
+		// The name ExportPlan gives the exit.
+		return EgressWarp, true
+	case c.options.SourceID != "" && slices.Contains(c.mesh, name):
+		return meshPrefix + c.options.SourceID + "/" + name, true
+	}
+	return "", false
 }
 
 // known leaves out the rules mihomo would refuse that are cheap to spot here: categories

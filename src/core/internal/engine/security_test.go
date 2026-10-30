@@ -15,16 +15,18 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/metacubex/mihomo/adapter/provider"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/constant/features"
 	"github.com/metacubex/mihomo/hub/route"
 )
 
-// Regression tests for the five requirements of docs/architecture.md §3.3, in order.
+// Regression tests for the requirements of docs/architecture.md §3.3, in order.
 
 // #1: no build carries the cmfa tag, which turns IsSafePath into "always true".
 func TestSecurity1NoCMFABuild(t *testing.T) {
@@ -258,5 +260,99 @@ func TestSecurity5SelectionSurvivesRestart(t *testing.T) {
 	// Leave the stored choice where the other tests expect it.
 	if err := engine.SelectProxy("PROXY", "direct-a"); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// #6 (docs/mesh.md §4): mesh outbounds only go out. Their state stays in the home
+// directory, and EasyTier's options that serve other devices are off, wherever the
+// outbound comes from: the profile, an override, a provider's payload, or what a
+// provider loads and rewrites later.
+func TestSecurity6MeshOutboundsOnlyGoOut(t *testing.T) {
+	escapes := []string{"../outside", filepath.Join(os.TempDir(), "mesh-state")}
+	for _, outbound := range []string{
+		"{name: ts, type: tailscale, state-dir: '%s'}",
+		"{name: zt, type: zerotier, network: 8056c2e21c000001, state-dir: '%s'}",
+		"{name: et, type: easytier, network-name: n, network-secret: s, peers: ['tcp://198.51.100.1:11010'], state-dir: '%s'}",
+	} {
+		for _, path := range escapes {
+			source := "mixed-port: 7890\nproxies:\n  - " + fmt.Sprintf(outbound, path) + "\nrules: ['MATCH,DIRECT']\n"
+			_, err := admit(profileOf(source), TunNone)
+			if !errors.Is(err, ErrInvalidConfig) {
+				t.Errorf("%s: admit = %v, want ErrInvalidConfig", fmt.Sprintf(outbound, path), err)
+				continue
+			}
+			// Without with_gvisor mihomo refuses every Tailscale outbound, so only the
+			// other two show the path check here.
+			if strings.Contains(outbound, "tailscale") && !features.WithGVisor {
+				continue
+			}
+			if !strings.Contains(err.Error(), "not subpath of home") {
+				t.Errorf("%s: refused for another reason: %v", fmt.Sprintf(outbound, path), err)
+			}
+		}
+	}
+
+	const serving = "{name: %s, type: easytier, network-name: n, network-secret: s, peers: ['tcp://198.51.100.1:11010'], " +
+		"enable-exit-node: true, proxy-networks: [192.168.1.0/24], mapped-listeners: ['tcp://203.0.113.1:11010']}"
+	source := "mixed-port: 7890\nrules: ['MATCH,DIRECT']\nproxies:\n  - " + fmt.Sprintf(serving, "et-profile") + `
+proxy-providers:
+  inline:
+    type: inline
+    payload:
+      - ` + fmt.Sprintf(serving, "et-inline") + `
+  remote:
+    type: http
+    url: http://127.0.0.1:1/p.yaml
+    path: providers/remote.yaml
+    override:
+      override-expr: ['.type = "easytier"', '.enable-exit-node = true', '.proxy-networks = ["0.0.0.0/0"]']
+`
+	profile := profileOf(source)
+	profile.Overrides = [][]byte{[]byte("prepend-proxies:\n  - " + fmt.Sprintf(serving, "et-override") + "\n")}
+	admitted, err := admitProfile(profile, TunNone)
+	if err != nil {
+		t.Fatal(err)
+	}
+	providers := admitted.doc["proxy-providers"].(map[string]any)
+	outbounds := append(slices.Clone(admitted.doc["proxies"].([]any)),
+		providers["inline"].(map[string]any)["payload"].([]any)...)
+	if len(outbounds) != 3 {
+		t.Fatalf("outbounds = %v", outbounds)
+	}
+	for _, raw := range outbounds {
+		outbound := raw.(map[string]any)
+		if outbound["enable-exit-node"] != false || outbound["proxy-networks"] != nil || outbound["mapped-listeners"] != nil {
+			t.Errorf("%v still serves other devices", outbound)
+		}
+	}
+	for _, name := range []string{"et-profile", "et-override"} {
+		if _, ok := admitted.cfg.Proxies[name]; !ok {
+			t.Errorf("%s did not build", name)
+		}
+	}
+
+	// What the remote provider loads goes through its expressions, the guard last: an
+	// outbound they make an EasyTier one, or one that came as one, ends up serving nobody.
+	override := providers["remote"].(map[string]any)["override"].(map[string]any)
+	if _, ok := providers["inline"].(map[string]any)["override"]; ok {
+		t.Error("an inline provider without expressions got the guard")
+	}
+	for _, loaded := range []map[string]any{
+		{"name": "ss", "type": "ss", "server": "a.example", "port": 1},
+		{"name": "et", "type": "easytier", "mapped-listeners": []any{"tcp://203.0.113.1:1"}},
+	} {
+		for _, raw := range override["override-expr"].([]any) {
+			expression, err := provider.NewOverrideExpr(raw.(string))
+			if err != nil {
+				t.Fatalf("%q: %v", raw, err)
+			}
+			if err := expression.Apply(loaded); err != nil {
+				t.Fatalf("%q: %v", raw, err)
+			}
+		}
+		if loaded["type"] != "easytier" || loaded["enable-exit-node"] != false ||
+			len(loaded["proxy-networks"].([]any)) != 0 || len(loaded["mapped-listeners"].([]any)) != 0 {
+			t.Errorf("loaded as %v", loaded)
+		}
 	}
 }

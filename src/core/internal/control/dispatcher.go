@@ -18,6 +18,7 @@ import (
 	"github.com/Ember-Moth/Solaris/src/core/internal/frame"
 	"github.com/Ember-Moth/Solaris/src/core/internal/peer"
 	"github.com/Ember-Moth/Solaris/src/core/internal/product"
+	"github.com/Ember-Moth/Solaris/src/core/internal/warp"
 )
 
 const (
@@ -66,6 +67,7 @@ type Engine interface {
 	MatchRule(engine.MatchRequest) (*controlpb.MatchRuleResponse, error)
 	ConvertToPlan(source []byte, options compose.Conversion) (*controlpb.ConvertToPlanResponse, error)
 	ExportPlan(profile engine.Profile, format controlpb.ExportFormat) ([]byte, error)
+	RegisterWarp(ctx context.Context, via string, request warp.Request) (*controlpb.WarpAccount, error)
 }
 
 type Options struct {
@@ -204,6 +206,7 @@ func composition(request *controlpb.Composition) *compose.Composition {
 	out := &compose.Composition{
 		InfoFilter: request.GetInfoFilter(),
 		Plan:       []byte(request.GetPlanJson()),
+		Warp:       request.GetEgress().GetWarp(),
 	}
 	for _, source := range request.GetSources() {
 		out.Sources = append(out.Sources, compose.Source{
@@ -416,8 +419,33 @@ func (d *Dispatcher) coreMethod(ctx context.Context, caller peer.Identity, reque
 			return engineFailure(err)
 		}
 		return &controlpb.Response{Result: &controlpb.Response_ExportPlan{ExportPlan: &controlpb.ExportPlanResponse{Yaml: string(exported)}}}
+	case *controlpb.Request_RegisterWarp:
+		return d.registerWarp(ctx, method.RegisterWarp)
 	}
 	return failure(CodeNotImplemented, methodName(request)+" is not implemented")
+}
+
+// registerWarp answers RegisterWarp (docs/exits.md §3.2). It runs outside the operation
+// lock: it changes nothing the core runs, and Cloudflare may take seconds to answer.
+// Cloudflare's refusals come back as operation_failed with its text.
+func (d *Dispatcher) registerWarp(ctx context.Context, register *controlpb.RegisterWarpRequest) *controlpb.Response {
+	switch _, known := controlpb.WarpProtocol_name[int32(register.GetProtocol())]; {
+	case register.GetVia() == "":
+		return failure(CodeInvalidRequest, "register_warp needs the via group")
+	case !known:
+		return failure(CodeInvalidRequest, "unknown WARP protocol")
+	case (register.GetDeviceId() == "") != (register.GetToken() == ""):
+		return failure(CodeInvalidRequest, "an existing WARP device needs both its id and its token")
+	}
+	account, err := d.engine.RegisterWarp(ctx, register.GetVia(), warp.Request{
+		Protocol: register.GetProtocol(),
+		DeviceID: register.GetDeviceId(),
+		Token:    register.GetToken(),
+	})
+	if err != nil {
+		return engineFailure(err)
+	}
+	return &controlpb.Response{Result: &controlpb.Response_RegisterWarp{RegisterWarp: &controlpb.RegisterWarpResponse{Account: account}}}
 }
 
 func (d *Dispatcher) matchRule(match *controlpb.MatchRuleRequest) *controlpb.Response {

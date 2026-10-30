@@ -113,6 +113,15 @@ var adapterTypes = map[string]C.AdapterType{
 	"tailscale": C.Tailscale, "zerotier": C.ZeroTier, "easytier": C.EasyTier,
 }
 
+// meshTypes are the outbounds that reach the user's own devices and networks rather
+// than the internet: they stay out of the pool and every group (docs/mesh.md §3).
+var meshTypes = map[string]bool{"tailscale": true, "zerotier": true, "easytier": true}
+
+func isMesh(mapping map[string]any) bool {
+	kind, _ := mapping["type"].(string)
+	return meshTypes[kind]
+}
+
 func adapterType(mapping map[string]any) string {
 	kind, _ := mapping["type"].(string)
 	if adapter, ok := adapterTypes[kind]; ok {
@@ -160,29 +169,32 @@ func Inspect(data []byte, infoPattern string) (*controlpb.InspectSourceResponse,
 	}
 	out.HasRules = out.RuleCount > 0
 	for name, mapping := range parsed.named {
+		mesh := isMesh(mapping)
 		out.Nodes = append(out.Nodes, &controlpb.SourceNode{
 			Name:   name,
 			Type:   adapterType(mapping),
 			Region: RegionOf(name),
-			Info:   filter.matches(name),
+			Info:   !mesh && filter.matches(name),
+			Mesh:   mesh,
 		})
 	}
 	return out, nil
 }
 
-// buildPool reads every source into one list of nodes. Information nodes stay out; a
-// node whose name is taken, by an earlier source or by a name in taken, gets " · " and
-// its source's name, and a number if that is taken too. Regions come from the names the
-// subscriptions wrote, so a rename never moves a node.
-func buildPool(sources []Source, filter infoFilter, taken map[string]bool) ([]*node, error) {
-	var pool []*node
+// buildPool reads every source into one list of nodes, and the mesh outbounds into
+// another. Information nodes stay out; a node or mesh outbound whose name is taken, by an
+// earlier one or by a name in taken, gets " · " and its source's name, and a number if
+// that is taken too. Regions come from the names the subscriptions wrote, so a rename
+// never moves a node.
+func buildPool(sources []Source, filter infoFilter, taken map[string]bool) (pool, mesh []*node, err error) {
 	for index, source := range sources {
 		parsed, err := parseSubscription(source.YAML)
 		if err != nil {
-			return nil, fmt.Errorf("subscription %q: %w", source.Name, err)
+			return nil, nil, fmt.Errorf("subscription %q: %w", source.Name, err)
 		}
 		for original, mapping := range parsed.named {
-			if filter.matches(original) {
+			meshOutbound := isMesh(mapping)
+			if !meshOutbound && filter.matches(original) {
 				continue
 			}
 			name := original
@@ -198,15 +210,20 @@ func buildPool(sources []Source, filter infoFilter, taken map[string]bool) ([]*n
 				renamed[key] = value
 			}
 			renamed["name"] = name
-			pool = append(pool, &node{
+			n := &node{
 				name:     name,
 				original: original,
 				source:   index,
 				kind:     adapterType(mapping),
 				region:   RegionOf(original),
 				mapping:  renamed,
-			})
+			}
+			if meshOutbound {
+				mesh = append(mesh, n)
+			} else {
+				pool = append(pool, n)
+			}
 		}
 	}
-	return pool, nil
+	return pool, mesh, nil
 }
