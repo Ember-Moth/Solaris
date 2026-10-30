@@ -3,11 +3,15 @@ package engine
 import (
 	"errors"
 	"fmt"
+	"net/netip"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/metacubex/mihomo/config"
+	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/constant/features"
+	LC "github.com/metacubex/mihomo/listener/config"
 )
 
 func admitted(t *testing.T, mode TunMode, profile Profile) *config.Config {
@@ -303,9 +307,96 @@ func TestAdmissionRejectsBrokenInput(t *testing.T) {
 	}
 }
 
-func TestFDModeIsReserved(t *testing.T) {
-	if _, err := admit(profileOf(minimal), TunFD); !errors.Is(err, ErrUnsupported) ||
-		!strings.Contains(err.Error(), "M5") {
-		t.Fatalf("admit in fd mode = %v", err)
+// fd mode (docs/architecture.md §3.1): the macOS extension owns the TUN, its addresses,
+// routes and DNS; mihomo's TUN only reads and writes packets on the network FDNetwork names.
+
+func TestFDModeWritesTheTunSection(t *testing.T) {
+	profile := profileOf(minimal + `
+tun:
+  enable: false
+  stack: system
+  device: utun9
+  auto-route: true
+  auto-redirect: true
+  auto-detect-interface: true
+  strict-route: true
+  dns-mode: hijack
+  file-descriptor: 7
+  inet4-address: [10.9.0.1/30]
+  inet6-address: ['fd00::1/126']
+  mtu: 1500
+dns:
+  enable: false
+  fake-ip-range: 28.0.0.1/8
+`)
+	cfg := admitted(t, TunFD, profile)
+	tun := cfg.General.Tun
+	if !tun.Enable || tun.AutoRoute || tun.AutoRedirect || tun.AutoDetectInterface || tun.StrictRoute ||
+		tun.DNSMode != "disabled" || tun.FileDescriptor != 0 || tun.Device != "" || tun.Stack.String() != "System" {
+		t.Fatalf("tun = %+v", tun)
+	}
+	if !slices.Equal(tun.Inet4Address, []netip.Prefix{FDNetwork.Inet4}) ||
+		!slices.Equal(tun.Inet6Address, []netip.Prefix{FDNetwork.Inet6}) || tun.MTU != FDNetwork.MTU {
+		t.Fatalf("tun network = %v %v mtu %d, want %+v", tun.Inet4Address, tun.Inet6Address, tun.MTU, FDNetwork)
+	}
+	if !cfg.DNS.Enable || cfg.DNS.FakeIPRange.String() != fdFakeIPRange {
+		t.Fatalf("dns enable = %v, fake-ip-range = %s", cfg.DNS.Enable, cfg.DNS.FakeIPRange)
+	}
+}
+
+func TestFDModeKeepsTheTUNOn(t *testing.T) {
+	profile := profileOf(minimal)
+	profile.Options.TUN = false
+	if cfg := admitted(t, TunFD, profile); !cfg.General.Tun.Enable {
+		t.Fatal("tun is off; the extension only runs with its tunnel up")
+	}
+}
+
+func TestFDModeDefaultsTheStack(t *testing.T) {
+	want := C.TunMips
+	if features.WithGVisor {
+		want = C.TunGvisor
+	}
+	if stack := admitted(t, TunFD, profileOf(minimal)).General.Tun.Stack; stack != want {
+		t.Fatalf("stack = %v, want %v", stack, want)
+	}
+}
+
+func TestOverrideCannotMoveTheFDNetwork(t *testing.T) {
+	profile := profileOf(minimal)
+	profile.Overrides = [][]byte{[]byte(`
+tun: {auto-route: true, strict-route: true, mtu: 1400, inet6-address: ['fd00::1/126']}
+dns: {fake-ip-range: 10.0.0.1/8}
+allow-lan: true
+`)}
+	cfg := admitted(t, TunFD, profile)
+	tun := cfg.General.Tun
+	if tun.AutoRoute || tun.StrictRoute || tun.MTU != FDNetwork.MTU || cfg.General.AllowLan ||
+		!slices.Equal(tun.Inet4Address, []netip.Prefix{FDNetwork.Inet4}) ||
+		!slices.Equal(tun.Inet6Address, []netip.Prefix{FDNetwork.Inet6}) {
+		t.Fatalf("tun = %+v, allow-lan = %v", tun, cfg.General.AllowLan)
+	}
+}
+
+func TestFDModeFollowsAllowLAN(t *testing.T) {
+	profile := profileOf(minimal + "listeners:\n  - {name: socks-in, type: socks, port: 7896, listen: 0.0.0.0}\n")
+	cfg := admitted(t, TunFD, profile)
+	if cfg.General.AllowLan || requireLoopback(cfg.Listeners["socks-in"].RawAddress()) != nil {
+		t.Fatal("inbounds left loopback without allow_lan")
+	}
+	profile.Options.AllowLAN = true
+	if cfg := admitted(t, TunFD, profile); !cfg.General.AllowLan {
+		t.Fatal("allow_lan did not open")
+	}
+}
+
+// The extension makes DNSServer the system's resolver; mihomo hijacks the address after
+// its TUN's own, which is the same one only while the TUN sits on FDNetwork.Inet4.
+func TestFDNetworkDNSIsTheHijackedAddress(t *testing.T) {
+	if FDNetwork.Inet4.String() != "198.18.0.1/30" || FDNetwork.DNSServer().String() != "198.18.0.2" {
+		t.Fatalf("network = %+v, dns = %s", FDNetwork, FDNetwork.DNSServer())
+	}
+	if err := verifyFDTun(LC.Tun{Inet4Address: []netip.Prefix{netip.MustParsePrefix("28.0.0.1/30")}, MTU: FDNetwork.MTU}); err == nil {
+		t.Fatal("a TUN off FDNetwork passed")
 	}
 }

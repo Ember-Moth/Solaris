@@ -48,11 +48,16 @@ type Options struct {
 	// opens cache.db there once per process, so it cannot change while the process runs.
 	HomeDir string
 	Tun     TunMode
+	// TunFD is the host's TUN descriptor in fd mode. The engine never closes it: mihomo
+	// runs on duplicates (hostTUN), so the host closes it once Close returns.
+	TunFD int
 }
 
 type Engine struct {
 	tunMode TunMode
 	home    string
+	// tun is the host's TUN in fd mode, nil otherwise; the lifecycle lock guards it.
+	tun *hostTUN
 
 	// lifecycle serializes Validate, Start, Reload, Stop and Close; mihomo parses into
 	// global state and must not do two of them at once.
@@ -118,7 +123,13 @@ func newEngine(options Options) (*Engine, error) {
 		coreVerStr = moduleVersion()
 		C.Version = coreVerStr
 	})
-	return &Engine{tunMode: options.Tun, home: home, state: controlpb.RunState_RUN_STATE_STOPPED}, nil
+	engine := &Engine{tunMode: options.Tun, home: home, state: controlpb.RunState_RUN_STATE_STOPPED}
+	if options.Tun == TunFD {
+		if engine.tun, err = newHostTUN(options.TunFD); err != nil {
+			return nil, err
+		}
+	}
+	return engine, nil
 }
 
 // checkPathSandbox refuses to run when IsSafePath no longer confines files to the home
@@ -236,8 +247,24 @@ func (e *Engine) admit(profile Profile) (*admission, error) {
 // apply puts an admitted configuration in place and keeps what goes with it.
 func (e *Engine) apply(admitted *admission) {
 	hub.ApplyConfig(admitted.cfg)
+	e.settleTUN()
 	e.setEntries(admitted.entries)
 	e.syncGeoUpdater(admitted.cfg)
+}
+
+// prepareTUN gives mihomo the descriptor its TUN runs on in fd mode, right before apply.
+func (e *Engine) prepareTUN(cfg *config.Config) error {
+	if e.tun == nil {
+		return nil
+	}
+	return e.tun.prepare(&cfg.General.Tun, listener.LastTunConf)
+}
+
+// settleTUN lets go of a duplicate mihomo no longer runs on, after each change to its TUN.
+func (e *Engine) settleTUN() {
+	if e.tun != nil {
+		e.tun.settle(listener.LastTunConf)
+	}
 }
 
 // Start applies a profile to a stopped core.
@@ -256,6 +283,10 @@ func (e *Engine) Start(profile Profile) (*controlpb.CompositionReport, error) {
 	}
 	cfg := admitted.cfg
 	if err := probePorts(cfg); err != nil {
+		e.setState(controlpb.RunState_RUN_STATE_FAILED, err)
+		return nil, fmt.Errorf("%w: %w", ErrApplyFailed, err)
+	}
+	if err := e.prepareTUN(cfg); err != nil {
 		e.setState(controlpb.RunState_RUN_STATE_FAILED, err)
 		return nil, fmt.Errorf("%w: %w", ErrApplyFailed, err)
 	}
@@ -287,6 +318,9 @@ func (e *Engine) Reload(profile Profile) (*controlpb.CompositionReport, error) {
 	cfg := admitted.cfg
 	// The core keeps the profile it runs, and its ports, when a new port is taken.
 	if err := probePorts(cfg); err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrApplyFailed, err)
+	}
+	if err := e.prepareTUN(cfg); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrApplyFailed, err)
 	}
 	e.apply(admitted)
@@ -422,6 +456,7 @@ func (e *Engine) teardown() {
 	} else {
 		hub.ApplyConfig(idle)
 	}
+	e.settleTUN()
 	statistic.DefaultManager.Range(func(c statistic.Tracker) bool {
 		_ = c.Close()
 		return true

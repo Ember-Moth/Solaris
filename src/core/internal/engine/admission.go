@@ -16,6 +16,7 @@ import (
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/constant/features"
 	"github.com/metacubex/mihomo/hub/executor"
+	LC "github.com/metacubex/mihomo/listener/config"
 	"github.com/metacubex/mihomo/listener/inbound"
 
 	"github.com/Ember-Moth/Solaris/src/core/internal/compose"
@@ -33,8 +34,8 @@ const (
 	// TunOwned lets mihomo create the TUN and set auto-route, auto-detect-interface and
 	// strict-route: the Windows service, and the TUN tests in CI.
 	TunOwned
-	// TunFD runs on a descriptor the macOS extension passes in; the host routes. It
-	// arrives with the extension in M5.
+	// TunFD runs on the TUN descriptor the macOS extension passes in (Options.TunFD); the
+	// extension sets the addresses, routes and DNS, with the values in FDNetwork.
 	TunFD
 )
 
@@ -103,8 +104,6 @@ func takesOverSystem(listener C.InboundListener) bool {
 	return false
 }
 
-var errFDModePending = errors.New("fd mode arrives with the macOS extension (M5)")
-
 // admission is a configuration that passed the pipeline.
 type admission struct {
 	cfg *config.Config
@@ -144,7 +143,9 @@ func admitProfile(profile Profile, mode TunMode) (*admission, error) {
 	case TunOwned:
 		err = patchOwnedTUN(doc, options)
 	case TunFD:
-		return nil, fmt.Errorf("%w: %w", ErrUnsupported, errFDModePending)
+		// The extension only runs while its tunnel is up, so the TUN is always on.
+		options.TUN = true
+		err = patchFDTUN(doc, options)
 	default:
 		return nil, fmt.Errorf("%w: unknown TUN mode %v", ErrUnsupported, mode)
 	}
@@ -340,6 +341,46 @@ func patchOwnedTUN(doc map[string]any, options RunOptions) error {
 		return nil
 	}
 	return restrictToLoopback(doc)
+}
+
+// patchFDTUN writes the TUN section for the descriptor the macOS extension owns. The
+// extension routes and sets the system's DNS, so mihomo neither routes nor watches
+// interfaces, and the TUN's addresses are the ones the extension gave the utun: mihomo
+// takes the IPv4 address from the fake-ip range, so the range is pinned too. The engine
+// fills in tun.file-descriptor when it applies the configuration.
+func patchFDTUN(doc map[string]any, options RunOptions) error {
+	tun := section(doc, "tun")
+	tun["enable"] = true
+	tun["auto-route"] = false
+	tun["auto-redirect"] = false
+	tun["auto-detect-interface"] = false
+	tun["strict-route"] = false
+	tun["dns-mode"] = "disabled"
+	tun["file-descriptor"] = 0
+	delete(tun, "device")
+	tun["inet6-address"] = []any{FDNetwork.Inet6.String()}
+	tun["mtu"] = int(FDNetwork.MTU)
+	if stack, _ := tun["stack"].(string); stack == "" {
+		tun["stack"] = defaultFDStack()
+	}
+	dns := section(doc, "dns")
+	dns["enable"] = true
+	dns["fake-ip-range"] = fdFakeIPRange
+	setMixedPort(doc, options)
+	if options.AllowLAN {
+		doc["allow-lan"] = true
+		return nil
+	}
+	return restrictToLoopback(doc)
+}
+
+// defaultFDStack is gVisor when the build has it, mips otherwise: the two stacks
+// NetworkExtension still allows once the tunnel includes all networks (§3.4).
+func defaultFDStack() string {
+	if features.WithGVisor {
+		return "gvisor"
+	}
+	return "mips"
 }
 
 func setMixedPort(doc map[string]any, options RunOptions) {
@@ -603,6 +644,11 @@ func verifyAdmitted(cfg *config.Config, mode TunMode, options RunOptions) error 
 	if general.Tun.FileDescriptor != 0 && mode != TunFD {
 		return errors.New("tun.file-descriptor is only for fd mode")
 	}
+	if mode == TunFD {
+		if err := verifyFDTun(general.Tun); err != nil {
+			return err
+		}
+	}
 	// Without with_gvisor these stacks only fail once mihomo opens the TUN.
 	if stack := general.Tun.Stack; general.Tun.Enable && !features.WithGVisor &&
 		(stack == C.TunGvisor || stack == C.TunMixed) {
@@ -642,6 +688,26 @@ func verifyAdmitted(cfg *config.Config, mode TunMode, options RunOptions) error 
 		if err := requireLoopback(general.TuicServer.Listen); err != nil {
 			return fmt.Errorf("tuic-server.listen: %w", err)
 		}
+	}
+	return nil
+}
+
+// verifyFDTun checks that mihomo's TUN matches the network the extension set up and
+// leaves routing and the system's DNS to it.
+func verifyFDTun(tun LC.Tun) error {
+	if tun.AutoRoute || tun.AutoRedirect || tun.AutoDetectInterface || tun.StrictRoute {
+		return errors.New("fd mode leaves routing to the host")
+	}
+	if !slices.Equal(tun.Inet4Address, []netip.Prefix{FDNetwork.Inet4}) {
+		return fmt.Errorf("the TUN's IPv4 address is %v, want %s", tun.Inet4Address, FDNetwork.Inet4)
+	}
+	// mihomo drops the IPv6 address when ipv6 is off; the extension still routes IPv6
+	// into the tunnel, where it goes nowhere.
+	if len(tun.Inet6Address) != 0 && !slices.Equal(tun.Inet6Address, []netip.Prefix{FDNetwork.Inet6}) {
+		return fmt.Errorf("the TUN's IPv6 address is %v, want %s", tun.Inet6Address, FDNetwork.Inet6)
+	}
+	if tun.MTU != FDNetwork.MTU {
+		return fmt.Errorf("the TUN's MTU is %d, want %d", tun.MTU, FDNetwork.MTU)
 	}
 	return nil
 }
