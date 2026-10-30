@@ -53,6 +53,11 @@ _FAILURES = {
     "signature_invalid": QT_TRANSLATE_NOOP("AboutViewModel", "安装包的签名无效：{detail}"),
     "signer_mismatch": QT_TRANSLATE_NOOP("AboutViewModel", "安装包不是由 Solaris 的开发者签名的"),
 }
+# Opening a Windows installer that only the release's checksum vouches for (D29).
+UNSIGNED_INSTALLER = QT_TRANSLATE_NOOP(
+    "AboutViewModel",
+    "安装包未签名，Windows 会提示“未知发布者”。安装器会请求管理员权限，并在升级前关闭界面。",
+)
 
 COMPONENT_KINDS = {
     "python": QT_TRANSLATE_NOOP("AboutViewModel", "Python 依赖"),
@@ -312,9 +317,11 @@ class AboutViewModel(QObject):
     @Property(str, notify=changed)
     def installMessage(self) -> str:
         installer = self._check.installer if self._check else None
-        if installer and installer.endswith(".exe"):
-            return self.tr("安装器会请求管理员权限，并在升级前关闭界面。")
-        return self.tr("将打开磁盘映像，把 Solaris 拖到“应用程序”文件夹即可升级。")
+        if not (installer and installer.endswith(".exe")):
+            return self.tr("将打开磁盘映像，把 Solaris 拖到“应用程序”文件夹即可升级。")
+        if self._downloaded is not None and not self._downloaded.signed:
+            return self.tr(UNSIGNED_INSTALLER)
+        return self.tr("安装器会请求管理员权限，并在升级前关闭界面。")
 
     @Slot()
     def runUpdateAction(self) -> None:

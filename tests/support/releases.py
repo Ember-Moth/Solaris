@@ -118,10 +118,12 @@ def fake_github() -> Iterator[FakeGitHub]:
 
 
 class FakeVerifier:
-    """Accepts what it is told to; records what it saw."""
+    """Accepts what it is told to; records what it saw. ``signed`` False stands for a build
+    without a Windows signer."""
 
-    def __init__(self, error: Exception | None = None) -> None:
+    def __init__(self, error: Exception | None = None, *, signed: bool = True) -> None:
         self.error = error
+        self.signed = signed
         self.seen: list[Path] = []
 
     def verify(self, path: Path) -> None:

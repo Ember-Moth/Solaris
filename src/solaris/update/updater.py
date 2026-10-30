@@ -1,6 +1,7 @@
 """The steps of an update, in order (docs/release.md §2, §3): check the latest release, then
 download this machine's installer, check it against the release's checksums and its
-signature, and check it once more right before the user opens it.
+signature (none on Windows until it is signed, D29), and check it once more right before
+the user opens it.
 
 Every method blocks: the ViewModel runs them on a worker thread.
 """
@@ -42,6 +43,7 @@ class Downloaded:
     release: Release
     path: Path
     sha256: str
+    signed: bool  # False when only the release's checksum vouches for it
 
 
 class Updater:
@@ -80,7 +82,7 @@ class Updater:
         verifying: Callable[[], None] | None = None,
     ) -> Downloaded:
         """The installer, downloaded and verified; ``verifying`` is called between the
-        download and the signature check, which can take a while."""
+        download and the signature check, which can take a while, when there is one."""
         release = check.release
         asset = release.asset(check.installer) if release and check.installer else None
         if release is None or asset is None or self._verifier is None:
@@ -99,14 +101,15 @@ class Updater:
         path = download.download(
             asset, sha256, self.directory, progress=progress, cancelled=cancelled
         )
-        if verifying is not None:
+        signed = self._verifier.signed
+        if verifying is not None and signed:
             verifying()
         try:
             self._verifier.verify(path)
         except BaseException:
             download.clear(self.directory)
             raise
-        return Downloaded(release, path, sha256)
+        return Downloaded(release, path, sha256, signed)
 
     def ready(self, downloaded: Downloaded) -> Path:
         """The installer to open, after checking that it is still the file verified: it sits
