@@ -10,6 +10,8 @@ from solaris.desktop import links
 from solaris.desktop.login import LoginItem, UnavailableLoginItem
 from solaris.host.base import TunnelHost
 from solaris.models.backup import Backups
+from solaris.models.backup_auto import BackupTargets, Changes
+from solaris.models.backup_icloud import ICloudProvider
 from solaris.models.credentials import CredentialStore
 from solaris.models.library import ProfileLibrary
 from solaris.models.settings import DatabaseSettingsStore, Settings, SettingsStore
@@ -78,6 +80,7 @@ class ViewModels:
         self.settings.start()
         self.desktop.start()
         self.about.start()
+        self.backup.start()
 
     def retranslate(self) -> None:
         """Re-read every text the ViewModels make, after the UI language changed."""
@@ -111,6 +114,7 @@ class ViewModels:
         self.logs.stop()
         self.desktop.stop()
         self.about.stop()
+        self.backup.stop()
         self.runner.shutdown(finalize=self.host.close)
 
 
@@ -127,12 +131,14 @@ def compose(
     appearance: Appearance | None = None,
     updater: Updater | None = None,
     credentials: CredentialStore | None = None,
+    icloud: ICloudProvider | None = None,
 ) -> ViewModels:
     """``clock`` dates profile updates and subscription expiry. The settings live in the
     profiles' database unless given. ``tray_available`` and ``start_hidden``: see DesktopViewModel.
     ``appearance`` defaults to the stored choice; the settings page changes it from then on.
     ``updater`` defaults to GitHub's releases, downloaded into the profiles' directory.
-    ``credentials`` keeps the WARP account; the system's credential store by default."""
+    ``credentials`` keeps the WARP account; the system's credential store by default.
+    ``icloud`` is the iCloud backup of a packaged macOS app; automatic backup runs with it."""
     runner = AsyncRunner()
     settings_store = settings or DatabaseSettingsStore(store.database)
     library = ProfileLibrary(
@@ -159,7 +165,16 @@ def compose(
     about = AboutViewModel(
         updater or Updater(store.directory), settings_store, host, library, runner, logs.held
     )
-    backup = BackupViewModel(Backups(store.database), library, settings_store, runner, clock=clock)
+    backup = BackupViewModel(
+        Backups(store.database),
+        library,
+        settings_store,
+        runner,
+        clock=clock,
+        targets=BackupTargets(store.database),
+        changes=Changes(store.database),
+        icloud=icloud,
+    )
 
     def page_shown() -> None:
         if shell.currentPage == "proxies":
@@ -169,6 +184,7 @@ def compose(
         elif shell.currentPage == "settings":
             settings_page.refreshInfo()
             settings_page.refreshLoginItem()
+            backup.refreshCloud()
         connections.setActive(shell.currentPage == "connections")
 
     shell.currentPageChanged.connect(page_shown)

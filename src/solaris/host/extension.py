@@ -1,6 +1,7 @@
 """TunnelHost for the macOS system extension (docs/architecture.md §6): SolarisManager.dylib
 brings the tunnel up and down, and carries each control message to the extension as a provider
-message (apple/Manager/SolarisManager.h).
+message (apple/Manager/SolarisManager.h). The library's iCloud calls serve the iCloud backup
+(models/backup_icloud.py).
 
 The extension runs only while the tunnel is connected. Until then no core can answer: the
 status reads stopped, list queries and polls come back empty, the GEO categories are the
@@ -54,6 +55,10 @@ NOT_CONFIGURED = 3
 NOT_CONNECTED = 4
 NEEDS_APPROVAL = 5
 NEEDS_REBOOT = 6
+NOT_SIGNED_IN = 7
+NOT_FOUND = 8
+QUOTA_EXCEEDED = 9
+UNREACHABLE = 10
 
 # SolarisTunnelStatus: NEVPNStatus, plus a value for having no VPN configuration
 TUNNEL_NOT_CONFIGURED = 0
@@ -149,6 +154,38 @@ class ManagerLibrary:
             ctypes.POINTER(ctypes.c_size_t),
             _ErrorOut,
         )
+        self._icloud_status = _bind(
+            library,
+            "solaris_manager_icloud_status",
+            ctypes.c_double,
+            ctypes.POINTER(ctypes.c_int32),
+            _ErrorOut,
+        )
+        self._icloud_save = _bind(
+            library,
+            "solaris_manager_icloud_save",
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_size_t,
+            ctypes.c_double,
+            _ErrorOut,
+        )
+        self._icloud_list = _bind(
+            library, "solaris_manager_icloud_list", ctypes.c_double, _ErrorOut, _ErrorOut
+        )
+        self._icloud_download = _bind(
+            library,
+            "solaris_manager_icloud_download",
+            ctypes.c_char_p,
+            ctypes.c_double,
+            ctypes.POINTER(ctypes.c_void_p),
+            ctypes.POINTER(ctypes.c_size_t),
+            _ErrorOut,
+        )
+        self._icloud_delete = _bind(
+            library, "solaris_manager_icloud_delete", ctypes.c_char_p, ctypes.c_double, _ErrorOut
+        )
         self._free = library.solaris_manager_free
         self._free.argtypes = [ctypes.c_void_p]
         self._free.restype = None
@@ -189,6 +226,49 @@ class ManagerLibrary:
             # An empty Response is still a buffer to release.
             if response.value:
                 self._free(response)
+
+    # The iCloud calls (models/backup_icloud.py ICloud).
+    def icloud_status(self, timeout: float) -> int:
+        status = ctypes.c_int32()
+        self._call(self._icloud_status, timeout, ctypes.byref(status))
+        return status.value
+
+    def icloud_save(self, name: str, info: str, snapshot: bytes, timeout: float) -> None:
+        self._call(
+            self._icloud_save, name.encode(), info.encode(), snapshot, len(snapshot), timeout
+        )
+
+    def icloud_list(self, timeout: float) -> str:
+        listed = ctypes.c_void_p()
+        try:
+            self._call(self._icloud_list, timeout, ctypes.byref(listed))
+            if not listed.value:
+                raise ManagerError(FAILED, "the manager returned no list")
+            return ctypes.string_at(listed.value).decode("utf-8", "replace")
+        finally:
+            if listed.value:
+                self._free(listed)
+
+    def icloud_download(self, name: str, timeout: float) -> bytes:
+        snapshot = ctypes.c_void_p()
+        length = ctypes.c_size_t()
+        try:
+            self._call(
+                self._icloud_download,
+                name.encode(),
+                timeout,
+                ctypes.byref(snapshot),
+                ctypes.byref(length),
+            )
+            if not snapshot.value:
+                raise ManagerError(FAILED, "the manager returned no snapshot buffer")
+            return ctypes.string_at(snapshot.value, length.value)
+        finally:
+            if snapshot.value:
+                self._free(snapshot)
+
+    def icloud_delete(self, name: str, timeout: float) -> None:
+        self._call(self._icloud_delete, name.encode(), timeout)
 
     def _call(self, function: Any, *arguments: object) -> None:
         error = ctypes.c_void_p()

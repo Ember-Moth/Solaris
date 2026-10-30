@@ -375,6 +375,85 @@ ScrollView {
                                 onClicked: openFileDialog.open()
                             }
                         }
+
+                        // macOS only (docs/storage.md §5).
+                        GroupRow {
+                            visible: page.backup.icloudShown
+                            verticalPadding: Theme.space2
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+
+                                UiText {
+                                    Layout.fillWidth: true
+                                    text: "iCloud"
+                                }
+
+                                AccessibleText {
+                                    Layout.fillWidth: true
+                                    text: page.backup.icloudStatus
+                                    role: Theme.type.caption
+                                    color: page.backup.icloudWarning ? Theme.warning : Theme.textMuted
+                                    wrapMode: Text.Wrap
+                                    Accessible.role: Accessible.StatusBar
+                                }
+                            }
+
+                            AppButton {
+                                visible: page.backup.icloudSettingsShown
+                                variant: "compact"
+                                text: qsTr("打开系统设置")
+                                onClicked: page.backup.openICloudSettings()
+                            }
+
+                            IconButton {
+                                id: icloudMoreButton
+
+                                visible: page.backup.icloudMenuShown
+                                enabled: !page.backup.busy
+                                iconName: "more"
+                                accessibleName: qsTr("iCloud 备份的更多操作")
+                                onClicked: icloudMenu.openBelow(icloudMoreButton)
+                            }
+
+                            AppSwitch {
+                                id: icloudSwitch
+
+                                visible: page.backup.icloudSwitchShown
+                                value: page.backup.icloudOn
+                                enabled: page.backup.icloudSwitchEnabled
+                                Accessible.name: "iCloud"
+                                Accessible.description: page.backup.icloudStatus
+                                onRequested: on => {
+                                    if (on)
+                                        enableICloudDialog.show(icloudSwitch)
+                                    else
+                                        page.backup.setICloudEnabled(false)
+                                }
+                            }
+                        }
+                    }
+
+                    RowLayout {
+                        visible: page.backup.cloudShown
+                        spacing: Theme.space2
+
+                        AppButton {
+                            variant: "compact"
+                            text: qsTr("立即备份")
+                            enabled: page.backup.cloudReady
+                            onClicked: page.backup.backUpNow()
+                        }
+
+                        AppButton {
+                            id: cloudRestoreButton
+
+                            variant: "compact"
+                            text: qsTr("从云端恢复…")
+                            enabled: page.backup.cloudReady
+                            onClicked: page.backup.openCloudRestore()
+                        }
                     }
                 }
             }
@@ -743,11 +822,50 @@ ScrollView {
         backup: page.backup
     }
 
+    CloudRestoreDialog {
+        id: cloudRestoreDialog
+
+        backup: page.backup
+    }
+
     Connections {
         target: page.backup
 
         function onRestoreRequested() {
             restoreDialog.show(restoreFileButton)
         }
+
+        function onCloudRestoreRequested() {
+            cloudRestoreDialog.show(cloudRestoreButton)
+        }
+    }
+
+    ConfirmDialog {
+        id: enableICloudDialog
+
+        title: qsTr("开启 iCloud 备份？")
+        message: qsTr("备份不加密，其中有订阅链接和配置原文，能登录这个 Apple 账户的人都能看到。")
+        confirmText: qsTr("开启")
+        onAccepted: page.backup.setICloudEnabled(true)
+    }
+
+    AppMenu {
+        id: icloudMenu
+
+        AppMenuItem {
+            text: qsTr("删除云端备份")
+            destructive: true
+            onTriggered: deleteICloudDialog.showFor(icloudMenu.trigger, icloudMenu.triggerFocusReason)
+        }
+    }
+
+    ConfirmDialog {
+        id: deleteICloudDialog
+
+        title: qsTr("删除 iCloud 中的备份？")
+        message: qsTr("iCloud 中保存的备份会全部删除，无法恢复。本机的数据不受影响。")
+        confirmText: qsTr("删除")
+        destructive: true
+        onAccepted: page.backup.deleteICloudBackups()
     }
 }

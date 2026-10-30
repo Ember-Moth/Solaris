@@ -166,6 +166,38 @@
         <translation>The backup file is too large</translation>
     </message>
     <message>
+        <source>账户未登录</source>
+        <translation>Not signed in</translation>
+    </message>
+    <message>
+        <source>这份备份已不存在</source>
+        <translation>This backup no longer exists</translation>
+    </message>
+    <message>
+        <source>储存空间已满</source>
+        <translation>Storage is full</translation>
+    </message>
+    <message>
+        <source>无法连接，稍后会再试</source>
+        <translation>Can’t connect; will try again later</translation>
+    </message>
+    <message>
+        <source>仅签名的安装版可用</source>
+        <translation>Only in the signed installed app</translation>
+    </message>
+    <message>
+        <source>系统未登录 iCloud</source>
+        <translation>This Mac isn’t signed in to iCloud</translation>
+    </message>
+    <message>
+        <source>iCloud 受到限制</source>
+        <translation>iCloud is restricted</translation>
+    </message>
+    <message>
+        <source>iCloud 暂时不可用</source>
+        <translation>iCloud is temporarily unavailable</translation>
+    </message>
+    <message>
         <source>合并</source>
         <translation>Merge</translation>
     </message>
@@ -180,6 +212,22 @@
     <message>
         <source>本机的订阅、分流方案、覆写和设置全部换成备份里的内容</source>
         <translation>This computer’s subscriptions, plans, overrides and settings all become the backup’s</translation>
+    </message>
+    <message>
+        <source>正在备份…</source>
+        <translation>Backing up…</translation>
+    </message>
+    <message>
+        <source>正在读取 iCloud 中的备份…</source>
+        <translation>Reading the backups in iCloud…</translation>
+    </message>
+    <message>
+        <source>正在下载备份…</source>
+        <translation>Downloading the backup…</translation>
+    </message>
+    <message>
+        <source>正在删除 iCloud 中的备份…</source>
+        <translation>Deleting the backups in iCloud…</translation>
     </message>
     <message>
         <source>{profiles}、{plans}</source>
@@ -249,6 +297,77 @@
     <message>
         <source>恢复失败：{detail}</source>
         <translation>Restore failed: {detail}</translation>
+    </message>
+    <message>
+        <source>无法确认 iCloud 的状态</source>
+        <translation>Couldn’t check iCloud</translation>
+    </message>
+    <message>
+        <source>未开启</source>
+        <translation>Off</translation>
+    </message>
+    <message>
+        <source>上次备份失败：{reason}</source>
+        <translation>Last backup failed: {reason}</translation>
+    </message>
+    <message>
+        <source>尚未备份</source>
+        <translation>Not backed up yet</translation>
+    </message>
+    <message>
+        <source>上次备份：{when} · 成功</source>
+        <translation>Last backup: {when} · Succeeded</translation>
+    </message>
+    <message>
+        <source>无法开启 iCloud 备份：{detail}</source>
+        <translation>Couldn’t turn on iCloud backup: {detail}</translation>
+    </message>
+    <message>
+        <source>本机还没有可备份的数据</source>
+        <translation>Nothing on this computer to back up yet</translation>
+    </message>
+    <message>
+        <source>备份失败：{detail}</source>
+        <translation>Backup failed: {detail}</translation>
+    </message>
+    <message>
+        <source>iCloud 中还没有备份</source>
+        <translation>No backups in iCloud yet</translation>
+    </message>
+    <message>
+        <source>无法读取备份：{detail}</source>
+        <translation>Couldn’t read the backups: {detail}</translation>
+    </message>
+    <message>
+        <source>已删除 iCloud 中的备份</source>
+        <translation>Deleted the backups in iCloud</translation>
+    </message>
+    <message>
+        <source>删除失败：{detail}</source>
+        <translation>Delete failed: {detail}</translation>
+    </message>
+</context>
+<context>
+    <name>CloudRestoreDialog</name>
+    <message>
+        <source>从云端恢复</source>
+        <translation>Restore from the cloud</translation>
+    </message>
+    <message>
+        <source>备份</source>
+        <translation>Backup</translation>
+    </message>
+    <message>
+        <source>%1，%2</source>
+        <translation>%1, %2</translation>
+    </message>
+    <message>
+        <source>取消</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>恢复</source>
+        <translation>Restore</translation>
     </message>
 </context>
 <context>
@@ -2796,6 +2915,18 @@ prepend-rules:
         <translation>Open System Settings</translation>
     </message>
     <message>
+        <source>iCloud 备份的更多操作</source>
+        <translation>More actions for iCloud backup</translation>
+    </message>
+    <message>
+        <source>立即备份</source>
+        <translation>Back up now</translation>
+    </message>
+    <message>
+        <source>从云端恢复…</source>
+        <translation>Restore from the cloud…</translation>
+    </message>
+    <message>
         <source>关闭窗口时</source>
         <translation>When closing the window</translation>
     </message>
@@ -2870,6 +3001,34 @@ prepend-rules:
     <message>
         <source>Solaris 备份 (*.json)</source>
         <translation>Solaris backup (*.json)</translation>
+    </message>
+    <message>
+        <source>开启 iCloud 备份？</source>
+        <translation>Turn on iCloud backup?</translation>
+    </message>
+    <message>
+        <source>备份不加密，其中有订阅链接和配置原文，能登录这个 Apple 账户的人都能看到。</source>
+        <translation>Backups aren’t encrypted and contain subscription links and config text. Anyone who can sign in to this Apple Account can see them.</translation>
+    </message>
+    <message>
+        <source>开启</source>
+        <translation>Turn on</translation>
+    </message>
+    <message>
+        <source>删除云端备份</source>
+        <translation>Delete cloud backups</translation>
+    </message>
+    <message>
+        <source>删除 iCloud 中的备份？</source>
+        <translation>Delete the backups in iCloud?</translation>
+    </message>
+    <message>
+        <source>iCloud 中保存的备份会全部删除，无法恢复。本机的数据不受影响。</source>
+        <translation>All backups saved in iCloud will be deleted and can’t be recovered. The data on this computer stays as it is.</translation>
+    </message>
+    <message>
+        <source>删除</source>
+        <translation>Delete</translation>
     </message>
     <message>
         <source>导出…</source>
