@@ -3,10 +3,8 @@
 本文描述界面侧用户数据的持久化方式（SQLite），以及如何把这些数据备份到 Google Drive 和 iCloud。
 相关决策是 [roadmap.md](roadmap.md) 中的 D13 和 D14，实施计划见 roadmap 的 M7。
 
-状态：存储层已实现（B1）。备份中不依赖云服务的部分已实现（阶段 D 第二轮）：快照的导出、恢复（替换或合并）、
-提供方接口与内存、本地目录两个提供方、自动备份的逻辑，以及设置页的"导出到文件"和"从文件恢复"。Google Drive
-（第 4 节）和 iCloud（第 5 节）的提供方未实现，自动备份也还没有接到界面上。存储层的实现细节（线程、迁移）见
-[ui.md](ui.md) §2，界面见 ui.md §8。
+状态：存储层和不依赖云服务的备份已实现；Google Drive（第 4 节）和 iCloud（第 5 节）的提供方还没有实现，自动备份
+也还没接到界面上，进度见 roadmap 的 M7。存储层的实现细节（线程、迁移）见 [ui.md](ui.md) §2，界面见 ui.md §8。
 
 ## 1. 范围
 
@@ -36,7 +34,7 @@
 | `profile_contents` | `profile_id`、配置 YAML 原文、`fetched_at`、用量（upload / download / total / expire）、`proxy_count`、`updated_at`。这是本机缓存，订阅下载的内容不进入备份 |
 | `overrides` | `scope`（`global` 或某个 `profile_id`）、YAML 原文、`updated_at`、`deleted_at` |
 | `routing_state`、`plans`、`plan_groups`、`plan_rules` | 分流方式、当前使用的配置、节点池设置、分流方案及其策略组和规则条目，字段见 routing.md 第 9 节 |
-| `settings` | `key`、`value`（JSON）、`scope`（`synced` / `local`）、`updated_at`。每个设置项属于哪个 scope，由设置页的定义决定 |
+| `settings` | `key`、`value`（JSON）、`scope`（`synced` / `local`）、`updated_at`。每个设置项属于哪个 scope，由 `models/settings.py` 里字段的元数据决定（ui.md §8） |
 | `state` | 只属于本机的状态（`key`、`value`（JSON）、`updated_at`）：每个备份目标上次上传的快照摘要（`backup_digest:<目标 id>`） |
 | `backup_targets` | 已开启的备份目标：`id`、提供方、显示用的账户名、上次成功备份的时间、上次的错误、`created_at`、`updated_at`、`deleted_at`。不存令牌（见 4 节） |
 
@@ -95,7 +93,7 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
 `BackupTargets` 读写 `backup_targets` 表，关掉的目标标记删除。定时器和数据变化的通知随第一个云端提供方接到界面上。
 
 **导出到文件**：设置页可以把快照导出成文件，再从文件恢复，不需要云端账户。文件就是上面的 JSON 文档，同样不加密：
-导出前界面提示文件里有订阅链接，本地文件配置的原文里可能有组网出站的凭据。
+导出前的确认框写「备份文件不加密，含订阅链接和配置原文，请妥善保管。」（本地文件配置的原文里可能有组网出站的凭据）。
 
 **恢复**：
 
@@ -111,7 +109,7 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
   而在已有数据的设备上，"替换"本身算作一次最新的修改。
 - **合并**：每条记录单独比较：本机没有，或者快照里的 `updated_at` 更新，就取快照的（连同它的时间）；墓碑更新时
   把本机记录标记删除，本机没有这条记录时什么也不做。策略组按（`plan_id`，`id`）、规则条目按 `id`，各自比较；
-  合并出的规则指向已删除的策略组时，内核把它交给"节点选择"并在报告里说明（routing.md 5.3 节）。本地文件配置
+  合并出的规则指向已删除的策略组时，内核把它交给"节点选择"并在报告里说明（routing.md 8.1 节）。本地文件配置
   的原文是单独的一条记录，按它自己的 `updated_at` 比较。`synced` 设置逐项比较，`routing_state` 整行比较。
   两台设备互相合并对方的快照之后，数据相同。
 - 两种方式都只接受本版本认识的 `synced` 设置和它接受的值；本地设置不动。不再存在的配置的下载缓存一并删除。
@@ -130,7 +128,7 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
   （appDataFolder）里，在用户的 Drive 中看不到；应用也读不到用户的其他文件。
 - **网络请求**：用标准库 `urllib` 调 token 端点和 Drive v3 的 files 接口，不引入 Google SDK。所有请求
   都在界面进程里、以用户身份发出，跟随系统代理设置。
-- **令牌**：refresh token 存在系统的凭据库里（macOS 钥匙串、Windows 凭据管理器），不存进数据库，通过新增的 `keyring` 依赖读写（D14）。
+- **令牌**：refresh token 存在系统的凭据库里（macOS 钥匙串、Windows 凭据管理器），不存进数据库，用 `keyring` 读写（D14，与 WARP 账户相同）。
 - **退出登录**：撤销令牌，并删除本机保存的令牌。云端的快照保留不动；界面另外提供"删除云端备份"。
 - **前置条件**：
   - 在 Google Cloud 建一个项目，配置 OAuth 同意屏幕，并创建一个"桌面应用"类型的 OAuth 客户端；
@@ -144,7 +142,7 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
 - **账户**：第三方应用不能自己登录 iCloud，只能使用系统已登录的 Apple ID。系统没有登录 iCloud 时，界面提示用户
   去系统设置登录。
 - **依赖条件**：需要 Developer ID 签名、iCloud（CloudKit）entitlement、container（`iCloud.<bundle id>`）以及对应的
-  provisioning profile。因此这部分依赖 M5 建立的 Xcode 工程和签名流程，也依赖 D1 产品名（它决定 bundle id）。
+  provisioning profile。因此这部分依赖 M5 的 Xcode 工程和签名流程；container 是 `iCloud.dev.tschen.solaris`。
 - **实现**：在 M5 的管理库（Swift，导出 C ABI）里加几个函数，分别用于保存、列出、下载和删除快照，Python 通过
   ctypes 调用。每份快照存成一条记录，快照内容放在 `CKAsset` 里。
 - **Windows**：不提供 iCloud 备份，只能用 Google Drive。
@@ -162,6 +160,5 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
   - `DirectoryProvider`：快照存成目录里的文件，`solaris-backup-<UTC 时间>-<摘要前 12 位>.json`，原子写入。只列出
     这样命名、能读成快照的文件，别的文件不碰；id 只接受这种文件名，到不了目录之外。
 - 可以同时开启多个备份目标，例如在 macOS 上同时用 iCloud 和 Google Drive，每个目标各自上传、各自保留快照。
-- 设置页新增"备份与同步"分组，内容包括：已登录的账户、上次备份的时间和结果、立即备份、从云端恢复、退出登录、
-  删除云端备份。目前只有"导出到文件"和"从文件恢复"两行；iCloud、Google Drive 两行在它们的提供方实现之前不显示
-  （ui.md §8）。
+- 设置页"备份与同步"分组接上云端后包括：已登录的账户、上次备份的时间和结果、立即备份、从云端恢复、退出登录、
+  删除云端备份。在那之前只有"导出到文件"和"从文件恢复"两行（ui.md §8）。

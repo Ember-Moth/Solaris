@@ -3,9 +3,8 @@
 mihomo 的 Windows / macOS 桌面客户端（PySide6 + Nuitka）。内核以 Go 库的形式内嵌：Windows 上运行在
 LocalSystem 服务里，macOS 上运行在 NetworkExtension 系统扩展里，关闭界面后隧道继续运行。
 
-现状：内核（engine、控制协议、开发模式服务）和界面的六个页面都已实现，界面支持中英双语、浅色与深色，并已与真实的
-开发服务端到端联调；Windows 服务产品化、macOS 系统扩展、SQLite 存储与云备份、自定义分流还在计划中。进度和下一步见
-[docs/roadmap.md](docs/roadmap.md)。产品名、应用名都是 Solaris，产品标识集中在
+现状：内核、控制协议、Windows 服务与安装器、macOS 系统扩展和界面的七个页面都已写好，界面支持中英双语、浅色与深色；
+两个平台都还没有真机实测，也还没有发布。进度和下一步见 [docs/roadmap.md](docs/roadmap.md)。产品名、应用名都是 Solaris，产品标识集中在
 `src/core/internal/product/product.go` 与 `src/solaris/product.py`。
 
 ## 文档
@@ -14,12 +13,13 @@ LocalSystem 服务里，macOS 上运行在 NetworkExtension 系统扩展里，�
 | --- | --- |
 | [docs/roadmap.md](docs/roadmap.md) | 进度、下一步计划、决策与风险 |
 | [docs/architecture.md](docs/architecture.md) | 系统架构：engine、控制协议、Windows 服务、macOS 扩展、安全模型、构建与测试 |
-| [docs/ui.md](docs/ui.md) | Python 界面：宿主接口、配置存储、订阅、覆写、多语言、外观、连接与日志、设置与桌面行为 |
-| [docs/storage.md](docs/storage.md) | 计划中的 SQLite 存储与云备份 |
-| [docs/routing.md](docs/routing.md) | 计划中的自定义分流 |
-| [docs/exits.md](docs/exits.md) | 计划中的链式出口：经用户节点的 WARP、Tor 与 VPN Gate |
-| [docs/mesh.md](docs/mesh.md) | 计划中的组网出站：Tailscale、ZeroTier、EasyTier |
-| [DESIGN.md](DESIGN.md) | 视觉规范 |
+| [docs/ui.md](docs/ui.md) | Python 界面：宿主接口、订阅、覆写、多语言、外观、连接与日志、设置与桌面行为、分流页 |
+| [docs/storage.md](docs/storage.md) | SQLite 存储与备份（Google Drive、iCloud 未做） |
+| [docs/routing.md](docs/routing.md) | 自定义分流 |
+| [docs/exits.md](docs/exits.md) | 链式出口：经用户节点的 WARP（已实现）、Tor 与 VPN Gate（计划中） |
+| [docs/mesh.md](docs/mesh.md) | 组网出站：Tailscale、ZeroTier、EasyTier（应用内组网计划中） |
+| [docs/release.md](docs/release.md) | 发布与更新：检查更新、诊断导出、第三方许可证、一键导入 |
+| [DESIGN.md](DESIGN.md) | 视觉规范与文案规则 |
 
 ## 目录
 
@@ -28,9 +28,9 @@ LocalSystem 服务里，macOS 上运行在 NetworkExtension 系统扩展里，�
 | `proto/` | 控制协议 schema 与 protoc 版本锁 |
 | `src/core/` | Go 模块：`internal/` 是控制分发器、帧编解码等共享代码；`service/` 是 Windows 服务入口；`apple/` 编成 macOS 扩展用的 C archive |
 | `src/solaris/` | Python UI：宿主客户端、models、viewmodels、QML |
-| `apple/` | macOS 管理库与系统扩展（待建 Xcode 工程） |
-| `package/` | Nuitka 入口与打包脚本 |
-| `scripts/` | 协议代码生成、开发工具 |
+| `apple/` | macOS 管理库与系统扩展（XcodeGen 工程，见 apple/README.md） |
+| `package/` | Nuitka 入口、图标、许可证文本、Windows 安装器 |
+| `scripts/` | 代码生成（协议、主题、翻译、图标、许可证）、构建与打包、开发工具 |
 | `testdata/` | Go 与 Python 共用的协议样本 |
 
 ## 开发

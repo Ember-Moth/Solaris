@@ -4,13 +4,13 @@
 （决策 D6）。签名与公证的发布工作流见 [apple/README.md](../apple/README.md)（M5），Windows 安装器见
 [architecture.md](architecture.md) 第 9 节（M4）。界面放在设置页的「关于」分组（[ui.md](ui.md) 第 8 节）。
 
-状态：四项已实现（2026-10-30，阶段 D 第一轮）。现在还没有任何 Release，检查更新只用本机的假服务器测过；Windows
+状态：四项都已实现。现在还没有任何 Release，检查更新只用本机的假服务器测过；Windows
 的签名方案未定，签名者是一个占位常量，Windows 安装包暂不签名；`solaris:` 和 `clash:` 两个 scheme 由打包向系统
 注册（macOS 的 Info.plist，Windows 安装器写在 HKLM，第 6 节）；许可证清单还缺的几项见第 5 节。
 
 ## 1. 发布物
 
-每个版本是 GitHub 仓库 `Ember-Moth/Solaris` 的一个 Release，由发布工作流创建。界面只认下面这套约定，发布工作流
+每个版本是 GitHub 仓库 `Ember-Moth/Solaris` 的一个 Release，将由发布工作流创建。界面只认下面这套约定，发布工作流
 必须照此命名：
 
 | 项目 | 约定 |
@@ -20,6 +20,9 @@
 | Windows 安装包 | `Solaris-<版本>-windows-x64-setup.exe`：NSIS 安装器（architecture.md 第 9 节），Authenticode 签名。签名方案定下之前发布工作流产出的安装包不签名，更新时会在第 3 节第 4 步被拒 |
 | 校验和 | `SHA256SUMS`：`sha256sum` 的输出格式，每行 `<64 位小写十六进制>  <文件名>`，覆盖本次发布的每个安装包 |
 | 源代码 | `Solaris-<版本>-source.tar.gz`：本仓库在这个标签的代码，加上 `go mod vendor` 得到的全部 Go 依赖（第 4 节） |
+
+现在的发布工作流（`.github/workflows/release.yml`）只产出两个安装包和各自的 `.sha256`，存为 workflow artifact；
+创建 Release、`SHA256SUMS` 和源代码包在 M6 收尾时加入。
 
 只做 Windows x64 和 macOS arm64（D2）。其他平台、其他架构的界面不提供下载，「检查更新」照常显示有没有新版本。
 
@@ -65,7 +68,7 @@
      代码，用户首次打开 App 时 Gatekeeper 还会再检查一次。挂载会在 Finder 里留下一个卷，也多一个失败点。
    - **Windows**：经 ctypes 调用 `WinVerifyTrust`（`WINTRUST_ACTION_GENERIC_VERIFY_V2`，整条证书链检查吊销，
      不弹任何界面），通过后用 `WTHelperProvDataFromStateData` 取出签名者证书，`CertGetNameStringW` 读出它的
-     显示名，必须等于 `signature.WINDOWS_SIGNER`。签名方案还没定（roadmap 第三轮 M6），这个常量先是占位值；
+     显示名，必须等于 `signature.WINDOWS_SIGNER`。签名方案还没定（roadmap 的首发清单），这个常量先是占位值；
      证书定下来以后改成证书的主题名。在那之前任何安装包都会因签名者不符被拒绝，这是有意的。
    - 其他平台没有安装包，不会走到这一步。
 5. **确认安装**：校验通过后按钮变成「打开安装包…」。点它先弹普通确认框「打开 Solaris 0.2.0 的安装包？」，
@@ -99,18 +102,18 @@
 | --- | --- |
 | `about.json` | 界面版本、Python、PySide6 与 Qt 的版本、操作系统与架构、是否打包版、界面语言、导出时间 |
 | `host.json` | 宿主的 `GetInfo` 和 `GetStatus`；连不上服务时写错误码和原话 |
-| `settings.json` | 设置（第 8 节的表），以及脱敏后的订阅、覆写和分流概况，见下文 |
+| `settings.json` | 设置（[ui.md](ui.md) 第 8 节的表），以及脱敏后的订阅、覆写和分流概况，见下文 |
 | `mihomo.log` | 日志页缓冲里的全部内核日志（最多 5000 条），格式与日志页的导出相同 |
 
 **脱敏**按白名单进行，不认识的内容一律不写：
 
 - 设置项逐个列在 `diagnostics.SETTINGS_EXPORTED`（照写）或 `SETTINGS_WITHHELD`（只写"已设置"与否）里，测试要求
   `Settings` 的每个字段都在其中之一，所以新增设置项时必须决定它算哪一类。现有设置项都不含机密，全部照写。
-- 订阅只写序号、类型、是否当前配置、是否加入节点池、自动更新间隔、节点数、有没有用量信息、更新时间和更新是否失败；
+- 订阅只写序号、类型、是否正在使用、是否加入节点池、自动更新间隔、节点数、有没有用量信息、更新时间和更新是否失败；
   不写名称、订阅链接、文件路径和原文。
 - 覆写只写有没有全局覆写、哪几份订阅有自己的覆写（按序号），不写原文。
 - 分流写方式（订阅自带 / 我的方案）、方案数、正在使用的方案里策略组和规则的条数；不写规则内容和信息节点表达式。
-- 令牌（Google 备份、WARP 账户）存在系统凭据库里，诊断不读凭据库。
+- WARP 账户存在系统凭据库里，诊断不读凭据库。
 
 内核日志里有访问过的域名和节点名，所以「诊断信息」一行的说明写明「含内核日志，其中有访问过的网站」，由用户
 决定是否分享。界面自己的 Python 日志和崩溃日志还没有收集，留到 M6 收尾。

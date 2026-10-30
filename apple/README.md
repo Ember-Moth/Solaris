@@ -250,14 +250,14 @@ mihomo home 在扩展容器的 `Application Support/Solaris/core`，`startTunnel
 ## 尚未完成
 
 - **隧道未连接时的校验和读取订阅**：扩展只在隧道连接时运行，`Validate` 和 `InspectSource` 这时得到
-  `not_running`，界面在断开时导入订阅会失败。需要决定做法，例如把 Go 内核的无 TUN 只读部分也链进管理库。
-- **最低系统版本**：PySide6 6.12.0 让 app 要求 macOS 26（见“组装 Solaris.app”）。
+  `not_running`，界面在断开时导入订阅会失败。需要决定做法（roadmap 的 D27），例如把 Go 内核的无 TUN 只读部分也链进管理库。
+- **最低系统版本**：PySide6 6.12.0 让 app 要求 macOS 26（见“组装 Solaris.app”，roadmap 的 D28）。
 - **测试 Mac 上的实测**：激活、批准、连接；utun 描述符的查找、四种栈经过 utun 的流量、DNS 劫持、断开与
   重连后描述符的归属；provider message 的大小上限（D8）；app 在 hardened runtime 下的启动；`includeAllNetworks`：
   打开后系统默认绕开隧道的流量确实进入隧道、局域网流量不进，扩展自己（mihomo 的出站）的流量不被卷回隧道，
   `mips` 和 `gvisor` 栈都能工作，保存配置时系统是否再次请用户允许。
 - **发布工作流**还没有运行过（要在 `release` Environment 里批准）；公证结果未知。
-- 批准扩展、需要重启等新错误码的界面文案；app 图标；卸载前停用扩展（`deactivationRequest`）、扩展说明文字的
+- 批准扩展、需要重启等新错误码的界面文案；卸载前停用扩展（`deactivationRequest`）、扩展说明文字的
   本地化。
 
 ## Apple Developer 配置

@@ -31,6 +31,7 @@
 | --- | --- |
 | `config_yaml` | 配置原文，即 `ProfileStore` 里存的 YAML |
 | `overrides` | 覆写的 YAML 原文，按应用顺序排列：先全局覆写，再这份配置自己的覆写；没有设置的不放进来。语义见第 4 节 |
+| `composition` | "我的方案"时代替 `config_yaml`：节点池、方案 JSON、信息节点表达式和链式出口（第 9 节）；两者只能有一个 |
 | `options` | `RunOptions`：`tun_enabled`、`system_proxy_enabled`、`mixed_port`（0 表示沿用配置）、`allow_lan`、`tun_stack`（空串表示沿用配置）、`include_all_networks`。`validate` 不使用。`include_all_networks` 不进控制协议，只有 `MacExtensionHost` 在启动隧道时把它写进 VPN 配置（architecture.md §6.1） |
 
 - **Start** 的各项都取自设置（第 8 节）：TUN 和系统代理是用户在开关上的选择，其余是设置页的值。
@@ -72,14 +73,14 @@
 - 时间都用 Unix 秒。每行有 `updated_at`，只在内容确实变化时更新。`profiles`、`overrides`、`plans`、`plan_groups`、
   `plan_rules`、`backup_targets` 删除时只记 `deleted_at`（软删除），留给备份按记录合并；`profile_contents` 是缓存，
   直接删除。
-- `ProfileStore` 的接口与文件存储时相同（`load`、`save`、`read_config`、`write_config`、`delete_config`、
-  `read_override`、`write_override`），每个方法是一个事务：
+- `ProfileStore` 的方法（`load`、`save`、`read_config`、`write_config`、`delete_config`、`read_override`、
+  `write_override`）各是一个事务：
   - `save(list)` 写入整个列表：新配置插入，有变化的更新，列表里没有的标记删除；当前配置写入
     `routing_state.profile_id`。
   - 调用顺序是先 `write_config` 再 `save`，所以列表不会指向没有原文的配置。`Profile.updated_at`、`usage`、
     `proxy_count` 描述的是下载到的原文，因此和原文一起存在 `profile_contents`；还没有原文的配置，读出来时这三项为空。
   - `delete_config` 删除原文，并把这份配置的覆写标记删除。清空覆写文本也是标记删除，再次写入时恢复。
-  - 原文不存在时报 `config_missing`；数据库读写失败时报 `storage_failed`，界面显示「操作失败：…」。
+  - 原文不存在时报 `config_missing`；数据库读写失败时报 `storage_failed`，界面显示「无法读写本地数据：…」。
   - 如果在写入原文之后、保存列表之前崩溃，留下的原文会在下次打开数据库时清掉。
 - `Profile.in_pool` 对应 `profiles.in_pool`，默认为真：这份订阅的节点进入"我的方案"的节点池（第 9 节）。
 - 更新失败的标记只在内存里，不写入数据库。
@@ -104,8 +105,7 @@
 - 表结构的版本记在 `PRAGMA user_version`。`database.py` 的 `MIGRATIONS` 是一串迁移函数，第 n 个把版本 n−1 升到 n。
   打开数据库时从当前版本开始依次执行，每一步和版本号的修改在同一个事务里；某一步失败，数据库停在上一个版本，
   下次启动重试。目前只有版本 1，一次建好全部表。
-- 增加版本时，在 `MIGRATIONS` 末尾追加一个函数，不改已有的。测试会检查：从每个旧版本迁移上来的数据库，表结构
-  与新建的完全相同。
+- 首个版本发布之前不加迁移：表结构直接改 `_SCHEMA_1`，`user_version` 保持 1（storage.md 第 2 节）。
 - 文件打不开（不是数据库，或已损坏），或者版本比本程序认识的还新（降级的情况），就把它连同 `-wal`、`-shm`
   改名为 `solaris.db.<时间戳>.bad` 保留，再新建一个空库。
 
@@ -114,7 +114,8 @@
 - **下载**在用户上下文中进行（urllib，在工作线程里执行），跟随系统代理设置。User-Agent 为
   `solaris/<版本> clash.meta`，让订阅服务返回 Clash YAML。只接受 http 和 https；超过一个请求帧能装下的
   大小（16 MiB 减 1 MiB）即拒绝。`Content-Disposition` 里的文件名作为默认名称。
-- **导入**：下载或读文件 → 解码为 UTF-8 → 宿主 `validate`（带上全局覆写）→ 写入存储。第一份配置自动成为当前配置。
+- **导入**：下载或读文件 → 解码为 UTF-8 → `inspect_source`，带规则的再经宿主 `validate`（带上全局覆写）→ 写入
+  存储。当前配置还空着时，第一份带规则的订阅成为当前配置（第 9 节）。
 - **自动更新**：订阅默认每 12 小时更新一次，可以按配置关闭。界面每分钟检查一次到期的订阅，在启动时也检查；
   失败的订阅 30 分钟内不重试，行内显示「更新失败」。
 - **切换与更新**：更新先 `validate` 再写入存储；如果更新的是当前配置且隧道在运行，随后 `reload`。切换配置时，
@@ -146,7 +147,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   `message` 是解析错误原文，界面原样显示。
 - **编辑**：入口是订阅「更多」菜单里的「编辑覆写…」和订阅页底部的「全局覆写」一行；有覆写的配置在列表第二行
   写「已覆写」。保存时先用受影响的配置和新覆写调用 `validate`：配置自己的覆写用这份配置校验，全局覆写用
-  当前配置校验（所以没有配置时不能编辑全局覆写）。宿主拒绝时不保存，错误显示在编辑框下方；通过后写入存储，
+  当前分流方式拼出的配置校验（所以没有配置时不能编辑全局覆写）。宿主拒绝时不保存，错误显示在编辑框下方；通过后写入存储，
   隧道在运行且用的正是受影响的配置时随后 `reload`。校验、写入和重载在配置库的同一把锁下进行。
 
 ## 5. 多语言
@@ -328,20 +329,21 @@ TUN 与系统代理开关、托盘和关闭窗口的行为都只依赖这个接�
 | `appearance` | `system`、`light`、`dark` | `system` | 同步 | 外观；主题按它取色 |
 | `close_action` | `tray`、`quit` | `tray` | 本机 | 关闭主窗口时留在托盘，还是退出界面；隧道都不受影响 |
 | `launch_at_login` | 布尔 | `false` | 本机 | 登录时打开界面。以系统里的登录项为准，界面每次读到系统的状态就写回这里 |
-| `tun` | 布尔 | `true` | 本机 | 设置页「接管方式」：连接时是否开启 TUN。macOS 上不列出，总是开启 |
-| `system_proxy` | 布尔 | `true` | 本机 | 设置页「接管方式」：连接时是否设置系统代理 |
+| `tun` | 布尔 | `false` | 本机 | 概览页和设置页「接管方式」的 TUN 开关：下一次连接是否开启 TUN |
+| `system_proxy` | 布尔 | `false` | 本机 | 概览页和设置页「接管方式」的系统代理开关：下一次连接是否设置系统代理 |
 | `mixed_port` | 1024–65535 | 7890 | 本机 | 混合端口，总是覆盖配置里的 `mixed-port` |
 | `allow_lan` | 布尔 | `false` | 本机 | 允许局域网连接（architecture.md §8"局域网暴露"） |
 | `tun_stack` | `profile`、`system`、`mips`、`gvisor`、`mixed` | `profile` | 本机 | "TUN 协议栈"（D3）：`profile` 是"跟随配置"，用配置里的 `tun.stack`；其余写进 `RunOptions.tun_stack`，盖过配置和覆写（architecture.md §3.1、§3.4）。各平台的默认值等实测后再定 |
 | `include_all_networks` | 布尔 | `false` | 本机 | 仅 macOS（D19）："包含所有网络"，把系统默认绕开隧道的流量也送进隧道，局域网流量除外。写进 VPN 配置的 `includeAllNetworks` 和 `excludeLocalNetworks`，下次连接时生效；打开后 TUN 协议栈不能用 `system` 和 `mixed`（architecture.md §3.4） |
 | `warp_protocol` | `masque-h2`、`masque-h3`、`wireguard` | `masque-h2` | 本机 | WARP 出口的协议，在分流页的出口设置对话框里改，设置页不列出。账户只有一种协议的密钥，改了协议就为它换密钥（exits.md 3.1、3.2 节） |
-| `tor_enabled` | 布尔 | `false` | 本机 | M10：设置页"实验功能"里的"Tor 出口"（exits.md 第 4 节） |
 | `update_check` | 布尔 | `true` | 同步 | 自动检查更新：启动 30 秒后检查一次，之后按 `update_check_hours` 定期检查（release.md 第 2 节） |
 | `update_check_hours` | `24`、`72`、`168` | `24` | 同步 | 自动检查的间隔：每天、每 3 天、每周 |
 
 - **映射到 `RunOptions`**（第 1 节）：Start 用 `Settings.run_options()` 的各项（`tun_stack` 为 `profile` 时传空串）；
   Reload 的 TUN 和系统代理取自 `GetStatus`，其余取自设置。
-  - **TUN 与系统代理**（D26）：开关只在设置页「接管方式」，概览页只有「连接」一个开关。隧道运行时，
+  - **TUN 与系统代理**：开关在概览页「出站」分组，设置页「接管方式」显示同一个 ViewModel 的同一对开关，两页总是
+    一致。D26 会把它们只留在设置页、默认打开，概览页只剩「连接」开关，macOS 上不列出 TUN（尚未实现，见
+    DESIGN.md「连接开关」）。隧道运行时，
     显示内核报告的状态，拨动开关先改变隧道（TUN 是带新 `RunOptions` 的 Reload，系统代理是
     `SetSystemProxy`），宿主接受后才记入设置；隧道停止时，显示设置里的选择，拨动只改设置，下一次连接生效。
   - **端口、局域网连接与 TUN 协议栈**：隧道运行时先带新值 Reload，成功后才写入设置；内核拒绝（如端口被占用，
@@ -355,8 +357,7 @@ TUN 与系统代理开关、托盘和关闭窗口的行为都只依赖这个接�
   - **开发模式**：开发服务对开启 TUN 或系统代理返回 `unsupported_method`（architecture.md §11）。`ProfileLibrary` 把它换成
     `tun_unsupported`、`system_proxy_unsupported` 或两者都有的 `tun_and_system_proxy_unsupported`，界面在概览页
     标题栏和设置页开关下方显示「开发模式不支持 TUN 模式」等提示，设置不改。
-- **外观**：设置页只负责选择和保存。`SettingsViewModel` 的 `appearance` 属性（`system` / `light` / `dark`）和
-  `appearanceChanged` 信号供主题使用，`setAppearance(mode)` 修改它。
+- **外观**：设置页只负责选择和保存（`setAppearance` 写设置项 `appearance`），主题跟随第 6 节的外观对象。
 - **托盘**用 `Qt.labs.platform` 的 `SystemTrayIcon`（`ui/components/TrayIcon.qml`）。它在 macOS 和 Windows 上
   有 Qt 平台插件的原生实现，`QGuiApplication` 就够，不必为 `QSystemTrayIcon` 引入 Qt Widgets 和
   `QApplication`。没有原生托盘的平台（Linux、测试用的 offscreen）上 Labs Platform 会要求 Qt Widgets，所以
@@ -377,8 +378,8 @@ TUN 与系统代理开关、托盘和关闭窗口的行为都只依赖这个接�
   崩溃的界面会留下 socket 文件，而且两个同时启动的界面拿锁时只有一个能成功。
 - **备份与同步**：设置页左栏的一个分组，由 `viewmodels/backup.py` 的 `BackupViewModel` 提供（storage.md 第 3、6 节）。
   iCloud、Google Drive 两行在它们的提供方实现之前不显示，目前有两行：
-  - 「导出到文件」：说明写着「不加密，其中有订阅链接」；「导出…」先弹确认框，说明文件不加密、里面有订阅链接、
-    本地文件配置的原文里可能有组网出站的凭据（mesh.md 第 7 节），确认后在系统的保存对话框里选位置，默认文件名
+  - 「导出到文件」：说明写着「不加密，其中有订阅链接」；「导出…」先弹确认框「备份文件不加密，含订阅链接和配置原文，请妥善保管。」
+    （本地文件配置的原文里可能有组网出站的凭据，mesh.md 第 7 节），确认后在系统的保存对话框里选位置，默认文件名
     `solaris-backup-<时间>.json`。导出后说明处显示「已导出到 …」或失败原因，6 秒后恢复原来的说明。
   - 「从文件恢复」：「恢复…」打开系统的打开对话框。本机没有配置时直接按"替换"导入；有配置时弹出「从文件恢复」
     对话框：备份的设备、时间和配置、方案的份数，本机现有的份数，以及"合并"（默认）和"替换"两个选项，「恢复」是
@@ -392,8 +393,8 @@ TUN 与系统代理开关、托盘和关闭窗口的行为都只依赖这个接�
 - **登录时打开**（`desktop/login.py`，平台接口 `LoginItem`）：
   - Windows：为当前用户注册一个计划任务（`schtasks /Create /XML`）：登录触发器只针对该用户，以该用户身份、
     交互式令牌、不提权运行，普通优先级，没有运行时限，动作是 `<界面>.exe --background`（界面只进托盘）。
-    任务名 `Solaris (<域>_<用户名>)`。用计划任务而不是注册表的 `Run` 键，是沿用开发方案的选择：登录后
-    立即启动，不受 Windows 对启动项的延迟，安装器（M4）也能用同一个任务名创建和清理。读状态用
+    任务名 `Solaris (<域>_<用户名>)`。用计划任务而不是注册表的 `Run` 键：登录后立即启动，不受 Windows
+    对启动项的延迟；卸载器按同一个任务名清理（`package/windows/setup.ps1`）。读状态用
     `schtasks /Query /XML`，用户在任务计划程序里禁用的任务视为关闭。
   - macOS：`SMAppService.mainAppService` 的 `register` / `unregister`（macOS 13 起），经 ctypes 调用
     Objective-C 运行时，不依赖 PyObjC。状态为 `requiresApproval` 时设置页提示到系统设置的登录项里允许，并给出
@@ -465,7 +466,7 @@ TUN 与系统代理开关、托盘和关闭窗口的行为都只依赖这个接�
     `no-resolve`）和域名规则（`ts.net`）插在最前面，已有一样的条目就跳过，标题栏给出撤销提示；ZeroTier、EasyTier
     打开添加规则对话框的"IP 段"，目标已选好（`RuleEditor.openAddRanges`）。
   - "使用它的规则"：把目标筛选设为这个出站，切到规则标签。
-- **链式出口**（exits.md 第 6 节）：组网之后是"链式出口"一节，这一轮只有 WARP 一行，由 `WarpExit`
+- **链式出口**（exits.md 第 6 节）：组网之后是"链式出口"一节，目前只有 WARP 一行，由 `WarpExit`
   （`viewmodels/routing_exits.py`）提供。说明写"经由 组名 · 协议"，经由组没有成员（`via_empty`）时写"组名，暂经
   节点选择"；右侧是状态："未启用"、"正在注册…"、"已就绪"、"未注册"、"连接后注册"，注册失败时为 `warning` 色的
   "不可用"（原因在对话框的账户一栏）。点行或菜单的"设置…"打开出口设置对话框（`WarpDialog.qml`）：

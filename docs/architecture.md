@@ -1,16 +1,13 @@
 # 架构
 
-本文记录 Solaris 的目标架构。Solaris 是 mihomo 的桌面客户端（仓库 `Ember-Moth/Solaris`），项目最初计划基于
-sing-box，后来因为官方 sing-box for Desktop 已经发布，改为基于 mihomo。产品名、应用名都是 Solaris（决策 D1）；
+本文记录 Solaris 的架构。Solaris 是 mihomo 的桌面客户端（仓库 `Ember-Moth/Solaris`）。产品名、应用名都是
+Solaris（决策 D1）；
 代码里的产品标识集中在 `src/core/internal/product/product.go` 与 `src/solaris/product.py`，协议见
 `proto/solaris/protocol/control.proto`。
 
-本文只讲系统层面的结构；界面各部分的设计见 [ui.md](ui.md)，计划中的存储与分流见 [storage.md](storage.md) 和
-[routing.md](routing.md)，进度、计划与决策见 [roadmap.md](roadmap.md)。
-
-状态：engine（三种 TUN 模式）、控制协议和开发模式服务已实现；Windows 服务的属主、开机恢复、系统代理和客户端
-校验已实现，Windows 安装器已写好，都只在 CI 的 Windows 机器上测过、装卸过，未签名，待 Windows 虚拟机实测；macOS 的
-`Solaris.app` 已能组装、签名，发布工作流负责公证，待测试 Mac 实测（roadmap.md 的 M4、M5）。
+本文只讲系统层面的结构；界面各部分的设计见 [ui.md](ui.md)，存储与备份、分流、链式出口、组网出站和发布更新分别见
+[storage.md](storage.md)、[routing.md](routing.md)、[exits.md](exits.md)、[mesh.md](mesh.md)、
+[release.md](release.md)。各部分的完成情况、实测进度和决策见 [roadmap.md](roadmap.md)。
 
 ## 1. 定位与原则
 
@@ -143,10 +140,10 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
 - **GEO 数据**（D17）：拼装的配置用 home 里的 `GeoSite.dat`、`GeoIP.dat`。mihomo 只在它自己的 `main` 里启动 GEO
   更新器，所以配置开启 `geo-auto-update` 时 engine 自己运行一个（每小时检查，数据过期就调用
   `updater.UpdateGeoDatabases`），停止内核时一同停止；新数据在下一次应用时生效。home 里缺数据时 mihomo 会在解析
-  时同步下载，所以安装包附带一份（`scripts/fetch_geodata.py`），测试写入一份很小的数据，从不下载。
+  时同步下载，所以安装包附带一份（`scripts/fetch_geodata.py`）；engine 的单元测试写入一份很小的数据，内核从不下载。
 - **覆写**（决策 D4：只做 Merge，不做 Script）：
-  - 来源是一份全局覆写加上每个配置各一份。请求里的 `overrides` 是一组 YAML 映射原文，按顺序应用：
-    先全局覆写，再当前配置的覆写，后面的覆盖前面的。空串或只有注释的覆写不做任何事。
+  - 来源是一份全局覆写加上每份订阅各一份。请求里的 `overrides` 是一组 YAML 映射原文，按顺序应用：
+    先全局覆写，再正在使用的订阅的覆写，后面的覆盖前面的。空串或只有注释的覆写不做任何事。
   - 位置在"解析用户 YAML"之后、平台补丁和 3.3 节安全项之前，所以覆写改不动开发模式护栏、自管模式的
     TUN 段和安全项（有测试覆盖）。
   - `prepend-rules` / `append-rules`、`prepend-proxies` / `append-proxies`、`prepend-proxy-groups` /
@@ -162,7 +159,7 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
   - Reload 不断开已有连接：`hub.ApplyConfig` 只替换代理表和规则表（`tunnel.UpdateProxies`、`UpdateRules`），
     不碰 `statistic.DefaultManager` 里的连接；入站只在地址变化时重建，关闭的也只是监听 socket。已有连接沿用
     建立时选定的出站，直到结束，即使那个节点已从新配置里删掉。应用期间（毫秒级）隧道处于 Suspend，这时新到的
-    连接会被直接关闭（`tunnel.isHandle`）。A2 实测见 [routing.md](routing.md) 第 12 节。
+    连接会被直接关闭（`tunnel.isHandle`）。`tests/e2e` 的 `test_reloads_keep_connections` 守住这一点。
   - 应用前先试开新配置要新开的入站端口（TCP，混合端口和 SOCKS 端口还有 UDP），已经由内核打开的跳过。端口被
     占用时直接返回 `ErrApplyFailed`，信息是系统的监听错误，什么都不改：Reload 保留原来的配置和端口，Start
     进入 FAILED。`hub.ApplyConfig` 会先关旧端口再开新端口、失败只记日志，没有这一步，运行中的内核会丢掉端口。
@@ -232,8 +229,8 @@ gVisor 栈。M1 的实测数据如下（v1.19.33，Go 1.27.3，`-trimpath -ldfla
   对应的检查（`StackOptions.IncludeAllNetworks`），但 mihomo 不传这个选项，所以由 engine 在 fd 模式下把这两种栈
   换成 gVisor（3.1 节）。`includeAllNetworks` 默认关闭，用户可以在设置页打开（D19，ui.md §8），下次连接时生效；
   设置页同时把这两种栈置灰，已选的改成 gVisor。CI 的 fd 模式测试对这两种栈再各跑一次打开它的情形。
-- 系统扩展的可执行文件（Release，`with_gvisor`）是 73.3 MiB，`xcodebuild build` 不裁剪符号；`strip -x` 后
-  61.3 MiB，与上表的服务相当。裁剪放在组装 .app 一步。
+- 系统扩展的可执行文件（Release，`with_gvisor`）由 Xcode 在签名前做 `strip -x`（`STRIP_STYLE: non-global`），
+  从 73.3 MiB 减到 61.3 MiB，与上表的服务相当。
 - 各标签组合在两个平台上都能编译。真实 TUN 下，四种栈在 Linux 的自管模式里都能建立 TUN 并转发流量
   （Lima 虚拟机内的网络命名空间实测，Ubuntu 26.04 aarch64，见第 11 节）；Windows 上的 wintun 待 M4 实测。
 
@@ -329,7 +326,7 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 
 方法的行为约定：
 
-- `Validate`、`Start`、`Reload` 携带配置来源、覆写列表 `overrides`（先全局、后当前配置，见 3.2 节）和
+- `Validate`、`Start`、`Reload` 携带配置来源、覆写列表 `overrides`（先全局、后正在使用的订阅，见 3.2 节）和
   `RunOptions`（`Validate` 没有），经过 3.2 节的准入流水线。配置来源是 oneof：订阅原文 `config_yaml`，或拼装
   来源 `composition`（节点池的订阅、信息节点表达式、方案 JSON，routing.md 8.1、8.5 节）。用 `composition` 时
   三个方法返回 `CompositionReport`，用 `config_yaml` 时返回 Empty。
@@ -532,7 +529,7 @@ Solaris.app/Contents/
   `SolarisUI`，因为卷不区分大小写，`MacOS/solaris/` 是 Python 包的数据目录。
 - 管理库用 `OSSystemExtensionRequest` 激活扩展（用户需在系统设置中批准；包内的扩展总是替换其他构建激活的
   扩展）、配置 `NETunnelProviderManager`、启停隧道、查询状态、收发 provider message。配置和启动时按设置写
-  `includeAllNetworks`（D19，默认关闭；`MacExtensionHost` 取自 `RunOptions.include_all_networks`）；打开它时同时设 `excludeLocalNetworks`，局域网流量（打印机、AirDrop、
+  `includeAllNetworks`（D19，默认关闭；`MacExtensionHost` 取自界面的 `RunOptions.include_all_networks`，这是 Python 侧的字段，不进协议）；打开它时同时设 `excludeLocalNetworks`，局域网流量（打印机、AirDrop、
   Bonjour）照旧不进隧道。隧道连着时不改这两项：扩展只在 attach 时读一次，所以改动下次连接时生效。C 接口是
   `apple/Manager/SolarisManager.h`：调用阻塞到完成或超时，要在后台线程调用；本库交出的字符串和缓冲区由
   调用方用 `solaris_manager_free` 释放。
@@ -641,7 +638,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
     依次安装、打开界面、在界面运行时升级、卸载（保留数据）、再安装、以 `/PURGE` 卸载，核对文件、服务的路径、启动
     方式、账户、恢复策略与管道监听、注册表、快捷方式、计划任务，以及卸载后什么都没留下。不建 TUN，不连接。真机上
     的 UAC、开机恢复和隧道实测要等 Windows 虚拟机（roadmap.md 的 M4）。
-- **macOS**：拖入"应用程序"文件夹完成安装，首次连接时激活系统扩展。卸载时先停用扩展。
+- **macOS**：拖入"应用程序"文件夹完成安装，首次连接时激活系统扩展。卸载前停用扩展（`deactivationRequest`）还没做
+  （apple/README.md"尚未完成"）。
 
 ## 10. 构建与发布
 
@@ -712,8 +710,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   `ServiceHost`、临时数据目录和真实的 ViewModel 组装界面，离屏加载 QML，通过 ViewModel 的槽操作，再用
   `curl -x` 经混合端口访问本机的 HTTP 服务；配置里的节点是本机的 HTTP 代理，它们记下经过的请求，所以能看出
   流量走了哪条路。覆盖导入文件和订阅、连接、各页数据、切换模式和节点、TUN 与系统代理被拒、覆写 / 订阅更新 /
-  切换配置时重载不断开已有连接、断开重连与服务重启、混合端口被占用和局域网连接，以及模拟宿主与真实服务对一组
-  配置的判定一致；自定义分流（B2）另有用例：只有节点的订阅加方案连接、域名规则把流量导向指定节点、连接快照带规则
+  切换订阅时重载不断开已有连接、断开重连与服务重启、混合端口被占用和局域网连接，以及模拟宿主与真实服务对一组
+  配置的判定一致；自定义分流另有用例：只有节点的订阅加方案连接、域名规则把流量导向指定节点、连接快照带规则
   条目 id、重载改方案。分流用例需要 GEO 数据，用 `scripts/fetch_geodata.py` 拉取并缓存。默认跳过，设置
   `SOLARIS_E2E=1` 才运行；`SOLARIS_E2E_SERVICE` 可以指向已
   构建的服务，否则测试自己 `go build`；`SOLARIS_E2E_SCREENSHOTS` 指向一个目录时保存各页截图。CI 的
@@ -725,8 +723,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   - 属主：认领与换属主重启、按属主恢复、注销停止、系统代理的开启与还原，用替身平台在所有平台上测
     （`internal/owner`），分发器的放行和错误码见 `internal/control/host_test.go`；
   - Windows CI：客户端校验（真实的命名管道、文件 ID、锁住映像、签名者）、home 目录的 ACL 与拒绝链接、WinINet
-    代理设置的读写与还原（只在 CI 上改代理）。模拟属主 token 要 SYSTEM 身份，和服务的安装、重启一起留到 Windows
-    虚拟机；
+    代理设置的读写与还原（只在 CI 上改代理）。服务的安装、升级与卸载由 `windows-installer` job 覆盖（第 9 节）；
+    模拟属主 token 和认领后的服务重启要 SYSTEM 身份和登录的用户，留到 Windows 虚拟机；
   - Python：用模拟宿主测试 models 与 ViewModel；模拟宿主的配置检查、错误码和措辞跟着真实服务走，端到端测试
     核对两者一致。
 - **竞态检查**：`go test -race` 会报出 mihomo 自身在 `log.SetLevel` 上的竞态（见 3.2 节），所以 CI 不带
