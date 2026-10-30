@@ -134,7 +134,7 @@ jobs:
       - name: Build (unsigned)
         run: uv run --no-project python scripts/build_apple.py
 
-  # The owned-TUN test creates a real TUN, so it runs only here, inside network
+  # The owned-TUN and fd-mode tests create a real TUN, so they run only here, inside network
   # namespaces (docs/architecture.md §11). md-tun holds the engine; md-srv, on the
   # far side of a veth pair, serves the page the test fetches through the TUN. The
   # server listens on 10.201.0.1, off md-tun's link: auto-route leaves on-link
@@ -191,6 +191,15 @@ jobs:
             SOLARIS_TUN_TARGET=http://10.201.0.1:8080/ \
             SOLARIS_TUN_STACKS="${{ matrix.stacks }}" \
             ip netns exec md-tun "$RUNNER_TEMP/engine-tun.test" -test.run '^TestOwnedTUN$' -test.v -test.count=1
+      # fd mode as the macOS extension runs it: the test creates the TUN and its route, hands
+      # the descriptor to the engine, and mihomo's own dials leave through md-veth0.
+      - name: fd mode in md-tun
+        run: |
+          sudo env SOLARIS_TUN_TEST=1 \
+            SOLARIS_TUN_TARGET=http://10.201.0.1:8080/ \
+            SOLARIS_TUN_OUTBOUND=md-veth0 \
+            SOLARIS_TUN_STACKS="${{ matrix.stacks }}" \
+            ip netns exec md-tun "$RUNNER_TEMP/engine-tun.test" -test.run '^TestFDTUN$' -test.v -test.count=1
       # systemd-resolved serves the runner, outside the namespaces, yet takes interface
       # indexes from inside them over D-Bus: sing-tun's resolvectl calls for mdtun0 land on
       # whichever runner interface has the same index. Left there, they cut the runner off
