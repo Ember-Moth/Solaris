@@ -18,7 +18,7 @@
 | 端到端联调 | 完成（A2） | 界面连真实开发服务跑通 M1、M2 的验收步骤；`tests/e2e` 自动化，CI 的 `e2e` job 在 macOS 上运行 |
 | 数据存储与云备份 | 存储层完成（B1） | 界面数据在 SQLite；云备份未做 |
 | 自定义分流 | 完成（M8a：B2、C1；M8b） | 分流方式、节点池、地区组、默认模板、41 个服务、规则编辑与撤销、立即生效；策略组编辑器与实时预览、规则测试、搜索与按目标筛选、以此创建方案、导入导出、查看生成的配置 |
-| 链式出口 | 设计完成 | WARP 出口（M9）、Tor 出口（M10，首发后）、VPN Gate 出口（M12）的设计见 exits.md，未实现 |
+| 链式出口 | 部分 | 设计见 exits.md。WARP 出口（M9）的界面部分已做（第二轮）：分流页的"链式出口"一节、出口设置对话框、规则目标、账户存系统凭据库；组网出站的界面部分随它完成（mesh.md）。Tor 出口（M10，首发后）、VPN Gate 出口（M12）未实现 |
 | macOS 原生部分 | 部分（M5） | Xcode 工程、管理库 C 接口；系统扩展用 utun 以 fd 模式运行内核（`with_gvisor`），带 GEO 数据；`MacExtensionHost`；测试 Mac 实测未做 |
 | 打包与安装 | macOS 部分 | `scripts/build_app.py` 组装并签名 `Solaris.app`；发布工作流（签名、公证、.dmg）已写好，未运行；Windows 未开始 |
 | 发布准备（M6） | 部分 | 检查更新与下载、诊断信息导出、第三方许可证清单、一键导入链接的处理已做（release.md）；macOS 的 scheme 已由 `Solaris.app` 的 Info.plist 注册；Windows 签名方案、发布全流程、Windows 的 scheme 注册（随 M4 安装器）未做 |
@@ -330,6 +330,11 @@ fake-ip 下的一致性留到 M5 / M4 实测（routing.md 第 12 节）。
 
 目标：流量经用户的节点再进入 Cloudflare WARP，机场看不到访问的网站，网站看不到节点 IP。设计见
 [exits.md](exits.md) 第 3 节（D22）。
+
+**状态**：界面部分已完成（2026-10-30，第二轮）：链式出口一节、WARP 出口设置对话框（立即生效）、规则目标与
+"未启用"、`egress_unavailable` / `mesh_missing` 的规则行提示、账户经 `keyring` 存系统凭据库、本机设置
+`warp_protocol`、方案的 `plans.egress`；组网出站的界面部分（"组网"一节、添加常用规则、按目标筛选）同时完成。
+只用模拟宿主验证过（`tests/test_routing_exits.py`），真实注册和下面四项验收要等内核部分合并、有真实节点后再做。
 
 范围：
 
