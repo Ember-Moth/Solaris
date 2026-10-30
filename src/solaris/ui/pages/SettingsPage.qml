@@ -1,6 +1,8 @@
 pragma ComponentBehavior: Bound
+import QtCore
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import Solaris
 import "../components"
@@ -9,6 +11,8 @@ ScrollView {
     id: page
 
     required property SettingsViewModel settings
+    // Updates, diagnostics and licenses in the 关于 group.
+    required property AboutViewModel about
     // TUN and the system proxy are the overview's switches, shown here as well.
     required property OverviewViewModel overview
 
@@ -322,9 +326,90 @@ ScrollView {
                     Group {
                         Layout.fillWidth: true
 
+                        GroupRow {
+                            divider: false
+                            verticalPadding: Theme.space2
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+
+                                UiText {
+                                    Layout.fillWidth: true
+                                    text: qsTr("版本")
+                                }
+
+                                AccessibleText {
+                                    Layout.fillWidth: true
+                                    visible: text !== ""
+                                    text: page.about.updateStatus
+                                    role: Theme.type.caption
+                                    color: page.about.updateFailed ? Theme.danger : Theme.textMuted
+                                    wrapMode: Text.Wrap
+                                    Accessible.role: Accessible.StatusBar
+                                }
+                            }
+
+                            AccessibleText {
+                                text: page.about.version
+                                role: Theme.type.dataMd
+                                color: Theme.textSecondary
+                                Accessible.name: qsTr("版本") + " " + text
+                            }
+
+                            LinkButton {
+                                visible: page.about.releaseUrl !== ""
+                                text: qsTr("发布说明")
+                                Accessible.description: page.about.releaseUrl
+                                onClicked: Qt.openUrlExternally(page.about.releaseUrl)
+                            }
+
+                            AppButton {
+                                id: updateButton
+
+                                variant: "compact"
+                                text: page.about.updateButton
+                                enabled: page.about.updateButtonEnabled
+                                Accessible.description: page.about.updateStatus
+                                onClicked: page.about.runUpdateAction()
+                            }
+                        }
+
+                        GroupRow {
+                            rowHeight: Theme.rowSingle
+
+                            UiText {
+                                Layout.fillWidth: true
+                                text: qsTr("自动检查更新")
+                            }
+
+                            AppSwitch {
+                                value: page.about.autoCheck
+                                Accessible.name: qsTr("自动检查更新")
+                                onRequested: on => page.about.setAutoCheck(on)
+                            }
+                        }
+
+                        GroupRow {
+                            rowHeight: Theme.rowSingle
+
+                            UiText {
+                                Layout.fillWidth: true
+                                text: qsTr("检查频率")
+                                color: page.about.autoCheck ? Theme.text : Theme.textMuted
+                            }
+
+                            AppSelect {
+                                options: page.about.intervalOptions
+                                current: page.about.checkInterval
+                                enabled: page.about.autoCheck
+                                accessibleName: qsTr("检查频率")
+                                onPicked: value => page.about.setCheckInterval(value)
+                            }
+                        }
+
                         Repeater {
                             model: [
-                                { label: qsTr("版本"), value: page.settings.version },
                                 { label: qsTr("服务"), value: page.settings.serviceVersion },
                                 { label: qsTr("内核"), value: page.settings.coreVersion },
                                 { label: qsTr("控制协议"), value: page.settings.protocolVersion },
@@ -335,9 +420,7 @@ ScrollView {
                                 id: aboutRow
 
                                 required property var modelData
-                                required property int index
 
-                                divider: index > 0
                                 rowHeight: Theme.rowSingle
 
                                 UiText {
@@ -350,6 +433,71 @@ ScrollView {
                                     role: Theme.type.dataMd
                                     color: Theme.textSecondary
                                     Accessible.name: aboutRow.modelData.label + " " + text
+                                }
+                            }
+                        }
+
+                        GroupRow {
+                            verticalPadding: Theme.space2
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+
+                                UiText {
+                                    Layout.fillWidth: true
+                                    text: qsTr("开源许可")
+                                }
+
+                                AccessibleText {
+                                    Layout.fillWidth: true
+                                    text: page.about.componentsSummary
+                                    role: Theme.type.caption
+                                    color: Theme.textMuted
+                                }
+                            }
+
+                            AppButton {
+                                id: licensesButton
+
+                                variant: "compact"
+                                text: qsTr("查看…")
+                                Accessible.name: qsTr("查看开源许可")
+                                onClicked: licensesDialog.show(licensesButton)
+                            }
+                        }
+
+                        GroupRow {
+                            verticalPadding: Theme.space2
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+
+                                UiText {
+                                    Layout.fillWidth: true
+                                    text: qsTr("诊断信息")
+                                }
+
+                                AccessibleText {
+                                    Layout.fillWidth: true
+                                    text: page.about.diagnosticsStatus
+                                    role: Theme.type.caption
+                                    color: page.about.diagnosticsFailed ? Theme.danger : Theme.textMuted
+                                    wrapMode: Text.Wrap
+                                    Accessible.role: Accessible.StatusBar
+                                }
+                            }
+
+                            AppButton {
+                                variant: "compact"
+                                text: qsTr("导出…")
+                                enabled: !page.about.exporting
+                                Accessible.name: qsTr("导出诊断信息")
+                                Accessible.description: page.about.diagnosticsStatus
+                                onClicked: {
+                                    diagnosticsDialog.selectedFile = diagnosticsDialog.currentFolder + "/" + page.about.diagnosticsName
+                                    diagnosticsDialog.open()
                                 }
                             }
                         }
@@ -372,5 +520,39 @@ ScrollView {
                 }
             }
         }
+    }
+
+    Connections {
+        target: page.about
+
+        function onInstallRequested() {
+            installDialog.show(updateButton)
+        }
+    }
+
+    ConfirmDialog {
+        id: installDialog
+
+        title: page.about.installTitle
+        message: page.about.installMessage
+        confirmText: qsTr("打开")
+        onAccepted: page.about.confirmInstall()
+    }
+
+    LicensesDialog {
+        id: licensesDialog
+
+        about: page.about
+    }
+
+    FileDialog {
+        id: diagnosticsDialog
+
+        title: qsTr("导出诊断信息")
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "zip"
+        currentFolder: StandardPaths.writableLocation(StandardPaths.DocumentsLocation)
+        nameFilters: [qsTr("zip 压缩文件 (*.zip)")]
+        onAccepted: page.about.exportDiagnostics(selectedFile.toString())
     }
 }

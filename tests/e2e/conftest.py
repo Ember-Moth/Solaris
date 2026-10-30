@@ -35,6 +35,7 @@ from tests.e2e.app import App, Network
 from tests.e2e.servers import ProxyNode, WebServer, free_port
 from tests.e2e.unix import unix_opener
 from tests.support.i18n import ui_language
+from tests.support.releases import offline_updater
 
 E2E_ENV = "SOLARIS_E2E"
 SERVICE_ENV = "SOLARIS_E2E_SERVICE"
@@ -93,7 +94,9 @@ def app(qtbot: QtBot, tmp_path: Path, service: DevService, network: Network) -> 
     name = QCoreApplication.applicationName()
     QCoreApplication.setApplicationName(DISPLAY_NAME)  # the sidebar shows it
     with ui_language("zh"):
-        view_models = compose(host, store, UrlFetcher(), settings=settings)
+        view_models = compose(
+            host, store, UrlFetcher(), settings=settings, updater=offline_updater(data)
+        )
         engine = QQmlApplicationEngine()
         warnings: list[str] = []
         engine.warnings.connect(lambda errors: warnings.extend(e.toString() for e in errors))

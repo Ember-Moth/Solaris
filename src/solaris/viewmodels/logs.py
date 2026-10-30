@@ -246,6 +246,10 @@ class LogsViewModel(QObject):
         self._buffer.clear()
         self._refilter()
 
+    def held(self) -> list[LogEntry]:
+        """Every line the buffer holds, whatever the filters, oldest first (diagnostics)."""
+        return [line.entry for line in self._buffer.lines()]
+
     @Property(int, notify=changed)
     def count(self) -> int:
         return self._model.rowCount()

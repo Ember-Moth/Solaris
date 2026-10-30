@@ -7,9 +7,11 @@
     uv run python scripts/preview.py --crowd 2000  # a busy core: 2000 more connections
     uv run python scripts/preview.py --development  # refuse TUN and the system proxy
     uv run python scripts/preview.py --plan  # route with my plan, the default template
+    uv run python scripts/preview.py --update  # a newer release on a fake GitHub
 
 Profiles live in a temporary directory and links resolve to sample data, so the preview
-touches neither the real profiles nor the network. Source-tree only: the preview's test
+touches neither the real profiles nor the network; updates come from a fake GitHub on a
+loopback port, whose installer passes a fake signature check. Source-tree only: the preview's test
 doubles never ship in the package.
 """
 
@@ -25,7 +27,10 @@ from solaris.app import main
 from solaris.models.plans import default_plan
 from solaris.models.routing import MODE_PLAN, RoutingStore
 from solaris.models.store import ProfileStore
+from solaris.update.releases import ReleaseSource
+from solaris.update.updater import Updater
 from solaris.viewmodels.appearance import MODES
+from tests.support.releases import FakeVerifier, sample_github
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
 
 if __name__ == "__main__":
@@ -39,9 +44,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--plan", action="store_true", help="route with my plan instead of a profile's rules"
     )
+    parser.add_argument("--update", action="store_true", help="offer a newer release")
     args, qt_args = parser.parse_known_args()
     sys.argv[1:] = qt_args
-    with tempfile.TemporaryDirectory(prefix="solaris-preview-") as directory:
+    with (
+        tempfile.TemporaryDirectory(prefix="solaris-preview-") as directory,
+        sample_github(newer=args.update) as github,
+    ):
         store = ProfileStore(Path(directory))
         seed_profiles(store, time.time())
         if args.plan:
@@ -56,5 +65,6 @@ if __name__ == "__main__":
             SimulatedFetcher(delay_s=0.8),
             language=args.lang,
             appearance=args.appearance,
+            updater=Updater(Path(directory), ReleaseSource(github.latest_url), FakeVerifier()),
         )
     raise SystemExit(code)

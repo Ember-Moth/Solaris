@@ -23,6 +23,7 @@ from solaris.models.settings import DatabaseSettingsStore, SettingsStore
 from solaris.models.store import ProfileStore, default_data_dir
 from solaris.models.subscription import Fetcher, UrlFetcher
 from solaris.product import DISPLAY_NAME, PIPE_NAME
+from solaris.update.updater import Updater
 from solaris.viewmodels.appearance import Appearance, resolve_mode
 from solaris.viewmodels.composition import ViewModels, compose
 
@@ -78,6 +79,7 @@ def main(
     language: str = "",
     appearance: str = "",
     login_item: LoginItem | None = None,
+    updater: Updater | None = None,
 ) -> int:
     """``language`` is ``zh`` or ``en`` and wins over the settings at startup; empty follows
     the settings, then SOLARIS_LANG, then the system. ``appearance`` is ``system``,
@@ -107,6 +109,7 @@ def main(
         login_item=login_item or default_login_item(),
         tray_available=tray_supported(app.platformName()),
         start_hidden=BACKGROUND_ARG in sys.argv[1:],
+        updater=updater,
     )
     engine = QQmlApplicationEngine()
     if not load_ui(engine, view_models):

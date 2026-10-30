@@ -12,7 +12,16 @@ from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from solaris.update.releases import CHECKSUMS_NAME, Asset
+from solaris import __version__
+from solaris.update.releases import (
+    CHECKSUMS_NAME,
+    Asset,
+    Release,
+    ReleaseSource,
+    UpdateError,
+    installer_name,
+)
+from solaris.update.updater import Updater
 
 LATEST_PATH = "/repos/Ember-Moth/Solaris/releases/latest"
 
@@ -119,3 +128,27 @@ class FakeVerifier:
         self.seen.append(path)
         if self.error is not None:
             raise self.error
+
+
+class OfflineReleases(ReleaseSource):
+    """For tests that build the whole UI: an automatic check must never reach GitHub."""
+
+    def latest(self) -> Release:
+        raise UpdateError("check_failed", "offline")
+
+
+def offline_updater(directory: Path) -> Updater:
+    return Updater(directory, OfflineReleases(), FakeVerifier())
+
+
+@contextmanager
+def sample_github(*, newer: bool) -> Iterator[FakeGitHub]:
+    """For the preview: this machine's installer in a release that is newer, or the same
+    version as this one."""
+    with fake_github() as github:
+        version = "9.0.0" if newer else __version__
+        github.tag = f"v{version}"
+        name = installer_name(version) or f"Solaris-{version}-macos-arm64.dmg"
+        github.add(name, b"sample installer " * 200_000)
+        github.add_checksums(name)
+        yield github

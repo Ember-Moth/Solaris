@@ -17,6 +17,7 @@ from solaris.viewmodels.appearance import Appearance
 from solaris.viewmodels.composition import compose
 from tests.support.appearance import SystemColorScheme
 from tests.support.i18n import ui_language
+from tests.support.releases import offline_updater
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
 from tests.support.window import Loaded
 
@@ -54,7 +55,13 @@ def loaded(
     store = ProfileStore(tmp_path)
     seed_profiles(store, time.time())
     with ui_language(getattr(request, "param", "zh")):
-        view_models = compose(SimulatedHost(), store, SimulatedFetcher(), appearance=appearance)
+        view_models = compose(
+            SimulatedHost(),
+            store,
+            SimulatedFetcher(),
+            appearance=appearance,
+            updater=offline_updater(tmp_path),
+        )
         engine = QQmlApplicationEngine()
         warnings: list[str] = []
         engine.warnings.connect(lambda errors: warnings.extend(e.toString() for e in errors))

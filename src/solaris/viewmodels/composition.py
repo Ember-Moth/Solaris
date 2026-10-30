@@ -12,6 +12,8 @@ from solaris.models.library import ProfileLibrary
 from solaris.models.settings import DatabaseSettingsStore, Settings, SettingsStore
 from solaris.models.store import ProfileStore
 from solaris.models.subscription import Fetcher
+from solaris.update.updater import Updater
+from solaris.viewmodels.about import AboutViewModel
 from solaris.viewmodels.appearance import Appearance
 from solaris.viewmodels.common.async_runner import AsyncRunner
 from solaris.viewmodels.connections import ConnectionsViewModel
@@ -41,6 +43,7 @@ class ViewModels:
     settings: SettingsViewModel
     desktop: DesktopViewModel
     appearance: Appearance
+    about: AboutViewModel
 
     def initial_properties(self) -> dict[str, object]:
         """Main.qml's required properties."""
@@ -55,6 +58,7 @@ class ViewModels:
             "appearance": self.appearance,
             "settingsViewModel": self.settings,
             "desktopViewModel": self.desktop,
+            "aboutViewModel": self.about,
         }
 
     def start(self) -> None:
@@ -67,6 +71,7 @@ class ViewModels:
         self.logs.start()
         self.settings.start()
         self.desktop.start()
+        self.about.start()
 
     def retranslate(self) -> None:
         """Re-read every text the ViewModels make, after the UI language changed."""
@@ -78,6 +83,7 @@ class ViewModels:
         self.connections.retranslate()
         self.logs.retranslate()
         self.settings.retranslate()
+        self.about.retranslate()
 
     def shutdown(self) -> None:
         self.shell.stop()
@@ -86,6 +92,7 @@ class ViewModels:
         self.connections.stop()
         self.logs.stop()
         self.desktop.stop()
+        self.about.stop()
         self.runner.shutdown(finalize=self.host.close)
 
 
@@ -100,10 +107,12 @@ def compose(
     tray_available: bool = False,
     start_hidden: bool = False,
     appearance: Appearance | None = None,
+    updater: Updater | None = None,
 ) -> ViewModels:
     """``clock`` dates profile updates and subscription expiry. The settings live in the
     profiles' database unless given. ``tray_available`` and ``start_hidden``: see DesktopViewModel.
-    ``appearance`` defaults to the stored choice; the settings page changes it from then on."""
+    ``appearance`` defaults to the stored choice; the settings page changes it from then on.
+    ``updater`` defaults to GitHub's releases, downloaded into the profiles' directory."""
     runner = AsyncRunner()
     settings_store = settings or DatabaseSettingsStore(store.database)
     library = ProfileLibrary(store, host, fetcher, clock, settings=lambda: settings_store.current)
@@ -119,6 +128,9 @@ def compose(
     )
     desktop = DesktopViewModel(
         settings_store, tray_available=tray_available, start_hidden=start_hidden
+    )
+    about = AboutViewModel(
+        updater or Updater(store.directory), settings_store, host, library, runner, logs.held
     )
 
     def page_shown() -> None:
@@ -170,4 +182,5 @@ def compose(
         settings_page,
         desktop,
         appearance,
+        about,
     )
