@@ -12,6 +12,10 @@ the dylib and the extension, and this script signs the UI's code from the inside
 app with apple/App/Solaris.entitlements and the Solaris Developer ID profile. Nothing here
 installs, runs or notarizes the app: .github/workflows/release.yml notarizes, and the extension
 creates a utun, so it only runs on a separate test Mac.
+
+With SOLARIS_GOOGLE_CLIENT_ID and SOLARIS_GOOGLE_CLIENT_SECRET set, the app carries that Google
+OAuth client and so Google Drive backup (google_client, docs/storage.md §4); without them it has
+none. scripts/build_windows.py does the same.
 """
 
 from __future__ import annotations
@@ -19,6 +23,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import importlib.metadata
+import json
 import os
 import plistlib
 import re
@@ -35,6 +40,12 @@ sys.path.insert(0, str(ROOT))
 
 from scripts import build_apple  # noqa: E402
 from scripts.build_apple import BuildError, Profile  # noqa: E402
+from solaris.models.backup_google import (  # noqa: E402
+    CLIENT_FILE_NAME,
+    CLIENT_ID_ENV,
+    CLIENT_SECRET_ENV,
+    configured_client,
+)
 
 BUILD = ROOT / "build" / "app"
 ENTRY = ROOT / "package" / "entry.py"
@@ -183,6 +194,24 @@ def core_version() -> str:
     return _output(command, environment).strip()
 
 
+def google_client(directory: Path) -> list[str]:
+    """The Nuitka options that bundle the Google OAuth client the environment names, written
+    to ``directory`` and read by solaris.models.backup_google beside the package. Without one
+    the build has no Google Drive backup; half of one stops the build."""
+    if not any(os.environ.get(name, "").strip() for name in (CLIENT_ID_ENV, CLIENT_SECRET_ENV)):
+        print("build: no Google OAuth client in the environment, so no Google Drive backup")
+        return []
+    client = configured_client(os.environ, None)
+    if client is None:
+        raise BuildError(f"set both {CLIENT_ID_ENV} and {CLIENT_SECRET_ENV}, or neither")
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / CLIENT_FILE_NAME
+    path.write_text(
+        json.dumps({"client_id": client.id, "client_secret": client.secret}), encoding="utf-8"
+    )
+    return [f"--include-data-files={path}=solaris/{CLIENT_FILE_NAME}"]
+
+
 def build_ui(version: str) -> Path:
     """The Nuitka app bundle of package/entry.py; its own options are in that file."""
     output = BUILD / "nuitka"
@@ -218,6 +247,7 @@ def build_ui(version: str) -> Path:
         "--assume-yes-for-downloads",
         *(f"--noinclude-dlls={pattern}" for pattern in EXCLUDED),
         *(f"--noinclude-data-files={pattern}" for pattern in EXCLUDED),
+        *google_client(BUILD),
         ENTRY,
     ]
     _run(command, env=environment)
