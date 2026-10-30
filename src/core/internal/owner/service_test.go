@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -95,16 +96,43 @@ func (c *fakeCore) Suspend() error {
 	return c.host.Suspended()
 }
 
+// bundled is the GEO data an installer ships, in a directory of its own.
+func bundled(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	for name, content := range map[string]string{"GeoSite.dat": "bundled site", "GeoIP.dat": "bundled ip"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
+}
+
 // start runs the service as a new process would: Open, then Attach.
 func start(t *testing.T, root string, m *machine) (*Service, *fakeCore, string) {
 	t.Helper()
-	service, home, err := Open(root, m, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	service, home, err := Open(root, bundled(t), m, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatal(err)
 	}
 	core := &fakeCore{host: service}
 	service.Attach(core)
 	return service, core, home
+}
+
+// geoData is what home holds of the GEO data, by file name.
+func geoData(t *testing.T, home string) map[string]string {
+	t.Helper()
+	found := map[string]string{}
+	for _, name := range []string{"GeoSite.dat", "GeoIP.dat"} {
+		content, err := os.ReadFile(filepath.Join(home, name))
+		if err == nil {
+			found[name] = string(content)
+		} else if !errors.Is(err, fs.ErrNotExist) {
+			t.Fatal(err)
+		}
+	}
+	return found
 }
 
 func as(sid string, session uint32) peer.Identity {
@@ -140,6 +168,9 @@ func TestClaimRestartsForANewOwner(t *testing.T) {
 	if home != "" || m.secured[root] != "" || m.secured[filepath.Join(root, usersDir)] != "" {
 		t.Fatalf("home %q, secured %v", home, m.secured)
 	}
+	if users, err := os.ReadDir(filepath.Join(root, usersDir)); err != nil || len(users) != 0 {
+		t.Fatalf("users = %v, %v", users, err)
+	}
 	if got := service.Ownership(as(alice, 1)); got != controlpb.Ownership_OWNERSHIP_AVAILABLE {
 		t.Fatalf("ownership = %v", got)
 	}
@@ -159,6 +190,9 @@ func TestClaimRestartsForANewOwner(t *testing.T) {
 	service, _, home = start(t, root, m)
 	if home != Home(root, alice) || m.secured[home] != alice {
 		t.Fatalf("home %q, secured %v", home, m.secured)
+	}
+	if got := geoData(t, home); len(got) != 2 || got["GeoSite.dat"] != "bundled site" || got["GeoIP.dat"] != "bundled ip" {
+		t.Fatalf("GEO data = %v", got)
 	}
 	if err := service.Admit(as(alice, 1)); err != nil {
 		t.Fatal(err)
@@ -181,6 +215,40 @@ func TestClaimRestartsForANewOwner(t *testing.T) {
 	}
 	if err := service.Claim(as("not a SID", 2)); err == nil {
 		t.Fatal("claimed without a SID")
+	}
+}
+
+// The home keeps the GEO data the engine's updates wrote there (docs/routing.md §8.4), and
+// a service without the bundled data still opens it: mihomo downloads what a rule needs.
+func TestOpenSeedsWhatTheHomeLacks(t *testing.T) {
+	root, m := t.TempDir(), newMachine()
+	if err := SaveRecord(root, Record{SID: alice, Session: 1}); err != nil {
+		t.Fatal(err)
+	}
+	home := Home(root, alice)
+	if err := os.MkdirAll(home, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, "GeoIP.dat"), []byte("updated ip"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, opened := start(t, root, m); opened != home {
+		t.Fatalf("home = %q", opened)
+	}
+	if got := geoData(t, home); len(got) != 2 || got["GeoSite.dat"] != "bundled site" || got["GeoIP.dat"] != "updated ip" {
+		t.Fatalf("GEO data = %v", got)
+	}
+
+	root = t.TempDir()
+	if err := SaveRecord(root, Record{SID: bob, Session: 2}); err != nil {
+		t.Fatal(err)
+	}
+	_, opened, err := Open(root, filepath.Join(t.TempDir(), "missing"), m, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err != nil || opened != Home(root, bob) {
+		t.Fatalf("home = %q, %v", opened, err)
+	}
+	if got := geoData(t, opened); len(got) != 0 {
+		t.Fatalf("GEO data = %v", got)
 	}
 }
 

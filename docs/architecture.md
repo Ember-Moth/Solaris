@@ -406,7 +406,7 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 C:\Program Files\Solaris\            管理员所有，用户只读；安装器固定装在这里
 ├── Solaris.exe                      Nuitka standalone UI
 ├── solaris-service.exe              Go 服务；wintun.dll（0.14.1）由 sing-tun 嵌在里面，从内存加载
-├── geodata\                         随安装包附带的 GeoSite.dat、GeoIP.dat（D18），供服务种进 home
+├── geodata\                         随安装包附带的 GeoSite.dat、GeoIP.dat（D18），服务把 home 缺少的复制过去
 ├── LICENSE、solaris\licenses\        许可证与第三方声明（release.md 第 5 节）
 ├── uninstall.exe
 └── …                                  Python / Qt 运行依赖
@@ -418,6 +418,7 @@ C:\ProgramData\Solaris\              仅 SYSTEM 与 Administrators 可访问
     ├── profile.json                   最近一次 Start / Reload 生效的请求：配置来源、覆写、运行选项（protojson）
     ├── state.json                     was_running：属主下次登录时是否恢复隧道
     ├── proxy.json                     服务的系统代理生效期间，属主自己原来的代理设置（5.5 节）
+    ├── GeoSite.dat、GeoIP.dat         GEO 数据：缺少时服务在打开 engine 前从 geodata\ 复制，之后由 engine 更新
     ├── providers\ …                   provider 与规则集缓存
     └── cache.db                       mihomo profile 缓存，包括节点选择（store-selected）
 ```
