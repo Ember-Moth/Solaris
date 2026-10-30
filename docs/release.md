@@ -1,26 +1,25 @@
 # 发布与更新
 
-本文描述发布物和创建 Release 的工作流（第 1 节），以及 M6 里界面这一侧的四件事：检查更新与下载（决策 D11）、
-诊断信息导出、第三方许可证清单、订阅一键导入（决策 D6）。macOS 的签名与公证见 [apple/README.md](../apple/README.md)
-（M5），Windows 安装器见 [architecture.md](architecture.md) 第 9 节（M4）。界面放在设置页的「关于」分组
-（[ui.md](ui.md) 第 8 节）。面向用户的材料：README 的"下载与安装"、[PRIVACY.md](../PRIVACY.md) 和发布说明的模板
-`.github/release-notes.md`。
+本文描述发布物和创建 Release 的工作流（第 1 节），以及界面这一侧的四件事：检查更新与下载（决策 D11）、
+诊断信息导出、第三方许可证清单、订阅一键导入（决策 D6）；决策见 [decisions.md](decisions.md)。macOS 的签名与公证见
+[apple/README.md](../apple/README.md)，Windows 安装器见 [architecture.md](architecture.md) 第 9 节。界面放在设置页的
+「关于」分组（[ui.md](ui.md) 第 8 节）。面向用户的材料：README 的"下载与安装"、[PRIVACY.md](../PRIVACY.md) 和发布
+说明的模板 `.github/release-notes.md`。
 
-状态：都已实现。现在还没有任何 Release，发布工作流没有运行过，检查更新只用本机的假服务器测过。首发的 Windows
-安装包不签名（D29），更新时只核对校验和（第 3 节）；签名以后再加入。`solaris:` 和 `clash:` 两个 scheme 由打包向
+Windows 安装包目前不签名（D29），更新时只核对校验和（第 3 节）。`solaris:` 和 `clash:` 两个 scheme 由打包向
 系统注册（macOS 的 Info.plist，Windows 安装器写在 HKLM，第 6 节）。
 
 ## 1. 发布物
 
-每个版本是 GitHub 仓库 `Ember-Moth/Solaris` 的一个 Release，将由发布工作流创建。界面只认下面这套约定，发布工作流
+每个版本是 GitHub 仓库 `Ember-Moth/Solaris` 的一个 Release，由发布工作流创建。界面只认下面这套约定，发布工作流
 必须照此命名：
 
 | 项目 | 约定 |
 | --- | --- |
-| 标签 | `v<版本>`，版本即 `pyproject.toml` 的 `version`，形如 `0.2.0`（三段数字）。预发布和草稿不提供给更新 |
+| 标签 | `v<版本>`，版本即 `pyproject.toml` 的 `version`，形如 `1.0.0`（三段数字）。预发布和草稿不提供给更新 |
 | 标题与说明 | `Solaris <版本>`；说明取自 `.github/release-notes.md`，`{{version}}` 换成版本，"更新内容"在草稿里手写 |
 | macOS 安装包 | `Solaris-<版本>-macos-arm64.dmg`：内含 `Solaris.app`；磁盘映像用 Developer ID（Team `GY9ZKZMAZA`）签名、公证并 staple |
-| Windows 安装包 | `Solaris-<版本>-windows-x64-setup.exe`：NSIS 安装器（architecture.md 第 9 节）。首发不签名（D29），更新时只核对校验和（第 3 节第 4 步）；签名以后改为 Authenticode 签名 |
+| Windows 安装包 | `Solaris-<版本>-windows-x64-setup.exe`：NSIS 安装器（architecture.md 第 9 节）。目前不签名（D29），更新时只核对校验和（第 3 节第 4 步）；加入签名后用 Authenticode 签名 |
 | 校验和 | `SHA256SUMS`：`sha256sum` 的输出格式，每行 `<64 位小写十六进制>  <文件名>`，覆盖本次发布的其他每个文件 |
 | 源代码 | `Solaris-<版本>-source.tar.gz`：本仓库在这个标签的代码，加上 `go mod vendor` 得到的全部 Go 依赖（第 5 节） |
 
@@ -32,7 +31,7 @@ Release 上只有这四个文件。只做 Windows x64 和 macOS arm64（D2）。
 `.github/workflows/release.yml` 在推送 `v*` 标签时运行（也可以手动运行，但只有标签才创建 Release）。每个 job 都在
 `release` Environment 里，由它的审批人批准后才开始：先批准两个构建 job，它们成功后再批准创建 Release 的 job。
 
-1. **macOS**、**Windows** 两个 job 构建、签名（Windows 暂不签名）、公证安装包，Windows 的安装包还在 runner 上装一遍、
+1. **macOS**、**Windows** 两个 job 构建、签名（Windows 目前不签名）、公证安装包，Windows 的安装包还在 runner 上装一遍、
    升级、卸载（architecture.md 第 10 节）。产物连同各自的 `.sha256` 存为 workflow artifact。
 2. **release** job（只对标签运行，`contents: write`）：
    - 确认标签是 `v<pyproject.toml 的版本>`，版本是三段数字（界面只认这种，第 2 节）；
@@ -45,8 +44,8 @@ Release 上只有这四个文件。只做 Windows x64 和 macOS arm64（D2）。
      删掉旧的草稿再重新运行。
 
 **为什么是草稿**：界面检查更新用的 `releases/latest` 跳过草稿，Release 一旦发布，所有装了 Solaris 的机器就会看到它。
-审批发生在构建之前，审批人那时还看不到产物；本机又不能运行组装好的 app。所以由人从草稿下载两个安装包，在真机上
-装一遍，在草稿里写"更新内容"，确认无误后再发布，发布时保留"Set as the latest release"。草稿有错可以直接删掉重来。
+审批发生在构建之前，审批人那时还看不到产物；本机又不能运行组装好的 app。所以由人从草稿下载两个安装包在真机上
+试过、写好"更新内容"再发布；草稿有错可以直接删掉重来。发版的步骤见 [maintenance.md](maintenance.md) 第 4 节。
 
 **发布说明**：模板 `.github/release-notes.md` 写下载、两个平台的安装提示（Windows 未签名、SmartScreen 与"未知发布者"；
 macOS 允许系统扩展和 VPN 配置）、源代码与许可、隐私说明的链接。GitHub 把正文里的换行原样显示，所以模板的段落不折行；
@@ -68,19 +67,19 @@ macOS 允许系统扩展和 VPN 配置）、源代码与许可、隐私说明的
 - **下载地址只接受 https**，测试用的回环地址（`127.0.0.1`、`localhost`）例外。
 - **自动检查**（设置项见 ui.md 第 8 节）：`update_check` 打开时，界面启动 30 秒后检查一次，之后每隔
   `update_check_hours`（每天、每 3 天、每周）检查一次。上次检查的时间不存储：界面一般连续运行很多天，每次启动多查
-  一次无妨。设置改动立即重新排定下一次检查。手动检查不受这两项影响。
-- **结果**写在「版本」一行的说明里：「已是最新版本 · 刚刚检查」、「有新版本 0.2.0」（右侧按钮变成「下载」，旁边
+  一次无妨。设置改动立即重新排定下一次检查，刚打开自动检查时立即检查一次。手动检查不受这两项影响。
+- **结果**写在「版本」一行的说明里：「已是最新版本 · 刚刚检查」、「有新版本 1.1.0」（右侧按钮变成「下载」，旁边
   「发布说明」链接打开 Release 页面）、「检查更新失败：…」。有新版本时只在设置页提示，不弹窗，也不打扰其他页面。
 
 ## 3. 下载、校验与安装
 
 点「下载」后依次进行，每一步失败都停在那一步，删掉已下载的文件，原因写在说明里：
 
-1. **选安装包**：按平台和架构从 Release 的资源里找第 1 节命名的文件，找不到就是「这个版本没有适合本机的安装包」。
-   资源声明的大小超过 1 GiB 也拒绝。
+1. **选安装包**：检查更新时已按平台和架构从 Release 的资源里找第 1 节命名的文件；找不到时说明写「有新版本 1.1.0 ·
+   这个版本没有适合本机的安装包」，不提供「下载」。资源声明的大小超过 1 GiB 时拒绝下载。
 2. **取校验和**：下载 `SHA256SUMS`（不超过 64 KiB），找到安装包那一行。没有这个文件或没有那一行就拒绝
   （「发布没有附带校验和」），不跳过校验。
-3. **下载**到用户数据目录的 `updates/`，先写 `<文件名>.part`，边下载边算 SHA-256，标题行显示进度，可以取消。
+3. **下载**到用户数据目录的 `updates/`，先写 `<文件名>.part`，边下载边算 SHA-256，说明里显示进度，可以取消。
    收到的字节超过声明的大小立即停止；完成后大小和哈希都对上才改成正式文件名。开始下载前和界面启动时清空
    `updates/` 里的旧文件（删不掉的，如正在运行的安装器，就留着）。
 4. **校验签名**（`update/signature.py`），都在工作线程里运行：
@@ -93,16 +92,16 @@ macOS 允许系统扩展和 VPN 配置）、源代码与许可、隐私说明的
      不挂载磁盘映像去单独验证里面的 `.app`：映像的签名封住了整个映像的内容，公证时 Apple 已扫描过里面的
      代码，用户首次打开 App 时 Gatekeeper 还会再检查一次。挂载会在 Finder 里留下一个卷，也多一个失败点。
    - **Windows**：看构建有没有配置签名者 `signature.WINDOWS_SIGNER`。
-     - **没有**（现在，D29：首发不签名，这个常量是空字符串）：不检查签名（`signature.ChecksumOnly`）。第 2、3 步
+     - **没有**（目前如此，D29，这个常量是空字符串）：不检查签名（`signature.ChecksumOnly`）。第 2、3 步
        已经确认安装包的 SHA-256 与同一个 Release 的 `SHA256SUMS` 一致，这就是全部的校验，所以安装包的可信程度等于
-       GitHub 上这个 Release 的可信程度：能改 Release 文件的人也能改 `SHA256SUMS`。标题行不显示"正在校验签名…"，
+       GitHub 上这个 Release 的可信程度：能改 Release 文件的人也能改 `SHA256SUMS`。说明不显示"正在校验签名…"，
        确认框写明安装包未签名（第 5 步）。这样的构建遇到签了名的安装包也照常接受。
-     - **有**（签名以后）：经 ctypes 调用 `WinVerifyTrust`（`WINTRUST_ACTION_GENERIC_VERIFY_V2`，整条证书链检查
+     - **有**（加入签名以后）：经 ctypes 调用 `WinVerifyTrust`（`WINTRUST_ACTION_GENERIC_VERIFY_V2`，整条证书链检查
        吊销，不弹任何界面），通过后用 `WTHelperProvDataFromStateData` 取出签名者证书，`CertGetNameStringW` 读出它的
        显示名，必须等于 `WINDOWS_SIGNER`。签名的那个版本把常量填成证书的显示名，与 `product.WindowsSigner` 相同；
        从此这个版本只接受这个签名者签的安装包，未签名的会被拒绝。
    - 其他平台没有安装包，不会走到这一步。
-5. **确认安装**：校验通过后按钮变成「打开安装包…」。点它先弹普通确认框「打开 Solaris 0.2.0 的安装包？」，
+5. **确认安装**：校验通过后按钮变成「打开安装包…」。点它先弹普通确认框「打开 Solaris 1.1.0 的安装包？」，
    正文写明接下来发生什么：
    - macOS：「将打开磁盘映像，把 Solaris 拖到“应用程序”文件夹即可升级。」
    - Windows：「安装器会请求管理员权限，并在升级前关闭界面。」没有校验签名时（第 4 步），前面再加一句「安装包未签名，
@@ -148,7 +147,7 @@ macOS 允许系统扩展和 VPN 配置）、源代码与许可、隐私说明的
 - WARP 账户存在系统凭据库里，诊断不读凭据库。
 
 内核日志里有访问过的域名和节点名，所以「诊断信息」一行的说明写明「含内核日志，其中有访问过的网站」，由用户
-决定是否分享。界面自己的 Python 日志和崩溃日志还没有收集，留到 M6 收尾。
+决定是否分享。界面自己的 Python 日志和崩溃信息不写进文件，诊断里也没有。
 
 ## 5. 第三方许可证
 
@@ -217,14 +216,14 @@ macOS 允许系统扩展和 VPN 配置）、源代码与许可、隐私说明的
   （`--include-distribution-metadata=solaris`），否则 `__version__` 是 `0.0.0`，每个 Release 都会被当成新版本。
 - Windows 的界面由 `scripts/build_windows.py` 用同一个 `package/entry.py` 构建（architecture.md 第 10 节），这些选项
   两个平台共用。
-- `solaris:` 和 `clash:` 两个 scheme 由打包注册：macOS 在 `Info.plist` 的 `CFBundleURLTypes` 里（M5），Windows
+- `solaris:` 和 `clash:` 两个 scheme 由打包注册：macOS 在 `Info.plist` 的 `CFBundleURLTypes` 里，Windows
   由安装器写在 HKLM 的 `Software\Classes\solaris` 和 `Software\Classes\clash` 下，命令是
   `"<安装目录>\Solaris.exe" "%1"`。写在 HKLM 而不是 HKCU：安装器以管理员身份运行，这个管理员不一定是使用者本人。
   `clash:` 可能已被其他客户端注册：安装时覆盖 HKLM 里的（用户自己 HKCU 里的仍优先），卸载时只删除仍指向本程序的键。
 
 ## 7. 一键导入
 
-机场网站上的「一键导入」按钮打开 `solaris://install-config?url=<订阅链接>&name=<名称>`，或 Clash 系客户端通用的
+服务商网站上的「一键导入」按钮打开 `solaris://install-config?url=<订阅链接>&name=<名称>`，或 Clash 系客户端通用的
 `clash://install-config?url=…&name=…`（D6）。代码在 `src/solaris/desktop/links.py`。
 
 - **解析**：scheme 是 `solaris` 或 `clash`（不区分大小写），主机是 `install-config`（允许末尾的 `/`）；查询参数按

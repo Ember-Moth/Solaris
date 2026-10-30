@@ -545,7 +545,7 @@ Solaris 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 PySide6 
 
 视觉主题是**原生系统工具**：像 macOS「系统设置」或 Windows 11「设置」，而不是营销页或数据大屏。浅灰石墨底，内容放在白色分组里，组内用细线分行；全局只有一个信号蓝强调色，只用在开关开启、主操作、焦点和当前项标记上。信息密度偏高，控件紧凑，数字用等宽字体。
 
-这份方向来自 Claude Design 原型（[画布](https://claude.ai/artifact/DVBcxqL7s2aX96F9enjwfj)，按页面分页，已与本文同步，过时的画板放在"归档"页）。第一版因为"AI 味太重"被否决，被删掉的做法列在 [Do's and Don'ts](#dos-and-donts) 里，是这份契约最重要的约束。
+不该用的做法列在 [Do's and Don'ts](#dos-and-donts) 里，是这份契约最重要的约束。
 
 - **平台**：Qt Quick。文中 `px` 指 Qt 的设备无关像素，高分屏由 Qt 缩放。
 - **窗口**：不显示系统标题栏，侧栏和页面标题栏一直延伸到窗口上沿（见 Layout「顶部区域」）。macOS 保留系统的红绿灯；
@@ -690,7 +690,7 @@ Solaris 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 PySide6 
 - 页面内只有两处使用阴影，都是为了表现"凸起的选中块"：
   - 分段控件的选中项：`0 1px 1px`，颜色 `shadow-segment`（浅色即 `rgba(21, 23, 28, 0.12)`）；
   - 侧栏的当前导航项：`0 1px 2px`，颜色 `shadow-nav`（浅色即 `rgba(21, 23, 28, 0.08)`）。
-- 浮层（菜单、下拉菜单、弹出层、对话框）共用唯一一级浮层阴影 `overlay-shadow`：向下偏移 `overlay-shadow-y` 4px，模糊 `overlay-shadow-blur` 16px，颜色 `shadow-overlay`，浅色即 `0 4px 16px rgba(21, 23, 28, 0.12)`；再加 1px `border` 外框。浮层之间不再分级。托盘弹出窗尚未设计，届时沿用这一级。
+- 浮层（菜单、下拉菜单、弹出层、对话框）共用唯一一级浮层阴影 `overlay-shadow`：向下偏移 `overlay-shadow-y` 4px，模糊 `overlay-shadow-blur` 16px，颜色 `shadow-overlay`，浅色即 `0 4px 16px rgba(21, 23, 28, 0.12)`；再加 1px `border` 外框。浮层之间不再分级。
 - 深色外观下几何不变，只换颜色：阴影用 `colors.dark` 里更深的黑色半透明，浮层的 `border` 外框比 `surface` 亮，在暗底上勾出边缘。
 - **层级**从下到上：
   1. 页面内容；

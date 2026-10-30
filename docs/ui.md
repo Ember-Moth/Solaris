@@ -2,8 +2,8 @@
 
 本文描述 Python 界面的结构和各部分的设计：宿主接口、配置存储、订阅、覆写、多语言、外观、连接与日志、设置与桌面行为。
 系统整体的架构见 [architecture.md](architecture.md)，视觉规范见 [DESIGN.md](../DESIGN.md)。备份的设计见
-[storage.md](storage.md)，界面部分见第 8 节（目前只有导出到文件和从文件恢复）；自定义分流的设计见
-[routing.md](routing.md)，界面部分见第 9 节。
+[storage.md](storage.md)，界面部分见第 8 节；自定义分流的设计见 [routing.md](routing.md)，界面部分见第 9 节。
+文中的决策编号（D4 等）见 [decisions.md](decisions.md)。
 
 ## 0. 结构
 
@@ -66,14 +66,15 @@
 | `profile_contents` | 配置原文 `yaml`，以及下载时一起得到的信息：`fetched_at`（界面上的"更新于"）、用量四项、`proxy_count`、`has_rules`（内核读出的是否带规则，读之前为 NULL），`unread` 和 `read_yaml`（存下时没有内核能读，第 3 节）。这是本机缓存 |
 | `overrides` | `scope` 为 `global` 或某份配置的 `id`；`yaml` 是用户写的原文 |
 | `settings` | 见第 8 节 |
-| `state` | 本机状态（键值）：各备份目标上次收下的快照摘要 |
+| `state` | 本机状态（键值）：各备份目标上次收下的快照摘要；VPN Gate 出口的服务器列表（第 9 节） |
 | `routing_state` | 只有一行：分流方式、"订阅自带"用的配置（也就是当前配置）、"我的方案"用的方案、信息节点表达式 |
 | `plans`、`plan_groups`、`plan_rules` | 分流方案（routing.md 第 9 节），第 9 节 |
-| `backup_targets` | 备份目标（`BackupTargets`）；云端提供方接上之前没有行 |
+| `backup_targets` | 已开启的云端备份目标（`BackupTargets`），每个一行 |
+| `mesh_networks` | 应用内添加的组网网络（mesh.md 10.2 节），不含凭据 |
 
 - 时间都用 Unix 秒。每行有 `updated_at`，只在内容确实变化时更新。`profiles`、`overrides`、`plans`、`plan_groups`、
-  `plan_rules`、`backup_targets` 删除时只记 `deleted_at`（软删除），留给备份按记录合并；`profile_contents` 是缓存，
-  直接删除。
+  `plan_rules`、`mesh_networks`、`backup_targets` 删除时只记 `deleted_at`（软删除），留给备份按记录合并；
+  `profile_contents` 是缓存，直接删除。
 - `ProfileStore` 的方法（`load`、`save`、`read_config`、`write_config`、`delete_config`、`read_override`、
   `write_override`）各是一个事务：
   - `save(list)` 写入整个列表：新配置插入，有变化的更新，列表里没有的标记删除；当前配置写入
@@ -105,8 +106,11 @@
 
 - 表结构的版本记在 `PRAGMA user_version`。`database.py` 的 `MIGRATIONS` 是一串迁移函数，第 n 个把版本 n−1 升到 n。
   打开数据库时从当前版本开始依次执行，每一步和版本号的修改在同一个事务里；某一步失败，数据库停在上一个版本，
-  下次启动重试。目前只有版本 1，一次建好全部表。
-- 首个版本发布之前不加迁移：表结构直接改 `_SCHEMA_1`，`user_version` 保持 1（storage.md 第 2 节）。
+  下次启动重试。版本 1 是 1.0.0 的表结构，由 `_schema_1` 一次建好全部表。
+- 改表结构就在 `MIGRATIONS` 末尾追加一个迁移，已有的迁移（包括 `_schema_1`）不再改动。`tests/test_database.py`
+  检查从每个旧版本升上来的表结构和新建的相同；新的迁移另写测试，确认升级前的数据升级后仍在、读得出。这条规则也在
+  [maintenance.md](maintenance.md) 第 5 节，存下来的格式（配置、备份快照、方案 JSON）同样要让以后的版本读得懂
+  （storage.md 第 2 节）。
 - 文件打不开（不是数据库，或已损坏），或者版本比本程序认识的还新（降级的情况），就把它连同 `-wal`、`-shm`
   改名为 `solaris.db.<时间戳>.bad` 保留，再新建一个空库。
 
@@ -328,8 +332,8 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 一次 `update` 只写有变化的项，在一个事务里完成，失败时一项都不写。应用里每个数据库只有一个设置存储；直接写
 `settings` 表的代码（恢复备份）写完后调用 `reload()`，订阅者同样会收到改动前后的 `Settings`。
 
-每个设置项在字段元数据里标明范围（`settings.scope(name)`），供设计备份范围：`synced` 随账户同步，换一台设备
-恢复后照样适用；`local` 只在本机生效，恢复到别的设备上没有意义或有风险。
+每个设置项在字段元数据里标明范围（`settings.scope(name)`），备份只带 `synced` 的（storage.md 第 3 节）：`synced`
+随账户同步，换一台设备恢复后照样适用；`local` 只在本机生效，恢复到别的设备上没有意义或有风险。
 
 | 设置项 | 取值 | 默认 | 范围 | 含义 |
 | --- | --- | --- | --- | --- |
@@ -341,7 +345,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 | `system_proxy` | 布尔 | `true` | 本机 | 设置页「接管方式」的系统代理开关：连接时是否设置系统代理。只有 Windows 服务设置系统代理 |
 | `mixed_port` | 1024–65535 | 7890 | 本机 | 混合端口，总是覆盖配置里的 `mixed-port` |
 | `allow_lan` | 布尔 | `false` | 本机 | 允许局域网连接（architecture.md §8"局域网暴露"） |
-| `tun_stack` | `profile`、`system`、`mips`、`gvisor`、`mixed` | `profile` | 本机 | "TUN 协议栈"（D3）：`profile` 是"跟随配置"，用配置里的 `tun.stack`；其余写进 `RunOptions.tun_stack`，盖过配置和覆写（architecture.md §3.1、§3.4）。各平台的默认值等实测后再定 |
+| `tun_stack` | `profile`、`system`、`mips`、`gvisor`、`mixed` | `profile` | 本机 | "TUN 协议栈"（D3）：`profile` 是"跟随配置"，用配置里的 `tun.stack`；其余写进 `RunOptions.tun_stack`，盖过配置和覆写（architecture.md §3.1、§3.4） |
 | `include_all_networks` | 布尔 | `false` | 本机 | 仅 macOS（D19）："包含所有网络"，把系统默认绕开隧道的流量也送进隧道，局域网流量除外。写进 VPN 配置的 `includeAllNetworks` 和 `excludeLocalNetworks`，下次连接时生效；打开后 TUN 协议栈不能用 `system` 和 `mixed`（architecture.md §3.4） |
 | `warp_protocol` | `masque-h2`、`masque-h3`、`wireguard` | `masque-h2` | 本机 | WARP 出口的协议，在分流页的出口设置对话框里改，设置页不列出。账户只有一种协议的密钥，改了协议就为它换密钥（exits.md 3.1、3.2 节） |
 | `update_check` | 布尔 | `true` | 同步 | 自动检查更新：启动 30 秒后检查一次，之后按 `update_check_hours` 定期检查（release.md 第 2 节） |
@@ -438,7 +442,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   以 1 退出。没有界面在运行时立即以 0 退出，不创建任何文件。它只能请到同一用户、同一数据目录的界面。Windows
   安装器和卸载器用它关闭界面（architecture.md 第 9 节）。
 - **备份与同步**：设置页左栏的一个分组，由 `viewmodels/backup.py` 的 `BackupViewModel` 提供（storage.md 第 3、5、6 节）。
-  Google Drive 一行在它的提供方实现之前不显示，目前有：
+  Google Drive 备份未实现（storage.md 第 4 节），没有它的一行。分组里有：
   - 「导出到文件」：说明写着「不加密，其中有订阅链接」；「导出…」先弹确认框「备份文件不加密，含订阅链接和配置原文，请妥善保管。」
     （本地文件配置的原文里可能有组网出站的凭据，mesh.md 第 7 节），确认后在系统的保存对话框里选位置，默认文件名
     `solaris-backup-<时间>.json`。导出后说明处显示「已导出到 …」或失败原因，6 秒后恢复原来的说明。
@@ -471,14 +475,14 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
     `schtasks /Query /XML`，用户在任务计划程序里禁用的任务视为关闭。
   - macOS：`SMAppService.mainAppService` 的 `register` / `unregister`（macOS 13 起），经 ctypes 调用
     Objective-C 运行时，不依赖 PyObjC。状态为 `requiresApproval` 时设置页提示到系统设置的登录项里允许，并给出
-    「打开系统设置」链接。登录项启动的界面目前会显示窗口。
+    「打开系统设置」链接。登录项启动时不带 `--background`，界面会显示窗口。
   - 只有打包后的程序（Nuitka 编译，macOS 上还要在 `.app` 里）才注册；从源码运行时是 `UnavailableLoginItem`，
     开关不可用并注明「仅安装版可用」，避免在开发机上把 Python 解释器注册成登录项。测试只用替身，真实注册在
-    M4、M5 的测试机上验证。
+    测试机上验收（maintenance.md 2.1、2.2 节）。
 
 ## 9. 分流
 
-设计见 [routing.md](routing.md)；这里写界面怎样实现它（roadmap C1、M8b）。
+设计见 [routing.md](routing.md)；这里写界面怎样实现它。
 
 - **分流方式决定隧道运行什么**（`ProfileLibrary`）：
   - "订阅自带"（`routing_state.mode = 'profile'`）：当前配置（`ProfileList.active`，即 `routing_state.profile_id`）的
@@ -518,7 +522,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
     分类列表取自 `list_geo_categories`，连不上时用安装包附带的清单。
   - "订阅自带"且这份订阅正在运行时，用 `list_groups` 和 `list_rules` 只读列出它的策略组和规则；不在运行时
     写出 `inspect_source` 给的数量。
-  - **规则测试**（M8b）：测试框的文字由 `plans.match_target` 读成主机和端口，停顿 0.4 秒或回车后交给
+  - **规则测试**：测试框的文字由 `plans.match_target` 读成主机和端口，停顿 0.4 秒或回车后交给
     `ProfileLibrary.match_rule`：用显示的方案（含未提交的移动）、节点池和全局覆写拼成 `TunnelConfig`，调用宿主的
     `match_rule`。结果的条目 id 标出命中的行（`RuleRow.hit`，兜底是 `fallbackHit`），方案每次改动生效后用同一段
     文字重测。
@@ -542,7 +546,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   "没有成员，暂走节点选择"、`egress_unavailable`"不可用，已拒绝连接"、`mesh_missing`"不存在，已拒绝连接"；
   `via_empty`、`mesh_restricted` 不属于哪条规则，写在出口行和组网行上。
 - **组网出站**（mesh.md 第 5 节）：策略组标签里自建之后是"组网"一节，行来自报告的 `mesh`（只在"我的方案"下），
-  说明写"类型 · 来自「订阅名」"，有 `mesh_restricted` 时加"· 已关闭 选项"。应用内添加的网络（M11）排在它们前面，
+  说明写"类型 · 来自「订阅名」"，有 `mesh_restricted` 时加"· 已关闭 选项"。应用内添加的网络排在它们前面，
   由 `MeshNetworks`（`viewmodels/routing_mesh.py`）提供，见 mesh.md 10.7 节；所以"我的方案"下这一节总是显示，
   最后一行是"添加网络…"。
   名称取报告里生成配置用的名称，报告里没有了（`mesh_missing`）时取 `mesh:` 引用里的原名。"更多"菜单：
