@@ -32,7 +32,7 @@ DIRECTORY_NAME = "updates"  # in the user data directory
 
 @dataclass(frozen=True)
 class Check:
-    release: Release
+    release: Release | None  # None while nothing has been released
     newer: bool  # it is a newer version than this one
     installer: str | None  # the asset this machine would install; None when there is none
 
@@ -65,6 +65,8 @@ class Updater:
 
     def check(self) -> Check:
         release = self._source.latest()
+        if release is None:
+            return Check(None, False, None)
         installer = installer_name(release.version, self._system, self._machine)
         if self._verifier is None or (installer and release.asset(installer) is None):
             installer = None
@@ -79,10 +81,11 @@ class Updater:
     ) -> Downloaded:
         """The installer, downloaded and verified; ``verifying`` is called between the
         download and the signature check, which can take a while."""
-        asset = check.release.asset(check.installer) if check.installer else None
-        if asset is None or self._verifier is None:
-            raise UpdateError("no_installer", check.release.version)
-        sums_asset = check.release.asset(CHECKSUMS_NAME)
+        release = check.release
+        asset = release.asset(check.installer) if release and check.installer else None
+        if release is None or asset is None or self._verifier is None:
+            raise UpdateError("no_installer", release.version if release else "")
+        sums_asset = release.asset(CHECKSUMS_NAME)
         if sums_asset is None:
             raise UpdateError("checksum_missing", CHECKSUMS_NAME)
         try:
@@ -103,7 +106,7 @@ class Updater:
         except BaseException:
             download.clear(self.directory)
             raise
-        return Downloaded(check.release, path, sha256)
+        return Downloaded(release, path, sha256)
 
     def ready(self, downloaded: Downloaded) -> Path:
         """The installer to open, after checking that it is still the file verified: it sits

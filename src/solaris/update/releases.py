@@ -40,10 +40,11 @@ class UpdateError(Exception):
     """``code`` names the step that failed (docs/release.md §3); ``message`` is the
     technical detail, in English."""
 
-    def __init__(self, code: str, message: str = "") -> None:
+    def __init__(self, code: str, message: str = "", *, status: int = 0) -> None:
         super().__init__(f"{code}: {message}" if message else code)
         self.code = code
         self.message = message
+        self.status = status  # the HTTP status, when there was one
 
 
 def parse_version(text: str) -> Version | None:
@@ -123,7 +124,8 @@ def open_url(
     try:
         return urllib.request.urlopen(request, timeout=timeout_s)
     except urllib.error.HTTPError as error:
-        raise UpdateError("check_failed", f"HTTP {error.code}") from error
+        error.close()
+        raise UpdateError("check_failed", f"HTTP {error.code}", status=error.code) from error
     except urllib.error.URLError as error:
         raise UpdateError("check_failed", str(error.reason)) from error
     except (OSError, http.client.HTTPException, ValueError) as error:
@@ -168,8 +170,14 @@ class ReleaseSource:
         self._url = url
         self._timeout_s = timeout_s
 
-    def latest(self) -> Release:
-        response = open_url(self._url, timeout_s=self._timeout_s, headers=GITHUB_HEADERS)
+    def latest(self) -> Release | None:
+        """None while the repository has no release: GitHub answers 404."""
+        try:
+            response = open_url(self._url, timeout_s=self._timeout_s, headers=GITHUB_HEADERS)
+        except UpdateError as error:
+            if error.status == 404:
+                return None
+            raise
         body = read_limited(response, MAX_RELEASE_BYTES)
         try:
             data = json.loads(body)

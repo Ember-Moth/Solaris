@@ -132,6 +132,7 @@ def test_release_json_tolerates_odd_assets() -> None:
 def test_check_finds_the_newer_release(github: FakeGitHub, tmp_path: Path) -> None:
     check = updater(github, tmp_path).check()
     assert check.newer
+    assert check.release is not None
     assert check.release.version == "0.2.0"
     assert check.installer == MAC_DMG
     assert check.release.page_url.endswith("/releases/tag/v0.2.0")
@@ -156,7 +157,13 @@ def test_check_without_an_installer_for_this_machine(github: FakeGitHub, tmp_pat
     assert updater(github, tmp_path).check().installer is None
 
 
-@pytest.mark.parametrize(("status", "detail"), [(403, "HTTP 403"), (404, "HTTP 404")])
+def test_check_before_the_first_release(github: FakeGitHub, tmp_path: Path) -> None:
+    github.status = 404  # GitHub's answer while a repository has no release
+    check = updater(github, tmp_path).check()
+    assert (check.release, check.newer, check.installer) == (None, False, None)
+
+
+@pytest.mark.parametrize(("status", "detail"), [(403, "HTTP 403"), (500, "HTTP 500")])
 def test_check_reports_http_errors(
     github: FakeGitHub, tmp_path: Path, status: int, detail: str
 ) -> None:
