@@ -1,8 +1,7 @@
 # 数据存储与云备份
 
-本文描述界面侧用户数据的持久化方式（SQLite），以及如何把这些数据备份到文件、iCloud 和 Google Drive（未实现，
-第 4 节）。相关决策是 [decisions.md](decisions.md) 中的 D13 和 D14。存储层的实现细节（线程、迁移）见 [ui.md](ui.md) §2，
-界面见 ui.md §8。
+本文描述界面侧用户数据的持久化方式（SQLite），以及如何把这些数据备份到文件、iCloud 和 Google Drive。相关决策是
+[decisions.md](decisions.md) 中的 D13、D14 和 D30。存储层的实现细节（线程、迁移）见 [ui.md](ui.md) §2，界面见 ui.md §8。
 
 ## 1. 范围
 
@@ -97,9 +96,9 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
 - **读取**：超过 64 MiB、不是 JSON、`format` 不对或字段类型不对的文件报 `not_a_backup`（或 `too_large`）；`version`
   比本程序认识的新报 `newer_backup`。所有记录都在写入数据库之前检查过。
 
-**不加密**（D13）：快照里的订阅链接是明文，安全性完全依赖云端账户（Apple 账户）本身。开启备份时，界面要明确告知用户
-"备份中包含订阅链接，任何能访问该云端账户的人都能看到"。本地文件配置的 YAML 原文也在快照里，其中可能有组网出站的
-凭据（[mesh.md](mesh.md) 第 7 节），提示里一并说明。
+**不加密**（D13）：快照里的订阅链接和本地文件配置的 YAML 原文（其中可能有组网出站的凭据，[mesh.md](mesh.md)
+第 7 节）都是明文，安全性依赖保管文件的人和云端账户（Apple 账户、Google 账户）本身。界面不为此单独提示：导出、开启
+iCloud、登录 Google Drive 都不弹确认框（D30）；[PRIVACY.md](../PRIVACY.md) 写明备份不加密。
 
 **上传时机**：
 
@@ -120,7 +119,7 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
 `backup_targets` 表，关掉的目标标记删除；上传途中被关掉的目标什么也不记（`record()` 返回 None，不写摘要，也不清理
 旧快照）。删除了一个目标的全部云端快照后，`forget()` 清掉它的摘要和上次备份时间，开着的目标在下一次数据变化或
 下一个小时的 `catch_up()` 时重新上传。提供方此刻用不了的目标原样等着，不尝试、不记失败：这个构建没有这个提供方
-（例如从源码运行），或者 iCloud 的系统账户不可用（没登录、受限、暂时不可用）。
+（例如从源码运行），iCloud 的系统账户不可用（没登录、受限、暂时不可用），或者 Google Drive 没有保存的登录（第 4 节）。
 
 接到界面上的是 `BackupViewModel`（有云端提供方时才运行）：
 
@@ -133,10 +132,10 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
 - **启动**：先 `catch_up()`，再当作数据刚变过：上次运行在去抖的 30 秒内退出时，最后的修改还没传上去，这样 30 秒后
   比一次摘要就补上了。
 - 每分钟刷新一次"上次备份"的相对时间；系统没登录 iCloud 时，顺便重新读账户状态，用户在系统设置里登录后不用重开：
-  读到账户重新可用时，下一次检查就 `catch_up()`。读到账户状态之前不做自动备份。
+  读到账户重新可用时，下一次检查就 `catch_up()`。读到 iCloud 的账户状态和 Google Drive 有没有登录之前，不做自动备份。
 
-**导出到文件**：设置页可以把快照导出成文件，再从文件恢复，不需要云端账户。文件就是上面的 JSON 文档，同样不加密：
-导出前的确认框写「备份文件不加密，含订阅链接和配置原文，请妥善保管。」（本地文件配置的原文里可能有组网出站的凭据）。
+**导出到文件**：设置页可以把快照导出成文件，再从文件恢复，不需要云端账户。文件就是上面的 JSON 文档，同样不加密；
+「导出…」直接打开系统的保存对话框。
 
 **恢复**：
 
@@ -164,23 +163,52 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
   最后，隧道在运行就按恢复后的分流重新加载；重新加载失败时，数据仍是恢复后的，界面说明隧道没有切换。设置存储
   随后 `reload()`，各页重新读取。
 
-## 4. Google Drive（未实现）
+## 4. Google Drive
 
-本节是一份未实现的设计：代码里没有 Google Drive 提供方，界面上也没有它的一行。
+两个平台都有，前提是构建带有 Google OAuth 客户端（见下面"OAuth 客户端"）；没有客户端时设置页没有 Google Drive 一行。
+macOS 上可以和 iCloud 同时开启，各自上传、各自保留快照。实现是 `models/backup_google.py` 的 `GoogleDriveProvider`。
 
-- **登录**：在应用内登录（D13），采用 OAuth 2.0 的已安装应用流程。在系统浏览器里打开授权页，回调到
-  `127.0.0.1` 上的一个随机端口（loopback），并使用 PKCE。
+- **登录**：在应用内登录（D13），采用 OAuth 2.0 的已安装应用流程。界面进程在 `127.0.0.1` 的一个随机端口上监听，用
+  系统浏览器打开 Google 的授权页，`redirect_uri` 是 `http://127.0.0.1:<端口>`；带 PKCE（S256）和随机的 `state`，
+  并以 `access_type=offline`、`prompt=consent` 让每次登录都拿到 refresh token。监听只接受带这个 `state` 的
+  `GET /`，给浏览器回一页"已登录，可以关闭这个页面"，其他请求回 404。最多等 10 分钟，界面上可以取消；取消、超时或
+  出错时监听随即关闭。拒绝授权或没有勾选 Drive 的权限报 `not_authorized`。拿到令牌后用 Drive 的 `about.get` 读
+  账户的邮箱，作为备份目标的账户名。
 - **权限**：只申请 `https://www.googleapis.com/auth/drive.appdata`。快照存放在 Drive 的应用专属隐藏目录
-  （appDataFolder）里，在用户的 Drive 中看不到；应用也读不到用户的其他文件。
-- **网络请求**：用标准库 `urllib` 调 token 端点和 Drive v3 的 files 接口，不引入 Google SDK。所有请求
-  都在界面进程里、以用户身份发出，跟随系统代理设置。
-- **令牌**：refresh token 存在系统的凭据库里（macOS 钥匙串、Windows 凭据管理器），不存进数据库，用 `keyring` 读写（D14，与 WARP 账户相同）。
-- **退出登录**：撤销令牌，并删除本机保存的令牌。云端的快照保留不动；界面另外提供"删除云端备份"。
-- **前置条件**：
-  - 在 Google Cloud 建一个项目，配置 OAuth 同意屏幕，并创建一个"桌面应用"类型的 OAuth 客户端；
-  - 开放给用户之前，按 Google 的要求完成同意屏幕的审核。
+  （appDataFolder）里，在用户的 Drive 中看不到；应用也读不到用户的其他文件。Google 把这个范围列为非敏感。
+- **令牌**（D14）：refresh token 连同账户名以紧凑 JSON 存在系统凭据库（macOS 钥匙串、Windows 凭据管理器，键
+  `google-drive`），用 `keyring` 读写，不进数据库、备份和诊断信息。access token 只在内存里，过期前 60 秒或 Drive
+  回 401 时用 refresh token 换新的。凭据库读不出来（如钥匙串锁着）时按没有登录处理，下次再读。Google 拒绝
+  refresh token（`invalid_grant`：授权被撤销、令牌失效）时，本机删除它；目标保留，那一行写"需要重新登录"，自动备份
+  等到重新登录，不会每小时失败一次。
+- **网络请求**：用标准库 `urllib` 调 token、revoke 端点和 Drive v3 的 files、about 接口，不引入 Google SDK。所有请求
+  都在界面进程里、以当前用户身份发出，跟随系统代理设置，和订阅下载一样。每个请求在自己的 daemon 线程上执行，超时
+  60 秒，进行中的请求不拖住退出。
+- **快照**：每份快照是 appDataFolder 里的一个文件，名字与目录提供方相同（`solaris-backup-<UTC 时间>-<摘要前 12 位>.json`），
+  以 multipart 上传。`SnapshotInfo`（时间、设备名、版本、配置和方案的份数）放在文件的 `appProperties` 里，列出时只取
+  `id`、`name`、`size`、`appProperties`，不下载快照；Drive 每个属性的键和值合计最多 124 字节，设备名过长时按字符
+  截断。列出时逐页读取，只认这样命名、属性读得出来的文件。条目的 id 是 Drive 的文件 id；下载用 `alt=media`，删除
+  不存在的文件不报错。保留份数与其他目标相同（10 份，第 3 节）。
+- **错误**：Drive 的 `storageQuotaExceeded` 报 `cloud_full`；连不上、超时、429、5xx 和限流报 `cloud_unreachable`；
+  换过令牌后仍是 401、令牌被拒报 `not_signed_in`；没有这个文件报 `backup_missing`；其余报 `cloud_failed`，带 Google
+  的说明。
+- **退出登录**：先关掉目标，再向 `https://oauth2.googleapis.com/revoke` 撤销 refresh token，然后删除本机保存的
+  令牌。云端的快照保留不动；界面另外提供"删除云端备份"。Google 撤销的是这个项目得到的整个授权，所以同一个 Google
+  账户在其他设备上的登录也随之失效，那些设备下次上传时写"需要重新登录"。撤销请求发不出去（如没网）时照样删除本机
+  的令牌，授权可以在 Google 账户的"第三方应用和服务"里移除。
+- **换账户**：目标"需要重新登录"时，用另一个 Google 账户登录，新目标换掉原来的（连同它的摘要），并立即备份一次。
+- **OAuth 客户端**：Google Cloud 项目里一个"桌面应用"类型的客户端。它的 ID 和 secret 不进仓库：
+  - 从源码运行时读环境变量 `SOLARIS_GOOGLE_CLIENT_ID`、`SOLARIS_GOOGLE_CLIENT_SECRET`，两个都要有；
+  - 打包时 `scripts/build_app.py`、`scripts/build_windows.py` 读同样的环境变量，写成 `build/<平台>/google_client.json`，
+    由 Nuitka 放到包旁边的 `solaris/google_client.json`。只设了一个时构建失败；都没设时照常构建，只是没有 Google
+    Drive；
+  - 发布工作流从 `release` Environment 的同名机密传给两个构建 job（[release.md](release.md) 1.1 节）。
 
-  桌面应用的 client secret 本来就无法保密，可以随源码一起发布。
+  已安装应用的 client secret 无法保密，Google 也不把它当作机密，打包的应用里它是明文。在 Google Cloud 里要做的
+  设置见 [maintenance.md](maintenance.md) 2.8 节。
+- **审核**：`drive.appdata` 是非敏感范围，不需要 Google 的应用审核。只有想在授权页显示应用的名称和图标时，才要做
+  较轻的品牌审核（brand verification：经过验证的域名上的主页和隐私政策）。同意屏幕要发布为"正式版"（In production）：
+  测试状态下只有列出的测试用户能登录，他们的授权 7 天后失效。
 
 ## 5. iCloud（仅 macOS）
 
@@ -206,7 +234,7 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
   命名、`info` 读得出来的记录。错误变成 `BackupError`：`not_signed_in`、`backup_missing`、`cloud_full`、
   `cloud_unreachable`、`cloud_failed`。`sign_in()` 只检查系统账户可用，`sign_out()` 什么也不做。打包的 app 里
   （`Contents/Frameworks` 有管理库）才有这个提供方；从源码运行时没有，设置页写「仅签名的安装版可用」。
-- **Windows**：不提供 iCloud 备份。Windows 上的云端备份是 Google Drive（第 4 节，未实现），所以只能导出到文件。
+- **Windows**：不提供 iCloud 备份。Windows 上的云端备份是 Google Drive（第 4 节）。
 
 ## 6. 提供方接口
 
@@ -214,14 +242,13 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
   `list()`、`download(id)` 和 `delete(id)`，都是协程，由各实现决定放到哪个线程上执行。`kind` 是存进
   `backup_targets.provider` 的名字。`list()` 返回 `BackupEntry`（`id`、`info`、`size`），按时间从新到旧；`info` 是
   `SnapshotInfo`：时间、设备名、版本和配置、方案的份数，供"从云端恢复"的列表显示。`download` 不认识的 id 报
-  `backup_missing`，`delete` 删除已经不在的快照不报错。提供方只在应用自己的空间里存快照（CloudKit 容器、一个
-  目录；未实现的 Google Drive 按设计用 appDataFolder），所以列出的都是本应用的快照。
-- CloudKit 的实现见第 5 节；Google Drive 的未实现（第 4 节）。另有两个不访问云服务的实现：
+  `backup_missing`，`delete` 删除已经不在的快照不报错。提供方只在应用自己的空间里存快照（CloudKit 容器、Drive 的
+  appDataFolder、一个目录），所以列出的都是本应用的快照。
+- Google Drive 的实现见第 4 节，CloudKit 的见第 5 节。另有两个不访问云服务的实现：
   - `MemoryProvider`：快照放在内存里，测试用；可以模拟退出登录和失败；
   - `DirectoryProvider`：快照存成目录里的文件，`solaris-backup-<UTC 时间>-<摘要前 12 位>.json`，原子写入。只列出
     这样命名、能读成快照的文件，别的文件不碰；id 只接受这种文件名，到不了目录之外。
-- 可以同时开启多个备份目标，每个目标各自上传、各自保留快照；按设计 macOS 上可以同时用 iCloud 和 Google Drive
-  （未实现）。
-- 设置页"备份与同步"分组：导出到文件、从文件恢复，macOS 上还有 iCloud 一行（开关、上次备份的时间和结果、删除云端
-  备份），分组下方是对所有目标的"立即备份"和"从云端恢复"（ui.md §8）。设计中的 Google Drive 一行（已登录的账户、
-  退出登录）未实现。
+- 可以同时开启多个备份目标，每个目标各自上传、各自保留快照；macOS 上可以同时用 iCloud 和 Google Drive。
+- 设置页"备份与同步"分组：导出到文件、从文件恢复；macOS 上有 iCloud 一行（开关、上次备份的时间和结果、删除云端
+  备份）；构建带 Google OAuth 客户端时有 Google Drive 一行（登录、账户、上次备份的时间和结果、删除云端备份、退出
+  登录）。分组下方是对所有目标的"立即备份"和"从云端恢复"（ui.md §8）。

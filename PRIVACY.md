@@ -15,8 +15,9 @@ Solaris 是网络代理客户端。它没有账户，不收集使用数据，不
 | 使用 VPN Gate 出口 | VPN Gate（`www.vpngate.net`）和它的志愿者服务器 | 打开出口后，内核经你选择的"经由"节点下载公开的服务器列表，VPN Gate 看到的是节点的 IP。之后经这个出口的流量由志愿者运营的服务器转发 |
 | 组网 | 组网服务的控制服务器和网络里的其他设备 | 配置里有 Tailscale、ZeroTier、EasyTier 出站，或在应用里添加了网络时，内核按配置连接它们的服务；Tailscale 的登录页在你的浏览器里打开 |
 | iCloud 备份（仅 macOS） | Apple（CloudKit） | 只在你开启时：备份快照（见下面的"备份"）存进你自己 iCloud 账户的私有数据库 |
+| Google Drive 备份 | Google（`accounts.google.com`、`oauth2.googleapis.com`、`www.googleapis.com`） | 只在你登录后：登录时浏览器打开 Google 的授权页；之后界面以当前用户身份、跟随系统代理设置，换取访问令牌，读取账户的邮箱，把备份快照存进你自己 Google 云端硬盘里本应用专属的隐藏目录。退出登录时向 Google 撤销授权 |
 
-GitHub、Cloudflare、VPN Gate、组网服务和 Apple 收到数据后如何处理，适用它们各自的隐私政策。点击网页上的"一键导入"链接只会在 Solaris 里预填订阅
+GitHub、Cloudflare、VPN Gate、组网服务、Apple 和 Google 收到数据后如何处理，适用它们各自的隐私政策。点击网页上的"一键导入"链接只会在 Solaris 里预填订阅
 链接和名称，由你确认后才下载。
 
 ## 本机保存的数据
@@ -25,20 +26,24 @@ GitHub、Cloudflare、VPN Gate、组网服务和 Apple 收到数据后如何处�
   `~/Library/Application Support/Solaris/`。
 - **运行中的配置**：Windows 上服务把当前用户的配置存在 `C:\ProgramData\Solaris\`，只有系统和你本人能读，用于开机后
   恢复连接；macOS 上存在系统扩展自己的目录里。
-- **WARP 账户和组网密钥**：在应用里注册的 WARP 账户、添加组网时填的密钥存在系统凭据库（Windows 凭据管理器、macOS
-  钥匙串），不进数据库、备份或诊断信息。组网的登录状态和设备身份由内核存在运行中的配置所在的目录里。
+- **WARP 账户、组网密钥和 Google 登录**：在应用里注册的 WARP 账户、添加组网时填的密钥、登录 Google Drive 得到的令牌
+  存在系统凭据库（Windows 凭据管理器、macOS 钥匙串），不进数据库、备份或诊断信息。组网的登录状态和设备身份由内核存在运行中的配置所在的目录里。
 - **日志**：内核日志只在内存里，由你在日志页导出；Windows 服务自己的运行日志（启动、停止、出错）在
   `C:\ProgramData\Solaris\service.log`。
 
-Windows 卸载时可以选择删除订阅、设置和日志；凭据库里的账户和密钥留着，可以在凭据管理器里删除。
+Windows 卸载时可以选择删除订阅、设置和日志；凭据库里的账户、密钥和令牌留着，可以在凭据管理器里删除。
 
 ## 备份
 
 设置页可以把订阅、覆写、分流方案和同步的设置导出成一个文件。**备份不加密**，里面有订阅链接（常含令牌）和本地配置
 的原文，原文里可能有组网出站的凭据；不含凭据库里的 WARP 账户和组网密钥。请像保管密码一样保管它。
 
-macOS 上可以开启 iCloud 备份：快照存在你自己 iCloud 账户的私有数据库里，占用你的 iCloud 空间，开发者看不到；
-Solaris 不另外加密，内容与导出的文件相同。开启时的确认框会写明这一点。Windows 没有云端备份。
+云端备份也不加密，内容与导出的文件相同，能登录对应 Apple 账户或 Google 账户的人都能看到；开发者看不到：
+
+- **iCloud**（仅 macOS）：快照存在你自己 iCloud 账户的私有数据库里，占用你的 iCloud 空间。
+- **Google Drive**：快照存在你自己 Google 云端硬盘里本应用专属的隐藏目录（appDataFolder），占用你的云端硬盘空间，
+  在云端硬盘里看不到；Solaris 只申请这个目录的权限，读不到你的其他文件。退出登录后快照仍在，可以在设置页"删除云端
+  备份"。
 
 ## 诊断信息
 

@@ -1,10 +1,10 @@
-"""Backup providers, the iCloud one over a stand-in library, and automatic backup on top of
-them (docs/storage.md §3, §5, §6)."""
+"""Backup providers, the iCloud one over a stand-in library and the Google Drive one over a
+stand-in for Google, and automatic backup on top of them (docs/storage.md §3 to §6)."""
 
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable, Coroutine
+from collections.abc import Callable, Coroutine, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +21,8 @@ from solaris.models.backup_providers import (
 )
 from solaris.models.profiles import KIND_SUBSCRIPTION, Profile, ProfileList
 from solaris.models.store import ProfileStore
+from tests.support.credentials import MemoryCredentials
+from tests.support.google import FakeGoogle
 from tests.support.icloud import FakeICloud
 
 
@@ -60,13 +62,23 @@ def snapshot_at(data: Data, clock: Clock, now: float) -> Snapshot:
 
 
 # -- providers ---------------------------------------------------------------------------------
-@pytest.fixture(params=["memory", "directory", "icloud"])
-def provider(request: pytest.FixtureRequest, tmp_path: Path) -> BackupProvider:
+@pytest.fixture(params=["memory", "directory", "icloud", "google_drive"])
+def provider(
+    request: pytest.FixtureRequest, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[BackupProvider]:
     if request.param == "memory":
-        return MemoryProvider()
-    if request.param == "icloud":
-        return ICloudProvider(FakeICloud())
-    return DirectoryProvider(tmp_path / "backups")
+        yield MemoryProvider()
+    elif request.param == "icloud":
+        yield ICloudProvider(FakeICloud())
+    elif request.param == "google_drive":
+        monkeypatch.setenv("no_proxy", "*")  # the stand-in is on a loopback port
+        google = FakeGoogle()
+        signed_in = google.provider(MemoryCredentials())
+        asyncio.run(signed_in.sign_in())
+        yield signed_in
+        google.close()
+    else:
+        yield DirectoryProvider(tmp_path / "backups")
 
 
 def test_upload_list_download_delete(provider: BackupProvider, tmp_path: Path) -> None:

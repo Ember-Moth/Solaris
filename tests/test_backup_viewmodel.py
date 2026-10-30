@@ -1,6 +1,6 @@
-"""The settings page's 备份与同步 group: exporting a backup file and restoring one, and iCloud
-over a stand-in library, through the ViewModels with the simulated host and subscriptions
-served on this machine, without a real cloud."""
+"""The settings page's 备份与同步 group: exporting a backup file and restoring one, iCloud over a
+stand-in library and Google Drive over a stand-in for Google, through the ViewModels with the
+simulated host and subscriptions served on this machine, without a real cloud."""
 
 # The UI copy asserted here uses fullwidth punctuation, as the ViewModels write it.
 # ruff: noqa: RUF001
@@ -8,6 +8,7 @@ served on this machine, without a real cloud."""
 from __future__ import annotations
 
 import json
+import socket
 import sys
 import threading
 from collections.abc import Coroutine, Iterator
@@ -15,6 +16,7 @@ from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import pytest
 from PySide6.QtCore import QObject, Qt
@@ -26,6 +28,7 @@ from solaris.app import load_ui
 from solaris.host.extension import QUOTA_EXCEEDED, ManagerError
 from solaris.models.backup import device_name
 from solaris.models.backup_auto import BackupTargets
+from solaris.models.backup_google import TOKEN_KEY
 from solaris.models.backup_icloud import AVAILABLE, NO_ACCOUNT, ICloudProvider
 from solaris.models.routing import MODE_PLAN, PlanRule
 from solaris.models.store import ProfileStore
@@ -33,6 +36,8 @@ from solaris.models.subscription import UrlFetcher
 from solaris.viewmodels import backup as backup_module
 from solaris.viewmodels.backup import BackupViewModel
 from solaris.viewmodels.composition import ViewModels, compose
+from tests.support.credentials import MemoryCredentials
+from tests.support.google import FakeGoogle
 from tests.support.icloud import FakeICloud
 from tests.support.releases import offline_updater
 from tests.support.simulated import SAMPLE_CONFIG, SimulatedFetcher, SimulatedHost, seed_profiles
@@ -108,13 +113,21 @@ class Clock:
 
 
 class Machine:
-    """A data directory with the app's ViewModels on it, and iCloud when given."""
+    """A data directory with the app's ViewModels on it, and iCloud and Google Drive when
+    given; each machine has a credential store of its own."""
 
-    def __init__(self, directory: Path, clock: Clock, icloud: FakeICloud | None = None) -> None:
+    def __init__(
+        self,
+        directory: Path,
+        clock: Clock,
+        icloud: FakeICloud | None = None,
+        google: FakeGoogle | None = None,
+    ) -> None:
         self.directory = directory
         self.clock = clock
         self.host = SimulatedHost(clock=clock)
         self.store = ProfileStore(directory, clock=clock)
+        self.credentials = MemoryCredentials()
         self.vms: ViewModels = compose(
             self.host,
             self.store,
@@ -122,6 +135,7 @@ class Machine:
             clock,
             updater=offline_updater(directory),
             icloud=ICloudProvider(icloud) if icloud else None,
+            google=google.provider(self.credentials) if google else None,
         )
         self.vms.start()
 
@@ -211,7 +225,7 @@ def test_export_then_restore_on_an_empty_machine(
     machines.append(first)
     set_up(first, served, tmp_path)
     backup = tmp_path / "solaris-backup.json"
-    assert prop(first.backup, "exportStatus") == "不加密，其中有订阅链接"
+    assert prop(first.backup, "exportStatus") == ""  # nothing to say before an export
     export(qtbot, first, backup)
     document = json.loads(backup.read_text(encoding="utf-8"))
     assert [p["kind"] for p in document["profiles"]] == ["subscription", "subscription", "file"]
@@ -510,7 +524,7 @@ def test_icloud_needs_the_systems_account(
     wait_idle(qtbot, machine)
     assert len(icloud.records) == 1
 
-    backup.deleteICloudBackups()
+    backup.deleteCloudBackups("icloud")
     assert wait_idle(qtbot, machine) == "已删除 iCloud 中的备份"
     assert icloud.records == {}
     backup._clear_cloud_notice()  # what the notice's timer does
@@ -638,7 +652,7 @@ def test_icloud_off_or_deleted_waits_for_an_upload_in_flight(
     assert prop(backup, "icloudStatus") == "未开启"
 
     upload_in_flight("dark")
-    backup.deleteICloudBackups()
+    backup.deleteCloudBackups("icloud")
     assert prop(backup, "icloudStatus") == "正在删除 iCloud 中的备份…"
     qtbot.wait(100)
     icloud.gate.set()
@@ -662,6 +676,212 @@ def test_icloud_needs_the_signed_app(qtbot: QtBot, machines: list[Machine], tmp_
     assert not prop(backup, "cloudReady")
 
 
+# -- Google Drive ------------------------------------------------------------------------------
+@pytest.fixture
+def google(served: Subscriptions) -> Iterator[FakeGoogle]:
+    """Google on a loopback port; ``served`` already bypasses any proxy."""
+    fake = FakeGoogle()
+    yield fake
+    fake.close()
+
+
+def wait_google(qtbot: QtBot, machine: Machine) -> str:
+    qtbot.waitUntil(lambda: not prop(machine.backup, "busy"), timeout=30_000)
+    return prop(machine.backup, "googleStatus")
+
+
+def sign_in(qtbot: QtBot, machine: Machine) -> str:
+    backup = machine.backup
+    qtbot.waitUntil(lambda: prop(backup, "googleSignInEnabled"))
+    backup.signInGoogle()
+    assert prop(backup, "googleSigningIn")
+    assert not prop(backup, "googleSignInShown")
+    return wait_google(qtbot, machine)
+
+
+def test_google_drive_signs_in_backs_up_and_signs_out(
+    qtbot: QtBot,
+    machines: list[Machine],
+    served: Subscriptions,
+    google: FakeGoogle,
+    tmp_path: Path,
+    fast_ticks: None,
+) -> None:
+    machine = Machine(tmp_path / "pc", Clock(1_800_000_000.0), google=google)
+    machines.append(machine)
+    backup = machine.backup
+    assert prop(backup, "googleShown")
+    assert prop(backup, "cloudShown")
+    qtbot.waitUntil(lambda: prop(backup, "googleSignInEnabled"))
+    assert prop(backup, "googleStatus") == "未登录"
+    assert prop(backup, "googleSignInShown")
+    assert not prop(backup, "googleMenuShown")
+    set_up(machine, served, tmp_path)
+
+    assert sign_in(qtbot, machine) == "user@example.com · 上次备份：刚刚 · 成功"
+    assert prop(backup, "googleOn")
+    assert not prop(backup, "googleSignInShown")
+    assert prop(backup, "googleMenuShown")
+    assert prop(backup, "cloudReady")
+    assert len(google.snapshots()) == 1
+    assert "已登录 Google Drive" in google.consents[0].page
+    (target,) = BackupTargets(machine.store.database).targets()
+    assert (target.provider, target.account) == ("google_drive", "user@example.com")
+    assert TOKEN_KEY in machine.credentials.secrets
+
+    machine.call(machine.vms.library.save_override(None, "mode: global\n"))
+    settle(qtbot, machine, lambda: len(google.snapshots()) == 2)
+    google.failures["upload"] = (403, {"error": {"errors": [{"reason": "storageQuotaExceeded"}]}})
+    backup.backUpNow()
+    assert prop(backup, "googleStatus") == "正在备份…"
+    assert wait_google(qtbot, machine) == "user@example.com · 上次备份失败：储存空间已满"
+    assert prop(backup, "googleWarning")
+    backup.backUpNow()
+    assert wait_google(qtbot, machine) == "user@example.com · 上次备份：刚刚 · 成功"
+    assert len(google.snapshots()) == 3
+
+    backup.signOutGoogle()
+    assert prop(backup, "googleStatus") == "正在退出登录…"
+    assert wait_google(qtbot, machine) == "未登录"
+    assert not prop(backup, "googleOn")
+    assert not prop(backup, "cloudReady")
+    assert machine.credentials.secrets == {}
+    assert len(google.revoked) == 1
+    assert len(google.snapshots()) == 3  # the snapshots stay
+    assert BackupTargets(machine.store.database).targets() == ()
+    machine.vms.settings_store.update(appearance="light")
+    run_ticks(qtbot, machine, 5 * 60)
+    assert len(google.snapshots()) == 3
+
+
+def test_google_drive_sign_in_cancelled_or_declined(
+    qtbot: QtBot,
+    machines: list[Machine],
+    served: Subscriptions,
+    google: FakeGoogle,
+    tmp_path: Path,
+) -> None:
+    machine = Machine(tmp_path / "pc", Clock(1_800_000_000.0), google=google)
+    machines.append(machine)
+    backup = machine.backup
+    google.follows = False  # the user leaves the browser alone
+    qtbot.waitUntil(lambda: prop(backup, "googleSignInEnabled"))
+    backup.signInGoogle()
+    qtbot.waitUntil(lambda: bool(google.consents))
+    assert prop(backup, "googleStatus") == "请在浏览器中完成登录…"
+    assert prop(backup, "busy")
+    backup.cancelGoogleSignIn()
+    assert wait_google(qtbot, machine) == "未登录"
+    assert prop(backup, "googleSignInShown")
+    port = urlsplit(google.consents[0].query["redirect_uri"]).port
+    assert port is not None
+    with socket.socket() as probe:
+        assert probe.connect_ex(("127.0.0.1", port)) != 0  # the listener is gone
+
+    google.follows = True
+    google.consents_to = False
+    assert sign_in(qtbot, machine) == "无法登录：没有获得授权"
+    assert prop(backup, "googleWarning")
+    assert machine.credentials.secrets == {}
+    assert BackupTargets(machine.store.database).targets() == ()
+
+
+def test_google_drive_asks_to_sign_in_again(
+    qtbot: QtBot,
+    machines: list[Machine],
+    served: Subscriptions,
+    google: FakeGoogle,
+    tmp_path: Path,
+    fast_ticks: None,
+) -> None:
+    machine = Machine(tmp_path / "pc", Clock(1_800_000_000.0), google=google)
+    machines.append(machine)
+    backup = machine.backup
+    set_up(machine, served, tmp_path)
+    sign_in(qtbot, machine)
+    (first,) = BackupTargets(machine.store.database).targets()
+
+    # The user removed the app from the Google account: the next upload finds out, and
+    # automatic backup waits for a sign-in instead of failing every hour.
+    google.revoke_all()
+    machine.vms.settings_store.update(appearance="light")
+    settle(qtbot, machine, lambda: prop(backup, "googleWarning"))
+    qtbot.waitUntil(lambda: prop(backup, "googleStatus") == "user@example.com · 需要重新登录")
+    assert prop(backup, "googleSignInShown")
+    assert prop(backup, "googleMenuShown")  # signing out is still there
+    assert not prop(backup, "googleDeleteEnabled")
+    assert not prop(backup, "cloudReady")
+    assert machine.credentials.secrets == {}
+    uploads = google.calls.count("upload")
+    machine.vms.settings_store.update(appearance="dark")
+    run_ticks(qtbot, machine, 70 * 60, step=5 * 60)
+    assert google.calls.count("upload") == uploads
+
+    # Another account takes the target's place and backs up at once.
+    google.account = "other@example.com"
+    assert sign_in(qtbot, machine) == "other@example.com · 上次备份：刚刚 · 成功"
+    (second,) = BackupTargets(machine.store.database).targets()
+    assert second.id != first.id
+    assert not prop(backup, "googleWarning")
+
+
+def test_icloud_and_google_drive_together(
+    qtbot: QtBot,
+    machines: list[Machine],
+    served: Subscriptions,
+    google: FakeGoogle,
+    tmp_path: Path,
+    fast_ticks: None,
+) -> None:
+    icloud = FakeICloud()
+    first = Machine(tmp_path / "first", Clock(1_800_000_000.0), icloud, google)
+    machines.append(first)
+    backup = first.backup
+    set_up(first, served, tmp_path)
+    qtbot.waitUntil(lambda: prop(backup, "icloudSwitchEnabled"))
+    backup.setICloudEnabled(True)
+    wait_idle(qtbot, first)
+    sign_in(qtbot, first)
+    assert (len(icloud.records), len(google.snapshots())) == (1, 1)
+
+    first.call(first.vms.library.save_override(None, "mode: global\n"))
+    settle(qtbot, first, lambda: len(icloud.records) == len(google.snapshots()) == 2)
+    backup.backUpNow()
+    assert prop(backup, "icloudStatus") == prop(backup, "googleStatus") == "正在备份…"
+    wait_idle(qtbot, first)
+    assert (len(icloud.records), len(google.snapshots())) == (3, 3)
+
+    # Another machine with both accounts lists the snapshots of both, newest first.
+    second = Machine(tmp_path / "second", Clock(1_800_003_600.0), icloud, google)
+    machines.append(second)
+    other = second.backup
+    qtbot.waitUntil(lambda: prop(other, "icloudSwitchEnabled"))
+    other.setICloudEnabled(True)
+    wait_idle(qtbot, second)
+    sign_in(qtbot, second)
+    with qtbot.waitSignal(other.cloudRestoreRequested):
+        other.openCloudRestore()
+    assert prop(other, "icloudStatus") == "尚未备份"  # nothing here to back up yet
+    listed = prop(other, "cloudSnapshots")
+    assert len(listed) == 6
+    assert {item["provider"] for item in listed} == {"iCloud", "Google Drive"}
+    pick = next(i for i, item in enumerate(listed) if item["provider"] == "Google Drive")
+    other.setCloudSnapshot(pick)
+    other.confirmCloudRestore()
+    qtbot.waitUntil(lambda: not prop(other, "busy"), timeout=30_000)
+    assert prop(other, "googleStatus") == "已从 Google Drive 恢复"
+    assert library_data(second) == library_data(first)
+
+    # Deleting one provider's snapshots leaves the other's.
+    other._clear_cloud_notice()
+    other.deleteCloudBackups("google_drive")
+    assert prop(other, "googleStatus") == "正在删除 Google Drive 中的备份…"
+    qtbot.waitUntil(lambda: not prop(other, "busy"), timeout=30_000)
+    assert prop(other, "googleStatus") == "已删除 Google Drive 中的备份"
+    assert google.snapshots() == []
+    assert len(icloud.records) >= 3
+
+
 # -- the settings page -------------------------------------------------------------------------
 def shown_texts(root: Any) -> set[str]:
     return {
@@ -674,8 +894,9 @@ def shown_texts(root: Any) -> set[str]:
 def test_the_group_and_the_restore_dialog(qtbot: QtBot, loaded: Loaded, tmp_path: Path) -> None:
     loaded.view_models.shell.setPage("settings")
     shown = shown_texts(loaded.window.contentItem())
-    assert {"备份与同步", "导出到文件", "从文件恢复", "不加密，其中有订阅链接"} <= shown
-    assert "Google Drive" not in shown  # there is no Google Drive provider
+    assert {"备份与同步", "导出到文件", "从文件恢复"} <= shown
+    assert not any("加密" in text for text in shown)  # no special warning (D30)
+    assert "Google Drive" not in shown  # this build has no Google OAuth client
     if sys.platform == "darwin":
         assert {"iCloud", "仅签名的安装版可用", "立即备份", "从云端恢复…"} <= shown
     else:
@@ -750,15 +971,10 @@ def test_the_icloud_row_and_its_dialogs(
     row = loaded.item(lambda i: kind(i) == "GroupRow" and "iCloud" in texts(i))
     switch = find(row, lambda i: kind(i) == "AppSwitch")
     assert switch is not None
-    loaded.click(qtbot, switch)  # asks first; nothing is on yet
-    assert {
-        "开启 iCloud 备份？",
-        "备份不加密，其中有订阅链接和配置原文，能登录这个 Apple 账户的人都能看到。",
-    } <= overlay_texts(loaded)
-    assert not prop(backup, "icloudOn")
-    assert loaded.focused_text() == "开启"
-    loaded.key(qtbot, Qt.Key.Key_Return)
+    loaded.click(qtbot, switch)  # on at once, without asking (D30)
+    assert "开启 iCloud 备份？" not in overlay_texts(loaded)
     qtbot.waitUntil(lambda: prop(backup, "icloudStatus") == "上次备份：刚刚 · 成功")
+    assert prop(backup, "icloudOn")
     assert len(icloud.records) == 1
 
     # The buttons sit below the window's fold: the keyboard scrolls to them.
@@ -788,4 +1004,90 @@ def test_the_icloud_row_and_its_dialogs(
     assert loaded.focused_text() == "取消"  # destructive: the safe choice is the default
     loaded.key(qtbot, Qt.Key.Key_Escape)
     assert len(icloud.records) == 1
+    assert loaded.warnings == []
+
+
+@pytest.fixture
+def google_window(
+    qtbot: QtBot, tmp_path: Path, fast_ticks: None, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[tuple[Loaded, FakeGoogle]]:
+    """The main window in Chinese, its settings page shown, with Google Drive configured."""
+    monkeypatch.setenv("no_proxy", "*")
+    google = FakeGoogle()
+    store = ProfileStore(tmp_path)
+    seed_profiles(store, 1_800_000_000.0)
+    view_models = compose(
+        SimulatedHost(),
+        store,
+        SimulatedFetcher(),
+        updater=offline_updater(tmp_path),
+        google=google.provider(MemoryCredentials()),
+    )
+    engine = QQmlApplicationEngine()
+    warnings: list[str] = []
+    engine.warnings.connect(lambda errors: warnings.extend(e.toString() for e in errors))
+    try:
+        assert load_ui(engine, view_models)
+        (window,) = engine.rootObjects()
+        assert isinstance(window, QQuickWindow)
+        view_models.start()
+        view_models.shell.setPage("settings")
+        yield Loaded(view_models, engine, window, warnings), google
+    finally:
+        view_models.shutdown()
+        for root in engine.rootObjects():
+            root.deleteLater()
+        del engine
+        google.close()
+
+
+def test_the_google_drive_row_and_its_menu(
+    qtbot: QtBot, google_window: tuple[Loaded, FakeGoogle]
+) -> None:
+    loaded, google = google_window
+    backup = loaded.view_models.backup
+    qtbot.waitUntil(lambda: prop(backup, "googleSignInEnabled"))
+    shown = shown_texts(loaded.window.contentItem())
+    assert {"Google Drive", "未登录", "登录…", "立即备份", "从云端恢复…"} <= shown
+    assert not any("加密" in text for text in shown)
+
+    # The row sits below the window's fold: the keyboard scrolls to it.
+    row = loaded.item(lambda i: kind(i) == "GroupRow" and "Google Drive" in texts(i))
+    button = find(row, lambda i: i.property("text") == "登录…")
+    assert button is not None
+    button.forceActiveFocus(Qt.FocusReason.TabFocusReason)
+    loaded.key(qtbot, Qt.Key.Key_Space)
+    qtbot.waitUntil(
+        lambda: prop(backup, "googleStatus") == "user@example.com · 上次备份：刚刚 · 成功"
+    )
+    assert len(google.snapshots()) == 1
+
+    more = loaded.item(
+        lambda i: (
+            kind(i) == "IconButton"
+            and i.property("accessibleName") == "Google Drive 备份的更多操作"
+        )
+    )
+    more.forceActiveFocus(Qt.FocusReason.TabFocusReason)
+    loaded.key(qtbot, Qt.Key.Key_Space)
+    items = loaded.overlay_items(lambda i: kind(i) == "AppMenuItem")
+    assert [i.property("text") for i in items] == ["退出登录", "删除云端备份"]
+    loaded.key(qtbot, Qt.Key.Key_Down, wait=10)
+    loaded.key(qtbot, Qt.Key.Key_Down, wait=10)  # past the separator
+    loaded.key(qtbot, Qt.Key.Key_Return)
+    shown = overlay_texts(loaded)
+    assert {
+        "删除 Google Drive 中的备份？",
+        "Google Drive 中保存的备份会全部删除，无法恢复。本机的数据不受影响。",
+    } <= shown
+    assert loaded.focused_text() == "取消"
+    loaded.key(qtbot, Qt.Key.Key_Escape)
+    assert len(google.snapshots()) == 1
+
+    more.forceActiveFocus(Qt.FocusReason.TabFocusReason)
+    loaded.key(qtbot, Qt.Key.Key_Space)
+    loaded.key(qtbot, Qt.Key.Key_Down, wait=10)
+    loaded.key(qtbot, Qt.Key.Key_Return)  # 退出登录
+    qtbot.waitUntil(lambda: prop(backup, "googleStatus") == "未登录")
+    assert len(google.revoked) == 1
     assert loaded.warnings == []

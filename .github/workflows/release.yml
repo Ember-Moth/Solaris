@@ -4,8 +4,9 @@ name: Release
 # notarized and stapled, in a notarized disk image with its SHA-256. And the Windows installer
 # from scripts/build_windows.py with its SHA-256, unsigned (D29). Runs for v* tags and
 # by hand, in the release environment: its reviewers approve each run before the jobs get the
-# signing secrets. For a tag, a last job puts both installers, SHA256SUMS and the source
-# archive into a draft GitHub Release (docs/release.md §1), which a person publishes.
+# signing secrets and the Google OAuth client. For a tag, a last job puts both installers,
+# SHA256SUMS and the source archive into a draft GitHub Release (docs/release.md §1), which a
+# person publishes.
 on:
   workflow_dispatch:
   push:
@@ -119,7 +120,21 @@ jobs:
           printf '%s' "$APP_STORE_CONNECT_API_KEY" > "$signing/AuthKey.p8"
           chmod 600 "$signing/AuthKey.p8"
 
+      # Google Drive backup needs the project's OAuth client (docs/maintenance.md §2.8); the
+      # build bundles it, and a build without one has no Google Drive backup.
+      - name: Google OAuth client
+        env:
+          SOLARIS_GOOGLE_CLIENT_ID: ${{ secrets.SOLARIS_GOOGLE_CLIENT_ID }}
+          SOLARIS_GOOGLE_CLIENT_SECRET: ${{ secrets.SOLARIS_GOOGLE_CLIENT_SECRET }}
+        run: |
+          if [[ -z "$SOLARIS_GOOGLE_CLIENT_ID" || -z "$SOLARIS_GOOGLE_CLIENT_SECRET" ]]; then
+            echo "::warning::No Google OAuth client in the release environment; this app has no Google Drive backup."
+          fi
+
       - name: Build and sign Solaris.app
+        env:
+          SOLARIS_GOOGLE_CLIENT_ID: ${{ secrets.SOLARIS_GOOGLE_CLIENT_ID }}
+          SOLARIS_GOOGLE_CLIENT_SECRET: ${{ secrets.SOLARIS_GOOGLE_CLIENT_SECRET }}
         run: uv run --frozen --with nuitka==4.2.2 python scripts/build_app.py
 
       # The app is notarized and stapled first, so that it opens offline once copied out of
@@ -224,7 +239,20 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "installer=Solaris-$version-windows-x64-setup.exe" >> "$GITHUB_OUTPUT"
 
+      - name: Google OAuth client
+        shell: bash
+        env:
+          SOLARIS_GOOGLE_CLIENT_ID: ${{ secrets.SOLARIS_GOOGLE_CLIENT_ID }}
+          SOLARIS_GOOGLE_CLIENT_SECRET: ${{ secrets.SOLARIS_GOOGLE_CLIENT_SECRET }}
+        run: |
+          if [[ -z "$SOLARIS_GOOGLE_CLIENT_ID" || -z "$SOLARIS_GOOGLE_CLIENT_SECRET" ]]; then
+            echo "::warning::No Google OAuth client in the release environment; this installer has no Google Drive backup."
+          fi
+
       - name: Build Solaris.exe and the service
+        env:
+          SOLARIS_GOOGLE_CLIENT_ID: ${{ secrets.SOLARIS_GOOGLE_CLIENT_ID }}
+          SOLARIS_GOOGLE_CLIENT_SECRET: ${{ secrets.SOLARIS_GOOGLE_CLIENT_SECRET }}
         run: uv run --frozen --with nuitka==4.2.2 python scripts/build_windows.py --skip-installer
 
       # Releases are unsigned (D29), and this step marks where signing goes: it would sign
