@@ -46,8 +46,8 @@ func dial(t *testing.T, address string) net.Conn {
 }
 
 func TestServesConcurrentRequestsOnOneConnection(t *testing.T) {
-	address, cancel, done := start(t, func(net.Conn) (peer.Identity, error) {
-		return peer.Identity{UserID: "user"}, nil
+	address, cancel, done := start(t, func(conn net.Conn) (net.Conn, peer.Identity, error) {
+		return conn, peer.Identity{UserID: "user"}, nil
 	})
 	conn := dial(t, address)
 	for _, payload := range []string{"a", "b", "c"} {
@@ -75,8 +75,8 @@ func TestServesConcurrentRequestsOnOneConnection(t *testing.T) {
 }
 
 func TestRejectedClientIsDisconnected(t *testing.T) {
-	address, cancel, done := start(t, func(net.Conn) (peer.Identity, error) {
-		return peer.Identity{}, errors.New("not the UI")
+	address, cancel, done := start(t, func(net.Conn) (net.Conn, peer.Identity, error) {
+		return nil, peer.Identity{}, errors.New("not the UI")
 	})
 	defer func() { cancel(); <-done }()
 	conn := dial(t, address)
@@ -86,8 +86,8 @@ func TestRejectedClientIsDisconnected(t *testing.T) {
 }
 
 func TestBadHeaderClosesConnection(t *testing.T) {
-	address, cancel, done := start(t, func(net.Conn) (peer.Identity, error) {
-		return peer.Identity{UserID: "user"}, nil
+	address, cancel, done := start(t, func(conn net.Conn) (net.Conn, peer.Identity, error) {
+		return conn, peer.Identity{UserID: "user"}, nil
 	})
 	defer func() { cancel(); <-done }()
 	conn := dial(t, address)

@@ -153,8 +153,8 @@ def test_custom_controls_tell_their_role_and_state(qtbot: QtBot, loaded: Loaded)
 
     content = show_page(qtbot, loaded, "settings")
     select = loaded.item(lambda i: kind(i) == "AppSelect")
-    assert (accessible(select).role, accessible(select).name) == (Role.ComboBox, "语言")
-    assert accessible(select).description == "跟随系统"
+    assert (accessible(select).role, accessible(select).name) == (Role.ComboBox, "TUN 协议栈")
+    assert accessible(select).description == "跟随配置"
     assert loaded.warnings == []
 
 

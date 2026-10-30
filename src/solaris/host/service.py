@@ -4,6 +4,7 @@ development socket on macOS and Linux."""
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable
 
 from solaris.host.base import (
     EXPORT_GENERATED,
@@ -58,10 +59,45 @@ LOG_LEVELS = {
     "warning": pb.LOG_LEVEL_WARNING,
     "error": pb.LOG_LEVEL_ERROR,
 }
+# The Windows service answers not_claimed while it is free but not ours (docs/architecture.md
+# §5.4). These requests only show what the core does, so they answer as for a stopped core
+# instead of claiming it: two signed-in users' windows would otherwise take it from each
+# other back and forth. Everything else claims the service first.
+_READS = frozenset(
+    {
+        "get_status",
+        "list_groups",
+        "list_rules",
+        "list_geo_categories",
+        "subscribe_logs",
+        "subscribe_traffic",
+        "subscribe_connections",
+        "poll_events",
+        "unsubscribe",
+        "stop",
+        "close_connection",
+        "close_all_connections",
+    }
+)
+# A claim that changes the owner restarts the service, which opens their home; these codes
+# mean it is on its way back.
+_RESTARTING = frozenset({"service_restarting", "connection_closed", "service_unavailable"})
+CLAIM_TIMEOUT_S = 20.0
+CLAIM_RETRY_S = 0.5
+IDLE_STATUS = HostStatus("stopped", "rule", 0, 0, 0, False, False)
 
 
 def _enum_name(enum: type, prefix: str, value: int) -> str:
     return enum.Name(value).removeprefix(prefix).lower()
+
+
+TUN_STACKS = {
+    "": pb.TUN_STACK_UNSPECIFIED,
+    "system": pb.TUN_STACK_SYSTEM,
+    "mips": pb.TUN_STACK_MIPS,
+    "gvisor": pb.TUN_STACK_GVISOR,
+    "mixed": pb.TUN_STACK_MIXED,
+}
 
 
 def _options(options: RunOptions) -> pb.RunOptions:
@@ -70,6 +106,7 @@ def _options(options: RunOptions) -> pb.RunOptions:
         system_proxy_enabled=options.system_proxy_enabled,
         mixed_port=options.mixed_port,
         allow_lan=options.allow_lan,
+        tun_stack=TUN_STACKS[options.tun_stack],
     )
 
 
@@ -215,7 +252,38 @@ class ServiceHost:
             return self._client
 
     async def _call(self, request: pb.Request) -> pb.Response:
+        try:
+            return await (await self._connected()).call(request)
+        except HostError as error:
+            if error.code != "not_claimed" or request.WhichOneof("method") in _READS:
+                raise
+        await self.claim()
         return await (await self._connected()).call(request)
+
+    async def claim(self) -> None:
+        """Become the service's owner: it is free, or ours already. A service that has to
+        open another user's home restarts first, and is claimed again once it is back."""
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + CLAIM_TIMEOUT_S
+        while True:
+            try:
+                await (await self._connected()).call(pb.Request(claim=pb.ClaimRequest()))
+                return
+            except HostError as error:
+                if error.code not in _RESTARTING or loop.time() >= deadline:
+                    raise
+            await self.close()
+            await asyncio.sleep(CLAIM_RETRY_S)
+
+    @staticmethod
+    async def _unclaimed[T](read: Awaitable[T], idle: T) -> T:
+        """``read``'s answer, or ``idle`` while the service is free but not ours."""
+        try:
+            return await read
+        except HostError as error:
+            if error.code != "not_claimed":
+                raise
+            return idle
 
     async def get_info(self) -> HostInfo:
         info = (await self._call(pb.Request(get_info=pb.GetInfoRequest()))).get_info
@@ -228,7 +296,11 @@ class ServiceHost:
         )
 
     async def get_status(self) -> HostStatus:
-        status = (await self._call(pb.Request(get_status=pb.GetStatusRequest()))).get_status
+        response = self._call(pb.Request(get_status=pb.GetStatusRequest()))
+        answered = await self._unclaimed(response, None)
+        if answered is None:
+            return IDLE_STATUS
+        status = answered.get_status
         return HostStatus(
             state=_enum_name(pb.RunState, "RUN_STATE_", status.state),
             mode=_enum_name(pb.Mode, "MODE_", status.mode),
@@ -271,8 +343,11 @@ class ServiceHost:
 
     async def list_geo_categories(self) -> GeoCategories:
         request = pb.Request(list_geo_categories=pb.ListGeoCategoriesRequest())
-        listed = (await self._call(request)).list_geo_categories
         bundled = bundled_geo_categories()
+        answered = await self._unclaimed(self._call(request), None)
+        if answered is None:
+            return bundled
+        listed = answered.list_geo_categories
         return GeoCategories(
             geosite=_dataset(listed.geosite, bundled.geosite),
             geoip=_dataset(listed.geoip, bundled.geoip),
@@ -341,7 +416,7 @@ class ServiceHost:
         return _warp_account_from(response.register_warp.account)
 
     async def stop(self) -> None:
-        await self._call(pb.Request(stop=pb.StopRequest()))
+        await self._unclaimed(self._call(pb.Request(stop=pb.StopRequest())), None)
 
     async def set_mode(self, mode: str) -> None:
         await self._call(pb.Request(set_mode=pb.SetModeRequest(mode=MODES[mode])))
@@ -356,12 +431,14 @@ class ServiceHost:
         await self._call(request)
 
     async def list_groups(self) -> list[ProxyGroup]:
-        response = await self._call(pb.Request(list_groups=pb.ListGroupsRequest()))
-        return [_group(g) for g in response.list_groups.groups]
+        response = self._call(pb.Request(list_groups=pb.ListGroupsRequest()))
+        answered = await self._unclaimed(response, None)
+        return [_group(g) for g in answered.list_groups.groups] if answered else []
 
     async def list_rules(self) -> list[Rule]:
-        response = await self._call(pb.Request(list_rules=pb.ListRulesRequest()))
-        return [_rule(r) for r in response.list_rules.rules]
+        response = self._call(pb.Request(list_rules=pb.ListRulesRequest()))
+        answered = await self._unclaimed(response, None)
+        return [_rule(r) for r in answered.list_rules.rules] if answered else []
 
     async def select_proxy(self, group: str, proxy: str) -> None:
         request = pb.Request(select_proxy=pb.SelectProxyRequest(group=group, proxy=proxy))
@@ -388,9 +465,8 @@ class ServiceHost:
         raise AssertionError("unreachable")
 
     async def poll_traffic(self) -> list[TrafficSample]:
-        events = await self._poll(
-            "traffic", pb.Request(subscribe_traffic=pb.SubscribeTrafficRequest())
-        )
+        subscribe = pb.Request(subscribe_traffic=pb.SubscribeTrafficRequest())
+        events = await self._unclaimed(self._poll("traffic", subscribe), [])
         return [
             TrafficSample(
                 e.traffic.up_bytes_per_second,
@@ -403,9 +479,8 @@ class ServiceHost:
         ]
 
     async def poll_connections(self) -> list[Connection]:
-        events = await self._poll(
-            "connections", pb.Request(subscribe_connections=pb.SubscribeConnectionsRequest())
-        )
+        subscribe = pb.Request(subscribe_connections=pb.SubscribeConnectionsRequest())
+        events = await self._unclaimed(self._poll("connections", subscribe), [])
         snapshots = [e.connections for e in events if e.HasField("connections")]
         if snapshots:
             self._connections = [_connection(c) for c in snapshots[-1].connections]
@@ -414,21 +489,22 @@ class ServiceHost:
     async def close_connection(self, connection_id: str) -> None:
         request = pb.Request(close_connection=pb.CloseConnectionRequest(id=connection_id))
         try:
-            await self._call(request)
+            await self._unclaimed(self._call(request), None)
         except HostError as error:
             # The core answers invalid_request for an id it no longer tracks.
             if error.code != "invalid_request":
                 raise
 
     async def close_all_connections(self) -> None:
-        await self._call(pb.Request(close_all_connections=pb.CloseAllConnectionsRequest()))
+        request = pb.Request(close_all_connections=pb.CloseAllConnectionsRequest())
+        await self._unclaimed(self._call(request), None)
 
     async def poll_logs(self, level: str) -> list[LogEntry]:
         if level != self._log_level and "logs" in self._subscriptions:
             await self._unsubscribe("logs")
         self._log_level = level
         subscribe = pb.SubscribeLogsRequest(level=LOG_LEVELS[level])
-        events = await self._poll("logs", pb.Request(subscribe_logs=subscribe))
+        events = await self._unclaimed(self._poll("logs", pb.Request(subscribe_logs=subscribe)), [])
         return [
             LogEntry(
                 level=_enum_name(pb.LogLevel, "LOG_LEVEL_", e.log.level),

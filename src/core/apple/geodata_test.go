@@ -85,7 +85,7 @@ func TestAttachSeedsTheHomeBeforeOpeningTheEngine(t *testing.T) {
 	}
 	defer reader.Close()
 	defer writer.Close()
-	if err := attach(int(reader.Fd()), home, resources); err == nil {
+	if err := attach(int(reader.Fd()), home, resources, false); err == nil {
 		detach()
 		t.Fatal("attached a pipe as the TUN")
 	}

@@ -6,6 +6,7 @@
 package main
 
 /*
+#include <stdbool.h>
 #include <stdlib.h>
 */
 import "C"
@@ -31,12 +32,14 @@ func solaris_tunnel_network(length *C.size_t) unsafe.Pointer {
 // mihomo's home directory, and the dispatcher that answers solaris_handle_message; the
 // core runs once a Start message brings its configuration. Before that, it copies the GEO
 // data in resources, the extension's resource directory, into home where home lacks it.
+// include_all_networks is the VPN configuration's includeAllNetworks: while it is set, the
+// engine replaces the system and mixed TUN stacks with gVisor (D19).
 // The descriptor stays the caller's: Go never closes it, and mihomo runs on duplicates of
 // it that Go closes. It returns NULL, or an error the caller releases with solaris_free.
 //
 //export solaris_attach_tun
-func solaris_attach_tun(fd C.int, home *C.char, resources *C.char) *C.char {
-	if err := attach(int(fd), C.GoString(home), C.GoString(resources)); err != nil {
+func solaris_attach_tun(fd C.int, home *C.char, resources *C.char, include_all_networks C.bool) *C.char {
+	if err := attach(int(fd), C.GoString(home), C.GoString(resources), bool(include_all_networks)); err != nil {
 		return C.CString(err.Error())
 	}
 	return nil

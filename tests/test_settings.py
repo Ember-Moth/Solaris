@@ -41,6 +41,8 @@ def test_every_setting_has_a_scope() -> None:
         "system_proxy": LOCAL,
         "mixed_port": LOCAL,
         "allow_lan": LOCAL,
+        "tun_stack": LOCAL,
+        "include_all_networks": LOCAL,
         "warp_protocol": LOCAL,
         "update_check": SYNCED,
         "update_check_hours": SYNCED,
@@ -81,6 +83,15 @@ def test_update_writes_and_notifies(tmp_path: Path, database: Database) -> None:
     assert rows(tmp_path)["language"] == ("zh", SYNCED, 1_000.0)
 
 
+def test_run_options_carry_the_stack_and_all_networks(database: Database) -> None:
+    store = DatabaseSettingsStore(database)
+    assert store.current.run_options().tun_stack == ""  # "profile": the profile's own
+    for stack in ("system", "mips", "gvisor", "mixed"):
+        assert store.update(tun_stack=stack).run_options().tun_stack == stack
+    options = store.update(include_all_networks=True).run_options()
+    assert options == RunOptions(mixed_port=7890, tun_stack="mixed", include_all_networks=True)
+
+
 @pytest.mark.parametrize(
     "change",
     [
@@ -93,6 +104,9 @@ def test_update_writes_and_notifies(tmp_path: Path, database: Database) -> None:
         {"update_check_hours": 12},
         {"update_check_hours": True},
         {"allow_lan": "yes"},
+        {"tun_stack": ""},
+        {"tun_stack": "gVisor"},
+        {"include_all_networks": 1},
     ],
 )
 def test_update_refuses_invalid_values(

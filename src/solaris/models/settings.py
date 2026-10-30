@@ -18,7 +18,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, fields, replace
 from typing import Any, Protocol
 
-from solaris.host.base import WARP_PROTOCOLS, RunOptions
+from solaris.host.base import TUN_STACKS, WARP_PROTOCOLS, RunOptions
 from solaris.models.database import Database
 from solaris.models.profiles import ProfileError
 
@@ -27,6 +27,10 @@ APPEARANCES = ("system", "light", "dark")
 CLOSE_ACTIONS = ("tray", "quit")  # what closing the main window does; the tunnel stays up
 # How often the UI looks for a new release (docs/release.md §2): every day, 3 days or week.
 UPDATE_CHECK_HOURS = (24, 72, 168)
+# The TUN stack (D3): "profile" keeps the profile's own tun.stack.
+TUN_STACK_CHOICES = ("profile", *TUN_STACKS)
+# The stacks that do not work while the macOS tunnel includes all networks (D19).
+ALL_NETWORKS_BREAKS = ("system", "mixed")
 DEFAULT_MIXED_PORT = 7890
 MIN_MIXED_PORT = 1024
 MAX_MIXED_PORT = 65535
@@ -54,6 +58,10 @@ class Settings:
     # A port free here may be taken elsewhere; LAN access exposes it to this network.
     mixed_port: int = _setting(DEFAULT_MIXED_PORT, LOCAL)
     allow_lan: bool = _setting(False, LOCAL)
+    # Which stack works best depends on this machine's system and network (D3).
+    tun_stack: str = _setting("profile", LOCAL)
+    # macOS (D19): the tunnel takes the traffic the system routes around it by default too.
+    include_all_networks: bool = _setting(False, LOCAL)
     # The WARP exit's protocol (docs/exits.md §3.1): what this machine's account has a key for.
     warp_protocol: str = _setting(WARP_PROTOCOLS[0], LOCAL)
     # Look for a new release at startup and then every so many hours.
@@ -66,6 +74,8 @@ class Settings:
             system_proxy_enabled=self.system_proxy,
             mixed_port=self.mixed_port,
             allow_lan=self.allow_lan,
+            tun_stack="" if self.tun_stack == "profile" else self.tun_stack,
+            include_all_networks=self.include_all_networks,
         )
 
 
@@ -107,6 +117,7 @@ _CHOICES: dict[str, tuple[str, ...]] = {
     "appearance": APPEARANCES,
     "close_action": CLOSE_ACTIONS,
     "warp_protocol": WARP_PROTOCOLS,
+    "tun_stack": TUN_STACK_CHOICES,
 }
 
 

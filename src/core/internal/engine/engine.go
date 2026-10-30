@@ -51,11 +51,17 @@ type Options struct {
 	// TunFD is the host's TUN descriptor in fd mode. The engine never closes it: mihomo
 	// runs on duplicates (hostTUN), so the host closes it once Close returns.
 	TunFD int
+	// IncludeAllNetworks says that the fd-mode host's tunnel includes all networks: the
+	// macOS extension's includeAllNetworks (D19). mihomo's system and mixed stacks do not
+	// work there, so the pipeline replaces them with gVisor.
+	IncludeAllNetworks bool
 }
 
 type Engine struct {
 	tunMode TunMode
 	home    string
+	// includeAllNetworks is Options.IncludeAllNetworks in fd mode.
+	includeAllNetworks bool
 	// tun is the host's TUN in fd mode, nil otherwise; the lifecycle lock guards it.
 	tun *hostTUN
 
@@ -119,11 +125,13 @@ func newEngine(options Options) (*Engine, error) {
 	if err := checkPathSandbox(home); err != nil {
 		return nil, err
 	}
-	coreOnce.Do(func() {
-		coreVerStr = moduleVersion()
-		C.Version = coreVerStr
-	})
-	engine := &Engine{tunMode: options.Tun, home: home, state: controlpb.RunState_RUN_STATE_STOPPED}
+	Version()
+	engine := &Engine{
+		tunMode:            options.Tun,
+		home:               home,
+		includeAllNetworks: options.Tun == TunFD && options.IncludeAllNetworks,
+		state:              controlpb.RunState_RUN_STATE_STOPPED,
+	}
 	if options.Tun == TunFD {
 		if engine.tun, err = newHostTUN(options.TunFD); err != nil {
 			return nil, err
@@ -152,6 +160,16 @@ func checkPathSandbox(home string) error {
 		return errors.New("mihomo's path sandbox rejects its own home directory")
 	}
 	return nil
+}
+
+// Version is mihomo's version. The Windows service answers GetInfo with it before it has an
+// owner, and so an Engine (docs/architecture.md §5.4).
+func Version() string {
+	coreOnce.Do(func() {
+		coreVerStr = moduleVersion()
+		C.Version = coreVerStr
+	})
+	return coreVerStr
 }
 
 func moduleVersion() string {
@@ -241,6 +259,7 @@ func (e *Engine) Validate(profile Profile) (*controlpb.CompositionReport, error)
 
 func (e *Engine) admit(profile Profile) (*admission, error) {
 	homeInUse = e.home
+	profile.Options.includeAllNetworks = e.includeAllNetworks
 	return admitProfile(profile, e.tunMode)
 }
 

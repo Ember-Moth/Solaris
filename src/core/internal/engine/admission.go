@@ -18,6 +18,7 @@ import (
 	"github.com/metacubex/mihomo/hub/executor"
 	LC "github.com/metacubex/mihomo/listener/config"
 	"github.com/metacubex/mihomo/listener/inbound"
+	"github.com/metacubex/mihomo/log"
 
 	"github.com/Ember-Moth/Solaris/src/core/internal/compose"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
@@ -60,6 +61,12 @@ type RunOptions struct {
 	// AllowLAN opts in to listening beyond 127.0.0.1; without it every inbound stays on
 	// loopback whatever the profile says.
 	AllowLAN bool
+	// Stack replaces the profile's tun.stack when set: mihomo's name for it, "system",
+	// "mips", "gvisor" or "mixed" (§3.4).
+	Stack string
+	// includeAllNetworks comes from the engine, not the caller: the fd-mode host's tunnel
+	// includes all networks (Options.IncludeAllNetworks, D19).
+	includeAllNetworks bool
 }
 
 // Profile is one submission from the UI: the configuration, the overrides and the options.
@@ -326,7 +333,7 @@ func patchNoTUN(doc map[string]any, options RunOptions) error {
 }
 
 // patchOwnedTUN writes the TUN section mihomo creates and routes itself; the user's
-// stack, device, MTU and exclusions stay.
+// device, MTU and exclusions stay, and so does the stack unless the options name one.
 func patchOwnedTUN(doc map[string]any, options RunOptions) error {
 	tun := section(doc, "tun")
 	tun["enable"] = options.TUN
@@ -335,6 +342,9 @@ func patchOwnedTUN(doc map[string]any, options RunOptions) error {
 	tun["strict-route"] = true
 	tun["auto-redirect"] = false
 	tun["file-descriptor"] = 0
+	if options.Stack != "" {
+		tun["stack"] = options.Stack
+	}
 	if options.TUN {
 		// The TUN hijacks DNS into mihomo's resolver, which only exists when DNS is on.
 		section(doc, "dns")["enable"] = true
@@ -364,7 +374,16 @@ func patchFDTUN(doc map[string]any, options RunOptions) error {
 	delete(tun, "device")
 	tun["inet6-address"] = []any{FDNetwork.Inet6.String()}
 	tun["mtu"] = int(FDNetwork.MTU)
-	if stack, _ := tun["stack"].(string); stack == "" {
+	if options.Stack != "" {
+		tun["stack"] = options.Stack
+	}
+	switch stack, _ := tun["stack"].(string); {
+	case stack == "":
+		tun["stack"] = defaultFDStack()
+	case options.includeAllNetworks && breaksAllNetworks(stack):
+		// mihomo does not pass the setting on to sing-tun, whose own check would refuse these.
+		log.Warnln("[engine] the %s TUN stack does not work while the tunnel includes all networks; using %s",
+			stack, defaultFDStack())
 		tun["stack"] = defaultFDStack()
 	}
 	dns := section(doc, "dns")
@@ -385,6 +404,12 @@ func defaultFDStack() string {
 		return "gvisor"
 	}
 	return "mips"
+}
+
+// breaksAllNetworks reports the stacks that stop working once a NetworkExtension tunnel
+// includes all networks: system and mixed, which hand TCP to the system's own stack.
+func breaksAllNetworks(stack string) bool {
+	return strings.EqualFold(stack, C.TunSystem.String()) || strings.EqualFold(stack, C.TunMixed.String())
 }
 
 func setMixedPort(doc map[string]any, options RunOptions) {
@@ -650,7 +675,7 @@ func verifyAdmitted(cfg *config.Config, mode TunMode, options RunOptions) error 
 		return errors.New("tun.file-descriptor is only for fd mode")
 	}
 	if mode == TunFD {
-		if err := verifyFDTun(general.Tun); err != nil {
+		if err := verifyFDTun(general.Tun, options); err != nil {
 			return err
 		}
 	}
@@ -697,11 +722,14 @@ func verifyAdmitted(cfg *config.Config, mode TunMode, options RunOptions) error 
 	return nil
 }
 
-// verifyFDTun checks that mihomo's TUN matches the network the extension set up and
-// leaves routing and the system's DNS to it.
-func verifyFDTun(tun LC.Tun) error {
+// verifyFDTun checks that mihomo's TUN matches the network the extension set up, leaves
+// routing and the system's DNS to it, and runs a stack its tunnel allows.
+func verifyFDTun(tun LC.Tun, options RunOptions) error {
 	if tun.AutoRoute || tun.AutoRedirect || tun.AutoDetectInterface || tun.StrictRoute {
 		return errors.New("fd mode leaves routing to the host")
+	}
+	if options.includeAllNetworks && (tun.Stack == C.TunSystem || tun.Stack == C.TunMixed) {
+		return fmt.Errorf("tun.stack %s does not work while the tunnel includes all networks", tun.Stack)
 	}
 	if !slices.Equal(tun.Inet4Address, []netip.Prefix{FDNetwork.Inet4}) {
 		return fmt.Errorf("the TUN's IPv4 address is %v, want %s", tun.Inet4Address, FDNetwork.Inet4)

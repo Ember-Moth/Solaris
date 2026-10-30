@@ -9,19 +9,19 @@
 
 | 部分 | 状态 | 说明 |
 | --- | --- | --- |
-| 架构与视觉规范 | 完成 | architecture.md、ui.md、DESIGN.md；原型在 Claude Design 画布上（第 23 版，含深色画板、分流 v2 与链式出口） |
-| 控制协议 | v1 | 消息、方法表、帧编解码已定；Go 与 Python 共用样本测试；配置来源可以是订阅原文或拼装（`Composition`）；`InspectSource`、`ListGeoCategories`、`PreviewGroup`、`MatchRule`、`ConvertToPlan`、`ExportPlan`、`RegisterWarp`；链式出口与组网出站的字段 |
-| engine（内嵌 mihomo） | 完成（M1、M5） | mihomo v1.19.33；无 TUN、自管 TUN 和 fd 三种模式，覆写、§3.3 安全项、开发模式护栏 |
-| Go 分发器与服务入口 | 部分 | 全部内核方法、Start / Stop / Reload / Validate、`PollEvents`；`Claim`、系统代理、Authenticode 校验留到 M4 |
+| 架构与视觉规范 | 完成 | architecture.md、ui.md、DESIGN.md；原型在 Claude Design 画布上（第 29 版，含深色画板、分流 v2、链式出口、应用图标与顶部区域） |
+| 控制协议 | v1 | 消息、方法表、帧编解码已定；Go 与 Python 共用样本测试；配置来源可以是订阅原文或拼装（`Composition`）；`InspectSource`、`ListGeoCategories`、`PreviewGroup`、`MatchRule`、`ConvertToPlan`、`ExportPlan`、`RegisterWarp`；链式出口与组网出站的字段；`RunOptions.tun_stack` |
+| engine（内嵌 mihomo） | 完成（M1、M5） | mihomo v1.19.33；无 TUN、自管 TUN 和 fd 三种模式，覆写、§3.3 安全项、开发模式护栏；设置页选的 TUN 栈（D3），fd 模式下 `includeAllNetworks` 时换用 gVisor（D19） |
+| Go 分发器与服务入口 | 完成，待实测 | 全部内核方法、Start / Stop / Reload / Validate、`PollEvents`；Windows 服务的认领与属主、注销停止与登录恢复、系统代理、客户端校验（第三轮 A），只在 CI 的 Windows 机器上测过，服务本身待 Windows 虚拟机实测 |
 | Python 宿主层 | 完成 | 控制客户端、全部请求映射、日志与连接接口、模拟宿主 |
 | 界面 | 完成（M2、M3、C1） | 七页全部可用（新增分流页，"配置"改名"订阅"）；覆写编辑；中英双语；浅色与深色；托盘、单实例、登录时打开；qmllint 与无障碍检查进了测试 |
 | 端到端联调 | 完成（A2） | 界面连真实开发服务跑通 M1、M2 的验收步骤；`tests/e2e` 自动化，CI 的 `e2e` job 在 macOS 上运行 |
 | 数据存储与云备份 | 存储层（B1）、本地备份完成 | 界面数据在 SQLite；快照的导出与恢复（替换或合并）、提供方接口、本地目录提供方、自动备份的逻辑，设置页可导出到文件、从文件恢复；Google Drive、iCloud 未做 |
 | 自定义分流 | 完成（M8a：B2、C1；M8b） | 分流方式、节点池、地区组、默认模板、41 个服务、规则编辑与撤销、立即生效；策略组编辑器与实时预览、规则测试、搜索与按目标筛选、以此创建方案、导入导出、查看生成的配置 |
 | 链式出口与组网 | 部分 | 设计见 exits.md、mesh.md。WARP 出口（M9）内核与界面都已完成（第二轮），只对假服务器和模拟宿主验证过，真实节点的验收未做；组网出站的单独处理（D24）随它完成。Tor 出口（M10，首发后）、VPN Gate 出口（M12）、应用内组网（M11）未实现 |
-| macOS 原生部分 | 部分（M5） | Xcode 工程、管理库 C 接口；系统扩展用 utun 以 fd 模式运行内核（`with_gvisor`），带 GEO 数据；`MacExtensionHost`；测试 Mac 实测未做 |
+| macOS 原生部分 | 部分（M5） | Xcode 工程、管理库 C 接口；系统扩展用 utun 以 fd 模式运行内核（`with_gvisor`），带 GEO 数据；`MacExtensionHost`；"包含所有网络"（D19）；测试 Mac 实测未做 |
 | 打包与安装 | 两个平台已写好，未实测 | `scripts/build_app.py` 组装并签名 `Solaris.app`；发布工作流（签名、公证、.dmg）已写好，未运行。Windows：`scripts/build_windows.py` 和 NSIS 安装器（第三轮 A），CI 构建不签名的安装包并在 runner 上安装、升级、卸载一遍；签名待定，真机未测 |
-| 发布准备（M6） | 部分 | 检查更新与下载、诊断信息导出、第三方许可证清单、一键导入链接的处理已做（release.md）；macOS 的 scheme 已由 `Solaris.app` 的 Info.plist 注册；Windows 的 scheme 由安装器注册（HKLM）；Windows 签名方案、发布全流程未做 |
+| 发布准备（M6） | 部分 | 检查更新与下载、诊断信息导出、第三方许可证清单、一键导入链接的处理已做（release.md）；macOS 的 scheme 已由 `Solaris.app` 的 Info.plist 注册；Windows 签名方案、发布全流程、Windows 的 scheme 注册（随 M4 安装器）未做 |
 | CI | 全绿 | Python（macOS、Windows）、Go（macOS、Windows、Linux）、网络命名空间 TUN 测试（四种栈和 fd 模式）、macOS 上的 e2e |
 
 ## 2. 下一步开发计划
@@ -135,9 +135,14 @@ B1、B2 的结果与遗留：
 | M4 打包 | Windows 的 Nuitka 构建脚本、NSIS 安装器（安装、升级、卸载服务；注册 `solaris://`、`clash://`）、发布工作流加 Windows job（签名步骤留空，等签名方案） |
 | 两个设置 | "TUN 协议栈"（D3，两个平台）和"包含所有网络"（D19，仅 macOS）：设置项、`RunOptions` 新字段、内核与系统扩展的处理、设置页。本轮只有它改控制协议 |
 
+**第三轮 A 合并后**：隐藏系统标题栏、自绘顶部区域（DESIGN.md「顶部区域」，原型"顶部区域 · 两个平台"）；连接从标题栏的按钮
+改为概览页出站分组第一行的开关，TUN 和系统代理两个开关移到设置页（D26，DESIGN.md「连接开关」）。macOS 在开发机上做和
+验收；Windows 的窗口按钮、拖动和贴靠要在 Windows 虚拟机上验收。
+
 **第三轮 B**（等环境）：
 
-- **M4 实测**：wintun、strict-route、DNS 泄漏、四种栈、安装升级卸载。需要 Windows 虚拟机。
+- **M4 实测**：wintun、strict-route、DNS 泄漏、四种栈、安装升级卸载；服务的认领与换属主重启、注销停止与登录
+  恢复、系统代理的模拟写入（见 M4 的状态）。需要 Windows 虚拟机。
 - **M5 实测**：系统扩展审批、utun、四种栈、D8、`includeAllNetworks`；之后做 M7 的 iCloud 部分。需要测试 Mac。
 - **M6 收尾与首发**：Windows 签名、发布全流程（见下面的首发清单）。
 
@@ -149,9 +154,10 @@ B1、B2 的结果与遗留：
 | --- | --- |
 | Windows 服务、安装器、实测（M4） | 第三轮 A 写代码（安装器已在 CI 上装卸验证），实测等虚拟机 |
 | macOS 在全新 Mac 上的验收（M5），第一次公证 | 等测试 Mac |
-| "TUN 协议栈"与"包含所有网络"设置 | 第三轮 A |
-| 应用图标（macOS .icns、Windows .ico）与品牌素材 | 待讨论 |
-| Windows 代码签名，签名者常量替换占位值 | 等签名方案 |
+| "TUN 协议栈"与"包含所有网络"设置 | 代码完成（第三轮 A）：设置项、`RunOptions.tun_stack`、内核与系统扩展的处理、设置页。四种栈和 `includeAllNetworks` 的实测、各平台的默认栈，等 Windows 虚拟机和测试 Mac |
+| 隐藏系统标题栏，自绘顶部区域（DESIGN.md「顶部区域」） | 第三轮 A 合并后 |
+| 应用图标（macOS .icns、Windows .ico）与品牌素材 | 已定为"日冕"（2026-10-30，DESIGN.md "Shapes"）：`scripts/gen_icons.py` 生成全部尺寸，`.icns` 已接入 `Solaris.app`；Windows 的 `.ico` 已接入 Nuitka 和安装器 |
+| Windows 代码签名，签名者常量替换占位值（`update/signature.py` 与 `internal/product`），发布构建链接时打开 `SignedRelease` | 等签名方案 |
 | 发布工作流：两个平台的安装包、发布到 GitHub Releases、SHA256SUMS；"检查更新"对真实 Release 验证 | 两个平台的安装包和各自的 `.sha256` 已在 `release.yml` 里（未运行过，Windows 不签名）；发布到 Releases、SHA256SUMS 在 M6 收尾 |
 | WARP 出口的真实验收（M9） | 等真实节点 |
 | 真实网络测试：真实订阅、DNS 泄漏、IPv6、睡眠唤醒、切换网络 | 两个平台实测时一起做 |
@@ -231,14 +237,31 @@ Apple 的签名材料（证书、两份描述文件、公证 API Key）已齐，
 
 目标：在全新的 Windows 上完成安装、连接、开机恢复、升级和卸载的完整流程。
 
+**状态**：服务部分的代码已完成（2026-10-30，阶段 D 第三轮 A），设计按实现写在 architecture.md 第 5 节：
+- 认领与属主：`internal/owner`；一个服务进程只服务一个属主，换属主（包括第一次认领）时写好 `owner.json`、回复
+  `service_restarting` 并经辅助进程重启；home 是 `users\<SID>`，只有 SYSTEM 能写、属主能读；`GetInfo` 返回属主状态，
+  非属主得到 `not_claimed` 或 `owned_by_other_user`。
+- 持久化与恢复：`profile.json`（最近生效的请求）和 `state.json`（`was_running`），节点选择在 home 的 `cache.db`；
+  只在属主登录着的时候恢复，属主注销时停止（D5），服务停止时保留。
+- 系统代理：模拟属主会话的 token 写 WinINet 设置，原来的设置存在 `proxy.json`，停止、注销、服务停止时写回。
+- 客户端校验：持有进程与映像句柄、比较文件 ID、拒绝会话 0；签名的发布构建（`SignedRelease`）校验签名者常量。
+- 界面：`ServiceHost` 在要做事时认领，只读请求不认领；概览页在其他用户占用时提示并禁用连接按钮。
+- 测试：属主、恢复与系统代理的逻辑用替身平台在所有平台上测；客户端校验、目录 ACL、WinINet 读写在 CI 的 Windows
+  机器上测。
+
+等 Windows 虚拟机实测的：服务以 SYSTEM 运行时的认领与重启辅助进程、`SessionLogon` / `SessionLogoff` 事件、模拟
+token 写 HKCU 并让浏览器生效、开机后登录时恢复、ACL 在真实 ProgramData 下的效果、Nuitka 构建的 UI 通过客户端校验。
+管理员接管（D5b）未做；PowerEvent 唤醒后重置连接、超时逐层递减也还没做。
+
 范围：
 
-- **属主管理**：`Claim` / `TakeOver`；按 SID 划分 home 目录并设置 ACL；`owner.json`；属主注销时停止隧道并在下次登录时恢复（D5），管理员接管（D5b）。
+- **属主管理**：`Claim`；按 SID 划分 home 目录并设置 ACL；`owner.json`；属主注销时停止隧道并在下次登录时恢复（D5），管理员接管（D5b，待定）。
 - **持久化与开机恢复**：`was_running`、`overrides.json` 和节点选择（`store-selected`）。
 - **系统代理**：模拟属主会话的 token 写入用户的 HKCU，停止时还原（architecture.md §5.5）。
 - **客户端校验补全**：锁定文件身份；发布构建校验 Authenticode 签名者（architecture.md §5.3）。
 - **TUN 栈**：带 `with_gvisor` 构建，四种栈（system、mips、gvisor、mixed）都提供；设置页加"TUN 协议栈"选项（本机
-  设置，映射到配置的 `tun.stack`），默认值按实测结果定（D3）。
+  设置，映射到配置的 `tun.stack`），默认值按实测结果定（D3）。设置项、`RunOptions.tun_stack` 和运行中改栈的
+  Reload 已在第三轮 A 完成，默认先是"跟随配置"。
 - **实测**：wintun、strict-route、DNS 泄漏，四种栈逐一验证；登录时打开的计划任务。
 - **打包**：Nuitka standalone 构建脚本（包括 QML 目录、字体、翻译）；NSIS 安装器负责安装、升级、卸载，参考 hypervpn 的 `packaging/windows/`。
 
@@ -268,7 +291,8 @@ PacketTunnel 系统扩展骨架、`scripts/build_apple.py`（签名与不签名�
 第三步（阶段 D 第一轮，2026-10-30）：`MacExtensionHost`（ctypes 调用管理库，隧道未连接时按停止处理）；扩展
 带 GEO 数据，attach 时复制进 home；`scripts/build_app.py` 把 Nuitka 产物、管理库和扩展组装成 `Solaris.app` 并签名
 （本机签名校验通过，扩展 `strip -x`）；发布工作流 `release.yml`（临时钥匙串、签名、公证、staple、.dmg 和 sha256）。
-剩下："包含所有网络"设置（D19）、测试 Mac 实测（找 utun 描述符、四种栈、重连时描述符的归属、`includeAllNetworks`、
+"包含所有网络"设置（D19）已在第三轮 A 完成：管理库写 VPN 配置，扩展在 attach 时告诉 engine，设置页的开关。
+剩下：测试 Mac 实测（找 utun 描述符、四种栈、重连时描述符的归属、`includeAllNetworks`、
 D8、app 在 hardened runtime 下的启动）、第一次运行发布工作流（公证）。待决定：隧道未连接时 `Validate` 和
 `InspectSource` 没有内核可用，断开时导入订阅会失败；PySide6 6.12.0 的绑定库要求 macOS 26，要支持 15 得钉在 6.11.x
 （apple/README.md）。部署目标暂定 macOS 15.0。
@@ -428,7 +452,7 @@ fake-ip 下的一致性留到 M5 / M4 实测（routing.md 第 12 节）。
 
 | # | 事项 | 最晚何时 | 影响 |
 | --- | --- | --- | --- |
-| D5b | 内核运行中能否由管理员接管其他用户的隧道（倾向可以，需 UAC 确认） | M4 | 服务的属主逻辑 |
+| D5b | 内核运行中能否由管理员接管其他用户的隧道（倾向可以，需 UAC 确认） | M4 实测前 | 服务的属主逻辑；接管加在 `owner.Service.Claim` 里，现在只能等隧道停了再认领 |
 | D8 | provider message 单条大小上限 | M5 原型 | `Reload` 能否直接携带大配置 |
 
 ### 5.2 已决定（2026-10-29 至 10-30）
@@ -458,6 +482,7 @@ fake-ip 下的一致性留到 M5 / M4 实测（routing.md 第 12 节）。
 | D22 | WARP 出口放在内核：mihomo 的 MASQUE 或 WireGuard 出站，`dialer-proxy` 经用户的节点，默认 MASQUE over HTTP/2；内核经节点注册账户，账户存系统凭据库、不进备份；首发前做（M9） | exits.md 第 3 节 |
 | D25 | VPN Gate 作为第三种链式出口（"隐私出口"随之改名"链式出口"）：经节点拉列表，只用 TCP 的 OpenVPN 服务器，按国家和评分挑选；默认负载均衡组按网站分配服务器并跳过失效的，也可选只用一台；定位是换 IP 和住宅 IP，不宣传隐私；排在 M9 之后，开工前先核实使用条款 | exits.md 第 5 节 |
 | D24 | 保留 Tailscale、ZeroTier、EasyTier 出站；它们不进节点池和任何策略组，作为"组网"出站单独列出、供规则引用；只用作出站，安全项关闭 EasyTier 对外提供出口和子网的选项 | mesh.md |
+| D26 | 界面上只有一个连接开关（概览页出站分组第一行）；连接时怎样接管流量由设置页「接管方式」决定，TUN 和系统代理默认都开；macOS 上 TUN 是必选的 | DESIGN.md「连接开关」、ui.md 第 8 节 |
 | D23 | Tor 出口用 arti-client，经 pyo3 运行在界面进程；首发后作为实验功能（M10）；退出界面后 Tor 不可用，连接被拒绝 | exits.md 第 4 节 |
 
 ## 6. 风险

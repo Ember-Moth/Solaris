@@ -197,6 +197,8 @@ func TestRejectsInvalidRequests(t *testing.T) {
 	expectError(t, call(t, dispatcher, badLevel), 6, CodeInvalidRequest)
 	badPort := request(8, startRequest(profileYAML(1), &controlpb.RunOptions{MixedPort: 70000}))
 	expectError(t, call(t, dispatcher, badPort), 8, CodeInvalidRequest)
+	badStack := request(9, startRequest(profileYAML(1), &controlpb.RunOptions{TunStack: 42}))
+	expectError(t, call(t, dispatcher, badStack), 9, CodeInvalidRequest)
 }
 
 func TestHostMethodsDependOnHost(t *testing.T) {

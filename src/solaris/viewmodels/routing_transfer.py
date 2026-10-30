@@ -256,14 +256,8 @@ class PlanTransfer(QObject):
     @Property(str, notify=changed)
     def yamlNote(self) -> str:
         if self._yaml_kind == EXPORT_SHARE:
-            return self.tr(
-                "mihomo 兼容的 proxy-groups 和 rules 片段，节点按订阅里的名称列出，不含节点本身。"
-                "暂时没有节点的地区，规则已改写为节点选择。"
-            )
-        return self.tr(
-            "交给内核的完整配置：方案、基础段、全局覆写、平台补丁和安全项都已应用。"
-            "节点只显示名称、类型、地址和端口。"
-        )
+            return self.tr("mihomo 格式的策略组和规则，不含节点。")
+        return self.tr("交给内核的完整配置，节点的认证信息已隐去。")
 
     @Property(str, notify=changed)
     def exportName(self) -> str:

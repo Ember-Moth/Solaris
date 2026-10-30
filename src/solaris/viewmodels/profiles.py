@@ -472,8 +472,8 @@ class ProfilesViewModel(QObject):
         if self._override_target is None:
             return self.tr("对“订阅自带”和“我的方案”都生效。")
         if self._routing.mode == MODE_PROFILE and self._override_target == self._list.active:
-            return self.tr("只在“订阅自带”方式下使用这份订阅的规则时生效，现在正在生效。")
-        return self.tr("只在“订阅自带”方式下使用这份订阅的规则时生效，现在不生效。")
+            return self.tr("使用这份订阅的规则时生效，当前生效。")
+        return self.tr("使用这份订阅的规则时生效，当前未生效。")
 
     @Slot(str)
     def editOverride(self, profile_id: str) -> None:

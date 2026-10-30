@@ -85,6 +85,69 @@ ScrollView {
                         }
 
                         GroupRow {
+                            verticalPadding: Theme.space2
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+
+                                UiText {
+                                    Layout.fillWidth: true
+                                    text: qsTr("TUN 协议栈")
+                                }
+
+                                AccessibleText {
+                                    Layout.fillWidth: true
+                                    visible: text !== ""
+                                    text: page.settings.stackError
+                                    role: Theme.type.caption
+                                    color: Theme.danger
+                                    wrapMode: Text.Wrap
+                                }
+                            }
+
+                            AppSelect {
+                                options: page.settings.tunStackOptions
+                                current: page.settings.tunStack
+                                enabled: !page.settings.applying
+                                accessibleName: qsTr("TUN 协议栈")
+                                onPicked: value => page.settings.setTunStack(value)
+                            }
+                        }
+
+                        // macOS only (D19): the VPN configuration takes it on the next connection.
+                        GroupRow {
+                            visible: page.settings.includeAllNetworksAvailable
+                            verticalPadding: Theme.space2
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+
+                                UiText {
+                                    Layout.fillWidth: true
+                                    text: qsTr("包含所有网络")
+                                }
+
+                                AccessibleText {
+                                    Layout.fillWidth: true
+                                    text: qsTr("系统默认绕开隧道的流量也进入隧道，下次连接时生效")
+                                    role: Theme.type.caption
+                                    color: Theme.textMuted
+                                    wrapMode: Text.Wrap
+                                }
+                            }
+
+                            AppSwitch {
+                                value: page.settings.includeAllNetworks
+                                enabled: !page.settings.applying
+                                Accessible.name: qsTr("包含所有网络")
+                                Accessible.description: qsTr("系统默认绕开隧道的流量也进入隧道，下次连接时生效")
+                                onRequested: on => page.settings.setIncludeAllNetworks(on)
+                            }
+                        }
+
+                        GroupRow {
                             UiText {
                                 Layout.fillWidth: true
                                 text: qsTr("系统代理")
@@ -645,7 +708,7 @@ ScrollView {
         id: exportDialog
 
         title: qsTr("导出备份文件？")
-        message: qsTr("备份文件不加密，其中有订阅链接，本地文件配置的原文里还可能有组网出站的凭据。拿到这个文件的人都能看到这些内容。")
+        message: qsTr("备份文件不加密，含订阅链接和配置原文，请妥善保管。")
         confirmText: qsTr("继续")
         onAccepted: {
             exportFileDialog.selectedFile = exportFileDialog.currentFolder + "/" + page.backup.exportName

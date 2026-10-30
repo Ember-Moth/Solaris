@@ -99,13 +99,14 @@ function Assert-Installed {
         Expect ($recovery -match "RESTART -- Delay = $delay milliseconds") "$ServiceName does not restart after $delay ms:`n$recovery"
     }
     # Listening: the service accepts the connection, then drops it, as this is not its UI.
-    $client = New-Object System.IO.Pipes.NamedPipeClientStream('.', $Pipe, [System.IO.Pipes.PipeDirection]::InOut)
+    # Not $client: PowerShell names ignore case, and $Client is the UI's path checked below.
+    $pipeClient = New-Object System.IO.Pipes.NamedPipeClientStream('.', $Pipe, [System.IO.Pipes.PipeDirection]::InOut)
     try {
-        $client.Connect(20000)
+        $pipeClient.Connect(20000)
     } catch {
         Expect $false "Nothing listens on \\.\pipe\${Pipe}: $($_.Exception.Message)"
     } finally {
-        $client.Dispose()
+        $pipeClient.Dispose()
     }
 
     $entry = Get-ItemProperty -LiteralPath $UninstallKey

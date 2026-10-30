@@ -43,6 +43,8 @@ SETTINGS_EXPORTED = frozenset(
         "system_proxy",
         "mixed_port",
         "allow_lan",
+        "tun_stack",
+        "include_all_networks",
         "warp_protocol",
         "update_check",
         "update_check_hours",

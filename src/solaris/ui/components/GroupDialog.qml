@@ -213,7 +213,7 @@ AppDialog {
                         mode: dialog.editor.excludeMode
                         invalid: dialog.editor.excludeInvalid
                         placeholderText: qsTr("名称包含的关键字或正则")
-                        note: qsTr("地区、来源订阅、名称包含三者取并集，再减去排除；手动挑选和其他成员不受排除影响")
+                        note: qsTr("满足任一条件即加入，再去掉排除的节点；手动挑选和其他成员不受排除影响")
                         onEdited: (mode, pattern) => dialog.editor.setExclude(mode, pattern)
                     }
                 }

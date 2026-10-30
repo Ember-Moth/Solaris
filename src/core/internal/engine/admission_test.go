@@ -165,14 +165,37 @@ func TestOwnedTUNRejectsAStackThisBuildLacks(t *testing.T) {
 		t.Skip("this build includes gVisor")
 	}
 	for _, stack := range []string{"gvisor", "mixed"} {
-		profile := profileOf(minimal + "tun: {stack: " + stack + "}\n")
-		profile.Options.TUN = true
-		if _, err := admit(profile, TunOwned); !errors.Is(err, ErrInvalidConfig) || !strings.Contains(err.Error(), "with_gvisor") {
-			t.Errorf("stack %s: admit = %v", stack, err)
+		fromProfile := profileOf(minimal + "tun: {stack: " + stack + "}\n")
+		fromOptions := profileOf(minimal)
+		fromOptions.Options.Stack = stack
+		for _, profile := range []Profile{fromProfile, fromOptions} {
+			profile.Options.TUN = true
+			if _, err := admit(profile, TunOwned); !errors.Is(err, ErrInvalidConfig) || !strings.Contains(err.Error(), "with_gvisor") {
+				t.Errorf("stack %s: admit = %v", stack, err)
+			}
+			profile.Options.TUN = false
+			if _, err := admit(profile, TunOwned); err != nil {
+				t.Errorf("stack %s with the TUN off: admit = %v", stack, err)
+			}
 		}
-		profile.Options.TUN = false
-		if _, err := admit(profile, TunOwned); err != nil {
-			t.Errorf("stack %s with the TUN off: admit = %v", stack, err)
+	}
+}
+
+// The settings page's stack (D3) wins over the profile and the overrides: the patches
+// come after them.
+func TestRunOptionsChooseTheStack(t *testing.T) {
+	profile := profileOf(minimal + "tun: {stack: mips}\n")
+	profile.Overrides = [][]byte{[]byte("tun: {stack: mips}\n")}
+	profile.Options = RunOptions{TUN: true, Stack: "system"}
+	for _, mode := range []TunMode{TunOwned, TunFD} {
+		if stack := admitted(t, mode, profile).General.Tun.Stack; stack != C.TunSystem {
+			t.Errorf("%v: stack = %v, want System", mode, stack)
+		}
+	}
+	profile.Options.Stack = ""
+	for _, mode := range []TunMode{TunOwned, TunFD} {
+		if stack := admitted(t, mode, profile).General.Tun.Stack; stack != C.TunMips {
+			t.Errorf("%v without a stack in the options: stack = %v, want the profile's Mips", mode, stack)
 		}
 	}
 }
@@ -370,6 +393,53 @@ func TestFDModeDefaultsTheStack(t *testing.T) {
 	}
 }
 
+func TestFDModeRejectsAStackThisBuildLacks(t *testing.T) {
+	if features.WithGVisor {
+		t.Skip("this build includes gVisor")
+	}
+	for _, stack := range []string{"gvisor", "mixed"} {
+		profile := profileOf(minimal)
+		profile.Options.Stack = stack
+		if _, err := admit(profile, TunFD); !errors.Is(err, ErrInvalidConfig) || !strings.Contains(err.Error(), "with_gvisor") {
+			t.Errorf("stack %s: admit = %v", stack, err)
+		}
+	}
+}
+
+// D19: NetworkExtension breaks the system and mixed stacks once the extension's tunnel
+// includes all networks, so fd mode runs gVisor instead, or mips in a build without it.
+func TestFDModeReplacesStacksThatBreakAllNetworks(t *testing.T) {
+	want := C.TunMips
+	if features.WithGVisor {
+		want = C.TunGvisor
+	}
+	for _, stack := range []string{"system", "System", "mixed"} {
+		fromProfile := profileOf(minimal + "tun: {stack: " + stack + "}\n")
+		fromOptions := profileOf(minimal)
+		fromOptions.Options.Stack = strings.ToLower(stack)
+		for _, profile := range []Profile{fromProfile, fromOptions} {
+			profile.Options.includeAllNetworks = true
+			if got := admitted(t, TunFD, profile).General.Tun.Stack; got != want {
+				t.Errorf("%s (options %q): stack = %v, want %v", stack, profile.Options.Stack, got, want)
+			}
+		}
+	}
+	allNetworks := profileOf(minimal + "tun: {stack: mips}\n")
+	allNetworks.Options.includeAllNetworks = true
+	if got := admitted(t, TunFD, allNetworks).General.Tun.Stack; got != C.TunMips {
+		t.Errorf("mips works there, yet became %v", got)
+	}
+	// Without the setting the user's stack stays, and outside fd mode it means nothing.
+	system := profileOf(minimal + "tun: {stack: system}\n")
+	if got := admitted(t, TunFD, system).General.Tun.Stack; got != C.TunSystem {
+		t.Errorf("without includeAllNetworks: stack = %v, want System", got)
+	}
+	system.Options = RunOptions{TUN: true, includeAllNetworks: true}
+	if got := admitted(t, TunOwned, system).General.Tun.Stack; got != C.TunSystem {
+		t.Errorf("owned TUN: stack = %v, want System", got)
+	}
+}
+
 func TestOverrideCannotMoveTheFDNetwork(t *testing.T) {
 	extensionHasIPv6(t)
 	profile := profileOf(minimal)
@@ -405,7 +475,17 @@ func TestFDNetworkDNSIsTheHijackedAddress(t *testing.T) {
 	if FDNetwork.Inet4.String() != "198.18.0.1/30" || FDNetwork.DNSServer().String() != "198.18.0.2" {
 		t.Fatalf("network = %+v, dns = %s", FDNetwork, FDNetwork.DNSServer())
 	}
-	if err := verifyFDTun(LC.Tun{Inet4Address: []netip.Prefix{netip.MustParsePrefix("28.0.0.1/30")}, MTU: FDNetwork.MTU}); err == nil {
+	if err := verifyFDTun(LC.Tun{Inet4Address: []netip.Prefix{netip.MustParsePrefix("28.0.0.1/30")}, MTU: FDNetwork.MTU}, RunOptions{}); err == nil {
 		t.Fatal("a TUN off FDNetwork passed")
+	}
+}
+
+func TestFDModeVerifiesTheStackForAllNetworks(t *testing.T) {
+	tun := LC.Tun{Stack: C.TunMixed, Inet4Address: []netip.Prefix{FDNetwork.Inet4}, MTU: FDNetwork.MTU}
+	if err := verifyFDTun(tun, RunOptions{}); err != nil {
+		t.Fatalf("mixed without includeAllNetworks: %v", err)
+	}
+	if err := verifyFDTun(tun, RunOptions{includeAllNetworks: true}); err == nil {
+		t.Fatal("mixed passed while the tunnel includes all networks")
 	}
 }

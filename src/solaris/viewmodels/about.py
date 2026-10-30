@@ -314,10 +314,7 @@ class AboutViewModel(QObject):
         installer = self._check.installer if self._check else None
         if installer and installer.endswith(".exe"):
             return self.tr("安装器会请求管理员权限，并在升级前关闭界面。")
-        return self.tr(
-            "会在访达中打开磁盘映像，把 Solaris 拖到“应用程序”文件夹完成升级。"
-            "替换前先退出界面，隧道继续运行。"
-        )
+        return self.tr("将打开磁盘映像，把 Solaris 拖到“应用程序”文件夹即可升级。")
 
     @Slot()
     def runUpdateAction(self) -> None:

@@ -46,6 +46,9 @@ ShowUninstDetails show
 Var Upgrade      ; the installer: a previous installation is in $INSTDIR
 Var UpgradeCall  ; the uninstaller: called by a newer installer with /UPGRADE
 
+; The corona mark (scripts/gen_icons.py), for the installer and the uninstaller.
+!define MUI_ICON "..\icons\solaris.ico"
+!define MUI_UNICON "..\icons\solaris.ico"
 !define MUI_ABORTWARNING
 !define MUI_FINISHPAGE_RUN
 !define MUI_FINISHPAGE_RUN_FUNCTION OpenUI

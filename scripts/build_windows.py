@@ -129,6 +129,7 @@ def build_ui(version: str) -> Path:
         # The Nuitka plugin pulls in the QtWidgets binding for QtQuick; the UI never imports it.
         "--nofollow-import-to=PySide6.QtWidgets",
         "--windows-console-mode=disable",
+        f"--windows-icon-from-ico={ROOT / 'package' / 'icons' / 'solaris.ico'}",
         f"--output-filename={Path(CLIENT).stem}",
         f"--product-name={APP_NAME}",
         f"--file-description={APP_NAME}",

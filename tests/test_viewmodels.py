@@ -67,6 +67,27 @@ def test_overview_recovers_when_the_service_answers_again(
     assert prop(overview, "statusDetail").startswith("已运行 ")
 
 
+def test_overview_while_another_user_runs_the_tunnel(
+    qtbot: QtBot, view_models: ViewModels, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    overview, host = view_models.overview, view_models.host
+    assert isinstance(host, SimulatedHost)
+    qtbot.waitUntil(lambda: prop(overview, "connected"))
+
+    async def owned() -> HostStatus:
+        raise HostError("owned_by_other_user", "another user's tunnel is running")
+
+    monkeypatch.setattr(host, "get_status", owned)
+    qtbot.waitUntil(lambda: prop(overview, "ownedByOtherUser"))
+    assert prop(overview, "statusTitle") == "其他用户正在使用"
+    detail = "另一位用户已连接，对方断开后才能在这里连接"  # noqa: RUF001 - the UI's copy
+    assert prop(overview, "statusDetail") == detail
+    assert not prop(overview, "connected")
+    monkeypatch.undo()
+    qtbot.waitUntil(lambda: not prop(overview, "ownedByOtherUser"))
+    assert prop(overview, "statusTitle") == "已连接"
+
+
 def test_overview_actions(qtbot: QtBot, view_models: ViewModels) -> None:
     overview, host = view_models.overview, view_models.host
     assert isinstance(host, SimulatedHost)

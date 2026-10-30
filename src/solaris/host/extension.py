@@ -105,9 +105,11 @@ class Manager(Protocol):
 
     def activate(self, timeout: float) -> None: ...
 
-    def configure(self) -> None: ...
+    def configure(self, include_all_networks: bool) -> None: ...
 
-    def start(self, timeout: float) -> None: ...
+    def start(self, timeout: float, include_all_networks: bool) -> None:
+        """Configure as ``configure`` does, then bring the tunnel up."""
+        ...
 
     def stop(self, timeout: float) -> None: ...
 
@@ -129,8 +131,10 @@ class ManagerLibrary:
     def __init__(self, path: Path) -> None:
         library = ctypes.CDLL(str(path))
         self._activate = _bind(library, "solaris_manager_activate", ctypes.c_double, _ErrorOut)
-        self._configure = _bind(library, "solaris_manager_configure", _ErrorOut)
-        self._start = _bind(library, "solaris_manager_start", ctypes.c_double, _ErrorOut)
+        self._configure = _bind(library, "solaris_manager_configure", ctypes.c_bool, _ErrorOut)
+        self._start = _bind(
+            library, "solaris_manager_start", ctypes.c_double, ctypes.c_bool, _ErrorOut
+        )
         self._stop = _bind(library, "solaris_manager_stop", ctypes.c_double, _ErrorOut)
         self._status = _bind(
             library, "solaris_manager_status", ctypes.POINTER(ctypes.c_int32), _ErrorOut
@@ -152,11 +156,11 @@ class ManagerLibrary:
     def activate(self, timeout: float) -> None:
         self._call(self._activate, timeout)
 
-    def configure(self) -> None:
-        self._call(self._configure)
+    def configure(self, include_all_networks: bool) -> None:
+        self._call(self._configure, include_all_networks)
 
-    def start(self, timeout: float) -> None:
-        self._call(self._start, timeout)
+    def start(self, timeout: float, include_all_networks: bool) -> None:
+        self._call(self._start, timeout, include_all_networks)
 
     def stop(self, timeout: float) -> None:
         self._call(self._stop, timeout)
@@ -325,12 +329,14 @@ class MacExtensionHost(ServiceHost):
             return HostStatus(await self._down_state(), "rule", 0, 0, 0, False, False)
 
     async def start(self, config: TunnelConfig) -> CompositionReport | None:
-        """Bring the tunnel up and send it the configuration. When the core refuses it, the
-        tunnel goes down again: traffic must not enter a tunnel with no core behind it."""
+        """Bring the tunnel up, with the VPN configuration including all networks or not as the
+        options say (D19), and send it the configuration. When the core refuses it, the tunnel
+        goes down again: traffic must not enter a tunnel with no core behind it."""
         if not self._activated:
             await self._manage(partial(self._manager.activate, ACTIVATE_TIMEOUT_S))
             self._activated = True
-        await self._manage(partial(self._manager.start, START_TIMEOUT_S))
+        include_all_networks = config.options.include_all_networks
+        await self._manage(partial(self._manager.start, START_TIMEOUT_S, include_all_networks))
         try:
             return await super().start(config)
         except HostError as error:
