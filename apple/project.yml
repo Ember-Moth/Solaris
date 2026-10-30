@@ -1,0 +1,52 @@
+# XcodeGen spec for the macOS native parts (apple/README.md). scripts/build_apple.py generates
+# Solaris.xcodeproj from it next to this file; the project is not committed.
+name: Solaris
+options:
+  developmentLanguage: en
+  deploymentTarget:
+    macOS: "15.0"
+configs:
+  Debug: debug
+  Release: release
+settings:
+  base:
+    ARCHS: arm64
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEAD_CODE_STRIPPING: YES
+    # Developer ID, signed by hand with the team's certificate. Builds without the certificate
+    # pass CODE_SIGNING_ALLOWED=NO (scripts/build_apple.py without --sign).
+    DEVELOPMENT_TEAM: GY9ZKZMAZA
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: Developer ID Application
+    ENABLE_HARDENED_RUNTIME: YES
+    # Outside archives Xcode adds get-task-allow, which the Developer ID profiles do not allow
+    # and notarization rejects; the signed entitlements are exactly the .entitlements files.
+    CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+    # Notarization needs a secure timestamp.
+    OTHER_CODE_SIGN_FLAGS: --timestamp
+targets:
+  # SolarisManager.dylib: the C interface the Python host loads with ctypes.
+  SolarisManager:
+    type: library.dynamic
+    platform: macOS
+    sources:
+      - path: Manager
+        headerVisibility: project
+    dependencies:
+      - sdk: NetworkExtension.framework
+      - sdk: SystemExtensions.framework
+    settings:
+      base:
+        PRODUCT_NAME: SolarisManager
+        EXECUTABLE_PREFIX: ""
+        LD_DYLIB_INSTALL_NAME: "@rpath/SolarisManager.dylib"
+        # Imports SolarisManager.h so that each export is checked against its declaration.
+        SWIFT_INCLUDE_PATHS: $(SRCROOT)/Manager
+        SKIP_INSTALL: YES
+schemes:
+  Solaris:
+    build:
+      targets:
+        SolarisManager: all

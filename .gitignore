@@ -32,6 +32,8 @@ deployment/
 DerivedData/
 *.xcuserstate
 xcuserdata/
+# Generated from apple/project.yml by scripts/build_apple.py
+apple/Solaris.xcodeproj/
 *.provisionprofile
 *.mobileprovision
 *.p12
