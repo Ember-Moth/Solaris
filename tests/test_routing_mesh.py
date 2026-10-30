@@ -113,6 +113,8 @@ def test_a_tailscale_network_logs_in_through_the_browser(
     networks.openAdd()
     assert prop(networks, "title") == "添加网络"
     assert prop(networks, "values")["hostname"] == routing_mesh.device_name()
+    # The core has a login URL as soon as the network starts; the browser opens it once.
+    host.mesh_states["家里"] = MeshStatus("家里", "", "", "needs_login", login_url=LOGIN)
     with qtbot.waitSignal(networks.saved):
         networks.save(values(name="家里", login="browser", hostname="laptop"))
     # The core gets it with every composition; nothing of it is a secret.
@@ -121,10 +123,6 @@ def test_a_tailscale_network_logs_in_through_the_browser(
     (network,) = host.config.composition.mesh
     assert (network.name, network.settings) == ("家里", TailscaleSettings(hostname="laptop"))
     assert credentials.secrets == {}
-    # The core has a login URL as soon as the network starts; the browser opens it once.
-    host.mesh_states["家里"] = MeshStatus(
-        "家里", f"mesh:{network.id}", "Tailscale", "needs_login", login_url=LOGIN
-    )
     qtbot.waitUntil(lambda: opened == [LOGIN])
     assert (row(networks, "家里").status, row(networks, "家里").tone) == ("需要登录", "warning")
     # Logged in: online with the device's address.
@@ -248,13 +246,11 @@ def test_zerotier_waits_for_its_admin_then_offers_its_range(
 ) -> None:
     routing, host = planned.routing, host_of(planned)
     networks = networks_of(routing)
+    # The controller has not authorized the node yet.
+    host.mesh_states["公司"] = MeshStatus("公司", "", "", "waiting", node_id="a1b2c3d4e5")
     add(qtbot, networks, "zerotier", name="公司", network="8056C2E21C000001", via="auto")
     network_id = row(networks, "公司").id
-    # The controller has not authorized the node yet.
-    host.mesh_states["公司"] = MeshStatus(
-        "公司", f"mesh:{network_id}", "ZeroTier", "waiting", node_id="a1b2c3d4e5"
-    )
-    qtbot.waitUntil(lambda: row(networks, "公司").status == "等待授权", timeout=5000)
+    qtbot.waitUntil(lambda: row(networks, "公司").status == "等待授权")
     assert row(networks, "公司").caption == "ZeroTier · 本机 ID a1b2c3d4e5 · 经由 自动选择"
     assert host.effective is not None
     outbound = next(p for p in host.effective["proxies"] if p["name"] == "公司")

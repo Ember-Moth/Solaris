@@ -462,8 +462,9 @@ class SimulatedHost:
         # their last delay test: None until tested, 0 when it failed.
         self._openvpn: dict[str, VpnGateServer] = {}
         self._openvpn_delays: dict[str, int | None] = {}
-        # How the mesh outbounds stand, by name, in place of the sample online status; and
-        # the outbounds login_mesh was asked for.
+        # How the mesh outbounds stand, by name, in place of the sample online status (the
+        # outbound's id and type are filled in, so a test may set one before the network
+        # exists); and the outbounds login_mesh was asked for.
         self.mesh_states: dict[str, MeshStatus] = {}
         self.mesh_logins: list[str] = []
         self._mode = "rule"
@@ -677,10 +678,14 @@ class SimulatedHost:
     async def get_mesh_status(self) -> list[MeshStatus]:
         if not self._running:
             raise HostError("not_running", "the core is not running")
-        return [
-            self.mesh_states.get(outbound.name) or _sample_mesh_status(outbound, number)
-            for number, outbound in enumerate(self.report.mesh if self.report else (), 1)
-        ]
+        statuses = []
+        for number, outbound in enumerate(self.report.mesh if self.report else (), 1):
+            status = self.mesh_states.get(outbound.name)
+            if status is None:
+                statuses.append(_sample_mesh_status(outbound, number))
+            else:
+                statuses.append(replace(status, id=outbound.id, type=outbound.type))
+        return statuses
 
     async def login_mesh(self, name: str) -> str:
         if not self._running:
