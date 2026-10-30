@@ -2,6 +2,156 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="en" sourcelanguage="zh_CN">
 <context>
+    <name>AboutViewModel</name>
+    <message>
+        <source>每天</source>
+        <translation>Every day</translation>
+    </message>
+    <message>
+        <source>每 3 天</source>
+        <translation>Every 3 days</translation>
+    </message>
+    <message>
+        <source>每周</source>
+        <translation>Every week</translation>
+    </message>
+    <message>
+        <source>检查更新失败：{detail}</source>
+        <translation>Couldn’t check for updates: {detail}</translation>
+    </message>
+    <message>
+        <source>发布的版本号无法识别</source>
+        <translation>The release’s version number isn’t recognized</translation>
+    </message>
+    <message>
+        <source>这个版本没有适合本机的安装包</source>
+        <translation>This version has no installer for this Mac or PC</translation>
+    </message>
+    <message>
+        <source>发布没有附带校验和</source>
+        <translation>The release has no checksums</translation>
+    </message>
+    <message>
+        <source>下载的文件与校验和不符</source>
+        <translation>The download doesn’t match its checksum</translation>
+    </message>
+    <message>
+        <source>下载失败：{detail}</source>
+        <translation>Download failed: {detail}</translation>
+    </message>
+    <message>
+        <source>安装包的签名无效：{detail}</source>
+        <translation>The installer’s signature isn’t valid: {detail}</translation>
+    </message>
+    <message>
+        <source>安装包不是由 Solaris 的开发者签名的</source>
+        <translation>The installer wasn’t signed by the Solaris developers</translation>
+    </message>
+    <message>
+        <source>Python 依赖</source>
+        <translation>Python packages</translation>
+    </message>
+    <message>
+        <source>Go 模块</source>
+        <translation>Go modules</translation>
+    </message>
+    <message>
+        <source>Qt</source>
+        <translation>Qt</translation>
+    </message>
+    <message>
+        <source>字体</source>
+        <translation>Fonts</translation>
+    </message>
+    <message>
+        <source>正在检查更新…</source>
+        <translation>Checking for updates…</translation>
+    </message>
+    <message>
+        <source>已是最新版本 · {ago}检查</source>
+        <translation>Up to date · Checked {ago}</translation>
+    </message>
+    <message>
+        <source>有新版本 {version}</source>
+        <translation>Version {version} is available</translation>
+    </message>
+    <message>
+        <source>有新版本 {version} · 这个版本没有适合本机的安装包</source>
+        <translation>Version {version} is available · No installer for this computer</translation>
+    </message>
+    <message>
+        <source>正在下载 {percent}%</source>
+        <translation>Downloading {percent}%</translation>
+    </message>
+    <message>
+        <source>正在校验签名…</source>
+        <translation>Checking the signature…</translation>
+    </message>
+    <message>
+        <source>{version} 已下载并通过校验</source>
+        <translation>{version} downloaded and verified</translation>
+    </message>
+    <message>
+        <source>正在检查…</source>
+        <translation>Checking…</translation>
+    </message>
+    <message>
+        <source>下载</source>
+        <translation>Download</translation>
+    </message>
+    <message>
+        <source>取消</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>打开安装包…</source>
+        <translation>Open installer…</translation>
+    </message>
+    <message>
+        <source>检查更新</source>
+        <translation>Check for updates</translation>
+    </message>
+    <message>
+        <source>打开 Solaris {version} 的安装包？</source>
+        <translation>Open the Solaris {version} installer?</translation>
+    </message>
+    <message>
+        <source>安装器会请求管理员权限，并在升级前关闭界面。</source>
+        <translation>The installer asks for administrator permission and closes the app before it upgrades.</translation>
+    </message>
+    <message>
+        <source>会在访达中打开磁盘映像，把 Solaris 拖到“应用程序”文件夹完成升级。替换前先退出界面，隧道继续运行。</source>
+        <translation>The disk image opens in Finder; drag Solaris to the Applications folder to upgrade. Quit the app before you replace it; the tunnel keeps running.</translation>
+    </message>
+    <message>
+        <source>无法打开安装包：{name}</source>
+        <translation>Can’t open the installer: {name}</translation>
+    </message>
+    <message>
+        <source>正在导出…</source>
+        <translation>Exporting…</translation>
+    </message>
+    <message>
+        <source>含内核日志，其中有访问过的网站</source>
+        <translation>Includes core logs, which name sites you visited</translation>
+    </message>
+    <message>
+        <source>已导出到 {name}</source>
+        <translation>Exported to {name}</translation>
+    </message>
+    <message>
+        <source>导出失败：{detail}</source>
+        <translation>Export failed: {detail}</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 个第三方组件</source>
+        <translation>
+            <numerusform>%n third-party component</numerusform>
+            <numerusform>%n third-party components</numerusform>
+        </translation>
+    </message>
+</context>
+<context>
     <name>ConfirmDialog</name>
     <message>
         <source>取消</source>
@@ -371,6 +521,33 @@
     <message>
         <source>zh</source>
         <translation>en</translation>
+    </message>
+</context>
+<context>
+    <name>LicensesDialog</name>
+    <message>
+        <source>开源许可</source>
+        <translation>Open-source licenses</translation>
+    </message>
+    <message>
+        <source>Solaris 以 GPL-3.0-only 发布，并使用了下列第三方组件。每个版本的发布页附有对应的源代码。</source>
+        <translation>Solaris is released under GPL-3.0-only and uses the third-party components below. Each version’s release page has the corresponding source code.</translation>
+    </message>
+    <message>
+        <source>搜索组件或许可证</source>
+        <translation>Search components or licenses</translation>
+    </message>
+    <message>
+        <source>没有匹配的组件</source>
+        <translation>No matching components</translation>
+    </message>
+    <message>
+        <source>打开全文</source>
+        <translation>Open full texts</translation>
+    </message>
+    <message>
+        <source>关闭</source>
+        <translation>Close</translation>
     </message>
 </context>
 <context>
@@ -990,6 +1167,10 @@ prepend-rules:
     <message>
         <source>编辑「{name}」的覆写</source>
         <translation>Edit override for “{name}”</translation>
+    </message>
+    <message>
+        <source>无法识别的导入链接</source>
+        <translation>Unrecognized import link</translation>
     </message>
     <message>
         <source>{origin} · 正在更新</source>
@@ -1926,6 +2107,18 @@ prepend-rules:
         <translation>Version</translation>
     </message>
     <message>
+        <source>发布说明</source>
+        <translation>Release notes</translation>
+    </message>
+    <message>
+        <source>自动检查更新</source>
+        <translation>Check for updates automatically</translation>
+    </message>
+    <message>
+        <source>检查频率</source>
+        <translation>How often</translation>
+    </message>
+    <message>
         <source>服务</source>
         <translation>Service</translation>
     </message>
@@ -1942,8 +2135,40 @@ prepend-rules:
         <translation>License</translation>
     </message>
     <message>
+        <source>开源许可</source>
+        <translation>Open-source licenses</translation>
+    </message>
+    <message>
+        <source>查看…</source>
+        <translation>View…</translation>
+    </message>
+    <message>
+        <source>查看开源许可</source>
+        <translation>View open-source licenses</translation>
+    </message>
+    <message>
+        <source>诊断信息</source>
+        <translation>Diagnostics</translation>
+    </message>
+    <message>
+        <source>导出…</source>
+        <translation>Export…</translation>
+    </message>
+    <message>
+        <source>导出诊断信息</source>
+        <translation>Export diagnostics</translation>
+    </message>
+    <message>
         <source>项目主页</source>
         <translation>Project page</translation>
+    </message>
+    <message>
+        <source>打开</source>
+        <translation>Open</translation>
+    </message>
+    <message>
+        <source>zip 压缩文件 (*.zip)</source>
+        <translation>Zip archives (*.zip)</translation>
     </message>
 </context>
 <context>

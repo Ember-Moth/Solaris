@@ -21,6 +21,7 @@
 | 链式出口 | 设计完成 | WARP 出口（M9）、Tor 出口（M10，首发后）、VPN Gate 出口（M12）的设计见 exits.md，未实现 |
 | macOS 原生部分 | 部分（M5） | Xcode 工程、管理库 C 接口；系统扩展用 utun 以 fd 模式运行内核（`with_gvisor`），带 GEO 数据；`MacExtensionHost`；测试 Mac 实测未做 |
 | 打包与安装 | macOS 部分 | `scripts/build_app.py` 组装并签名 `Solaris.app`；发布工作流（签名、公证、.dmg）已写好，未运行；Windows 未开始 |
+| 发布准备（M6） | 部分 | 检查更新与下载、诊断信息导出、第三方许可证清单、一键导入链接的处理已做（release.md）；macOS 的 scheme 已由 `Solaris.app` 的 Info.plist 注册；Windows 签名方案、发布全流程、Windows 的 scheme 注册（随 M4 安装器）未做 |
 | CI | 全绿 | Python（macOS、Windows）、Go（macOS、Windows、Linux）、网络命名空间 TUN 测试（四种栈和 fd 模式）、macOS 上的 e2e |
 
 ## 2. 下一步开发计划
@@ -251,6 +252,12 @@ D8、app 在 hardened runtime 下的启动）、第一次运行发布工作流�
 
 ### M6 发布准备
 
+**状态**：先行项已完成（2026-10-30，阶段 D 第一轮），设计见 [release.md](release.md)：检查更新与下载（GitHub
+Releases、SHA256SUMS、macOS 的 codesign / spctl 与 Team ID、Windows 的 WinVerifyTrust，确认后才打开安装包）、
+诊断信息导出（按白名单脱敏）、`scripts/gen_licenses.py` 生成的第三方许可证清单、`solaris://` 与 `clash://`
+一键导入链接的解析与转发。还没有任何 Release，更新只对本机的假服务器测过；Windows 的签名者是占位常量。
+许可证清单还缺 Qt Image Formats 两项的全文和 CPython 自带库的逐项列表。
+
 - **命名**：产品名已定为 Solaris（D1），代码里的标识已全部替换（2026-10-30）。
 - **签名与发布**：准备 Windows Authenticode 和 Apple Developer ID 证书；建立发布 CI，负责构建、签名和生成校验和。
 - **诊断**：诊断信息导出、崩溃日志。
@@ -427,5 +434,6 @@ D8、app 在 hardened runtime 下的启动）、第一次运行发布工作流�
 | [routing.md](routing.md) | 计划中的自定义分流（M8） |
 | [exits.md](exits.md) | 计划中的链式出口：WARP（M9）、Tor（M10）和 VPN Gate（M12） |
 | [mesh.md](mesh.md) | 计划中的组网出站：Tailscale、ZeroTier、EasyTier 的单独处理（第二轮）和应用内组网（M11） |
+| [release.md](release.md) | 发布物约定、检查更新与下载、诊断信息、第三方许可证、一键导入（M6） |
 | [DESIGN.md](../DESIGN.md) | 视觉规范，Theme.qml 由它生成 |
 | roadmap.md（本文） | 进度、计划、决策与风险 |

@@ -13,6 +13,7 @@ from PySide6.QtQml import QQmlApplicationEngine
 
 from solaris import __version__
 from solaris.desktop.instance import SingleInstance
+from solaris.desktop.links import LinkReceiver, from_arguments
 from solaris.desktop.login import BACKGROUND_ARG, LoginItem, default_login_item
 from solaris.desktop.tray import tray_supported
 from solaris.host.base import HostError, TunnelHost
@@ -23,6 +24,7 @@ from solaris.models.settings import DatabaseSettingsStore, SettingsStore
 from solaris.models.store import ProfileStore, default_data_dir
 from solaris.models.subscription import Fetcher, UrlFetcher
 from solaris.product import DISPLAY_NAME, PIPE_NAME
+from solaris.update.updater import Updater
 from solaris.viewmodels.appearance import Appearance, resolve_mode
 from solaris.viewmodels.composition import ViewModels, compose
 
@@ -88,6 +90,7 @@ def main(
     language: str = "",
     appearance: str = "",
     login_item: LoginItem | None = None,
+    updater: Updater | None = None,
 ) -> int:
     """``language`` is ``zh`` or ``en`` and wins over the settings at startup; empty follows
     the settings, then SOLARIS_LANG, then the system. ``appearance`` is ``system``,
@@ -100,10 +103,13 @@ def main(
     app.setApplicationVersion(__version__)
     # Closing the window hides it in the tray or quits explicitly (DesktopViewModel).
     app.setQuitOnLastWindowClosed(False)
+    # macOS sends install links as Apple Events, which can come before the window does.
+    receiver = LinkReceiver(app)
+    link = from_arguments(sys.argv[1:])
     directory = store.directory if store else default_data_dir()
     instance = SingleInstance(directory)
-    if not instance.claim():
-        return 0  # the UI already running shows its window
+    if not instance.claim(link):
+        return 0  # the UI already running shows its window, or opens the link
     store = store or ProfileStore(directory)
     settings = DatabaseSettingsStore(store.database)
     translations = Translations(app)
@@ -117,6 +123,7 @@ def main(
         login_item=login_item or default_login_item(),
         tray_available=tray_supported(app.platformName()),
         start_hidden=BACKGROUND_ARG in sys.argv[1:],
+        updater=updater,
     )
     engine = QQmlApplicationEngine()
     if not load_ui(engine, view_models):
@@ -128,7 +135,12 @@ def main(
     view_models.settings.languageChanged.connect(switch, Qt.ConnectionType.QueuedConnection)
     view_models.desktop.quitRequested.connect(app.quit)
     instance.activated.connect(view_models.desktop.showWindow)
+    instance.received.connect(receiver.deliver)
+    receiver.received.connect(view_models.open_link)
+    if link is not None:
+        receiver.deliver(link)
     view_models.start()
+    receiver.ready()
     app.aboutToQuit.connect(view_models.shutdown)
     code = app.exec()
     instance.release()

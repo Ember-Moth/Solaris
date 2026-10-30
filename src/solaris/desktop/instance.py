@@ -1,7 +1,8 @@
 """One UI per user (docs/ui.md §8).
 
 The first UI holds a lock file in the user's data directory and listens on a local server.
-A later one finds the lock taken, asks the first to show its window, and exits. The lock
+A later one finds the lock taken, asks the first to show its window, or hands it the
+install link it was started with (docs/release.md §7), and exits. The lock
 decides, not the server: QLockFile notices a lock left by a process that died, and two UIs
 started at once cannot both take it. The server's name is derived from the user and the
 lock's directory, so other users and other data directories (the preview) have their own.
@@ -21,7 +22,10 @@ from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from solaris.product import PRODUCT_ID
 
 LOCK_NAME = "ui.lock"
+# One line per connection: show the window, or open a link (which shows it too).
 ACTIVATE = b"activate\n"
+OPEN = b"open "
+MAX_MESSAGE = 16 * 1024  # a line longer than this is dropped
 CONNECT_TIMEOUT_MS = 500
 # The first UI takes the lock before it listens; give it this long to start listening.
 CONNECT_ATTEMPTS = 6
@@ -46,8 +50,16 @@ def _allow_foreground() -> None:
         ctypes.windll.user32.AllowSetForegroundWindow(asfw_any)
 
 
+def message(link: str | None) -> bytes:
+    """What a later UI sends: ``activate``, or ``open <link>``."""
+    if link is None:
+        return ACTIVATE
+    return OPEN + link.replace("\n", "").replace("\r", "").encode() + b"\n"
+
+
 class SingleInstance(QObject):
     activated = Signal()  # another UI started and asked for the window
+    received = Signal(str)  # another UI was started with this install link
 
     def __init__(self, directory: Path, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -58,13 +70,14 @@ class SingleInstance(QObject):
         self._lock.setStaleLockTime(0)
         self._server: QLocalServer | None = None
 
-    def claim(self) -> bool:
+    def claim(self, link: str | None = None) -> bool:
         """True when this is the only UI, which then listens for the next ones. False when
-        another UI runs; it has been asked to show its window, and this one should exit."""
+        another UI runs; it has been asked to show its window, or given ``link``, and this
+        one should exit."""
         if self._lock.tryLock(0):
             self._listen()
             return True
-        self._notify()
+        self._notify(message(link))
         return False
 
     def release(self) -> None:
@@ -92,13 +105,20 @@ class SingleInstance(QObject):
 
     def _read(self) -> None:
         socket = self.sender()
-        if not isinstance(socket, QLocalSocket) or not socket.canReadLine():
+        if not isinstance(socket, QLocalSocket):
+            return
+        if not socket.canReadLine():
+            if socket.bytesAvailable() > MAX_MESSAGE:
+                socket.abort()
             return  # the rest of the line is on its way
-        if bytes(socket.readLine().data()) == ACTIVATE:
+        line = bytes(socket.readLine(MAX_MESSAGE + 1).data())
+        if line == ACTIVATE:
             self.activated.emit()
+        elif line.startswith(OPEN) and line.endswith(b"\n") and len(line) <= MAX_MESSAGE:
+            self.received.emit(line[len(OPEN) : -1].decode("utf-8", "replace"))
         socket.disconnectFromServer()
 
-    def _notify(self) -> None:
+    def _notify(self, line: bytes) -> None:
         _allow_foreground()
         for attempt in range(CONNECT_ATTEMPTS):
             if attempt:
@@ -106,7 +126,7 @@ class SingleInstance(QObject):
             socket = QLocalSocket()
             socket.connectToServer(self.name)
             if socket.waitForConnected(CONNECT_TIMEOUT_MS):
-                socket.write(ACTIVATE)
+                socket.write(line)
                 socket.waitForBytesWritten(DELIVER_TIMEOUT_MS)
                 socket.disconnectFromServer()
                 return
