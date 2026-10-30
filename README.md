@@ -17,6 +17,7 @@ LocalSystem 服务里，macOS 上运行在 NetworkExtension 系统扩展里，�
 | [docs/ui.md](docs/ui.md) | Python 界面：宿主接口、配置存储、订阅、覆写、多语言、外观、连接与日志、设置与桌面行为 |
 | [docs/storage.md](docs/storage.md) | 计划中的 SQLite 存储与云备份 |
 | [docs/routing.md](docs/routing.md) | 计划中的自定义分流 |
+| [docs/privacy.md](docs/privacy.md) | 计划中的隐私出口：经用户节点的 WARP 与 Tor |
 | [DESIGN.md](DESIGN.md) | 视觉规范 |
 
 ## 目录

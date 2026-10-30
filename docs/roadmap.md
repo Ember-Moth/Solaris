@@ -3,7 +3,7 @@
 本文规划从现在到首个可发布版本的工作：现在做到了哪里、接下来按什么顺序做、每个里程碑怎样算完成、哪些决定要在
 什么时候做出。各部分的设计见 [文档一览](#8-文档一览)。每完成一个阶段更新本文。
 
-最近一次整理：2026-10-30，M5 第二步（fd 模式）合并后。
+最近一次整理：2026-10-30，M5 第二步（fd 模式）合并、隐私出口设计完成后。
 
 ## 1. 当前进度
 
@@ -18,6 +18,7 @@
 | 端到端联调 | 完成（A2） | 界面连真实开发服务跑通 M1、M2 的验收步骤；`tests/e2e` 自动化，CI 的 `e2e` job 在 macOS 上运行 |
 | 数据存储与云备份 | 存储层完成（B1） | 界面数据在 SQLite；云备份未做 |
 | 自定义分流 | M8a 完成（B2、C1） | 分流方式、节点池、地区组、默认模板、41 个服务、规则编辑与撤销、立即生效；M8b（策略组编辑器、规则测试、导入导出）未做 |
+| 隐私出口 | 设计完成 | WARP 出口（M9）和 Tor 出口（M10，首发后）的设计见 privacy.md，未实现 |
 | macOS 原生部分 | 部分（M5） | Xcode 工程、管理库 C 接口；系统扩展用 utun 以 fd 模式运行内核（`with_gvisor`）；Developer ID 签名与校验通过；`MacExtensionHost`、组装 .app、公证、测试 Mac 实测未做 |
 | 打包与安装 | 未开始 | 只有 Nuitka 入口文件和资源复制规则 |
 | CI | 全绿 | Python（macOS、Windows）、Go（macOS、Windows、Linux）、网络命名空间 TUN 测试（四种栈和 fd 模式）、macOS 上的 e2e |
@@ -108,10 +109,16 @@ B1、B2 的结果与遗留：
 - **M8b**：完整的策略组编辑器、规则测试、导入导出、查看生成的配置。
 - **M5 macOS NetworkExtension**：前提是 Apple Developer 账号、NE entitlement 和单独的测试 Mac。完成后接着做 M7 的 iCloud 部分。
 - **M4**：如果阶段 B 时还没有 Windows 测试环境，就放在这里做。
+- **M9 WARP 出口**：内核（注册、拼装）和界面两部分，改动的文件不重叠，可以并行；需要一个真实节点实测
+  （[privacy.md](privacy.md) 第 9 节）。
 
 ### 阶段 E：M6 发布准备
 
 命名、签名、发布 CI、诊断、许可合规，见第 3 节。
+
+### 首发之后
+
+- **M10 Tor 出口**（实验功能）：arti 经 pyo3 运行在界面进程，见 [privacy.md](privacy.md)。
 
 ### 需要你提供或决定的
 
@@ -281,6 +288,37 @@ PacketTunnel 系统扩展骨架、`scripts/build_apple.py`（签名与不签名�
 - 新建"排除 0.1 倍率节点"的策略组，编辑器里的预览与连接后代理页显示的成员一致；
 - 规则测试对 20 个样例域名的结果，与实际连接命中的规则一致。
 
+### M9 WARP 出口
+
+目标：流量经用户的节点再进入 Cloudflare WARP，机场看不到访问的网站，网站看不到节点 IP。设计见
+[privacy.md](privacy.md) 第 3 节（D22）。
+
+范围：
+
+- **内核**：`internal/warp` 经"经由"组注册账户（`RegisterWarp`）；拼装 MASQUE 或 WireGuard 出站，`dialer-proxy`
+  指向经由组；出口不可用时拒绝连接，并给出 `egress_unavailable`、`via_empty` 警告。
+- **界面**：分流页的"隐私出口"一节、出口设置对话框、规则目标、账户存进系统凭据库、模拟宿主。
+
+验收：
+1. 经一个只有 TCP 的真实节点打开 WARP 出口，注册成功；
+2. "ifconfig.me → WARP 出口"返回 Cloudflare 的 IP，而不是节点 IP；
+3. 删除账户后，同一规则的连接被拒绝；
+4. 节点支持 UDP 时，换成 WireGuard 结果相同。
+
+### M10 Tor 出口（首发后，实验功能）
+
+目标：流量经用户的节点进入 Tor 网络，不需要网桥，可以访问 `.onion`。设计见 [privacy.md](privacy.md) 第 4 节（D23）。
+
+范围：
+
+- `src/tor`：arti-client 的 pyo3 模块，上游连接只经内核的 `tor-upstream` 入站，自带 SOCKS5 服务，按目标主机隔离线路；
+- 构建：maturin 进 Python 的 CI 和两个平台的打包；
+- 界面：设置页"实验功能"、生命周期、出口行的连接进度；
+- 内核：拼装 `tor-upstream` 入站和"Tor 出口"出站；服务清单加"Onion 网站"。
+
+验收：一分钟内连上 Tor 网络；check.torproject.org 显示正在使用 Tor；能打开 `.onion` 网站；退出界面后同一规则的
+连接被拒绝；抓包确认 arti 没有直连流量。
+
 ## 4. 协作方式
 
 - **本机开发不改动本机网络**：开发机上不创建 TUN，不设置系统代理，不修改路由和 DNS，也不在本机真实注册登录项或计划任务。界面用模拟宿主或无 TUN 的开发服务调试；需要 TUN 的测试放到 CI 的网络命名空间或测试虚拟机里做。
@@ -325,6 +363,9 @@ PacketTunnel 系统扩展骨架、`scripts/build_apple.py`（签名与不签名�
 | D11 | 内置检查更新与下载：安装包来自 GitHub Releases，校验签名，由用户确认安装 | 本文 M6 |
 | D19 | macOS 扩展的 `includeAllNetworks` 默认关闭，用户可在设置页打开；打开后 `system`、`mixed` 栈换成 gVisor | architecture.md §3.4、ui.md §8 |
 | D20 | fd 模式的 `dns.fake-ip-range` 固定为 `198.18.0.1/16`（TUN 地址由它得出）；用户关掉 `ipv6` 时，进入隧道的 IPv6 流量被丢弃 | architecture.md §3.1 |
+| D21 | 隐私出口只在"我的方案"下提供；出口不可用时，指向它的规则拒绝连接，不改走普通代理 | privacy.md 第 1 节 |
+| D22 | WARP 出口放在内核：mihomo 的 MASQUE 或 WireGuard 出站，`dialer-proxy` 经用户的节点，默认 MASQUE over HTTP/2；内核经节点注册账户，账户存系统凭据库、不进备份；首发前做（M9） | privacy.md 第 3 节 |
+| D23 | Tor 出口用 arti-client，经 pyo3 运行在界面进程；首发后作为实验功能（M10）；退出界面后 Tor 不可用，连接被拒绝 | privacy.md 第 4 节 |
 
 ## 6. 风险
 
@@ -341,6 +382,8 @@ PacketTunnel 系统扩展骨架、`scripts/build_apple.py`（签名与不签名�
 | 云端快照不加密，订阅链接会随云端账户一起泄露 | 开启备份时明确提示；只申请 appDataFolder 权限；快照不含令牌 |
 | Google OAuth 同意屏幕审核耗时 | 尽早建 Google Cloud 项目并提交审核 |
 | CloudKit 依赖签名、entitlement 和 M5 的管理库 | iCloud 放在 M7 的最后，与 M5 一起验证 |
+| WARP 的注册接口不是官方的，Cloudflare 可能改动或限流 | 常量集中在 `internal/warp`；失败时拒绝连接，不退回普通代理；功能默认关闭 |
+| arti-client 每月发一个不兼容版本；Rust 工具链进入构建 | Tor 放到首发后，作为实验功能；钉住版本，每季度升级 |
 
 ## 7. DESIGN.md 待补规则
 
@@ -354,5 +397,6 @@ PacketTunnel 系统扩展骨架、`scripts/build_apple.py`（签名与不签名�
 | [ui.md](ui.md) | Python 界面：宿主接口、配置存储、订阅、覆写、多语言、外观、连接与日志、设置与桌面行为 |
 | [storage.md](storage.md) | 计划中的 SQLite 存储与云备份（M7） |
 | [routing.md](routing.md) | 计划中的自定义分流（M8） |
+| [privacy.md](privacy.md) | 计划中的隐私出口：WARP（M9）和 Tor（M10） |
 | [DESIGN.md](../DESIGN.md) | 视觉规范，Theme.qml 由它生成 |
 | roadmap.md（本文） | 进度、计划、决策与风险 |

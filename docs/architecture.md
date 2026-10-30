@@ -308,7 +308,7 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 | `ListGeoCategories` | home 里 GEO 数据的 GEOSITE / GEOIP 分类名，以及文件的 sha256 和修改时间 |
 
 `PreviewGroup`、`MatchRule`、`ConvertToPlan`、`ExportPlan`（routing.md 8.2 节，M8b）在 `Request` / `Response` 里预留了
-字段号 51 到 54。
+字段号 51 到 54。计划中的 `RegisterWarp`（[privacy.md](privacy.md) 6.2 节，M9）用 55。
 
 方法的行为约定：
 
@@ -510,6 +510,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 - 控制客户端只依赖 protobuf：Windows 上是命名管道的一条长连接，macOS 上通过 ctypes 调用管理库。
 - 宿主抽象 `TunnelHost` 有 `ServiceHost`（Windows 服务；开发模式下走本地 socket）和 `MacExtensionHost`（未实现）
   两个实现；测试和预览用模拟宿主。
+- 计划中的 Tor 出口（M10）把 arti 做成 pyo3 扩展模块 `solaris_tor`，运行在界面进程里，不进服务和系统扩展
+  （[privacy.md](privacy.md) 第 4 节）。
 
 界面各部分的设计见 [ui.md](ui.md)。
 
@@ -526,6 +528,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 | 订阅拖住内核或泄漏 | 事件缓存在有界缓冲区，满了丢弃最旧的；超过 30 秒未拉取的订阅自动失效 |
 | 其他用户接管隧道 | 属主 SID 校验 |
 | 局域网暴露 | `allow-lan` 和监听 `0.0.0.0` 的 listeners 默认关闭，由用户显式开启 |
+| 隐私出口的回环端口被同一台机器的其他用户使用（M10） | 只监听回环地址，要求每次界面启动随机生成的账号密码 |
+| Tor 中继发来的数据攻击解析代码（M10） | arti 运行在普通用户权限的界面进程里，不进 SYSTEM 服务和系统扩展 |
 | UI 与内核侧版本不一致 | 消息体（Windows 上还有帧头）携带协议版本，不一致时拒绝；Windows 安装器同时更新 UI 与服务，macOS 的 UI 与扩展在同一个包里 |
 
 ## 9. 安装、升级与卸载
