@@ -2,7 +2,7 @@ name: Release
 
 # The signed and notarized macOS build (apple/README.md): Solaris.app from scripts/build_app.py,
 # notarized and stapled, in a notarized disk image with its SHA-256. And the Windows installer
-# from scripts/build_windows.py with its SHA-256, unsigned for now (D29). Runs for v* tags and
+# from scripts/build_windows.py with its SHA-256, unsigned (D29). Runs for v* tags and
 # by hand, in the release environment: its reviewers approve each run before the jobs get the
 # signing secrets. For a tag, a last job puts both installers, SHA256SUMS and the source
 # archive into a draft GitHub Release (docs/release.md §1), which a person publishes.
@@ -190,7 +190,7 @@ jobs:
           rm -rf "$signing"
 
   windows:
-    name: Windows x64 (unsigned for now, D29)
+    name: Windows x64 (unsigned, D29)
     runs-on: windows-latest
     environment: release
     timeout-minutes: 90
@@ -227,14 +227,15 @@ jobs:
       - name: Build Solaris.exe and the service
         run: uv run --frozen --with nuitka==4.2.2 python scripts/build_windows.py --skip-installer
 
-      # Pending: the first releases are unsigned (D29). Once signing exists, this step signs
+      # Releases are unsigned (D29), and this step marks where signing goes: it would sign
       # Solaris.exe, solaris-service.exe and the other executables, DLLs and .pyd files in
-      # build/windows/Solaris with a timestamp, and the service links with SignedRelease=true
-      # so that it checks the UI's signer (docs/architecture.md §5.3). The next step then signs
+      # build/windows/Solaris with a timestamp, and the service would link with SignedRelease=true
+      # so that it checks the UI's signer (docs/architecture.md §5.3). The next step would sign
       # the installer and its uninstaller through makensis' !finalize and !uninstfinalize, and
-      # src/solaris/update/signature.WINDOWS_SIGNER takes the certificate's display name.
-      - name: Sign the programs (pending)
-        run: echo "::warning::Windows code signing is pending (D29); this installer is unsigned."
+      # product.WindowsSigner and src/solaris/update/signature.WINDOWS_SIGNER would take the
+      # certificate's display name.
+      - name: Sign the programs (unsigned, D29)
+        run: echo "::warning::Windows releases are unsigned (D29); so is this installer."
 
       - name: Installer
         run: uv run --frozen python scripts/build_windows.py --installer-only
