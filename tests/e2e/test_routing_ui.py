@@ -55,6 +55,8 @@ def rule_names(app: App) -> dict[str, Any]:
 def test_my_plan_then_the_subscriptions_rules(app: App) -> None:
     vm, network = app.view_models, app.network
     routing, editor = vm.routing, vm.routing._editor
+    plan_rules = routing.plan_rules()
+    profile_routes = routing._profile_routes
     seed(app.service.home)  # the template's GEOSITE and GEOIP rules need the data
 
     # 1. A subscription with only nodes: no rules of its own, so the default plan.
@@ -71,13 +73,13 @@ def test_my_plan_then_the_subscriptions_rules(app: App) -> None:
         app.connect()
         vm.shell.setPage("routing")
         app.until(lambda: app.prop(routing, "summary") == "使用「日常」 · 节点池 2 个节点")
-        rules = [(r.name, r.target, r.warning) for r in app.rows_of(routing, "rules")]
+        rules = [(r.name, r.target, r.warning) for r in app.rows_of(plan_rules, "rows")]
         assert rules[:3] == [
             ("广告", "拒绝", ""),
             ("私有网络", "直连", ""),
             ("OpenAI", "美国", "无节点，暂走节点选择"),  # noqa: RUF001
         ]
-        assert [o["label"] for o in app.prop(routing, "targetOptions")][2:4] == ["香港", "日本"]
+        assert [o["label"] for o in app.prop(plan_rules, "targetOptions")][2:4] == ["香港", "日本"]
         app.screenshot("routing-plan")
         # The proxies page names each node's subscription and folds the region groups.
         vm.shell.setPage("proxies")
@@ -103,8 +105,8 @@ def test_my_plan_then_the_subscriptions_rules(app: App) -> None:
         editor.setTarget("region:JP")
         assert app.prop(editor, "canSave")
         editor.save()
-        app.until(lambda: app.rows_of(routing, "rules")[0].name == "自定义域名（1 个）")  # noqa: RUF001
-        assert app.rows_of(routing, "rules")[0].target == "日本"
+        app.until(lambda: app.rows_of(plan_rules, "rows")[0].name == "自定义域名（1 个）")  # noqa: RUF001
+        assert app.rows_of(plan_rules, "rows")[0].target == "日本"
 
         # 4. A new connection goes to Japan's node, and the connections page names the entry.
         vm.shell.setPage("connections")
@@ -128,8 +130,8 @@ def test_my_plan_then_the_subscriptions_rules(app: App) -> None:
     vm.shell.setPage("routing")
     routing.setMode("profile")
     app.until(lambda: app.prop(routing, "summary") == "使用「nodes」自带的规则")
-    app.until(lambda: app.prop(routing, "profileRunning"))
-    assert [(r.match, r.target) for r in app.rows_of(routing, "profileRules")] == [
+    app.until(lambda: app.prop(profile_routes, "running"))
+    assert [(r.match, r.target) for r in app.rows_of(profile_routes, "rules")] == [
         (f"DST-PORT,{network.proxied.port}", "节点选择"),
         ("MATCH", "DIRECT"),
     ]

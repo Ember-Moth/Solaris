@@ -39,7 +39,7 @@ def show_page(qtbot: QtBot, loaded: Loaded, page: str) -> QQuickItem:
     if page == "logs":
         qtbot.waitUntil(lambda: view_models.logs.property("count") > 0)
     if page == "routing":
-        qtbot.waitUntil(lambda: view_models.routing.property("profileRunning"))
+        qtbot.waitUntil(lambda: view_models.routing._profile_routes.property("running"))
     qtbot.wait(100)
     return loaded.item(lambda i: kind(i) == PAGE_TYPES[page])
 
@@ -100,7 +100,7 @@ def test_my_plan_is_reached_by_tab_with_names_and_rings(qtbot: QtBot, loaded: Lo
     content = show_page(qtbot, loaded, "routing")
     with qtbot.waitSignal(routing.routingChanged):
         routing.setMode("plan")
-    qtbot.waitUntil(lambda: len(routing.property("rules").rows) == 6)
+    qtbot.waitUntil(lambda: len(routing.plan_rules().property("rows").rows) == 6)
     qtbot.wait(100)
     stops = tab_cycle(qtbot, loaded, nav_item(loaded, "routing"))
     controls = find_all(content, lambda i: i.activeFocusOnTab() and i.isEnabled())

@@ -1,6 +1,7 @@
-"""The mesh networks the user adds in the app, on the routing page's groups tab
-(docs/mesh.md §10.7): a row for each with how it stands, and the dialog that adds or
-changes one.
+"""The 组网 section of the routing page's groups tab: the mesh networks the user adds in the
+app (docs/mesh.md §10.7), a row for each with how it stands and the dialog that adds or
+changes one, then the mesh outbounds the pool brings (§5). Both are rule targets; their
+menus add the common rules for them or show the rules that use them.
 
 Saving goes to the library, which has the core compose the plan in use with the network
 before it stores the network and its secrets and reloads a running tunnel. How the
@@ -14,7 +15,7 @@ from __future__ import annotations
 import ipaddress
 import platform
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any
 
 from PySide6.QtCore import Property, QObject, QTimer, QUrl, Signal, Slot
@@ -32,7 +33,7 @@ from solaris.host.base import (
     ZeroTierSettings,
 )
 from solaris.i18n import QT_TRANSLATE_NOOP
-from solaris.models import mesh
+from solaris.models import mesh, plans
 from solaris.models.library import ProfileLibrary, Routing
 from solaris.viewmodels import routing_text as text
 from solaris.viewmodels.common.async_runner import AsyncRunner
@@ -97,6 +98,20 @@ class NetworkRow:
         return self.id
 
 
+@dataclass(frozen=True)
+class MeshRow:
+    """A Tailscale, ZeroTier or EasyTier outbound of the pool (docs/mesh.md §5)."""
+
+    id: str  # the plan's target, mesh:<profile id>/<name>
+    name: str
+    caption: str
+    type: str  # the adapter type: Tailscale, ZeroTier, EasyTier
+
+    @property
+    def meshId(self) -> str:
+        return self.id
+
+
 def _fields(row_type: type, id_role: str) -> list[str]:
     return [id_role if name == "id" else name for name in row_type.__dataclass_fields__]
 
@@ -149,6 +164,7 @@ class MeshNetworks(QObject):
         self._runner = runner
         self._library = library
         self._rows = KeyedListModel(_fields(NetworkRow, "networkId"), self)
+        self._outbounds = KeyedListModel(_fields(MeshRow, "meshId"), self)
         self._statuses: dict[str, MeshStatus] = {}  # by mesh id, from the running core
         self._running = False
         self._watching = False
@@ -228,6 +244,7 @@ class MeshNetworks(QObject):
         )
 
     def _sync(self) -> None:
+        self._sync_outbounds()
         rows = []
         for network in self._networks():
             status, tone = self._state(network)
@@ -248,9 +265,42 @@ class MeshNetworks(QObject):
         self._update_timer()
         self.changed.emit()
 
+    def _sync_outbounds(self) -> None:
+        report = self._routing.report()
+        if not self._routing.routes_with_plan() or report is None:
+            self._outbounds.sync([])
+            return
+        names = self._routing.profile_names()
+        turned_off: dict[str, list[str]] = {}
+        for warning in report.warnings:
+            if warning.reason == "mesh_restricted":
+                turned_off.setdefault(warning.entry_id, []).append(warning.target)
+        rows = []
+        for outbound in report.mesh:
+            if not outbound.source_id:  # a network added in the app: a row of its own above
+                continue
+            source = names.get(outbound.source_id, outbound.source_id)
+            caption = self.tr("{type} · 来自「{source}」").format(type=outbound.type, source=source)
+            if outbound.id in turned_off:
+                options = self.tr("、").join(turned_off[outbound.id])
+                caption = self.tr("{caption} · 已关闭 {options}").format(
+                    caption=caption, options=options
+                )
+            rows.append(MeshRow(outbound.id, outbound.name, caption, outbound.type))
+        self._outbounds.sync(rows)
+
     @Property(QObject, constant=True)
     def rows(self) -> KeyedListModel:
         return self._rows
+
+    @Property(QObject, constant=True)
+    def outbounds(self) -> KeyedListModel:
+        """The pool's own mesh outbounds, as MeshRow items."""
+        return self._outbounds
+
+    @Property(bool, notify=changed)
+    def hasOutbounds(self) -> bool:
+        return bool(self._outbounds.rows)
 
     @Property(bool, notify=changed)
     def available(self) -> bool:
@@ -286,7 +336,7 @@ class MeshNetworks(QObject):
             self._running
             and self._watching
             and self._routing.routes_with_plan()
-            and bool(self._networks() or self._routing.has_mesh())
+            and bool(self._networks() or self._outbounds.rows)
         )
         if wanted and not self._timer.isActive():
             self._timer.start()
@@ -371,11 +421,49 @@ class MeshNetworks(QObject):
         target = mesh.target(network_id)
         status = self.status_of(target)
         ranges = [r for a in (status.addresses if status else ()) if (r := network_range(a))]
-        self._routing.add_mesh_rules(target, ranges[:1])
+        self._add_rules(target, ranges[:1])
 
     @Slot(str)
     def showRules(self, network_id: str) -> None:
-        self._routing.showMeshRules(mesh.target(network_id))
+        self.showOutboundRules(mesh.target(network_id))
+
+    @Slot(str)
+    def addOutboundRules(self, mesh_id: str) -> None:
+        self._add_rules(mesh_id)
+
+    @Slot(str)
+    def showOutboundRules(self, mesh_id: str) -> None:
+        """使用它的规则: the rules that send traffic to the outbound."""
+        self._routing.plan_rules().setTargetFilter(mesh_id)
+
+    def _add_rules(self, mesh_id: str, ranges: list[str] | None = None) -> None:
+        """添加常用规则: Tailscale's ranges and domain go ahead of the other rules; ZeroTier and
+        EasyTier networks choose their own ranges, so the rule dialog opens for them with
+        the outbound as the target, and ``ranges`` filled in when the network's are known."""
+        plan = self._routing.plan()
+        report = self._routing.report()
+        outbound = next((m for m in report.mesh if m.id == mesh_id), None) if report else None
+        if plan is None or outbound is None:
+            return
+        rules = plans.common_mesh_rules(outbound.type, mesh_id)
+        if not rules:
+            self._routing.rule_editor().openAddRanges(mesh_id, ranges or [])
+            return
+        added = [
+            rule
+            for rule in rules
+            if not any(
+                (r.kind, r.content, r.target) == (rule.kind, rule.content, rule.target)
+                for r in plan.rules
+            )
+        ]
+        if added:
+            status = self.tr("已为「{name}」添加 %n 条规则", "", len(added)).format(
+                name=outbound.name
+            )
+            action = self.tr("撤销添加「{name}」的规则").format(name=outbound.name)
+            changed = replace(plan, rules=(*added, *plan.rules))
+            self._routing.commit(changed, undo=(status, action, plan))
 
     # -- the dialog --------------------------------------------------------------------------
     @Slot()

@@ -98,6 +98,14 @@ ScrollView {
     }
 
     Connections {
+        target: page.routing.planGroups
+
+        function onRemovalRequested() {
+            removeGroupDialog.showFor(customGroupMenu.trigger, customGroupMenu.triggerFocusReason)
+        }
+    }
+
+    Connections {
         target: page.routing.transfer
 
         function onConversionReady() {
@@ -122,10 +130,6 @@ ScrollView {
 
         function onPlanRemovalRequested() {
             removePlanDialog.showFor(planMenu.trigger, planMenu.triggerFocusReason)
-        }
-
-        function onGroupRemovalRequested() {
-            removeGroupDialog.showFor(customGroupMenu.trigger, customGroupMenu.triggerFocusReason)
         }
 
         function onInfoPatternSaved() {
@@ -170,7 +174,7 @@ ScrollView {
 
             RowLayout {
                 Layout.fillWidth: true
-                visible: page.routing.hasProfiles && page.routing.hasRulesProfile
+                visible: page.routing.profileRoutes.hasProfiles && page.routing.profileRoutes.hasRules
                 spacing: Theme.space3
 
                 UiText {
@@ -181,20 +185,20 @@ ScrollView {
 
                 AppSelect {
                     Layout.preferredWidth: 220
-                    options: page.routing.profileOptions
-                    current: page.routing.profileId
+                    options: page.routing.profileRoutes.options
+                    current: page.routing.profileRoutes.profileId
                     accessibleName: qsTr("使用的订阅")
                     enabled: !page.routing.busy
-                    onPicked: value => page.routing.useProfile(value)
+                    onPicked: value => page.routing.profileRoutes.use(value)
                 }
 
                 SearchField {
                     Layout.preferredWidth: Math.max(180, placeholderWidth)
                     implicitHeight: Theme.controlSm
-                    visible: page.routing.profileRunning
+                    visible: page.routing.profileRoutes.running
                     placeholderText: qsTr("搜索规则")
-                    text: page.routing.ruleQuery
-                    onTextEdited: page.routing.setRuleQuery(text)
+                    text: page.routing.profileRoutes.query
+                    onTextEdited: page.routing.profileRoutes.setQuery(text)
                 }
 
                 Item {
@@ -205,7 +209,7 @@ ScrollView {
                 AppButton {
                     id: convertButton
 
-                    visible: page.routing.profileId !== "" && page.routing.coreAvailable
+                    visible: page.routing.profileRoutes.profileId !== "" && page.routing.coreAvailable
                     text: qsTr("以此创建我的方案")
                     enabled: !page.routing.busy && !page.routing.transfer.busy
                     onClicked: {
@@ -229,7 +233,7 @@ ScrollView {
             Group {
                 Layout.fillWidth: true
                 Layout.maximumWidth: 720
-                visible: !page.routing.hasRulesProfile
+                visible: !page.routing.profileRoutes.hasRules
 
                 GroupRow {
                     divider: false
@@ -240,13 +244,13 @@ ScrollView {
 
                         AccessibleText {
                             Layout.fillWidth: true
-                            text: page.routing.hasProfiles ? qsTr("订阅里没有规则") : qsTr("尚未导入订阅")
+                            text: page.routing.profileRoutes.hasProfiles ? qsTr("订阅里没有规则") : qsTr("尚未导入订阅")
                             role: Theme.type.labelMd
                         }
 
                         AccessibleText {
                             Layout.fillWidth: true
-                            text: page.routing.hasProfiles ? qsTr("这些订阅只有节点；改用我的方案后，它们的节点组成节点池") : qsTr("导入订阅后才能使用它的规则")
+                            text: page.routing.profileRoutes.hasProfiles ? qsTr("这些订阅只有节点；改用我的方案后，它们的节点组成节点池") : qsTr("导入订阅后才能使用它的规则")
                             role: Theme.type.caption
                             color: Theme.textMuted
                             elide: Text.ElideRight
@@ -255,9 +259,9 @@ ScrollView {
 
                     AppButton {
                         variant: "compact"
-                        text: page.routing.hasProfiles ? qsTr("改用我的方案") : qsTr("导入订阅")
+                        text: page.routing.profileRoutes.hasProfiles ? qsTr("改用我的方案") : qsTr("导入订阅")
                         onClicked: {
-                            if (page.routing.hasProfiles)
+                            if (page.routing.profileRoutes.hasProfiles)
                                 page.routing.setMode("plan")
                             else
                                 page.shell.setPage("profiles")
@@ -270,7 +274,7 @@ ScrollView {
             Group {
                 Layout.fillWidth: true
                 Layout.maximumWidth: 720
-                visible: page.routing.hasRulesProfile && !page.routing.profileRunning && page.routing.profileCounts !== ""
+                visible: page.routing.profileRoutes.hasRules && !page.routing.profileRoutes.running && page.routing.profileRoutes.counts !== ""
 
                 GroupRow {
                     divider: false
@@ -278,7 +282,7 @@ ScrollView {
 
                     AccessibleText {
                         Layout.fillWidth: true
-                        text: page.routing.profileCounts
+                        text: page.routing.profileRoutes.counts
                         role: Theme.type.bodySm
                         color: Theme.textSecondary
                         elide: Text.ElideRight
@@ -293,7 +297,7 @@ ScrollView {
                 readonly property bool twoPanes: width >= 260 + Theme.space6 + 440
 
                 Layout.fillWidth: true
-                visible: page.routing.profileRunning
+                visible: page.routing.profileRoutes.running
                 columns: twoPanes ? 2 : 1
                 columnSpacing: Theme.space6
                 rowSpacing: Theme.space5
@@ -313,7 +317,7 @@ ScrollView {
                         }
 
                         UiText {
-                            text: page.routing.profileGroupCount
+                            text: page.routing.profileRoutes.groupCount
                             role: Theme.type.caption
                             color: Theme.textMuted
                         }
@@ -323,7 +327,7 @@ ScrollView {
                         Layout.fillWidth: true
 
                         Repeater {
-                            model: page.routing.profileGroups
+                            model: page.routing.profileRoutes.groups
 
                             GroupRow {
                                 id: sourceGroup
@@ -372,7 +376,7 @@ ScrollView {
                         }
 
                         UiText {
-                            text: page.routing.profileRuleCount
+                            text: page.routing.profileRoutes.ruleCount
                             role: Theme.type.caption
                             color: Theme.textMuted
                         }
@@ -439,7 +443,7 @@ ScrollView {
                         }
 
                         Repeater {
-                            model: page.routing.profileRules
+                            model: page.routing.profileRoutes.rules
 
                             Item {
                                 id: sourceRule
@@ -483,7 +487,7 @@ ScrollView {
                         }
 
                         GroupRow {
-                            visible: page.routing.profileRulesEmpty
+                            visible: page.routing.profileRoutes.rulesEmpty
                             rowHeight: Theme.rowSingle
 
                             AccessibleText {
@@ -617,35 +621,35 @@ ScrollView {
                         enabled: page.routing.coreAvailable
                         placeholderText: enabled ? qsTr("输入域名或 IP 测试") : qsTr("连接后可测试域名或 IP")
                         accessibleName: qsTr("测试域名或 IP")
-                        text: enabled ? page.routing.testText : ""
-                        onTextEdited: page.routing.setTestText(text)
-                        onAccepted: page.routing.runTest()
+                        text: enabled ? page.routing.planRules.testText : ""
+                        onTextEdited: page.routing.planRules.setTestText(text)
+                        onAccepted: page.routing.planRules.runTest()
                     }
 
                     SearchField {
                         Layout.preferredWidth: Math.max(160, placeholderWidth)
                         implicitHeight: Theme.controlSm
                         placeholderText: qsTr("搜索规则")
-                        text: page.routing.planRuleQuery
-                        onTextEdited: page.routing.setPlanRuleQuery(text)
+                        text: page.routing.planRules.query
+                        onTextEdited: page.routing.planRules.setQuery(text)
                     }
 
                     AppSelect {
                         Layout.preferredWidth: 160
-                        options: page.routing.targetFilterOptions
-                        current: page.routing.targetFilter
-                        displayText: page.routing.targetFilterLabel
+                        options: page.routing.planRules.targetFilterOptions
+                        current: page.routing.planRules.targetFilter
+                        displayText: page.routing.planRules.targetFilterLabel
                         accessibleName: qsTr("按目标筛选")
-                        onPicked: value => page.routing.setTargetFilter(value)
+                        onPicked: value => page.routing.planRules.setTargetFilter(value)
                     }
                 }
 
                 AccessibleText {
                     Layout.fillWidth: true
                     visible: text !== ""
-                    text: page.routing.testResult
+                    text: page.routing.planRules.testResult
                     role: Theme.type.bodySm
-                    color: page.routing.testFailed ? Theme.danger : Theme.textSecondary
+                    color: page.routing.planRules.testFailed ? Theme.danger : Theme.textSecondary
                     wrapMode: Text.Wrap
                     Accessible.role: Accessible.StaticText
                 }
@@ -717,7 +721,7 @@ ScrollView {
                         Repeater {
                             id: ruleRepeater
 
-                            model: page.routing.rules
+                            model: page.routing.planRules.rows
                             delegate: RuleRow {}
                             onItemRemoved: (index, item) => page.ruleRemoved(index, item as RuleRow)
                         }
@@ -736,7 +740,7 @@ ScrollView {
                 }
 
                 GroupRow {
-                    visible: page.routing.rulesFilteredEmpty
+                    visible: page.routing.planRules.filteredEmpty
                     rowHeight: Theme.rowSingle
                     divider: false
 
@@ -756,14 +760,14 @@ ScrollView {
 
                     Rectangle {
                         anchors.fill: parent
-                        visible: page.routing.fallbackHit
+                        visible: page.routing.planRules.fallbackHit
                         color: Theme.surfaceSelected
                         bottomLeftRadius: Theme.radiusMd - 1
                         bottomRightRadius: Theme.radiusMd - 1
                     }
 
                     Rectangle {
-                        visible: ruleRepeater.count > 0 || page.routing.rulesFilteredEmpty
+                        visible: ruleRepeater.count > 0 || page.routing.planRules.filteredEmpty
                         width: parent.width
                         height: 1
                         color: Theme.divider
@@ -809,17 +813,17 @@ ScrollView {
 
                             AppSelect {
                                 Layout.fillWidth: true
-                                options: page.routing.targetOptions
-                                current: page.routing.fallbackTarget
-                                displayText: page.routing.fallbackLabel
+                                options: page.routing.planRules.targetOptions
+                                current: page.routing.planRules.fallbackTarget
+                                displayText: page.routing.planRules.fallbackLabel
                                 accessibleName: qsTr("其他流量的目标")
-                                onPicked: value => page.routing.setFallback(value)
+                                onPicked: value => page.routing.planRules.setFallback(value)
                             }
 
                             AccessibleText {
                                 Layout.fillWidth: true
                                 visible: text !== ""
-                                text: page.routing.fallbackWarning
+                                text: page.routing.planRules.fallbackWarning
                                 role: Theme.type.caption
                                 color: Theme.warning
                                 elide: Text.ElideRight
@@ -839,19 +843,19 @@ ScrollView {
                     {
                         "title": qsTr("内置"),
                         "hint": "",
-                        "rows": page.routing.builtinGroups,
+                        "rows": page.routing.planGroups.builtin,
                         "empty": ""
                     },
                     {
                         "title": qsTr("地区"),
                         "hint": qsTr("按节点名称自动生成"),
-                        "rows": page.routing.regionGroups,
+                        "rows": page.routing.planGroups.regions,
                         "empty": qsTr("节点池为空，没有地区组")
                     },
                     {
                         "title": qsTr("自建"),
                         "hint": "",
-                        "rows": page.routing.customGroups,
+                        "rows": page.routing.planGroups.custom,
                         "empty": qsTr("还没有自建策略组")
                     }
                 ]
@@ -897,7 +901,7 @@ ScrollView {
                                 required property string caption
                                 required property string type
                                 required property bool hidden
-                                readonly property bool custom: groupSection.modelData.rows === page.routing.customGroups
+                                readonly property bool custom: groupSection.modelData.rows === page.routing.planGroups.custom
 
                                 divider: index > 0
 
@@ -1106,7 +1110,7 @@ ScrollView {
                     }
 
                     Repeater {
-                        model: page.routing.meshOutbounds
+                        model: page.routing.meshNetworks.outbounds
 
                         GroupRow {
                             id: meshRow
@@ -1152,12 +1156,12 @@ ScrollView {
                     }
 
                     GroupRow {
-                        divider: meshSection.networks.hasRows || page.routing.hasMesh
+                        divider: meshSection.networks.hasRows || page.routing.meshNetworks.hasOutbounds
                         rowHeight: Theme.rowSingle
 
                         AccessibleText {
                             Layout.fillWidth: true
-                            text: meshSection.networks.hasRows || page.routing.hasMesh ? qsTr("Tailscale、ZeroTier、EasyTier") : qsTr("还没有组网：访问自己的设备和内网")
+                            text: meshSection.networks.hasRows || page.routing.meshNetworks.hasOutbounds ? qsTr("Tailscale、ZeroTier、EasyTier") : qsTr("还没有组网：访问自己的设备和内网")
                             role: Theme.type.bodySm
                             color: Theme.textMuted
                             elide: Text.ElideRight
@@ -1469,12 +1473,12 @@ ScrollView {
 
                 name: "grip"
                 size: 16
-                opacity: page.routing.filtering ? Theme.disabledOpacity : 1
+                opacity: page.routing.planRules.filtering ? Theme.disabledOpacity : 1
 
                 MouseArea {
                     anchors.fill: parent
                     anchors.margins: -6
-                    enabled: !page.routing.filtering
+                    enabled: !page.routing.planRules.filtering
                     cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
                     preventStealing: true
                     onPressed: rulesBox.dragged = ruleRow.ruleId
@@ -1487,7 +1491,7 @@ ScrollView {
                         rulesBox.dragged = ""
                         rulesBox.dropIndex = -1
                         if (drop >= 0 && drop !== ruleRow.index && drop !== ruleRow.index + 1)
-                            page.routing.moveRule(ruleRow.ruleId, drop > ruleRow.index ? drop - 1 : drop)
+                            page.routing.planRules.moveRule(ruleRow.ruleId, drop > ruleRow.index ? drop - 1 : drop)
                     }
                     onCanceled: {
                         rulesBox.dragged = ""
@@ -1500,7 +1504,7 @@ ScrollView {
                 spacing: 0  // no text: the box alone
                 checked: ruleRow.active
                 Accessible.name: qsTr("启用「%1」").arg(ruleRow.name)
-                onToggled: page.routing.setRuleEnabled(ruleRow.ruleId, checked)
+                onToggled: page.routing.planRules.setRuleEnabled(ruleRow.ruleId, checked)
             }
 
             AbstractButton {
@@ -1725,13 +1729,13 @@ ScrollView {
         AppMenuItem {
             text: qsTr("上移")
             enabled: !ruleMenu.first
-            onTriggered: page.routing.moveRuleBy(ruleMenu.ruleId, -1)
+            onTriggered: page.routing.planRules.moveRuleBy(ruleMenu.ruleId, -1)
         }
 
         AppMenuItem {
             text: qsTr("下移")
             enabled: !ruleMenu.last
-            onTriggered: page.routing.moveRuleBy(ruleMenu.ruleId, 1)
+            onTriggered: page.routing.planRules.moveRuleBy(ruleMenu.ruleId, 1)
         }
 
         AppMenuSeparator {}
@@ -1741,7 +1745,7 @@ ScrollView {
             destructive: true
             onTriggered: {
                 page.removingRule = ruleMenu.ruleId
-                page.routing.removeRule(ruleMenu.ruleId)
+                page.routing.planRules.removeRule(ruleMenu.ruleId)
             }
         }
     }
@@ -1761,7 +1765,7 @@ ScrollView {
         }
 
         Instantiator {
-            model: page.routing.groupTypeOptions
+            model: page.routing.planGroups.typeOptions
             onObjectAdded: (index, object) => groupMenu.insertItem(index, object)
             onObjectRemoved: (index, object) => groupMenu.removeItem(object)
 
@@ -1774,7 +1778,7 @@ ScrollView {
                 checkable: true
                 checked: typeChoice.modelData.value === groupMenu.type
                 onTriggered: {
-                    page.routing.setGroupType(groupMenu.groupId, typeChoice.modelData.value)
+                    page.routing.planGroups.setType(groupMenu.groupId, typeChoice.modelData.value)
                     checked = Qt.binding(() => typeChoice.modelData.value === groupMenu.type)
                 }
             }
@@ -1784,7 +1788,7 @@ ScrollView {
 
         AppMenuItem {
             text: groupMenu.hidden ? qsTr("显示") : qsTr("隐藏")
-            onTriggered: page.routing.setGroupHidden(groupMenu.groupId, !groupMenu.hidden)
+            onTriggered: page.routing.planGroups.setHidden(groupMenu.groupId, !groupMenu.hidden)
         }
 
         AppMenuItem {
@@ -1830,7 +1834,7 @@ ScrollView {
         AppMenuItem {
             text: qsTr("删除")
             destructive: true
-            onTriggered: page.routing.requestRemoveGroup(customGroupMenu.groupId)
+            onTriggered: page.routing.planGroups.requestRemove(customGroupMenu.groupId)
         }
     }
 
@@ -1851,14 +1855,14 @@ ScrollView {
             onTriggered: {
                 page.dialogTrigger = meshMenu.trigger
                 page.dialogFocusReason = meshMenu.triggerFocusReason
-                page.routing.addMeshRules(meshMenu.meshId)
+                page.routing.meshNetworks.addOutboundRules(meshMenu.meshId)
             }
         }
 
         AppMenuItem {
             text: qsTr("使用它的规则")
             onTriggered: {
-                page.routing.showMeshRules(meshMenu.meshId)
+                page.routing.meshNetworks.showOutboundRules(meshMenu.meshId)
                 page.tab = "rules"
             }
         }
@@ -1953,11 +1957,11 @@ ScrollView {
     ConfirmDialog {
         id: removeGroupDialog
 
-        title: page.routing.groupRemovalTitle
-        message: page.routing.groupRemovalText
+        title: page.routing.planGroups.removalTitle
+        message: page.routing.planGroups.removalText
         confirmText: qsTr("删除")
         destructive: true
-        onAccepted: page.routing.confirmRemoveGroup()
+        onAccepted: page.routing.planGroups.confirmRemove()
     }
 
     FileDialog {

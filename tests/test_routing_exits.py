@@ -94,11 +94,11 @@ def import_mesh(qtbot: QtBot, view_models: ViewModels, tmp_path: Path) -> None:
     source = tmp_path / "mesh.yaml"
     source.write_text(MESH_CONFIG, encoding="utf-8")
     view_models.profiles.importFile(QUrl.fromLocalFile(str(source)).toString())
-    qtbot.waitUntil(lambda: prop(view_models.routing, "hasMesh"))
+    qtbot.waitUntil(lambda: prop(view_models.routing._mesh_networks, "hasOutbounds"))
 
 
 def openai_to(qtbot: QtBot, routing: RoutingViewModel, target: str) -> None:
-    openai = next(r for r in rows(routing, "rules") if r.name == "OpenAI")
+    openai = next(r for r in rows(routing.plan_rules(), "rows") if r.name == "OpenAI")
     dialog = editor(routing)
     dialog.openEdit(openai.ruleId)
     dialog.setTarget(target)
@@ -107,7 +107,7 @@ def openai_to(qtbot: QtBot, routing: RoutingViewModel, target: str) -> None:
 
 
 def entry_target(host: SimulatedHost, routing: RoutingViewModel, name: str) -> str:
-    rule = next(r for r in rows(routing, "rules") if r.name == name)
+    rule = next(r for r in rows(routing.plan_rules(), "rows") if r.name == name)
     assert host.report is not None
     return next(r.proxy for r in host.report.rules if r.entry_id == rule.ruleId)
 
@@ -117,20 +117,21 @@ def test_mesh_outbounds_stay_out_of_the_pool(
     qtbot: QtBot, planned: ViewModels, tmp_path: Path
 ) -> None:
     routing, host = planned.routing, host_of(planned)
+    plan_groups = routing.plan_groups()
     import_mesh(qtbot, planned, tmp_path)
-    assert [(m.name, m.caption, m.type) for m in rows(routing, "meshOutbounds")] == [
+    assert [(m.name, m.caption, m.type) for m in rows(routing._mesh_networks, "outbounds")] == [
         ("家里", "Tailscale · 来自「mesh」", "Tailscale"),
         ("公司", "ZeroTier · 来自「mesh」", "ZeroTier"),
     ]
     # Not in the pool, the regions or 自动选择 (docs/mesh.md §3).
     assert prop(routing, "summary").endswith("节点池 27 个节点")
-    assert rows(routing, "builtinGroups")[1].caption == "自动选择 · 27 个节点"
-    assert [g.name for g in rows(routing, "regionGroups")] == ["香港", "日本", "新加坡", "美国"]
+    assert rows(plan_groups, "builtin")[1].caption == "自动选择 · 27 个节点"
+    assert [g.name for g in rows(plan_groups, "regions")] == ["香港", "日本", "新加坡", "美国"]
     assert host.effective is not None
     auto = next(g for g in host.effective["proxy-groups"] if g["name"] == "自动选择")
     assert "家里" not in auto["proxies"]
     # Rule targets of their own, after the groups and before the exits (docs/mesh.md §5).
-    labels = [(o["label"], o["separator"]) for o in prop(routing, "targetOptions")]
+    labels = [(o["label"], o["separator"]) for o in prop(routing.plan_rules(), "targetOptions")]
     assert labels[-6:] == [
         ("家里", True),
         ("公司", False),
@@ -143,11 +144,13 @@ def test_mesh_outbounds_stay_out_of_the_pool(
 
 def test_common_rules_for_tailscale(qtbot: QtBot, planned: ViewModels, tmp_path: Path) -> None:
     routing, host = planned.routing, host_of(planned)
+    plan_rules = routing.plan_rules()
+    mesh = routing._mesh_networks
     import_mesh(qtbot, planned, tmp_path)
-    tailscale = rows(routing, "meshOutbounds")[0]
+    tailscale = rows(mesh, "outbounds")[0]
     with qtbot.waitSignal(routing.applied):
-        routing.addMeshRules(tailscale.meshId)
-    added = rows(routing, "rules")[:2]
+        mesh.addOutboundRules(tailscale.meshId)
+    added = rows(plan_rules, "rows")[:2]
     assert [(r.name, r.caption, r.target, r.warning) for r in added] == [
         ("IP 段（2 个）", "100.64.0.0/10、fd7a:115c:a1e0::/48 · no-resolve", "家里", ""),
         ("自定义域名（1 个）", "ts.net", "家里", ""),
@@ -155,44 +158,46 @@ def test_common_rules_for_tailscale(qtbot: QtBot, planned: ViewModels, tmp_path:
     assert entry_target(host, routing, "IP 段（2 个）") == "家里"
     assert prop(routing, "undoText") == "已为「家里」添加 2 条规则"
     # Twice adds nothing new.
-    routing.addMeshRules(tailscale.meshId)
+    mesh.addOutboundRules(tailscale.meshId)
     qtbot.wait(50)
-    assert len(rows(routing, "rules")) == 8
+    assert len(rows(plan_rules, "rows")) == 8
     # 使用它的规则 filters by the outbound.
-    routing.showMeshRules(tailscale.meshId)
-    assert [r.target for r in rows(routing, "rules")] == ["家里", "家里"]
-    assert prop(routing, "targetFilterLabel") == "家里"
+    mesh.showOutboundRules(tailscale.meshId)
+    assert [r.target for r in rows(plan_rules, "rows")] == ["家里", "家里"]
+    assert prop(plan_rules, "targetFilterLabel") == "家里"
 
 
 def test_zerotier_opens_the_ranges_with_its_target(
     qtbot: QtBot, planned: ViewModels, tmp_path: Path
 ) -> None:
     routing = planned.routing
+    plan_rules = routing.plan_rules()
+    mesh = routing._mesh_networks
     import_mesh(qtbot, planned, tmp_path)
-    zerotier = rows(routing, "meshOutbounds")[1]
+    zerotier = rows(mesh, "outbounds")[1]
     dialog = editor(routing)
     with qtbot.waitSignal(dialog.opened):
-        routing.addMeshRules(zerotier.meshId)
+        mesh.addOutboundRules(zerotier.meshId)
     assert (prop(dialog, "kind"), prop(dialog, "target")) == ("ip", zerotier.meshId)
     assert prop(dialog, "targetLabel") == "公司"
     dialog.setText("10.147.17.0/24")
     with qtbot.waitSignal(dialog.saved):
         dialog.save()
-    assert (rows(routing, "rules")[0].target, rows(routing, "rules")[0].warning) == ("公司", "")
+    assert (rows(plan_rules, "rows")[0].target, rows(plan_rules, "rows")[0].warning) == ("公司", "")
 
 
 def test_a_missing_mesh_outbound_rejects(qtbot: QtBot, planned: ViewModels, tmp_path: Path) -> None:
     routing, host = planned.routing, host_of(planned)
     import_mesh(qtbot, planned, tmp_path)
-    tailscale = rows(routing, "meshOutbounds")[0]
+    tailscale = rows(routing._mesh_networks, "outbounds")[0]
     with qtbot.waitSignal(routing.applied):
-        routing.addMeshRules(tailscale.meshId)
+        routing._mesh_networks.addOutboundRules(tailscale.meshId)
     mesh_profile = next(p for p in planned.library.snapshot().profiles if p.name == "mesh")
     profiles = planned.profiles
     with qtbot.waitSignal(profiles.routingChanged):
         profiles.setInPool(mesh_profile.id, False)
-    qtbot.waitUntil(lambda: not prop(routing, "hasMesh"))
-    first = rows(routing, "rules")[0]
+    qtbot.waitUntil(lambda: not prop(routing._mesh_networks, "hasOutbounds"))
+    first = rows(routing.plan_rules(), "rows")[0]
     assert (first.target, first.warning) == ("家里", "不存在，已拒绝连接")
     assert entry_target(host, routing, "IP 段（2 个）") == "REJECT"
 
@@ -202,6 +207,7 @@ def test_warp_registers_and_its_rules_follow_the_account(
     qtbot: QtBot, planned: ViewModels, credentials: MemoryCredentials, tmp_path: Path
 ) -> None:
     routing, host = planned.routing, host_of(planned)
+    plan_rules = routing.plan_rules()
     exit_ = warp(routing)
     assert (prop(exit_, "status"), prop(exit_, "statusTone")) == ("未启用", "muted")
     assert prop(exit_, "caption") == "经由 节点选择 · MASQUE（HTTP/2）"
@@ -218,7 +224,7 @@ def test_warp_registers_and_its_rules_follow_the_account(
     assert b"simulated-token" not in database
     # OpenAI → WARP 出口 goes out through it.
     openai_to(qtbot, routing, plans.WARP)
-    openai = next(r for r in rows(routing, "rules") if r.name == "OpenAI")
+    openai = next(r for r in rows(plan_rules, "rows") if r.name == "OpenAI")
     assert (openai.target, openai.warning) == ("WARP 出口", "")
     assert entry_target(host, routing, "OpenAI") == "WARP 出口"
     assert host.config is not None
@@ -228,7 +234,7 @@ def test_warp_registers_and_its_rules_follow_the_account(
     with qtbot.waitSignal(routing.applied):
         exit_.confirmForget()
     assert WARP_ACCOUNT not in credentials.secrets
-    openai = next(r for r in rows(routing, "rules") if r.name == "OpenAI")
+    openai = next(r for r in rows(plan_rules, "rows") if r.name == "OpenAI")
     assert (openai.target, openai.warning) == ("WARP 出口", "不可用，已拒绝连接")
     assert entry_target(host, routing, "OpenAI") == "REJECT"
     assert (prop(exit_, "status"), prop(exit_, "statusTone")) == ("未注册", "warning")
@@ -236,17 +242,18 @@ def test_warp_registers_and_its_rules_follow_the_account(
 
 def test_an_exit_turned_off_cannot_be_picked_and_rejects(qtbot: QtBot, planned: ViewModels) -> None:
     routing, host = planned.routing, host_of(planned)
+    plan_rules = routing.plan_rules()
     exit_ = warp(routing)
     with qtbot.waitSignal(routing.applied):
         exit_.setActive(True)
     qtbot.waitUntil(lambda: prop(exit_, "status") == "已就绪")
-    option = next(o for o in prop(routing, "targetOptions") if o["value"] == plans.WARP)
+    option = next(o for o in prop(plan_rules, "targetOptions") if o["value"] == plans.WARP)
     assert "enabled" not in option
     openai_to(qtbot, routing, plans.WARP)
     with qtbot.waitSignal(routing.applied):
         exit_.setActive(False)
     assert prop(exit_, "status") == "未启用"
-    option = next(o for o in prop(routing, "targetOptions") if o["value"] == plans.WARP)
+    option = next(o for o in prop(plan_rules, "targetOptions") if o["value"] == plans.WARP)
     assert (option["note"], option["enabled"]) == ("未启用", False)
     assert entry_target(host, routing, "OpenAI") == "REJECT"
     assert host.config is not None
@@ -339,6 +346,7 @@ def test_the_via_group_goes_with_the_plan(qtbot: QtBot, planned: ViewModels) -> 
 
 def test_deleting_the_via_group_moves_the_exit_to_proxy(qtbot: QtBot, planned: ViewModels) -> None:
     routing = planned.routing
+    plan_groups = routing.plan_groups()
     dialog = routing._group_editor
     with qtbot.waitSignal(dialog.opened):
         dialog.openAdd()
@@ -346,15 +354,15 @@ def test_deleting_the_via_group_moves_the_exit_to_proxy(qtbot: QtBot, planned: V
     dialog.toggleRegion("HK")
     with qtbot.waitSignal(dialog.saved):
         dialog.save()
-    group = rows(routing, "customGroups")[0]
+    group = rows(plan_groups, "custom")[0]
     exit_ = warp(routing)
     with qtbot.waitSignal(routing.applied):
         exit_.setVia(group.groupId)
     assert prop(exit_, "viaLabel") == "香港精选"
-    routing.requestRemoveGroup(group.groupId)
-    assert "WARP 出口经由它，删除后改经「节点选择」。" in prop(routing, "groupRemovalText")
+    plan_groups.requestRemove(group.groupId)
+    assert "WARP 出口经由它，删除后改经「节点选择」。" in prop(plan_groups, "removalText")
     with qtbot.waitSignal(routing.applied):
-        routing.confirmRemoveGroup()
+        plan_groups.confirmRemove()
     assert prop(exit_, "via") == plans.PROXY
 
 
@@ -412,7 +420,7 @@ def test_vpngate_fetches_the_list_through_the_node_and_its_rules_follow(
     assert prop(exit_, "countriesLabel") == "日本"
     # A rule to the exit goes through the servers, best score first, each through the node.
     openai_to(qtbot, routing, plans.VPNGATE)
-    openai = next(r for r in rows(routing, "rules") if r.name == "OpenAI")
+    openai = next(r for r in rows(routing.plan_rules(), "rows") if r.name == "OpenAI")
     assert (openai.target, openai.warning) == ("VPN Gate 出口", "")
     assert entry_target(host, routing, "OpenAI") == "VPN Gate 出口"
     assert picked(host) == JP_HOSTS[:5]
@@ -514,7 +522,7 @@ def test_a_failed_list_says_why_and_rejects(qtbot: QtBot, planned: ViewModels) -
     assert (prop(exit_, "status"), prop(exit_, "statusTone")) == ("不可用", "warning")
     # Without servers the exit's rules reject, rather than go out through the node (D21).
     openai_to(qtbot, routing, plans.VPNGATE)
-    openai = next(r for r in rows(routing, "rules") if r.name == "OpenAI")
+    openai = next(r for r in rows(routing.plan_rules(), "rows") if r.name == "OpenAI")
     assert (openai.target, openai.warning) == ("VPN Gate 出口", "不可用，已拒绝连接")
     assert entry_target(host, routing, "OpenAI") == "REJECT"
     exit_.refresh()
@@ -566,6 +574,7 @@ def test_vpngate_settings_go_with_the_plan(qtbot: QtBot, planned: ViewModels) ->
 
 def test_deleting_the_via_group_moves_vpngate_to_proxy(qtbot: QtBot, planned: ViewModels) -> None:
     routing, host = planned.routing, host_of(planned)
+    plan_groups = routing.plan_groups()
     exit_ = vpngate(routing)
     with qtbot.waitSignal(routing.applied):
         exit_.setVia("region:JP")
@@ -579,11 +588,11 @@ def test_deleting_the_via_group_moves_vpngate_to_proxy(qtbot: QtBot, planned: Vi
     dialog.toggleRegion("HK")
     with qtbot.waitSignal(dialog.saved):
         dialog.save()
-    group = rows(routing, "customGroups")[0]
+    group = rows(plan_groups, "custom")[0]
     with qtbot.waitSignal(routing.applied):
         exit_.setVia(group.groupId)
-    routing.requestRemoveGroup(group.groupId)
-    assert "VPN Gate 出口经由它，删除后改经「节点选择」。" in prop(routing, "groupRemovalText")
+    plan_groups.requestRemove(group.groupId)
+    assert "VPN Gate 出口经由它，删除后改经「节点选择」。" in prop(plan_groups, "removalText")
     with qtbot.waitSignal(routing.applied):
-        routing.confirmRemoveGroup()
+        plan_groups.confirmRemove()
     assert prop(exit_, "via") == plans.PROXY

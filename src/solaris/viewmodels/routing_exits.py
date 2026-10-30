@@ -219,7 +219,7 @@ class WarpExit(QObject):
         def failed(message: str) -> None:
             self._change_error = message
 
-        self._routing.put_plan(plans.with_warp_exit(plan, warp), done, failed)
+        self._routing.commit(plans.with_warp_exit(plan, warp), done=done, failed=failed)
 
     @Property(str, notify=changed)
     def protocol(self) -> str:
@@ -652,7 +652,7 @@ class VpnGateExit(QObject):
         def failed(message: str) -> None:
             self._change_error = message
 
-        self._routing.put_plan(plans.with_vpngate_exit(plan, vpngate), done, failed)
+        self._routing.commit(plans.with_vpngate_exit(plan, vpngate), done=done, failed=failed)
 
     @Property(str, notify=changed)
     def changeError(self) -> str:

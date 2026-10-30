@@ -1,6 +1,10 @@
-"""The group editor (docs/routing.md §4.5): a custom group's name, type and conditions on the
-left, and on the right its members as the core computes them (PreviewGroup), refreshed as
-the conditions change.
+"""The plan's groups on the routing page's groups tab (docs/routing.md §4.5): the built-in,
+region and custom groups as rows, and the group editor.
+
+A row's menu changes the group's type or hides it; a custom group's removal first names
+every place that refers to it (§5.5). The editor shows a custom group's name, type and
+conditions on the left, and on the right its members as the core computes them
+(PreviewGroup), refreshed as the conditions change.
 
 Members are the nodes of the chosen regions, of the chosen subscriptions or whose names
 match, less those the exclusion matches; the picked nodes and the other members always
@@ -11,6 +15,7 @@ form.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any
 
@@ -71,8 +76,21 @@ class PreviewRow:
     other: bool  # another member, listed before the nodes
 
 
-def _roles(row_type: type) -> list[str]:
-    return ["itemId" if name == "id" else name for name in row_type.__dataclass_fields__]
+@dataclass(frozen=True)
+class GroupRow:
+    id: str
+    name: str
+    caption: str
+    type: str
+    hidden: bool
+
+    @property
+    def groupId(self) -> str:
+        return self.id
+
+
+def _roles(row_type: type, id_role: str = "itemId") -> list[str]:
+    return [id_role if name == "id" else name for name in row_type.__dataclass_fields__]
 
 
 def _node_key(source: str, name: str) -> str:
@@ -89,6 +107,245 @@ def _pattern_error(mode: str, pattern: str) -> bool:
     except re.error:
         return True
     return False
+
+
+@QmlElement
+@QmlUncreatable("PlanGroups is created in Python and injected into the view.")  # pyright: ignore[reportCallIssue]
+class PlanGroups(QObject):
+    changed = Signal()
+    optionsChanged = Signal()  # the UI language changed
+    removalRequested = Signal()  # a group's removal awaits confirmation
+
+    def __init__(
+        self,
+        routing: RoutingViewModel,
+        runner: AsyncRunner,
+        library: ProfileLibrary,
+        parent: QObject | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self._routing = routing
+        self._runner = runner
+        self._library = library
+        self._removing: str | None = None
+        self._builtin = KeyedListModel(_roles(GroupRow, "groupId"), self)
+        self._regions = KeyedListModel(_roles(GroupRow, "groupId"), self)
+        self._custom = KeyedListModel(_roles(GroupRow, "groupId"), self)
+        self.changed.connect(self._sync)
+        routing.changed.connect(self.changed)
+        self._sync()
+
+    def retranslate(self) -> None:
+        self.optionsChanged.emit()
+        self.changed.emit()
+
+    @Property(QObject, constant=True)
+    def builtin(self) -> KeyedListModel:
+        return self._builtin
+
+    @Property(QObject, constant=True)
+    def regions(self) -> KeyedListModel:
+        return self._regions
+
+    @Property(QObject, constant=True)
+    def custom(self) -> KeyedListModel:
+        return self._custom
+
+    def put_group(
+        self, group: PlanGroup, done: Callable[[], None], failed: Callable[[str], None]
+    ) -> None:
+        """For the group editor: an edited group keeps its place, a new one comes last. The
+        dialog stays open with the core's error when the change is refused."""
+        plan = self._routing.plan()
+        if plan is None:
+            return
+        groups = list(plan.groups)
+        index = next((i for i, g in enumerate(groups) if g.id == group.id), None)
+        if index is None:
+            groups.append(group)
+        else:
+            groups[index] = group
+        changed = replace(plan, groups=tuple(groups))
+        self._routing.commit(changed, done=done, failed=failed, shown=False)
+
+    # -- removal -----------------------------------------------------------------------------
+    def _references(self, group_id: str) -> tuple[list[str], list[str]]:
+        """The rule entries that send traffic to the group, and the groups that hold it."""
+        plan = self._routing.plan()
+        if plan is None:
+            return [], []
+        rules = [text.rule_name(r) for r in plan.rules if r.target == group_id]
+        if plan.fallback == group_id:
+            rules.append(self.tr("其他流量"))
+        groups = [
+            text.group_name(g, g.id)
+            for g in plan.groups
+            if isinstance(g.conditions, dict) and group_id in g.conditions.get("others", ())
+        ]
+        return rules, groups
+
+    @Slot(str)
+    def requestRemove(self, group_id: str) -> None:
+        plan = self._routing.plan()
+        group = next((g for g in plan.groups if g.id == group_id), None) if plan else None
+        if group is not None and group.kind == "custom":
+            self._removing = group_id
+            self.changed.emit()
+            self.removalRequested.emit()
+
+    @Property(str, notify=changed)
+    def removalTitle(self) -> str:
+        plan = self._routing.plan()
+        group = next((g for g in plan.groups if g.id == self._removing), None) if plan else None
+        return self.tr("删除策略组「{name}」？").format(name=group.name) if group else ""
+
+    @Property(str, notify=changed)
+    def removalText(self) -> str:
+        """Every place that names the group (routing.md §5.5)."""
+        if self._removing is None:
+            return ""
+        rules, groups = self._references(self._removing)
+        quoted = self.tr("「{name}」")
+        parts = []
+        via = plans.warp_exit(self._routing.plan()).via == self._removing
+        vpngate_via = plans.vpngate_exit(self._routing.plan()).via == self._removing
+        if rules:
+            names = "".join(quoted.format(name=n) for n in rules)
+            parts.append(
+                self.tr("规则{names}以它为目标，删除后改走「节点选择」。").format(names=names)
+            )
+        if groups:
+            names = "".join(quoted.format(name=n) for n in groups)
+            parts.append(self.tr("策略组{names}里不再包含它。").format(names=names))
+        if via:
+            parts.append(self.tr("WARP 出口经由它，删除后改经「节点选择」。"))
+        if vpngate_via:
+            parts.append(self.tr("VPN Gate 出口经由它，删除后改经「节点选择」。"))
+        return "".join(parts) or self.tr("没有规则或策略组引用它。")
+
+    @Slot()
+    def confirmRemove(self) -> None:
+        group_id, self._removing = self._removing, None
+        plan = self._routing.plan()
+        group = next((g for g in plan.groups if g.id == group_id), None) if plan else None
+        if plan is None or group is None:
+            return
+
+        def without(g: PlanGroup) -> PlanGroup:
+            if not isinstance(g.conditions, dict) or group.id not in g.conditions.get("others", ()):
+                return g
+            others = [o for o in g.conditions["others"] if o != group.id]
+            conditions = {k: v for k, v in g.conditions.items() if k != "others"}
+            return replace(g, conditions={**conditions, "others": others} if others else conditions)
+
+        removed = replace(
+            plan,
+            groups=tuple(without(g) for g in plan.groups if g.id != group.id),
+            rules=tuple(
+                replace(r, target=plans.PROXY) if r.target == group.id else r for r in plan.rules
+            ),
+            fallback=plans.PROXY if plan.fallback == group.id else plan.fallback,
+        )
+        warp = plans.warp_exit(plan)
+        if warp.via == group.id:
+            removed = plans.with_warp_exit(removed, replace(warp, via=plans.PROXY))
+        vpngate = plans.vpngate_exit(plan)
+        if vpngate.via == group.id:
+            removed = plans.with_vpngate_exit(removed, replace(vpngate, via=plans.PROXY))
+        status = self.tr("已删除「{name}」").format(name=group.name)
+        action = self.tr("撤销删除「{name}」").format(name=group.name)
+        self._routing.commit(removed, undo=(status, action, plan))
+
+    # -- a row's menu ------------------------------------------------------------------------
+    @Property("QVariantList", notify=optionsChanged)  # pyright: ignore[reportArgumentType]
+    def typeOptions(self) -> list[dict[str, str]]:
+        return [{"value": t, "label": text.type_label(t)} for t in text.GROUP_TYPES]
+
+    @Slot(str, str)
+    def setType(self, group_id: str, group_type: str) -> None:
+        if group_type in plans.GROUP_TYPES:
+            self._patch(group_id, lambda g: replace(g, type=group_type))
+
+    @Slot(str, bool)
+    def setHidden(self, group_id: str, hidden: bool) -> None:
+        self._patch(group_id, lambda g: replace(g, hidden=hidden))
+
+    def _patch(self, group_id: str, change: Callable[[PlanGroup], PlanGroup]) -> None:
+        plan = self._routing.plan()
+        if plan is None:
+            return
+        groups = list(plan.groups)
+        index = next((i for i, g in enumerate(groups) if g.id == group_id), None)
+        if index is None:
+            kind = "region" if region_code(group_id) else "builtin"
+            default = "select" if group_id == plans.PROXY else "url-test"
+            groups.append(change(PlanGroup(group_id, kind, default)))
+        else:
+            groups[index] = change(groups[index])
+        self._routing.commit(replace(plan, groups=tuple(groups)))
+
+    # -- rows --------------------------------------------------------------------------------
+    def _sync(self) -> None:
+        plan = self._routing.plan()
+        report = self._routing.report()
+        settings = {g.id: g for g in plan.groups} if plan else {}
+        regions = text.regions_with_nodes(report)
+        counts = {g.id: g.node_count for g in report.groups} if report else {}
+        builtin = []
+        for group_id in (plans.PROXY, plans.AUTO):
+            group = settings.get(group_id)
+            group_type = (
+                group.type if group else ("select" if group_id == plans.PROXY else "url-test")
+            )
+            if group_id == plans.PROXY:
+                members = self.tr("自动选择、{regions}、直连").format(
+                    regions=self.tr("%n 个地区组", "", len(regions))
+                )
+            else:
+                members = self.tr("%n 个节点", "", counts.get(group_id, 0))
+            builtin.append(self._row(group_id, group, group_type, members))
+        self._builtin.sync(builtin)
+        region_rows = []
+        for code, count in regions:
+            group_id = f"region:{code}"
+            group = settings.get(group_id)
+            members = self.tr("%n 个节点", "", count)
+            region_rows.append(
+                self._row(group_id, group, group.type if group else "url-test", members)
+            )
+        self._regions.sync(region_rows)
+        custom_rows = []
+        for group in plan.groups if plan else ():
+            if group.kind != "custom":
+                continue
+            others = (
+                group.conditions.get("others", ()) if isinstance(group.conditions, dict) else ()
+            )
+            parts = []
+            if counts.get(group.id):
+                parts.append(self.tr("%n 个节点", "", counts[group.id]))
+            named = [o for o in others if o not in (DIRECT, REJECT)]
+            if named:
+                parts.append(self.tr("%n 个其他成员", "", len(named)))
+            parts += [text.target_label(o, plan) for o in others if o in (DIRECT, REJECT)]
+            members = self.tr("、").join(parts) if parts else self.tr("没有成员")
+            custom_rows.append(self._row(group.id, group, group.type, members))
+        self._custom.sync(custom_rows)
+
+    def _row(
+        self, group_id: str, group: PlanGroup | None, group_type: str, members: str
+    ) -> GroupRow:
+        hidden = bool(group and group.hidden)
+        parts = [text.type_label(group_type), members]
+        caption = " · ".join(parts)
+        if region_code(group_id) is not None:
+            prefix = self.tr("自动 · 已隐藏") if hidden else self.tr("自动")
+            caption = f"{prefix} · {caption}"
+        elif hidden:
+            caption = self.tr("已隐藏 · {caption}").format(caption=caption)
+        code = region_code(group_id)
+        name = region_name(code) if code else text.group_name(group, group_id)
+        return GroupRow(group_id, name, caption, group_type, hidden)
 
 
 @QmlElement
@@ -609,7 +866,7 @@ class GroupEditor(QObject):
             self._error = message
             self.changed.emit()
 
-        self._routing.put_group(self._draft(), done, failed)
+        self._routing.plan_groups().put_group(self._draft(), done, failed)
 
     # -- rows --------------------------------------------------------------------------------
     def _toggle(self, chosen: list[str], value: str) -> None:

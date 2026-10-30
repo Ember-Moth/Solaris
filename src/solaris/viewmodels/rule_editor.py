@@ -457,7 +457,7 @@ class RuleEditor(QObject):
             self.changed.emit()
 
         replacing = self._rule.id if self._rule else None
-        self._routing.add_rules(self._entries(), replacing, done, failed)
+        self._routing.plan_rules().add_rules(self._entries(), replacing, done, failed)
 
     # -- rows --------------------------------------------------------------------------------
     def _sync_rows(self) -> None:
