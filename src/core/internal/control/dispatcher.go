@@ -66,8 +66,10 @@ type Engine interface {
 
 type Options struct {
 	Engine Engine
-	// HostMethods enables the Windows-service lifecycle methods. The macOS extension
-	// leaves it off because NETunnelProviderManager starts and stops the tunnel.
+	// HostMethods enables Claim and SetSystemProxy, which only the Windows service (and
+	// the development server) has. Validate, Start, Reload and Stop run on every host: the
+	// macOS extension gets its configuration the same way (D7), while
+	// NETunnelProviderManager starts and stops the tunnel around it.
 	HostMethods bool
 	// Development marks the development server (docs/architecture.md §11), which never
 	// changes the machine's network: turning on the system proxy fails with
@@ -127,11 +129,12 @@ func (d *Dispatcher) dispatch(ctx context.Context, caller peer.Identity, request
 	switch method := request.Method.(type) {
 	case *controlpb.Request_GetInfo:
 		return &controlpb.Response{Result: &controlpb.Response_GetInfo{GetInfo: d.info()}}
-	case *controlpb.Request_Claim, *controlpb.Request_Validate, *controlpb.Request_Start,
-		*controlpb.Request_Stop, *controlpb.Request_SetSystemProxy:
+	case *controlpb.Request_Claim, *controlpb.Request_SetSystemProxy:
 		if !d.hostMethods {
 			return failure(CodeUnsupportedMethod, methodName(request)+" is only served by the Windows service")
 		}
+		return d.hostMethod(request)
+	case *controlpb.Request_Validate, *controlpb.Request_Start, *controlpb.Request_Stop:
 		return d.hostMethod(request)
 	case *controlpb.Request_Reload:
 		return d.locked(func() *controlpb.Response { return d.reload(method.Reload) })
@@ -238,10 +241,13 @@ func (d *Dispatcher) profile(configYAML string, source *controlpb.Composition, o
 	}, nil
 }
 
-// systemProxy answers a request to set the owner's system proxy. The development server
-// never touches it, and the Windows implementation arrives with M4 (§5.5).
+// systemProxy answers a request to set the owner's system proxy. The macOS extension has
+// none, the development server never touches it, and the Windows implementation arrives
+// with M4 (§5.5).
 func (d *Dispatcher) systemProxy(enabled bool) *controlpb.Response {
 	switch {
+	case !d.hostMethods && enabled:
+		return failure(CodeUnsupportedMethod, "only the Windows service sets the system proxy")
 	case d.development && enabled:
 		return failure(CodeUnsupportedMethod, "the development server never sets the system proxy")
 	case d.development:

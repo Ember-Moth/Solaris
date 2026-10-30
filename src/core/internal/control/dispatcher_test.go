@@ -201,19 +201,30 @@ func TestRejectsInvalidRequests(t *testing.T) {
 
 func TestHostMethodsDependOnHost(t *testing.T) {
 	extension := New(Options{Engine: core})
+	t.Cleanup(func() {
+		extension.Close()
+		_ = core.Stop()
+	})
 	for id, method := range []func(*controlpb.Request){
-		stopRequest,
-		startRequest(profileYAML(1), nil),
 		systemProxyRequest(false),
 		func(r *controlpb.Request) { r.Method = &controlpb.Request_Claim{Claim: &controlpb.ClaimRequest{}} },
-		func(r *controlpb.Request) {
-			r.Method = &controlpb.Request_Validate{Validate: &controlpb.ValidateRequest{Source: &controlpb.ValidateRequest_ConfigYaml{ConfigYaml: profileYAML(1)}}}
-		},
 	} {
 		expectError(t, call(t, extension, request(uint64(id+1), method)), uint64(id+1), CodeUnsupportedMethod)
 	}
-	// Reload also runs in the extension.
-	expectError(t, call(t, extension, request(9, reloadRequest(profileYAML(1), nil))), 9, CodeNotRunning)
+	// The extension takes its configuration through Validate, Start and Reload (D7), but
+	// has no system proxy to turn on.
+	expectError(t, call(t, extension, request(3, reloadRequest(profileYAML(1), nil))), 3, CodeNotRunning)
+	validate := func(r *controlpb.Request) {
+		r.Method = &controlpb.Request_Validate{Validate: &controlpb.ValidateRequest{Source: &controlpb.ValidateRequest_ConfigYaml{ConfigYaml: profileYAML(1)}}}
+	}
+	expectOK(t, call(t, extension, request(4, validate)))
+	withProxy := &controlpb.RunOptions{SystemProxyEnabled: true}
+	expectError(t, call(t, extension, request(5, startRequest(profileYAML(freePort(t)), withProxy))), 5, CodeUnsupportedMethod)
+	expectOK(t, call(t, extension, request(6, startRequest(profileYAML(freePort(t)), nil))))
+	expectOK(t, call(t, extension, request(7, stopRequest)))
+	if core.State() != controlpb.RunState_RUN_STATE_STOPPED {
+		t.Fatalf("state = %v after stop", core.State())
+	}
 
 	service := New(Options{Engine: core, HostMethods: true})
 	expectError(t, call(t, service, request(10, systemProxyRequest(true))), 10, CodeNotImplemented)
