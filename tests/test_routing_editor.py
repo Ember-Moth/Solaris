@@ -138,17 +138,18 @@ def test_the_group_editor_previews_its_members(qtbot: QtBot, planned: ViewModels
         "others": ["DIRECT"],
     }
     assert group.options == {"interval": 600, "strategy": "round-robin"}
-    assert [(g.name, g.caption) for g in rows(routing, "customGroups")] == [
+    assert [(g.name, g.caption) for g in rows(routing.plan_groups(), "custom")] == [
         ("香港精选", "负载均衡 · 6 个节点、直连")
     ]
     # It is a target now, after the regions.
-    assert "香港精选" in [o["label"] for o in prop(routing, "targetOptions")]
+    assert "香港精选" in [o["label"] for o in prop(routing.plan_rules(), "targetOptions")]
 
 
 def test_editing_and_copying_a_group(qtbot: QtBot, planned: ViewModels) -> None:
     routing = planned.routing
+    plan_groups = routing.plan_groups()
     add_group(qtbot, routing, "香港精选")
-    (row,) = rows(routing, "customGroups")
+    (row,) = rows(plan_groups, "custom")
     dialog = group_editor(routing)
     with qtbot.waitSignal(dialog.opened):
         dialog.openEdit(row.id)
@@ -163,7 +164,7 @@ def test_editing_and_copying_a_group(qtbot: QtBot, planned: ViewModels) -> None:
     dialog.setName("香港")
     with qtbot.waitSignal(dialog.saved):
         dialog.save()
-    assert [g.name for g in rows(routing, "customGroups")] == ["香港"]
+    assert [g.name for g in rows(plan_groups, "custom")] == ["香港"]
 
     with qtbot.waitSignal(dialog.opened):
         dialog.openCopy(row.id)
@@ -171,7 +172,7 @@ def test_editing_and_copying_a_group(qtbot: QtBot, planned: ViewModels) -> None:
     dialog.toggleOther(row.id)  # the copy may hold the original
     with qtbot.waitSignal(dialog.saved):
         dialog.save()
-    copy = rows(routing, "customGroups")[1]
+    copy = rows(plan_groups, "custom")[1]
     with qtbot.waitSignal(dialog.opened):
         dialog.openEdit(row.id)
     looped = {r.id: r.added for r in rows(dialog, "others")}
@@ -186,11 +187,13 @@ def test_editing_and_copying_a_group(qtbot: QtBot, planned: ViewModels) -> None:
 
 def test_removing_a_group_names_its_references(qtbot: QtBot, planned: ViewModels) -> None:
     routing = planned.routing
+    plan_rules = routing.plan_rules()
+    plan_groups = routing.plan_groups()
     add_group(qtbot, routing, "香港精选")
-    (group,) = rows(routing, "customGroups")
-    openai = rows(routing, "rules")[2]
+    (group,) = rows(plan_groups, "custom")
+    openai = rows(plan_rules, "rows")[2]
     with qtbot.waitSignal(routing.applied):
-        routing.setFallback(group.id)
+        plan_rules.setFallback(group.id)
     dialog = group_editor(routing)
     with qtbot.waitSignal(dialog.opened):
         dialog.openAdd()
@@ -202,85 +205,89 @@ def test_removing_a_group_names_its_references(qtbot: QtBot, planned: ViewModels
     assert plan is not None
     rule = next(r for r in plan.rules if r.id == openai.id)
     with qtbot.waitSignal(routing.applied):
-        routing._commit(
+        routing.commit(
             replace(
                 plan,
                 rules=tuple(replace(r, target=group.id) if r is rule else r for r in plan.rules),
             )
         )
 
-    with qtbot.waitSignal(routing.groupRemovalRequested):
-        routing.requestRemoveGroup(group.id)
-    assert prop(routing, "groupRemovalTitle") == "删除策略组「香港精选」？"  # noqa: RUF001
-    assert prop(routing, "groupRemovalText") == (
+    with qtbot.waitSignal(plan_groups.removalRequested):
+        plan_groups.requestRemove(group.id)
+    assert prop(plan_groups, "removalTitle") == "删除策略组「香港精选」？"  # noqa: RUF001
+    assert prop(plan_groups, "removalText") == (
         "规则「OpenAI」「其他流量」以它为目标，删除后改走「节点选择」。策略组「流媒体」里不再包含它。"  # noqa: RUF001
     )
     with qtbot.waitSignal(routing.applied):
-        routing.confirmRemoveGroup()
-    assert [g.name for g in rows(routing, "customGroups")] == ["流媒体"]
-    assert next(r for r in rows(routing, "rules") if r.id == openai.id).target == "节点选择"
-    assert prop(routing, "fallbackLabel") == "节点选择"
+        plan_groups.confirmRemove()
+    assert [g.name for g in rows(plan_groups, "custom")] == ["流媒体"]
+    assert next(r for r in rows(plan_rules, "rows") if r.id == openai.id).target == "节点选择"
+    assert prop(plan_rules, "fallbackLabel") == "节点选择"
     assert prop(routing, "undoText") == "已删除「香港精选」"
     plan = routing.plan()
     assert plan is not None
     assert "others" not in plan.groups[-1].conditions
     with qtbot.waitSignal(routing.applied):
         routing.undo()
-    assert [g.name for g in rows(routing, "customGroups")] == ["香港精选", "流媒体"]
-    assert prop(routing, "fallbackLabel") == "香港精选"
+    assert [g.name for g in rows(plan_groups, "custom")] == ["香港精选", "流媒体"]
+    assert prop(plan_rules, "fallbackLabel") == "香港精选"
 
 
 def test_the_rule_test_names_the_entry_and_the_chain(qtbot: QtBot, planned: ViewModels) -> None:
     routing = planned.routing
-    routing._test_timer.setInterval(10)
-    routing.setTestText("https://chat.openai.com/c/1")
-    qtbot.waitUntil(lambda: prop(routing, "testResult") != "")
+    plan_rules = routing.plan_rules()
+    plan_rules._test_timer.setInterval(10)
+    plan_rules.setTestText("https://chat.openai.com/c/1")
+    qtbot.waitUntil(lambda: prop(plan_rules, "testResult") != "")
     # The simulated core runs its sample groups, not the plan's region groups.
-    assert prop(routing, "testResult") == "命中「OpenAI」 → 🇺🇸 美国"
-    hits = [r.name for r in rows(routing, "rules") if r.hit]
+    assert prop(plan_rules, "testResult") == "命中「OpenAI」 → 🇺🇸 美国"
+    hits = [r.name for r in rows(plan_rules, "rows") if r.hit]
     assert hits == ["OpenAI"]
-    assert not prop(routing, "fallbackHit")
+    assert not prop(plan_rules, "fallbackHit")
 
-    routing.setTestText("example.org")
-    qtbot.waitUntil(lambda: prop(routing, "fallbackHit"))
-    assert prop(routing, "testResult") == "命中「其他流量」 → 节点选择 → 香港 01"
-    assert not [r for r in rows(routing, "rules") if r.hit]
+    plan_rules.setTestText("example.org")
+    qtbot.waitUntil(lambda: prop(plan_rules, "fallbackHit"))
+    assert prop(plan_rules, "testResult") == "命中「其他流量」 → 节点选择 → 香港 01"
+    assert not [r for r in rows(plan_rules, "rows") if r.hit]
 
-    routing.setTestText("not a host!")
-    qtbot.waitUntil(lambda: prop(routing, "testFailed"))
-    assert prop(routing, "testResult") == "「not a host!」不是域名或 IP"
-    routing.setTestText("")
-    assert prop(routing, "testResult") == ""
+    plan_rules.setTestText("not a host!")
+    qtbot.waitUntil(lambda: prop(plan_rules, "testFailed"))
+    assert prop(plan_rules, "testResult") == "「not a host!」不是域名或 IP"
+    plan_rules.setTestText("")
+    assert prop(plan_rules, "testResult") == ""
 
     # A change to the plan tests the text again.
-    routing.setTestText("10.1.2.3")
-    qtbot.waitUntil(lambda: prop(routing, "testResult").startswith("命中「私有网络」"))
+    plan_rules.setTestText("10.1.2.3")
+    qtbot.waitUntil(lambda: prop(plan_rules, "testResult").startswith("命中「私有网络」"))
     with qtbot.waitSignal(routing.applied):
-        routing.setRuleEnabled(rows(routing, "rules")[1].id, False)
-    qtbot.waitUntil(lambda: prop(routing, "testResult").startswith("命中「其他流量」"))
+        plan_rules.setRuleEnabled(rows(plan_rules, "rows")[1].id, False)
+    qtbot.waitUntil(lambda: prop(plan_rules, "testResult").startswith("命中「其他流量」"))
 
 
 def test_search_and_target_filter(qtbot: QtBot, planned: ViewModels) -> None:
     routing = planned.routing
-    assert not prop(routing, "filtering")
-    labels = [(o["label"], o.get("separator", False)) for o in prop(routing, "targetFilterOptions")]
+    plan_rules = routing.plan_rules()
+    assert not prop(plan_rules, "filtering")
+    labels = [
+        (o["label"], o.get("separator", False)) for o in prop(plan_rules, "targetFilterOptions")
+    ]
     assert labels == [("全部目标", False), ("美国", True), ("直连", False), ("拒绝", False)]
-    routing.setTargetFilter("DIRECT")
-    assert prop(routing, "filtering")
-    assert prop(routing, "targetFilterLabel") == "直连"
-    assert [r.name for r in rows(routing, "rules")] == ["私有网络", "国内常用"]
+    plan_rules.setTargetFilter("DIRECT")
+    assert prop(plan_rules, "filtering")
+    assert prop(plan_rules, "targetFilterLabel") == "直连"
+    assert [r.name for r in rows(plan_rules, "rows")] == ["私有网络", "国内常用"]
     # Moves still go by the whole list.
-    assert [(r.first, r.last) for r in rows(routing, "rules")] == [(False, False), (False, True)]
-    routing.setPlanRuleQuery("GEOIP")
-    assert [r.name for r in rows(routing, "rules")] == ["私有网络", "国内常用"]
-    routing.setPlanRuleQuery("私有")
-    assert [r.name for r in rows(routing, "rules")] == ["私有网络"]
-    routing.setPlanRuleQuery("nothing")
-    assert prop(routing, "rulesFilteredEmpty")
-    routing.setPlanRuleQuery("")
-    routing.setTargetFilter("")
-    assert len(rows(routing, "rules")) == 6
-    assert not prop(routing, "rulesFilteredEmpty")
+    assert [(r.first, r.last) for r in rows(plan_rules, "rows")] == [(False, False), (False, True)]
+    plan_rules.setQuery("GEOIP")
+    assert [r.name for r in rows(plan_rules, "rows")] == ["私有网络", "国内常用"]
+    plan_rules.setQuery("私有")
+    assert [r.name for r in rows(plan_rules, "rows")] == ["私有网络"]
+    plan_rules.setQuery("nothing")
+    assert prop(plan_rules, "filteredEmpty")
+    plan_rules.setQuery("")
+    plan_rules.setTargetFilter("")
+    assert len(rows(plan_rules, "rows")) == 6
+    assert not prop(plan_rules, "filteredEmpty")
 
 
 def test_a_profiles_rules_become_a_plan(qtbot: QtBot, view_models: ViewModels) -> None:

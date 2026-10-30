@@ -133,7 +133,11 @@ def test_a_tailscale_network_logs_in_through_the_browser(
     # Its rules: Tailscale's ranges and domain, to mesh:<id>.
     with qtbot.waitSignal(routing.applied):
         networks.addCommonRules(network.id)
-    added = [r for r in prop(routing, "rules").rows if r.targetId == plans.MESH_PREFIX + network.id]
+    added = [
+        r
+        for r in prop(routing.plan_rules(), "rows").rows
+        if r.targetId == plans.MESH_PREFIX + network.id
+    ]
     assert [r.target for r in added] == ["家里", "家里"]
     assert any(r.proxy == "家里" for r in host.report.rules) if host.report else False
 
@@ -291,7 +295,9 @@ def test_removing_a_network_rejects_its_rules(
     assert host.config is not None
     assert host.config.composition is not None
     assert host.config.composition.mesh == ()
-    rejected = [r for r in prop(routing, "rules").rows if r.targetId == f"mesh:{network_id}"]
+    rejected = [
+        r for r in prop(routing.plan_rules(), "rows").rows if r.targetId == f"mesh:{network_id}"
+    ]
     assert [(r.target, r.warning) for r in rejected] == [
         (f"mesh:{network_id}", "不存在，已拒绝连接")
     ] * 2
@@ -337,7 +343,7 @@ def test_a_network_without_its_secret_waits_for_it(
     assert plan is not None
     rule = PlanRule("r-lab", "ip", {"items": ["10.144.144.0/24"]}, f"mesh:{network_id}")
     with qtbot.waitSignal(routing.applied):
-        routing.put_plan(replace(plan, rules=(rule, *plan.rules)), lambda: None, print)
+        routing.commit(replace(plan, rules=(rule, *plan.rules)), failed=print)
     credentials.secrets.clear()
     planned.library.networks._secrets = None  # read again, as at the next start
     add(qtbot, networks, "tailscale", name="家里", login="key", auth_key="k")
@@ -348,7 +354,7 @@ def test_a_network_without_its_secret_waits_for_it(
     assert host.config is not None
     assert host.config.composition is not None
     assert [n.name for n in host.config.composition.mesh] == ["家里"]
-    lab = next(r for r in prop(routing, "rules").rows if r.ruleId == "r-lab")
+    lab = next(r for r in prop(routing.plan_rules(), "rows").rows if r.ruleId == "r-lab")
     assert (lab.target, lab.warning) == ("实验室", "不存在，已拒绝连接")
 
 

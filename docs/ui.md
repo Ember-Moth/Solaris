@@ -527,6 +527,13 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   "以此创建我的方案"，方案菜单里的"导入…"、"导出…"和"查看生成的配置…"（`ConvertToPlan`、`ExportPlan`）。
   节点数和地区来自报告，没有报告时本来就不写。分类列表照旧用安装包的清单。
 - **`RoutingViewModel`**（`viewmodels/routing.py`）：
+  - 它管分流方式、方案的选择与增删、撤销，以及改动的提交。页面的各部分是它的子对象，读显示中的方案，改动交给它
+    提交："订阅自带"是 `ProfileRoutes`（`viewmodels/routing_profile.py`）；规则标签是 `PlanRules`
+    （`viewmodels/routing_rules.py`），含规则测试、搜索和按目标筛选；策略组标签上，各组是 `PlanGroups`
+    （`viewmodels/routing_groups.py`），组网是 `MeshNetworks`，链式出口是 `WarpExit`、`VpnGateExit`；对话框是
+    `RuleEditor`、`GroupEditor` 和 `PlanTransfer`。
+  - QML 也这样拆：`ui/pages/RoutingPage.qml` 是页面外壳（标题栏、方案栏、标签切换和几部分共用的对话框），各部分
+    在 `ui/pages/routing/`。
   - 改动立即显示，再交给配置库；被拒绝时恢复为已存储的方案，原因写在标题栏。
   - 拖动和菜单里的上移、下移先只改显示，停止 1 秒后作为一次改动提交；其他改动会顺带提交它们。
   - 删除规则后标题栏显示撤销提示 8 秒，或者到下一次改动为止；撤销就是把删除前的方案存回去（软删除的记录恢复）。
@@ -541,10 +548,10 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
     文字重测。
   - **搜索与按目标筛选**只影响显示：`RuleRow` 仍按完整列表算 `first` / `last`，所以菜单里的上移、下移照常；
     `filtering` 为真时 QML 禁用拖动手柄。
-  - **自建策略组**：`customGroups` 列出方案里的自建组，说明写"类型 · 节点数、其他成员数、直连 / 拒绝"，节点数取
+  - **自建策略组**：`PlanGroups.custom` 列出方案里的自建组，说明写"类型 · 节点数、其他成员数、直连 / 拒绝"，节点数取
     报告里的 `node_count`。编辑器是 `GroupEditor`（`viewmodels/routing_groups.py`）：条件改动停止 0.25 秒后经
     `ProfileLibrary.plans.preview_group` 调用 `PreviewGroup`（组名临时用 id，名称不影响预览），延迟取自运行中内核的
-    `list_groups`。保存走 `RoutingViewModel.put_group`：编辑的组保持位置，新组排在最后，内核拒绝时对话框不关闭。
+    `list_groups`。保存走 `PlanGroups.put_group`：编辑的组保持位置，新组排在最后，内核拒绝时对话框不关闭。
     删除前列出引用它的规则条目、兜底和其他组（routing.md §5.5），确认后这些规则改走节点选择、其他组去掉它，
     可以撤销。
   - **转换与导出**是 `PlanTransfer`（`viewmodels/routing_transfer.py`）：`convert_profile` / `convert_file`
@@ -558,10 +565,10 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   禁用并注明"未启用"。规则行按报告的警告写目标后的提示：`region_empty`"无节点，暂走节点选择"、`group_empty`
   "没有成员，暂走节点选择"、`egress_unavailable`"不可用，已拒绝连接"、`mesh_missing`"不存在，已拒绝连接"；
   `via_empty`、`mesh_restricted` 不属于哪条规则，写在出口行和组网行上。
-- **组网出站**（mesh.md 第 5 节）：策略组标签里自建之后是"组网"一节，行来自报告的 `mesh`（只在"我的方案"下），
-  说明写"类型 · 来自「订阅名」"，有 `mesh_restricted` 时加"· 已关闭 选项"。应用内添加的网络排在它们前面，
-  由 `MeshNetworks`（`viewmodels/routing_mesh.py`）提供，见 mesh.md 10.7 节；所以"我的方案"下这一节总是显示，
-  最后一行是"添加网络…"。
+- **组网出站**（mesh.md 第 5 节）：策略组标签里自建之后是"组网"一节，由 `MeshNetworks`
+  （`viewmodels/routing_mesh.py`）提供。行来自报告的 `mesh`（只在"我的方案"下），说明写"类型 · 来自「订阅名」"，
+  有 `mesh_restricted` 时加"· 已关闭 选项"。应用内添加的网络排在它们前面，见 mesh.md 10.7 节；所以"我的方案"下
+  这一节总是显示，最后一行是"添加网络…"。
   名称取报告里生成配置用的名称，报告里没有了（`mesh_missing`）时取 `mesh:` 引用里的原名。"更多"菜单：
   - "添加常用规则"：Tailscale 把 `plans.common_mesh_rules` 的 IP 段规则（`100.64.0.0/10`、`fd7a:115c:a1e0::/48`，
     `no-resolve`）和域名规则（`ts.net`）插在最前面，已有一样的条目就跳过，标题栏给出撤销提示；ZeroTier、EasyTier

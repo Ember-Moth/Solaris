@@ -507,10 +507,10 @@ def test_routing_page_loads_without_qml_warnings(qtbot: QtBot, loaded: Loaded) -
     routing = view_models.routing
     qtbot.waitUntil(lambda: view_models.overview.property("connected"))
     view_models.shell.setPage("routing")
-    qtbot.waitUntil(lambda: routing.property("profileRunning"))
+    qtbot.waitUntil(lambda: routing._profile_routes.property("running"))
     with qtbot.waitSignal(routing.routingChanged):
         routing.setMode("plan")
-    qtbot.waitUntil(lambda: len(routing.property("rules").rows) == 6)
+    qtbot.waitUntil(lambda: len(routing.plan_rules().property("rows").rows) == 6)
     page = loaded.item(lambda i: i.metaObject().className().startswith("RoutingPage"))
     page.setProperty("tab", "groups")
     qtbot.wait(50)

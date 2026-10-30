@@ -103,7 +103,7 @@ def test_converting_a_subscription_of_400_rules(app: App) -> None:
         transfer.create("airport 的规则", True)
         app.until(lambda: app.prop(routing, "mode") == "plan")
         app.until(lambda: app.prop(routing, "planName") == "airport 的规则")
-        assert len(app.rows_of(routing, "rules")) == entries
+        assert len(app.rows_of(routing.plan_rules(), "rows")) == entries
         app.connect()
         # The core runs every converted rule, in order and to the same targets.
         groups = {g.id: g for g in routing.plan().groups}  # type: ignore[union-attr]
@@ -170,7 +170,9 @@ def test_the_preview_is_what_the_proxies_page_shows(app: App) -> None:
         editor.setAdvancedOpen(True)
         editor.setOption("url", health.url("/generate_204"))
         editor.save()
-        app.until(lambda: [g.name for g in app.rows_of(routing, "customGroups")] == ["常规倍率"])
+        app.until(
+            lambda: [g.name for g in app.rows_of(routing.plan_groups(), "custom")] == ["常规倍率"]
+        )
         local_tests(app, health)
         app.connect()
 
@@ -309,12 +311,13 @@ def test_the_rule_test_agrees_with_connections(app: App) -> None:
         vm.shell.setPage("routing")
 
         tested = {}
-        routing._test_timer.setInterval(0)
+        rules = routing.plan_rules()
+        rules._test_timer.setInterval(0)
         for host in SAMPLES:
-            routing.setTestText("")  # clears the last result
-            routing.setTestText(f"{host}:{sample.port}")
-            app.until(lambda: routing._test is not None and not app.prop(routing, "testing"))
-            tested[host] = routing._test
+            rules.setTestText("")  # clears the last result
+            rules.setTestText(f"{host}:{sample.port}")
+            app.until(lambda: rules._test is not None and not app.prop(rules, "testing"))
+            tested[host] = rules._test
             if host == "t.me":
                 app.screenshot("routing-rule-test")
 

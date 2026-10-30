@@ -649,6 +649,33 @@
     </message>
 </context>
 <context>
+    <name>ExitsSection</name>
+    <message>
+        <source>链式出口</source>
+        <translation>Chained exits</translation>
+    </message>
+    <message>
+        <source>设置「%1」</source>
+        <translation>Set up “%1”</translation>
+    </message>
+    <message>
+        <source>%1。%2</source>
+        <translation>%1. %2</translation>
+    </message>
+    <message>
+        <source>%1 的更多操作</source>
+        <translation>More actions for %1</translation>
+    </message>
+    <message>
+        <source>设置…</source>
+        <translation>Settings…</translation>
+    </message>
+    <message>
+        <source>立即刷新</source>
+        <translation>Refresh now</translation>
+    </message>
+</context>
+<context>
     <name>Feedback</name>
     <message>
         <source>该功能尚未实现</source>
@@ -1024,6 +1051,65 @@
     </message>
 </context>
 <context>
+    <name>GroupsSection</name>
+    <message>
+        <source>内置</source>
+        <translation>Built in</translation>
+    </message>
+    <message>
+        <source>地区</source>
+        <translation>Regions</translation>
+    </message>
+    <message>
+        <source>按节点名称自动生成</source>
+        <translation>Made from the node names</translation>
+    </message>
+    <message>
+        <source>节点池为空，没有地区组</source>
+        <translation>The node pool is empty, so there are no region groups</translation>
+    </message>
+    <message>
+        <source>自建</source>
+        <translation>Custom</translation>
+    </message>
+    <message>
+        <source>还没有自建策略组</source>
+        <translation>No custom groups yet</translation>
+    </message>
+    <message>
+        <source>编辑「%1」</source>
+        <translation>Edit “%1”</translation>
+    </message>
+    <message>
+        <source>%1 的更多操作</source>
+        <translation>More actions for %1</translation>
+    </message>
+    <message>
+        <source>显示</source>
+        <translation>Show</translation>
+    </message>
+    <message>
+        <source>隐藏</source>
+        <translation>Hide</translation>
+    </message>
+    <message>
+        <source>复制为自建策略组…</source>
+        <translation>Copy as custom group…</translation>
+    </message>
+    <message>
+        <source>编辑…</source>
+        <translation>Edit…</translation>
+    </message>
+    <message>
+        <source>复制…</source>
+        <translation>Duplicate…</translation>
+    </message>
+    <message>
+        <source>删除</source>
+        <translation>Delete</translation>
+    </message>
+</context>
+<context>
     <name>InfoPatternDialog</name>
     <message>
         <source>节点池设置</source>
@@ -1360,12 +1446,35 @@
         <translation>Via {via}</translation>
     </message>
     <message>
+        <source>{type} · 来自「{source}」</source>
+        <translation>{type} · from “{source}”</translation>
+    </message>
+    <message>
+        <source>、</source>
+        <translation>, </translation>
+    </message>
+    <message>
+        <source>{caption} · 已关闭 {options}</source>
+        <translation>{caption} · turned off {options}</translation>
+    </message>
+    <message>
         <source>连接后才能登录</source>
         <translation>Connect first to log in</translation>
     </message>
     <message>
         <source>登录链接不是网页地址，没有打开</source>
         <translation>The login link is not a web address, so it was not opened</translation>
+    </message>
+    <message numerus="yes">
+        <source>已为「{name}」添加 %n 条规则</source>
+        <translation>
+            <numerusform>Added %n rule for “{name}”</numerusform>
+            <numerusform>Added %n rules for “{name}”</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>撤销添加「{name}」的规则</source>
+        <translation>Undo adding rules for “{name}”</translation>
     </message>
     <message>
         <source>添加网络</source>
@@ -1426,6 +1535,65 @@
     <message>
         <source>本机的登录状态和密钥一并删除，指向它的规则会拒绝连接。设备要到网络的管理页移除。</source>
         <translation>Its login and secrets on this device go too, and its rules reject connections. Remove the device on the network’s admin page.</translation>
+    </message>
+</context>
+<context>
+    <name>MeshSection</name>
+    <message>
+        <source>组网</source>
+        <translation>Mesh networks</translation>
+    </message>
+    <message>
+        <source>编辑「%1」</source>
+        <translation>Edit “%1”</translation>
+    </message>
+    <message>
+        <source>%1。%2</source>
+        <translation>%1. %2</translation>
+    </message>
+    <message>
+        <source>%1 的更多操作</source>
+        <translation>More actions for %1</translation>
+    </message>
+    <message>
+        <source>Tailscale、ZeroTier、EasyTier</source>
+        <translation>Tailscale, ZeroTier, EasyTier</translation>
+    </message>
+    <message>
+        <source>还没有组网：访问自己的设备和内网</source>
+        <translation>No mesh networks yet: reach your own devices and LANs</translation>
+    </message>
+    <message>
+        <source>添加网络…</source>
+        <translation>Add network…</translation>
+    </message>
+    <message>
+        <source>登录…</source>
+        <translation>Log in…</translation>
+    </message>
+    <message>
+        <source>复制本机地址</source>
+        <translation>Copy this device’s address</translation>
+    </message>
+    <message>
+        <source>添加常用规则</source>
+        <translation>Add common rules</translation>
+    </message>
+    <message>
+        <source>使用它的规则</source>
+        <translation>Rules that use it</translation>
+    </message>
+    <message>
+        <source>编辑…</source>
+        <translation>Edit…</translation>
+    </message>
+    <message>
+        <source>删除…</source>
+        <translation>Delete…</translation>
+    </message>
+    <message>
+        <source>删除</source>
+        <translation>Delete</translation>
     </message>
 </context>
 <context>
@@ -1694,6 +1862,133 @@ prepend-rules:
     </message>
 </context>
 <context>
+    <name>PlanGroups</name>
+    <message>
+        <source>其他流量</source>
+        <translation>Other traffic</translation>
+    </message>
+    <message>
+        <source>删除策略组「{name}」？</source>
+        <translation>Delete group “{name}”?</translation>
+    </message>
+    <message>
+        <source>「{name}」</source>
+        <translation>“{name}” </translation>
+    </message>
+    <message>
+        <source>规则{names}以它为目标，删除后改走「节点选择」。</source>
+        <translation>The rules {names}send traffic to it; they go to “Proxy” afterwards. </translation>
+    </message>
+    <message>
+        <source>策略组{names}里不再包含它。</source>
+        <translation>The groups {names}no longer hold it.</translation>
+    </message>
+    <message>
+        <source>WARP 出口经由它，删除后改经「节点选择」。</source>
+        <translation>The WARP exit goes out through it; it goes through “Proxy” afterwards. </translation>
+    </message>
+    <message>
+        <source>VPN Gate 出口经由它，删除后改经「节点选择」。</source>
+        <translation>The VPN Gate exit goes out through it; it goes through “Proxy” afterwards. </translation>
+    </message>
+    <message>
+        <source>没有规则或策略组引用它。</source>
+        <translation>No rule or group uses it.</translation>
+    </message>
+    <message>
+        <source>已删除「{name}」</source>
+        <translation>Deleted “{name}”</translation>
+    </message>
+    <message>
+        <source>撤销删除「{name}」</source>
+        <translation>Undo deleting “{name}”</translation>
+    </message>
+    <message>
+        <source>自动选择、{regions}、直连</source>
+        <translation>Auto, {regions}, direct</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 个地区组</source>
+        <translation>
+            <numerusform>%n region group</numerusform>
+            <numerusform>%n region groups</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 个节点</source>
+        <translation>
+            <numerusform>%n node</numerusform>
+            <numerusform>%n nodes</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 个其他成员</source>
+        <translation>
+            <numerusform>%n other member</numerusform>
+            <numerusform>%n other members</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>、</source>
+        <translation>, </translation>
+    </message>
+    <message>
+        <source>没有成员</source>
+        <translation>No members</translation>
+    </message>
+    <message>
+        <source>自动 · 已隐藏</source>
+        <translation>Automatic · Hidden</translation>
+    </message>
+    <message>
+        <source>自动</source>
+        <translation>Automatic</translation>
+    </message>
+    <message>
+        <source>已隐藏 · {caption}</source>
+        <translation>Hidden · {caption}</translation>
+    </message>
+</context>
+<context>
+    <name>PlanRules</name>
+    <message>
+        <source>已删除「{name}」</source>
+        <translation>Deleted “{name}”</translation>
+    </message>
+    <message>
+        <source>撤销删除「{name}」</source>
+        <translation>Undo deleting “{name}”</translation>
+    </message>
+    <message>
+        <source>「{text}」不是域名或 IP</source>
+        <translation>“{text}” is neither a domain nor an IP address</translation>
+    </message>
+    <message>
+        <source>没有规则匹配 → {chain}</source>
+        <translation>No rule matches → {chain}</translation>
+    </message>
+    <message>
+        <source>命中「{name}」 → {chain}</source>
+        <translation>Matches “{name}” → {chain}</translation>
+    </message>
+    <message>
+        <source>命中覆写的规则 {rule} → {chain}</source>
+        <translation>Matches the override’s rule {rule} → {chain}</translation>
+    </message>
+    <message>
+        <source>{line}（解析为 {ip}）</source>
+        <translation>{line} (resolved to {ip})</translation>
+    </message>
+    <message>
+        <source>其他流量</source>
+        <translation>Other traffic</translation>
+    </message>
+    <message>
+        <source>全部目标</source>
+        <translation>All targets</translation>
+    </message>
+</context>
+<context>
     <name>PlanTransfer</name>
     <message>
         <source>以「{name}」创建方案</source>
@@ -1826,6 +2121,122 @@ prepend-rules:
     <message>
         <source>日常</source>
         <translation>Everyday</translation>
+    </message>
+</context>
+<context>
+    <name>ProfileRoutes</name>
+    <message>
+        <source>只有节点</source>
+        <translation>Nodes only</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 条规则</source>
+        <translation>
+            <numerusform>%n rule</numerusform>
+            <numerusform>%n rules</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 个策略组</source>
+        <translation>
+            <numerusform>%n group</numerusform>
+            <numerusform>%n groups</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>{groups}、{rules} · 连接后逐条列出</source>
+        <translation>{groups}, {rules} · Listed once connected</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 个</source>
+        <translation>
+            <numerusform>%n group</numerusform>
+            <numerusform>%n groups</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>匹配 %n 条</source>
+        <translation>
+            <numerusform>%n match</numerusform>
+            <numerusform>%n matches</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 条</source>
+        <translation>
+            <numerusform>%n rule</numerusform>
+            <numerusform>%n rules</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>{type} · %n 个成员</source>
+        <translation>
+            <numerusform>{type} · %n member</numerusform>
+            <numerusform>{type} · %n members</numerusform>
+        </translation>
+    </message>
+</context>
+<context>
+    <name>ProfileSection</name>
+    <message>
+        <source>使用的订阅</source>
+        <translation>Subscription</translation>
+    </message>
+    <message>
+        <source>搜索规则</source>
+        <translation>Search rules</translation>
+    </message>
+    <message>
+        <source>以此创建我的方案</source>
+        <translation>Create my plan from it</translation>
+    </message>
+    <message>
+        <source>订阅里没有规则</source>
+        <translation>No subscription has rules</translation>
+    </message>
+    <message>
+        <source>尚未导入订阅</source>
+        <translation>No subscriptions yet</translation>
+    </message>
+    <message>
+        <source>这些订阅只有节点；改用我的方案后，它们的节点组成节点池</source>
+        <translation>These subscriptions have nodes only; with your plan, their nodes make up the node pool</translation>
+    </message>
+    <message>
+        <source>导入订阅后才能使用它的规则</source>
+        <translation>Import a subscription to use its rules</translation>
+    </message>
+    <message>
+        <source>改用我的方案</source>
+        <translation>Use my plan instead</translation>
+    </message>
+    <message>
+        <source>导入订阅</source>
+        <translation>Import subscription</translation>
+    </message>
+    <message>
+        <source>策略组</source>
+        <translation>Groups</translation>
+    </message>
+    <message>
+        <source>规则</source>
+        <translation>Rules</translation>
+    </message>
+    <message>
+        <source>匹配</source>
+        <translation>Match</translation>
+    </message>
+    <message>
+        <source>目标</source>
+        <translation>Target</translation>
+    </message>
+    <message>
+        <source>%1，%2</source>
+        <translation>%1, %2</translation>
+    </message>
+    <message>
+        <source>没有匹配的规则</source>
+        <translation>No matching rules</translation>
     </message>
 </context>
 <context>
@@ -2342,38 +2753,6 @@ prepend-rules:
         <translation>Routing mode</translation>
     </message>
     <message>
-        <source>使用的订阅</source>
-        <translation>Subscription</translation>
-    </message>
-    <message>
-        <source>搜索规则</source>
-        <translation>Search rules</translation>
-    </message>
-    <message>
-        <source>以此创建我的方案</source>
-        <translation>Create my plan from it</translation>
-    </message>
-    <message>
-        <source>订阅里没有规则</source>
-        <translation>No subscription has rules</translation>
-    </message>
-    <message>
-        <source>尚未导入订阅</source>
-        <translation>No subscriptions yet</translation>
-    </message>
-    <message>
-        <source>这些订阅只有节点；改用我的方案后，它们的节点组成节点池</source>
-        <translation>These subscriptions have nodes only; with your plan, their nodes make up the node pool</translation>
-    </message>
-    <message>
-        <source>导入订阅后才能使用它的规则</source>
-        <translation>Import a subscription to use its rules</translation>
-    </message>
-    <message>
-        <source>改用我的方案</source>
-        <translation>Use my plan instead</translation>
-    </message>
-    <message>
         <source>导入订阅</source>
         <translation>Import subscription</translation>
     </message>
@@ -2384,22 +2763,6 @@ prepend-rules:
     <message>
         <source>规则</source>
         <translation>Rules</translation>
-    </message>
-    <message>
-        <source>匹配</source>
-        <translation>Match</translation>
-    </message>
-    <message>
-        <source>目标</source>
-        <translation>Target</translation>
-    </message>
-    <message>
-        <source>%1，%2</source>
-        <translation>%1, %2</translation>
-    </message>
-    <message>
-        <source>没有匹配的规则</source>
-        <translation>No matching rules</translation>
     </message>
     <message>
         <source>方案</source>
@@ -2422,136 +2785,12 @@ prepend-rules:
         <translation>New group</translation>
     </message>
     <message>
-        <source>输入域名或 IP 测试</source>
-        <translation>Test a domain or IP</translation>
-    </message>
-    <message>
-        <source>连接后可测试域名或 IP</source>
-        <translation>Connect to test a domain or IP</translation>
-    </message>
-    <message>
-        <source>测试域名或 IP</source>
-        <translation>Test a domain or IP</translation>
-    </message>
-    <message>
-        <source>按目标筛选</source>
-        <translation>Filter by target</translation>
-    </message>
-    <message>
         <source>节点池里还没有节点</source>
         <translation>The node pool has no nodes yet</translation>
     </message>
     <message>
         <source>规则照常保存；指向地区的规则暂走节点选择</source>
         <translation>Rules are saved as usual; rules for a region go to Proxy meanwhile</translation>
-    </message>
-    <message>
-        <source>规则，从上到下匹配</source>
-        <translation>Rules, matched from the top</translation>
-    </message>
-    <message>
-        <source>其他流量</source>
-        <translation>Other traffic</translation>
-    </message>
-    <message>
-        <source>以上规则都不匹配时</source>
-        <translation>When no rule above matches</translation>
-    </message>
-    <message>
-        <source>其他流量的目标</source>
-        <translation>Target for other traffic</translation>
-    </message>
-    <message>
-        <source>内置</source>
-        <translation>Built in</translation>
-    </message>
-    <message>
-        <source>地区</source>
-        <translation>Regions</translation>
-    </message>
-    <message>
-        <source>按节点名称自动生成</source>
-        <translation>Made from the node names</translation>
-    </message>
-    <message>
-        <source>节点池为空，没有地区组</source>
-        <translation>The node pool is empty, so there are no region groups</translation>
-    </message>
-    <message>
-        <source>自建</source>
-        <translation>Custom</translation>
-    </message>
-    <message>
-        <source>还没有自建策略组</source>
-        <translation>No custom groups yet</translation>
-    </message>
-    <message>
-        <source>%1 的更多操作</source>
-        <translation>More actions for %1</translation>
-    </message>
-    <message>
-        <source>组网</source>
-        <translation>Mesh networks</translation>
-    </message>
-    <message>
-        <source>Tailscale、ZeroTier、EasyTier</source>
-        <translation>Tailscale, ZeroTier, EasyTier</translation>
-    </message>
-    <message>
-        <source>还没有组网：访问自己的设备和内网</source>
-        <translation>No mesh networks yet: reach your own devices and LANs</translation>
-    </message>
-    <message>
-        <source>添加网络…</source>
-        <translation>Add network…</translation>
-    </message>
-    <message>
-        <source>登录…</source>
-        <translation>Log in…</translation>
-    </message>
-    <message>
-        <source>复制本机地址</source>
-        <translation>Copy this device’s address</translation>
-    </message>
-    <message>
-        <source>删除…</source>
-        <translation>Delete…</translation>
-    </message>
-    <message>
-        <source>链式出口</source>
-        <translation>Chained exits</translation>
-    </message>
-    <message>
-        <source>设置「%1」</source>
-        <translation>Set up “%1”</translation>
-    </message>
-    <message>
-        <source>%1。%2</source>
-        <translation>%1. %2</translation>
-    </message>
-    <message>
-        <source>启用「%1」</source>
-        <translation>Enable “%1”</translation>
-    </message>
-    <message>
-        <source>复制为自建策略组…</source>
-        <translation>Copy as custom group…</translation>
-    </message>
-    <message>
-        <source>添加常用规则</source>
-        <translation>Add common rules</translation>
-    </message>
-    <message>
-        <source>使用它的规则</source>
-        <translation>Rules that use it</translation>
-    </message>
-    <message>
-        <source>设置…</source>
-        <translation>Settings…</translation>
-    </message>
-    <message>
-        <source>立即刷新</source>
-        <translation>Refresh now</translation>
     </message>
     <message>
         <source>导入方案</source>
@@ -2564,18 +2803,6 @@ prepend-rules:
     <message>
         <source>所有文件 (*)</source>
         <translation>All files (*)</translation>
-    </message>
-    <message>
-        <source>编辑「%1」</source>
-        <translation>Edit “%1”</translation>
-    </message>
-    <message>
-        <source>%1。目标 %2</source>
-        <translation>%1. Target %2</translation>
-    </message>
-    <message>
-        <source>「%1」的更多操作</source>
-        <translation>More actions for “%1”</translation>
     </message>
     <message>
         <source>新建…</source>
@@ -2608,26 +2835,6 @@ prepend-rules:
     <message>
         <source>节点池设置…</source>
         <translation>Node pool settings…</translation>
-    </message>
-    <message>
-        <source>编辑…</source>
-        <translation>Edit…</translation>
-    </message>
-    <message>
-        <source>上移</source>
-        <translation>Move up</translation>
-    </message>
-    <message>
-        <source>下移</source>
-        <translation>Move down</translation>
-    </message>
-    <message>
-        <source>显示</source>
-        <translation>Show</translation>
-    </message>
-    <message>
-        <source>隐藏</source>
-        <translation>Hide</translation>
     </message>
 </context>
 <context>
@@ -2699,42 +2906,6 @@ prepend-rules:
         </translation>
     </message>
     <message>
-        <source>只有节点</source>
-        <translation>Nodes only</translation>
-    </message>
-    <message numerus="yes">
-        <source>%n 个策略组</source>
-        <translation>
-            <numerusform>%n group</numerusform>
-            <numerusform>%n groups</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>{groups}、{rules} · 连接后逐条列出</source>
-        <translation>{groups}, {rules} · Listed once connected</translation>
-    </message>
-    <message numerus="yes">
-        <source>%n 个</source>
-        <translation>
-            <numerusform>%n group</numerusform>
-            <numerusform>%n groups</numerusform>
-        </translation>
-    </message>
-    <message numerus="yes">
-        <source>匹配 %n 条</source>
-        <translation>
-            <numerusform>%n match</numerusform>
-            <numerusform>%n matches</numerusform>
-        </translation>
-    </message>
-    <message numerus="yes">
-        <source>%n 条</source>
-        <translation>
-            <numerusform>%n rule</numerusform>
-            <numerusform>%n rules</numerusform>
-        </translation>
-    </message>
-    <message>
         <source>新方案</source>
         <translation>New plan</translation>
     </message>
@@ -2757,133 +2928,6 @@ prepend-rules:
     <message>
         <source>其他流量</source>
         <translation>Other traffic</translation>
-    </message>
-    <message>
-        <source>已删除「{name}」</source>
-        <translation>Deleted “{name}”</translation>
-    </message>
-    <message>
-        <source>撤销删除「{name}」</source>
-        <translation>Undo deleting “{name}”</translation>
-    </message>
-    <message>
-        <source>「{text}」不是域名或 IP</source>
-        <translation>“{text}” is neither a domain nor an IP address</translation>
-    </message>
-    <message>
-        <source>没有规则匹配 → {chain}</source>
-        <translation>No rule matches → {chain}</translation>
-    </message>
-    <message>
-        <source>命中「{name}」 → {chain}</source>
-        <translation>Matches “{name}” → {chain}</translation>
-    </message>
-    <message>
-        <source>命中覆写的规则 {rule} → {chain}</source>
-        <translation>Matches the override’s rule {rule} → {chain}</translation>
-    </message>
-    <message>
-        <source>{line}（解析为 {ip}）</source>
-        <translation>{line} (resolved to {ip})</translation>
-    </message>
-    <message>
-        <source>全部目标</source>
-        <translation>All targets</translation>
-    </message>
-    <message numerus="yes">
-        <source>已为「{name}」添加 %n 条规则</source>
-        <translation>
-            <numerusform>Added %n rule for “{name}”</numerusform>
-            <numerusform>Added %n rules for “{name}”</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>撤销添加「{name}」的规则</source>
-        <translation>Undo adding rules for “{name}”</translation>
-    </message>
-    <message>
-        <source>删除策略组「{name}」？</source>
-        <translation>Delete group “{name}”?</translation>
-    </message>
-    <message>
-        <source>「{name}」</source>
-        <translation>“{name}” </translation>
-    </message>
-    <message>
-        <source>规则{names}以它为目标，删除后改走「节点选择」。</source>
-        <translation>The rules {names}send traffic to it; they go to “Proxy” afterwards. </translation>
-    </message>
-    <message>
-        <source>策略组{names}里不再包含它。</source>
-        <translation>The groups {names}no longer hold it.</translation>
-    </message>
-    <message>
-        <source>WARP 出口经由它，删除后改经「节点选择」。</source>
-        <translation>The WARP exit goes out through it; it goes through “Proxy” afterwards. </translation>
-    </message>
-    <message>
-        <source>VPN Gate 出口经由它，删除后改经「节点选择」。</source>
-        <translation>The VPN Gate exit goes out through it; it goes through “Proxy” afterwards. </translation>
-    </message>
-    <message>
-        <source>没有规则或策略组引用它。</source>
-        <translation>No rule or group uses it.</translation>
-    </message>
-    <message>
-        <source>自动选择、{regions}、直连</source>
-        <translation>Auto, {regions}, direct</translation>
-    </message>
-    <message numerus="yes">
-        <source>%n 个地区组</source>
-        <translation>
-            <numerusform>%n region group</numerusform>
-            <numerusform>%n region groups</numerusform>
-        </translation>
-    </message>
-    <message numerus="yes">
-        <source>%n 个节点</source>
-        <translation>
-            <numerusform>%n node</numerusform>
-            <numerusform>%n nodes</numerusform>
-        </translation>
-    </message>
-    <message numerus="yes">
-        <source>%n 个其他成员</source>
-        <translation>
-            <numerusform>%n other member</numerusform>
-            <numerusform>%n other members</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>没有成员</source>
-        <translation>No members</translation>
-    </message>
-    <message>
-        <source>{type} · 来自「{source}」</source>
-        <translation>{type} · from “{source}”</translation>
-    </message>
-    <message>
-        <source>{caption} · 已关闭 {options}</source>
-        <translation>{caption} · turned off {options}</translation>
-    </message>
-    <message>
-        <source>自动 · 已隐藏</source>
-        <translation>Automatic · Hidden</translation>
-    </message>
-    <message>
-        <source>自动</source>
-        <translation>Automatic</translation>
-    </message>
-    <message>
-        <source>已隐藏 · {caption}</source>
-        <translation>Hidden · {caption}</translation>
-    </message>
-    <message numerus="yes">
-        <source>{type} · %n 个成员</source>
-        <translation>
-            <numerusform>{type} · %n member</numerusform>
-            <numerusform>{type} · %n members</numerusform>
-        </translation>
     </message>
     <message>
         <source>自动选择</source>
@@ -3152,6 +3196,84 @@ prepend-rules:
     <message>
         <source>已添加</source>
         <translation>Added</translation>
+    </message>
+</context>
+<context>
+    <name>RuleList</name>
+    <message>
+        <source>规则，从上到下匹配</source>
+        <translation>Rules, matched from the top</translation>
+    </message>
+    <message>
+        <source>没有匹配的规则</source>
+        <translation>No matching rules</translation>
+    </message>
+    <message>
+        <source>其他流量</source>
+        <translation>Other traffic</translation>
+    </message>
+    <message>
+        <source>以上规则都不匹配时</source>
+        <translation>When no rule above matches</translation>
+    </message>
+    <message>
+        <source>其他流量的目标</source>
+        <translation>Target for other traffic</translation>
+    </message>
+    <message>
+        <source>启用「%1」</source>
+        <translation>Enable “%1”</translation>
+    </message>
+    <message>
+        <source>编辑「%1」</source>
+        <translation>Edit “%1”</translation>
+    </message>
+    <message>
+        <source>%1。目标 %2</source>
+        <translation>%1. Target %2</translation>
+    </message>
+    <message>
+        <source>「%1」的更多操作</source>
+        <translation>More actions for “%1”</translation>
+    </message>
+    <message>
+        <source>编辑…</source>
+        <translation>Edit…</translation>
+    </message>
+    <message>
+        <source>上移</source>
+        <translation>Move up</translation>
+    </message>
+    <message>
+        <source>下移</source>
+        <translation>Move down</translation>
+    </message>
+    <message>
+        <source>删除</source>
+        <translation>Delete</translation>
+    </message>
+</context>
+<context>
+    <name>RuleTools</name>
+    <message>
+        <source>输入域名或 IP 测试</source>
+        <translation>Test a domain or IP</translation>
+    </message>
+    <message>
+        <source>连接后可测试域名或 IP</source>
+        <translation>Connect to test a domain or IP</translation>
+    </message>
+    <message>
+        <source>测试域名或 IP</source>
+        <translation>Test a domain or IP</translation>
+    </message>
+    <message>
+        <source>搜索规则</source>
+        <translation>Search rules</translation>
+    </message>
+    <message>
+        <source>按目标筛选</source>
+        <translation>Filter by target</translation>
     </message>
 </context>
 <context>
