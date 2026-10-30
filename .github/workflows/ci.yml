@@ -113,6 +113,27 @@ jobs:
         if: runner.os == 'macOS'
         run: go build -buildmode=c-archive -o "$RUNNER_TEMP/libsolaris.a" ./apple
 
+  # The macOS manager library and system extension (apple/README.md), built unsigned so that the
+  # Xcode project keeps compiling; signing and notarization belong to the release workflow.
+  # XcodeGen's projects need Xcode 16 or later, which macos-15 runs by default.
+  apple:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: src/core/go.mod
+          cache-dependency-path: src/core/go.sum
+      - name: XcodeGen
+        run: |
+          xcodebuild -version
+          brew install xcodegen
+      # The script needs only the standard library, so skip installing the project.
+      - name: Build (unsigned)
+        run: uv run --no-project python scripts/build_apple.py
+
   # The owned-TUN test creates a real TUN, so it runs only here, inside network
   # namespaces (docs/architecture.md §11). md-tun holds the engine; md-srv, on the
   # far side of a veth pair, serves the page the test fetches through the TUN. The

@@ -1,0 +1,5 @@
+// Lets Exports.swift check its exports against the header.
+module SolarisManagerHeader {
+  header "SolarisManager.h"
+  export *
+}

@@ -424,19 +424,26 @@ WinINet；内核停止时还原。开机恢复时，如果属主尚未登录，�
 Solaris.app/Contents/
 ├── MacOS/Solaris                                   Nuitka standalone UI
 ├── Frameworks/SolarisManager.dylib                 Swift，C ABI，供 ctypes 调用
-└── Library/SystemExtensions/<bundle-id>.systemextension
-    └── NEPacketTunnelProvider + 本仓库 Go 模块编出的 xcframework
+└── Library/SystemExtensions/dev.tschen.solaris.tunnel.systemextension
+    └── NEPacketTunnelProvider + 本仓库 Go 模块编出的 xcframework（静态链接）
 ```
 
+- 源码、构建与签名见 [apple/README.md](../apple/README.md)：XcodeGen 工程 `apple/project.yml`，构建脚本
+  `scripts/build_apple.py`。只构建 arm64（D2），最低系统版本暂定 macOS 15.0。
 - 需要 Developer ID 签名、公证，以及 `packet-tunnel-provider-systemextension` entitlement。
-- 管理库负责三件事：用 `OSSystemExtensionRequest` 激活扩展（用户需在系统设置中批准）、配置
-  `NETunnelProviderManager`、启停隧道。
+- 管理库用 `OSSystemExtensionRequest` 激活扩展（用户需在系统设置中批准；包内的扩展总是替换其他构建激活的
+  扩展）、配置 `NETunnelProviderManager`、启停隧道、查询状态、收发 provider message。C 接口是
+  `apple/Manager/SolarisManager.h`：调用阻塞到完成或超时，要在后台线程调用；本库交出的字符串和缓冲区由
+  调用方用 `solaris_manager_free` 释放。
 - hypervpn-desktop 的 `src/packet-engine/native/macos/SystemNetworkExtension/` 和它的 NE 管理库可以作为参考。
 
 ### 6.2 扩展内的运行流程
 
-1. 用 `setTunnelNetworkSettings` 设置路由、地址和 DNS，DNS 指向 mihomo 的 dns-hijack 地址；
-2. 找到 utun 的 fd，以 fd 模式启动 engine；
+1. 用 `setTunnelNetworkSettings` 设置路由、地址和 DNS：地址用 mihomo 的 TUN 默认值（198.18.0.1/30、
+   fdfe:dcba:9876::1/126，MTU 9000），IPv4 和 IPv6 的默认路由都进隧道；DNS 服务器是 /30 里的另一个地址
+   198.18.0.2，查询进入隧道后由 mihomo 的 dns-hijack 应答。fd 模式下 engine 必须用同样的地址；
+2. 在打开的描述符里找到 utun 的控制 socket，以 fd 模式启动 engine。fd 模式尚未实现，目前 `startTunnel`
+   在这一步以错误结束，不建立隧道；
 3. 初始化 Go 分发器，配置和 Windows 一样由界面经控制协议的 `Start` / `Reload` 传入（决策 D7），不经
    `startVPNTunnel(options:)`。不监听任何 socket，mihomo 的 HTTP 控制器也不启动。
 
@@ -446,15 +453,16 @@ Solaris.app/Contents/
 
 macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的 IPC：
 
-1. UI 通过 ctypes 调用管理库的发送函数，传入编码好的 Request；
+1. UI 通过 ctypes 调用管理库的发送函数 `solaris_manager_send`，传入编码好的 Request 和超时；
 2. 管理库调用 `NETunnelProviderSession.sendProviderMessage` 发给扩展，超时则返回错误；
-3. 扩展在 `handleAppMessage` 里把消息交给 Go 分发器（xcframework 导出的 C 函数）。
-   分发在后台队列上执行，不阻塞 provider 的其他回调；
+3. 扩展在 `handleAppMessage` 里把消息交给 Go 分发器（xcframework 导出的 `solaris_handle_message`）。
+   分发在并发队列上执行，不阻塞 provider 的其他回调；改变状态的方法由分发器的操作锁串行；
 4. 分发器返回编码好的 Response，经 completion handler 回到管理库，再交回 Python。
 
 - **访问控制由系统负责**：只有本应用（同一 Team ID、带 NE entitlement 的签名进程）能加载自己的
   `NETunnelProviderManager` 并取得 session，扩展内不再做对端校验。
-- **只有隧道已连接时可用**：扩展进程只在隧道连接期间运行。未连接时，UI 只能通过管理库查看连接状态。
+- **只有隧道已连接时可用**：扩展进程只在隧道连接期间运行。未连接时发送函数返回 `NOT_CONNECTED`，UI 只能
+  通过管理库查看连接状态。
 - **方法与 Windows 相同，但没有宿主方法**：启停走管理库；`GetInfo`、`Reload` 和内核方法走 provider message。
 - **消息大小**：单条 provider message 的上限需要实测，它决定 `Reload` 能否直接携带大配置。
 - 做法与 hypervpn 一致，见它的 `NetworkExtensionManager.swift`（`providerExchange`）和
