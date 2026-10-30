@@ -139,7 +139,7 @@ def set_up(machine: Machine, served: Subscriptions, tmp_path: Path) -> None:
     machine.call(library.import_url(served.url("airport"), "机场"))
     machine.call(library.import_url(served.url("nodes"), "节点", auto_update=False))
     local = tmp_path / "home.yaml"
-    local.write_text(LOCAL_CONFIG, encoding="utf-8")
+    local.write_bytes(LOCAL_CONFIG.encode())  # write_text would turn \n into \r\n on Windows
     machine.call(library.import_file(local))
     machine.call(library.save_override(None, "mode: rule\n"))
     profiles = machine.call(library.current())
