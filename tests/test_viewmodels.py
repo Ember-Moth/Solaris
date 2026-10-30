@@ -10,6 +10,7 @@ from pytestqt.qtbot import QtBot
 from mihomo_desktop.host.base import HostError, HostStatus, RunOptions
 from mihomo_desktop.host.service import ServiceHost
 from mihomo_desktop.host.transport import Streams
+from mihomo_desktop.models.profiles import ProfileError
 from mihomo_desktop.models.store import ProfileStore
 from mihomo_desktop.viewmodels.composition import ViewModels, compose
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
@@ -315,3 +316,17 @@ def test_removal_mentions_the_override(qtbot: QtBot, view_models: ViewModels) ->
     with qtbot.waitSignal(profiles.removalRequested):
         profiles.requestRemove("sample-c")
     assert prop(profiles, "removalText") == "订阅和它的覆写会从本机删除，无法恢复。"  # noqa: RUF001
+
+
+def test_a_failed_update_is_a_warning_of_its_own(qtbot: QtBot, view_models: ViewModels) -> None:
+    """The view shows it in the warning colour after the rest of the line."""
+    profiles = view_models.profiles
+    fetcher = view_models.library._fetcher
+    assert isinstance(fetcher, SimulatedFetcher)
+    fetcher.error = ProfileError("http_error", "HTTP 503")
+    profiles.updateProfile("sample-a")
+    qtbot.waitUntil(lambda: rows(profiles)[0].warning == "更新失败")
+    assert rows(profiles)[0].updated == "更新失败"
+    assert prop(profiles, "activeDetail") == "sub.example.com"
+    assert prop(profiles, "activeWarning") == "更新失败"
+    assert rows(profiles)[1].warning == ""

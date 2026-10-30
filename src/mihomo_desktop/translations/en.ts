@@ -573,6 +573,10 @@ prepend-rules:
         <translation>Subscriptions</translation>
     </message>
     <message>
+        <source> · %1</source>
+        <translation> · %1</translation>
+    </message>
+    <message>
         <source>%1 · %2</source>
         <translation>%1 · %2</translation>
     </message>
@@ -990,10 +994,6 @@ prepend-rules:
     <message>
         <source>{origin} · 正在更新</source>
         <translation>{origin} · Updating…</translation>
-    </message>
-    <message>
-        <source>{origin} · 更新失败</source>
-        <translation>{origin} · Update failed</translation>
     </message>
     <message>
         <source>{origin} · {ago}更新</source>

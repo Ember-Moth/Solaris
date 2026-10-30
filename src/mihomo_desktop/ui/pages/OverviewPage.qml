@@ -344,6 +344,7 @@ ScrollView {
 
                             required property int index
                             required property string name
+                            required property string warning
                             required property string usage
                             required property string expiry
                             required property bool hasQuota
@@ -362,11 +363,27 @@ ScrollView {
                                     spacing: Theme.space3
 
                                     AccessibleText {
+                                        Layout.preferredWidth: Math.ceil(implicitWidth)
+                                        Layout.maximumWidth: Math.ceil(implicitWidth)
                                         Layout.fillWidth: true
                                         text: subscription.name
                                         role: Theme.type.caption
                                         color: Theme.textSecondary
                                         elide: Text.ElideRight
+                                    }
+
+                                    // A failed update, in the warning colour after the name.
+                                    AccessibleText {
+                                        Layout.leftMargin: -Theme.space3
+                                        visible: subscription.warning !== ""
+                                        text: qsTr(" · %1").arg(subscription.warning)
+                                        role: Theme.type.caption
+                                        color: Theme.warning
+                                    }
+
+                                    Item {
+                                        Layout.fillWidth: true
+                                        Layout.preferredWidth: 0
                                     }
 
                                     AccessibleText {

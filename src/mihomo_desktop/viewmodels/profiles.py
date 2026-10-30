@@ -55,6 +55,7 @@ class ProfileRow:
     autoUpdate: bool
     hasOverride: bool
     note: str  # 规则使用中 or 不加入节点池, after the source in the caption
+    warning: str  # 更新失败, in the warning colour (DESIGN.md "分组与行"); empty otherwise
     inPool: bool
     hasRules: bool  # it brings rules, or has not been read yet
 
@@ -320,6 +321,9 @@ class ProfilesViewModel(QObject):
             autoUpdate=profile.auto_update_hours > 0,
             hasOverride=profile.has_override,
             note=self._note(profile),
+            warning=self.tr("更新失败")
+            if profile.id in self._list.update_failed and not updating
+            else "",
             inPool=profile.in_pool,
             hasRules=self._routing.has_rules(profile.id) is not False,
         )
@@ -616,15 +620,24 @@ class ProfilesViewModel(QObject):
 
     @Property(str, notify=changed)
     def activeDetail(self) -> str:
+        """Where the profile in use comes from and when it was updated; a failed update is
+        ``activeWarning``, shown in the warning colour after it (DESIGN.md "分组与行")."""
         active = self._active()
         if active is None:
             return ""
         if active.id in self._updating:
             return self.tr("{origin} · 正在更新").format(origin=_origin(active))
         if active.id in self._list.update_failed:
-            return self.tr("{origin} · 更新失败").format(origin=_origin(active))
+            return _origin(active)
         ago = fmt.ago(active.updated_at, self._clock())
         return self.tr("{origin} · {ago}更新").format(origin=_origin(active), ago=ago)
+
+    @Property(str, notify=changed)
+    def activeWarning(self) -> str:
+        active = self._active()
+        if active is None or active.id in self._updating:
+            return ""
+        return self.tr("更新失败") if active.id in self._list.update_failed else ""
 
     @Property(bool, notify=changed)
     def activeUpdating(self) -> bool:
