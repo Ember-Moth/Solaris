@@ -82,7 +82,7 @@ func (e *Engine) LoginMesh(ctx context.Context, name string) (string, error) {
 func (m *meshOutbound) status(ctx context.Context) *controlpb.MeshStatus {
 	status := &controlpb.MeshStatus{
 		Name:  m.name,
-		Id:    m.id,
+		Id:    m.meshID(),
 		Type:  m.adapter.Type().String(),
 		State: controlpb.MeshState_MESH_STATE_STARTING,
 	}

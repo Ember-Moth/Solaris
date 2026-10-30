@@ -271,6 +271,7 @@ func (e *Engine) admit(profile Profile) (*admission, error) {
 // apply puts an admitted configuration in place and keeps what goes with it.
 func (e *Engine) apply(admitted *admission) {
 	mesh := e.adoptMesh(admitted)
+	closeReplaced(mesh)
 	hub.ApplyConfig(admitted.cfg)
 	e.settleTUN()
 	e.setEntries(admitted.entries)

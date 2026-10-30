@@ -193,10 +193,9 @@ Windows 服务以 SYSTEM 身份运行内核，下面每一项都必须满足，�
 | 3 | 初始化时开启 `route.SetEmbedMode(true)` | 第二道防线：万一控制器被启动，也关闭 `/restart`、`/configs` 写入和 `/upgrade` | 测试手动起一个 unix socket 控制器，确认这些接口被拒绝 |
 | 4 | provider 路径用 `filepath` 规范化并检查 `filepath.IsLocal`；不设置 `SKIP_SAFE_PATH_CHECK` / `SAFE_PATHS` | 只按 `/` 切分时，Windows 上的 `..\` 可以跳出 `providers/`；`IsSafePath` 作为兜底 | mihomo 在启动时读取这两个变量，`New` 按行为自检（home 外的路径必须被拒），不通过就拒绝运行；测试用子进程带上变量验证 |
 | 5 | 持久化节点选择（`profile.store-selected`） | 开机恢复后要回到用户上次选的节点 | 强制为 true；测试选择节点后重启内核，确认仍是该节点 |
-| 6 | 组网出站只用作出站（[mesh.md](mesh.md) 第 4 节）：`easytier` 的 `enable-exit-node` 强制 false，`proxy-networks`、`mapped-listeners` 清空 | 这些选项让组网里的其他设备把本机当出口、进入本机所在的子网，或向它们公布监听地址；以 SYSTEM 身份运行时会把用户的网络暴露出去 | 改写顶层 `proxies` 和 provider 的 `payload`；远程 provider 和带 `override-expr` 的 provider 在 `override-expr` 末尾追加同样效果的表达式，mihomo 对下载来的每个出站最后执行它们。测试覆盖配置、覆写、内联和远程 provider，并用 mihomo 的表达式求值器核对；同时确认三种组网出站的 `state-dir` 越出 home 时被拒绝（Tailscale 只在 `with_gvisor` 构建里有，CI 另外带这个标签跑） |
+| 6 | 组网出站只用作出站（[mesh.md](mesh.md) 第 4 节）：`easytier` 的 `enable-exit-node` 强制 false、`no-listener` 强制 true，`proxy-networks`、`mapped-listeners`、`listeners` 清空 | 这些选项让组网里的其他设备把本机当出口、进入本机所在的子网，向它们公布监听地址，或在所有网卡上接受它们的连接；以 SYSTEM 身份运行时会把用户的网络暴露出去 | 改写顶层 `proxies` 和 provider 的 `payload`；远程 provider 和带 `override-expr` 的 provider 在 `override-expr` 末尾追加同样效果的表达式，mihomo 对下载来的每个出站最后执行它们。测试覆盖配置、覆写、内联和远程 provider，并用 mihomo 的表达式求值器核对；同时确认三种组网出站的 `state-dir` 越出 home 时被拒绝（Tailscale 只在 `with_gvisor` 构建里有，CI 另外带这个标签跑） |
 
-拼装时，第 6 项关闭的每个选项在报告里给出 `mesh_restricted` 警告。EasyTier 的 `listeners`（在所有网卡上接受对等点
-的连接）暂不改动，等打洞实测（mesh.md 第 8 节）。
+拼装时，第 6 项关闭的每个选项在报告里给出 `mesh_restricted` 警告。不监听时打洞是否可用仍待实测（mesh.md 第 8 节）。
 
 流水线还在所有模式下强制两项：`iptables.enable: false`（仅 Linux，失败时 mihomo 会直接退出进程）和
 `ntp.write-to-system: false`（修改系统时间需要用户未必拥有的权限，不能由 SYSTEM 代劳）。
