@@ -23,6 +23,13 @@ class Ownership(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     OWNERSHIP_CALLER: _ClassVar[Ownership]
     OWNERSHIP_OTHER: _ClassVar[Ownership]
 
+class WarpProtocol(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    WARP_PROTOCOL_UNSPECIFIED: _ClassVar[WarpProtocol]
+    WARP_PROTOCOL_MASQUE_H2: _ClassVar[WarpProtocol]
+    WARP_PROTOCOL_MASQUE_H3: _ClassVar[WarpProtocol]
+    WARP_PROTOCOL_WIREGUARD: _ClassVar[WarpProtocol]
+
 class GroupKind(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     GROUP_KIND_UNSPECIFIED: _ClassVar[GroupKind]
@@ -72,6 +79,10 @@ OWNERSHIP_UNSPECIFIED: Ownership
 OWNERSHIP_AVAILABLE: Ownership
 OWNERSHIP_CALLER: Ownership
 OWNERSHIP_OTHER: Ownership
+WARP_PROTOCOL_UNSPECIFIED: WarpProtocol
+WARP_PROTOCOL_MASQUE_H2: WarpProtocol
+WARP_PROTOCOL_MASQUE_H3: WarpProtocol
+WARP_PROTOCOL_WIREGUARD: WarpProtocol
 GROUP_KIND_UNSPECIFIED: GroupKind
 GROUP_KIND_BUILTIN: GroupKind
 GROUP_KIND_REGION: GroupKind
@@ -96,7 +107,7 @@ EXPORT_FORMAT_SHARE: ExportFormat
 EXPORT_FORMAT_GENERATED: ExportFormat
 
 class Request(_message.Message):
-    __slots__ = ("protocol_version", "id", "get_info", "claim", "validate", "start", "reload", "stop", "set_system_proxy", "get_status", "set_mode", "list_groups", "get_group", "select_proxy", "health_check", "test_delay", "list_providers", "update_provider", "list_rules", "close_connection", "close_all_connections", "flush_fake_ip", "flush_dns_cache", "subscribe_logs", "subscribe_traffic", "subscribe_connections", "poll_events", "unsubscribe", "inspect_source", "list_geo_categories", "preview_group", "match_rule", "convert_to_plan", "export_plan")
+    __slots__ = ("protocol_version", "id", "get_info", "claim", "validate", "start", "reload", "stop", "set_system_proxy", "get_status", "set_mode", "list_groups", "get_group", "select_proxy", "health_check", "test_delay", "list_providers", "update_provider", "list_rules", "close_connection", "close_all_connections", "flush_fake_ip", "flush_dns_cache", "subscribe_logs", "subscribe_traffic", "subscribe_connections", "poll_events", "unsubscribe", "inspect_source", "list_geo_categories", "preview_group", "match_rule", "convert_to_plan", "export_plan", "register_warp")
     PROTOCOL_VERSION_FIELD_NUMBER: _ClassVar[int]
     ID_FIELD_NUMBER: _ClassVar[int]
     GET_INFO_FIELD_NUMBER: _ClassVar[int]
@@ -131,6 +142,7 @@ class Request(_message.Message):
     MATCH_RULE_FIELD_NUMBER: _ClassVar[int]
     CONVERT_TO_PLAN_FIELD_NUMBER: _ClassVar[int]
     EXPORT_PLAN_FIELD_NUMBER: _ClassVar[int]
+    REGISTER_WARP_FIELD_NUMBER: _ClassVar[int]
     protocol_version: int
     id: int
     get_info: GetInfoRequest
@@ -165,10 +177,11 @@ class Request(_message.Message):
     match_rule: MatchRuleRequest
     convert_to_plan: ConvertToPlanRequest
     export_plan: ExportPlanRequest
-    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., get_info: _Optional[_Union[GetInfoRequest, _Mapping]] = ..., claim: _Optional[_Union[ClaimRequest, _Mapping]] = ..., validate: _Optional[_Union[ValidateRequest, _Mapping]] = ..., start: _Optional[_Union[StartRequest, _Mapping]] = ..., reload: _Optional[_Union[ReloadRequest, _Mapping]] = ..., stop: _Optional[_Union[StopRequest, _Mapping]] = ..., set_system_proxy: _Optional[_Union[SetSystemProxyRequest, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusRequest, _Mapping]] = ..., set_mode: _Optional[_Union[SetModeRequest, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsRequest, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupRequest, _Mapping]] = ..., select_proxy: _Optional[_Union[SelectProxyRequest, _Mapping]] = ..., health_check: _Optional[_Union[HealthCheckRequest, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayRequest, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersRequest, _Mapping]] = ..., update_provider: _Optional[_Union[UpdateProviderRequest, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesRequest, _Mapping]] = ..., close_connection: _Optional[_Union[CloseConnectionRequest, _Mapping]] = ..., close_all_connections: _Optional[_Union[CloseAllConnectionsRequest, _Mapping]] = ..., flush_fake_ip: _Optional[_Union[FlushFakeIPRequest, _Mapping]] = ..., flush_dns_cache: _Optional[_Union[FlushDNSCacheRequest, _Mapping]] = ..., subscribe_logs: _Optional[_Union[SubscribeLogsRequest, _Mapping]] = ..., subscribe_traffic: _Optional[_Union[SubscribeTrafficRequest, _Mapping]] = ..., subscribe_connections: _Optional[_Union[SubscribeConnectionsRequest, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsRequest, _Mapping]] = ..., unsubscribe: _Optional[_Union[UnsubscribeRequest, _Mapping]] = ..., inspect_source: _Optional[_Union[InspectSourceRequest, _Mapping]] = ..., list_geo_categories: _Optional[_Union[ListGeoCategoriesRequest, _Mapping]] = ..., preview_group: _Optional[_Union[PreviewGroupRequest, _Mapping]] = ..., match_rule: _Optional[_Union[MatchRuleRequest, _Mapping]] = ..., convert_to_plan: _Optional[_Union[ConvertToPlanRequest, _Mapping]] = ..., export_plan: _Optional[_Union[ExportPlanRequest, _Mapping]] = ...) -> None: ...
+    register_warp: RegisterWarpRequest
+    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., get_info: _Optional[_Union[GetInfoRequest, _Mapping]] = ..., claim: _Optional[_Union[ClaimRequest, _Mapping]] = ..., validate: _Optional[_Union[ValidateRequest, _Mapping]] = ..., start: _Optional[_Union[StartRequest, _Mapping]] = ..., reload: _Optional[_Union[ReloadRequest, _Mapping]] = ..., stop: _Optional[_Union[StopRequest, _Mapping]] = ..., set_system_proxy: _Optional[_Union[SetSystemProxyRequest, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusRequest, _Mapping]] = ..., set_mode: _Optional[_Union[SetModeRequest, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsRequest, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupRequest, _Mapping]] = ..., select_proxy: _Optional[_Union[SelectProxyRequest, _Mapping]] = ..., health_check: _Optional[_Union[HealthCheckRequest, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayRequest, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersRequest, _Mapping]] = ..., update_provider: _Optional[_Union[UpdateProviderRequest, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesRequest, _Mapping]] = ..., close_connection: _Optional[_Union[CloseConnectionRequest, _Mapping]] = ..., close_all_connections: _Optional[_Union[CloseAllConnectionsRequest, _Mapping]] = ..., flush_fake_ip: _Optional[_Union[FlushFakeIPRequest, _Mapping]] = ..., flush_dns_cache: _Optional[_Union[FlushDNSCacheRequest, _Mapping]] = ..., subscribe_logs: _Optional[_Union[SubscribeLogsRequest, _Mapping]] = ..., subscribe_traffic: _Optional[_Union[SubscribeTrafficRequest, _Mapping]] = ..., subscribe_connections: _Optional[_Union[SubscribeConnectionsRequest, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsRequest, _Mapping]] = ..., unsubscribe: _Optional[_Union[UnsubscribeRequest, _Mapping]] = ..., inspect_source: _Optional[_Union[InspectSourceRequest, _Mapping]] = ..., list_geo_categories: _Optional[_Union[ListGeoCategoriesRequest, _Mapping]] = ..., preview_group: _Optional[_Union[PreviewGroupRequest, _Mapping]] = ..., match_rule: _Optional[_Union[MatchRuleRequest, _Mapping]] = ..., convert_to_plan: _Optional[_Union[ConvertToPlanRequest, _Mapping]] = ..., export_plan: _Optional[_Union[ExportPlanRequest, _Mapping]] = ..., register_warp: _Optional[_Union[RegisterWarpRequest, _Mapping]] = ...) -> None: ...
 
 class Response(_message.Message):
-    __slots__ = ("protocol_version", "id", "error", "empty", "get_info", "composition", "get_status", "list_groups", "get_group", "test_delay", "list_providers", "list_rules", "subscribe", "poll_events", "inspect_source", "list_geo_categories", "preview_group", "match_rule", "convert_to_plan", "export_plan")
+    __slots__ = ("protocol_version", "id", "error", "empty", "get_info", "composition", "get_status", "list_groups", "get_group", "test_delay", "list_providers", "list_rules", "subscribe", "poll_events", "inspect_source", "list_geo_categories", "preview_group", "match_rule", "convert_to_plan", "export_plan", "register_warp")
     PROTOCOL_VERSION_FIELD_NUMBER: _ClassVar[int]
     ID_FIELD_NUMBER: _ClassVar[int]
     ERROR_FIELD_NUMBER: _ClassVar[int]
@@ -189,6 +202,7 @@ class Response(_message.Message):
     MATCH_RULE_FIELD_NUMBER: _ClassVar[int]
     CONVERT_TO_PLAN_FIELD_NUMBER: _ClassVar[int]
     EXPORT_PLAN_FIELD_NUMBER: _ClassVar[int]
+    REGISTER_WARP_FIELD_NUMBER: _ClassVar[int]
     protocol_version: int
     id: int
     error: Error
@@ -209,7 +223,8 @@ class Response(_message.Message):
     match_rule: MatchRuleResponse
     convert_to_plan: ConvertToPlanResponse
     export_plan: ExportPlanResponse
-    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., error: _Optional[_Union[Error, _Mapping]] = ..., empty: _Optional[_Union[Empty, _Mapping]] = ..., get_info: _Optional[_Union[GetInfoResponse, _Mapping]] = ..., composition: _Optional[_Union[CompositionReport, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusResponse, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsResponse, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupResponse, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayResponse, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersResponse, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesResponse, _Mapping]] = ..., subscribe: _Optional[_Union[SubscribeResponse, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsResponse, _Mapping]] = ..., inspect_source: _Optional[_Union[InspectSourceResponse, _Mapping]] = ..., list_geo_categories: _Optional[_Union[ListGeoCategoriesResponse, _Mapping]] = ..., preview_group: _Optional[_Union[PreviewGroupResponse, _Mapping]] = ..., match_rule: _Optional[_Union[MatchRuleResponse, _Mapping]] = ..., convert_to_plan: _Optional[_Union[ConvertToPlanResponse, _Mapping]] = ..., export_plan: _Optional[_Union[ExportPlanResponse, _Mapping]] = ...) -> None: ...
+    register_warp: RegisterWarpResponse
+    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., error: _Optional[_Union[Error, _Mapping]] = ..., empty: _Optional[_Union[Empty, _Mapping]] = ..., get_info: _Optional[_Union[GetInfoResponse, _Mapping]] = ..., composition: _Optional[_Union[CompositionReport, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusResponse, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsResponse, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupResponse, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayResponse, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersResponse, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesResponse, _Mapping]] = ..., subscribe: _Optional[_Union[SubscribeResponse, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsResponse, _Mapping]] = ..., inspect_source: _Optional[_Union[InspectSourceResponse, _Mapping]] = ..., list_geo_categories: _Optional[_Union[ListGeoCategoriesResponse, _Mapping]] = ..., preview_group: _Optional[_Union[PreviewGroupResponse, _Mapping]] = ..., match_rule: _Optional[_Union[MatchRuleResponse, _Mapping]] = ..., convert_to_plan: _Optional[_Union[ConvertToPlanResponse, _Mapping]] = ..., export_plan: _Optional[_Union[ExportPlanResponse, _Mapping]] = ..., register_warp: _Optional[_Union[RegisterWarpResponse, _Mapping]] = ...) -> None: ...
 
 class Empty(_message.Message):
     __slots__ = ()
@@ -294,14 +309,46 @@ class ReloadRequest(_message.Message):
     def __init__(self, config_yaml: _Optional[str] = ..., composition: _Optional[_Union[Composition, _Mapping]] = ..., overrides: _Optional[_Iterable[str]] = ..., options: _Optional[_Union[RunOptions, _Mapping]] = ...) -> None: ...
 
 class Composition(_message.Message):
-    __slots__ = ("sources", "info_filter", "plan_json")
+    __slots__ = ("sources", "info_filter", "plan_json", "egress")
     SOURCES_FIELD_NUMBER: _ClassVar[int]
     INFO_FILTER_FIELD_NUMBER: _ClassVar[int]
     PLAN_JSON_FIELD_NUMBER: _ClassVar[int]
+    EGRESS_FIELD_NUMBER: _ClassVar[int]
     sources: _containers.RepeatedCompositeFieldContainer[CompositionSource]
     info_filter: str
     plan_json: str
-    def __init__(self, sources: _Optional[_Iterable[_Union[CompositionSource, _Mapping]]] = ..., info_filter: _Optional[str] = ..., plan_json: _Optional[str] = ...) -> None: ...
+    egress: Egress
+    def __init__(self, sources: _Optional[_Iterable[_Union[CompositionSource, _Mapping]]] = ..., info_filter: _Optional[str] = ..., plan_json: _Optional[str] = ..., egress: _Optional[_Union[Egress, _Mapping]] = ...) -> None: ...
+
+class Egress(_message.Message):
+    __slots__ = ("warp",)
+    WARP_FIELD_NUMBER: _ClassVar[int]
+    warp: WarpAccount
+    def __init__(self, warp: _Optional[_Union[WarpAccount, _Mapping]] = ...) -> None: ...
+
+class WarpAccount(_message.Message):
+    __slots__ = ("device_id", "token", "protocol", "private_key", "peer_public_key", "endpoint", "address_v4", "address_v6", "client_id", "registered_at_unix_ms")
+    DEVICE_ID_FIELD_NUMBER: _ClassVar[int]
+    TOKEN_FIELD_NUMBER: _ClassVar[int]
+    PROTOCOL_FIELD_NUMBER: _ClassVar[int]
+    PRIVATE_KEY_FIELD_NUMBER: _ClassVar[int]
+    PEER_PUBLIC_KEY_FIELD_NUMBER: _ClassVar[int]
+    ENDPOINT_FIELD_NUMBER: _ClassVar[int]
+    ADDRESS_V4_FIELD_NUMBER: _ClassVar[int]
+    ADDRESS_V6_FIELD_NUMBER: _ClassVar[int]
+    CLIENT_ID_FIELD_NUMBER: _ClassVar[int]
+    REGISTERED_AT_UNIX_MS_FIELD_NUMBER: _ClassVar[int]
+    device_id: str
+    token: str
+    protocol: WarpProtocol
+    private_key: str
+    peer_public_key: str
+    endpoint: str
+    address_v4: str
+    address_v6: str
+    client_id: str
+    registered_at_unix_ms: int
+    def __init__(self, device_id: _Optional[str] = ..., token: _Optional[str] = ..., protocol: _Optional[_Union[WarpProtocol, str]] = ..., private_key: _Optional[str] = ..., peer_public_key: _Optional[str] = ..., endpoint: _Optional[str] = ..., address_v4: _Optional[str] = ..., address_v6: _Optional[str] = ..., client_id: _Optional[str] = ..., registered_at_unix_ms: _Optional[int] = ...) -> None: ...
 
 class CompositionSource(_message.Message):
     __slots__ = ("id", "name", "yaml")
@@ -314,16 +361,30 @@ class CompositionSource(_message.Message):
     def __init__(self, id: _Optional[str] = ..., name: _Optional[str] = ..., yaml: _Optional[str] = ...) -> None: ...
 
 class CompositionReport(_message.Message):
-    __slots__ = ("warnings", "groups", "rules", "nodes")
+    __slots__ = ("warnings", "groups", "rules", "nodes", "mesh")
     WARNINGS_FIELD_NUMBER: _ClassVar[int]
     GROUPS_FIELD_NUMBER: _ClassVar[int]
     RULES_FIELD_NUMBER: _ClassVar[int]
     NODES_FIELD_NUMBER: _ClassVar[int]
+    MESH_FIELD_NUMBER: _ClassVar[int]
     warnings: _containers.RepeatedCompositeFieldContainer[CompositionWarning]
     groups: _containers.RepeatedCompositeFieldContainer[ComposedGroup]
     rules: _containers.RepeatedCompositeFieldContainer[Rule]
     nodes: _containers.RepeatedCompositeFieldContainer[PoolNode]
-    def __init__(self, warnings: _Optional[_Iterable[_Union[CompositionWarning, _Mapping]]] = ..., groups: _Optional[_Iterable[_Union[ComposedGroup, _Mapping]]] = ..., rules: _Optional[_Iterable[_Union[Rule, _Mapping]]] = ..., nodes: _Optional[_Iterable[_Union[PoolNode, _Mapping]]] = ...) -> None: ...
+    mesh: _containers.RepeatedCompositeFieldContainer[MeshOutbound]
+    def __init__(self, warnings: _Optional[_Iterable[_Union[CompositionWarning, _Mapping]]] = ..., groups: _Optional[_Iterable[_Union[ComposedGroup, _Mapping]]] = ..., rules: _Optional[_Iterable[_Union[Rule, _Mapping]]] = ..., nodes: _Optional[_Iterable[_Union[PoolNode, _Mapping]]] = ..., mesh: _Optional[_Iterable[_Union[MeshOutbound, _Mapping]]] = ...) -> None: ...
+
+class MeshOutbound(_message.Message):
+    __slots__ = ("id", "name", "type", "source_id")
+    ID_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    TYPE_FIELD_NUMBER: _ClassVar[int]
+    SOURCE_ID_FIELD_NUMBER: _ClassVar[int]
+    id: str
+    name: str
+    type: str
+    source_id: str
+    def __init__(self, id: _Optional[str] = ..., name: _Optional[str] = ..., type: _Optional[str] = ..., source_id: _Optional[str] = ...) -> None: ...
 
 class CompositionWarning(_message.Message):
     __slots__ = ("entry_id", "reason", "target")
@@ -686,16 +747,36 @@ class InspectSourceResponse(_message.Message):
     def __init__(self, nodes: _Optional[_Iterable[_Union[SourceNode, _Mapping]]] = ..., has_rules: _Optional[bool] = ..., group_count: _Optional[int] = ..., rule_count: _Optional[int] = ...) -> None: ...
 
 class SourceNode(_message.Message):
-    __slots__ = ("name", "type", "region", "info")
+    __slots__ = ("name", "type", "region", "info", "mesh")
     NAME_FIELD_NUMBER: _ClassVar[int]
     TYPE_FIELD_NUMBER: _ClassVar[int]
     REGION_FIELD_NUMBER: _ClassVar[int]
     INFO_FIELD_NUMBER: _ClassVar[int]
+    MESH_FIELD_NUMBER: _ClassVar[int]
     name: str
     type: str
     region: str
     info: bool
-    def __init__(self, name: _Optional[str] = ..., type: _Optional[str] = ..., region: _Optional[str] = ..., info: _Optional[bool] = ...) -> None: ...
+    mesh: bool
+    def __init__(self, name: _Optional[str] = ..., type: _Optional[str] = ..., region: _Optional[str] = ..., info: _Optional[bool] = ..., mesh: _Optional[bool] = ...) -> None: ...
+
+class RegisterWarpRequest(_message.Message):
+    __slots__ = ("via", "protocol", "device_id", "token")
+    VIA_FIELD_NUMBER: _ClassVar[int]
+    PROTOCOL_FIELD_NUMBER: _ClassVar[int]
+    DEVICE_ID_FIELD_NUMBER: _ClassVar[int]
+    TOKEN_FIELD_NUMBER: _ClassVar[int]
+    via: str
+    protocol: WarpProtocol
+    device_id: str
+    token: str
+    def __init__(self, via: _Optional[str] = ..., protocol: _Optional[_Union[WarpProtocol, str]] = ..., device_id: _Optional[str] = ..., token: _Optional[str] = ...) -> None: ...
+
+class RegisterWarpResponse(_message.Message):
+    __slots__ = ("account",)
+    ACCOUNT_FIELD_NUMBER: _ClassVar[int]
+    account: WarpAccount
+    def __init__(self, account: _Optional[_Union[WarpAccount, _Mapping]] = ...) -> None: ...
 
 class ListGeoCategoriesRequest(_message.Message):
     __slots__ = ()

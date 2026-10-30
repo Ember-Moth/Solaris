@@ -36,6 +36,35 @@ class CompositionSource:
     yaml: str  # the subscription as downloaded: a mihomo profile or share links
 
 
+WARP_PROTOCOLS = ("masque-h2", "masque-h3", "wireguard")  # docs/exits.md §3.1
+
+
+@dataclass(frozen=True)
+class WarpAccount:
+    """A Cloudflare WARP device, as register_warp made it (docs/exits.md §3.2). A credential:
+    kept in the system's credential store, out of backups, and handed back unchanged in
+    every composition."""
+
+    device_id: str
+    token: str
+    protocol: str  # one of WARP_PROTOCOLS; the key is for it
+    private_key: str
+    peer_public_key: str
+    endpoint: str  # host:port
+    address_v4: str
+    address_v6: str
+    client_id: str  # base64
+    registered_at_unix_ms: int
+
+
+@dataclass(frozen=True)
+class Egress:
+    """What the chained exits need (docs/exits.md §7.1). An exit without its material is
+    unavailable, and the rules that name it reject their connections (D21)."""
+
+    warp: WarpAccount | None = None
+
+
 @dataclass(frozen=True)
 class Composition:
     """The node pool and a plan, for "my plan" routing: the core assembles the configuration
@@ -46,6 +75,7 @@ class Composition:
     plan_json: str
     # Names of information nodes ("剩余流量"), in mihomo's regular expressions; "" keeps all.
     info_filter: str = ""
+    egress: Egress = Egress()
 
 
 @dataclass(frozen=True)
@@ -69,6 +99,10 @@ class CompositionWarning:
     entry_id: str  # a rule entry, or "fallback"
     # "region_empty": the target region has no nodes; "group_empty": the target group has no
     # members. Either way the entry goes to the built-in "proxy" group meanwhile.
+    # "egress_unavailable", "mesh_missing": the target exit or mesh outbound is unavailable,
+    # so the entry rejects its connections. "via_empty": an exit's via group (target) has no
+    # members; entry_id is the exit, such as "egress:warp". "mesh_restricted": an option of
+    # the mesh outbound entry_id that serves other devices (target) was turned off.
     reason: str
     target: str  # the target the plan names
 
@@ -100,6 +134,17 @@ class PoolNode:
 
 
 @dataclass(frozen=True)
+class MeshOutbound:
+    """A Tailscale, ZeroTier or EasyTier outbound from a pool subscription: not a pool node,
+    but a rule target of its own (docs/mesh.md §3)."""
+
+    id: str  # "mesh:<subscription id>/<name in the subscription>", as plans name it
+    name: str  # in the generated configuration
+    type: str  # mihomo adapter type
+    source_id: str
+
+
+@dataclass(frozen=True)
 class CompositionReport:
     """What the core made of a composition."""
 
@@ -107,6 +152,7 @@ class CompositionReport:
     groups: tuple[ComposedGroup, ...]  # in configuration order
     rules: tuple[Rule, ...]  # every generated rule, in order
     nodes: tuple[PoolNode, ...]  # the pool after exclusions
+    mesh: tuple[MeshOutbound, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -163,6 +209,7 @@ class SourceNode:
     type: str  # mihomo adapter type, as in Proxy.type
     region: str  # region code; "ZZ" when none matched
     info: bool  # matches the info filter, so the pool leaves it out
+    mesh: bool = False  # a Tailscale, ZeroTier or EasyTier outbound, kept out of the pool
 
 
 @dataclass(frozen=True)
@@ -320,6 +367,15 @@ class TunnelHost(Protocol):
     async def export_plan(self, config: TunnelConfig, export: str = EXPORT_SHARE) -> str:
         """The composition's plan as YAML: EXPORT_SHARE or EXPORT_GENERATED, which applies
         ``config``'s overrides and options."""
+        ...
+
+    async def register_warp(
+        self, via: str, protocol: str = "masque-h2", existing: WarpAccount | None = None
+    ) -> WarpAccount:
+        """Registers a WARP device through the running configuration's group ``via`` (its
+        name), or gives ``existing`` a key for ``protocol`` (docs/exits.md §3.2). Raises
+        HostError("not_running") while the core is stopped, and "operation_failed" with
+        Cloudflare's text when registration fails."""
         ...
 
     async def stop(self) -> None: ...

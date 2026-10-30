@@ -75,6 +75,9 @@ mihomo 自带三种组网出站：`tailscale`、`zerotier`、`easytier`。它们
 
 ## 6. 协议
 
+以下字段已写进 `control.proto`（`MeshOutbound`、`CompositionReport.mesh`、`SourceNode.mesh`）和 `host/base.py`。
+
+
 - 方案 JSON（routing.md 8.5 节）的 `target` 和 `fallback` 可以写 `mesh:<订阅 id>/<原名>`，`version` 保持 1。
 - `CompositionReport` 新增 `mesh` 列表和警告原因 `mesh_missing`；`InspectSource` 的节点新增 `mesh` 标记。
 - 第一版不需要新方法。

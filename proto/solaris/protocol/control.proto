@@ -50,6 +50,10 @@ message Request {
     MatchRuleRequest match_rule = 52;
     ConvertToPlanRequest convert_to_plan = 53;
     ExportPlanRequest export_plan = 54;
+
+    // Chained exits (docs/exits.md §7.2), served on both platforms; they need a running
+    // core, since they go out through one of its groups.
+    RegisterWarpRequest register_warp = 55;
   }
 }
 
@@ -76,6 +80,7 @@ message Response {
     MatchRuleResponse match_rule = 52;
     ConvertToPlanResponse convert_to_plan = 53;
     ExportPlanResponse export_plan = 54;
+    RegisterWarpResponse register_warp = 55;
   }
 }
 
@@ -159,6 +164,35 @@ message Composition {
   string info_filter = 2;
   // The plan as JSON, format version 1 (docs/routing.md §8.5).
   string plan_json = 3;
+  // What the chained exits need (docs/exits.md §7.1). Without an exit's material the exit
+  // is unavailable, and the rules that name it reject their connections (decision D21).
+  Egress egress = 4;
+}
+message Egress {
+  WarpAccount warp = 1;
+  // 2: the Tor exit (M10); 3: the VPN Gate exit (M12).
+  reserved 2, 3;
+}
+enum WarpProtocol {
+  WARP_PROTOCOL_UNSPECIFIED = 0; // MASQUE over HTTP/2
+  WARP_PROTOCOL_MASQUE_H2 = 1;
+  WARP_PROTOCOL_MASQUE_H3 = 2;
+  WARP_PROTOCOL_WIREGUARD = 3;
+}
+// A Cloudflare WARP device, as RegisterWarp made it (docs/exits.md §3.2). It is a
+// credential: the UI keeps it in the system's credential store, out of backups, and hands
+// it back unchanged in every Composition; the core keeps it in memory only.
+message WarpAccount {
+  string device_id = 1;
+  string token = 2;
+  WarpProtocol protocol = 3; // the key below is for this protocol
+  string private_key = 4;     // as mihomo's outbound takes it
+  string peer_public_key = 5; // as mihomo's outbound takes it
+  string endpoint = 6;        // host:port the outbound dials
+  string address_v4 = 7;      // the device's addresses inside the tunnel
+  string address_v6 = 8;
+  string client_id = 9;       // base64; WireGuard's "reserved" bytes come from it
+  int64 registered_at_unix_ms = 10;
 }
 message CompositionSource {
   string id = 1;
@@ -172,11 +206,26 @@ message CompositionReport {
   // Every rule the plan produced, in order, with the rule entry it came from.
   repeated Rule rules = 3;
   repeated PoolNode nodes = 4; // the pool after exclusions, in order
+  // Tailscale, ZeroTier and EasyTier outbounds from the pool's subscriptions: kept out of
+  // the pool and of every group, and offered as rule targets (docs/mesh.md §3).
+  repeated MeshOutbound mesh = 5;
+}
+message MeshOutbound {
+  string id = 1;        // "mesh:<subscription id>/<name in the subscription>", as plans name it
+  string name = 2;      // the name in the generated configuration
+  string type = 3;      // mihomo adapter type, as in Proxy.type
+  string source_id = 4;
 }
 message CompositionWarning {
   string entry_id = 1; // a rule entry, or "fallback"
   // "region_empty": the target region has no nodes; "group_empty": the target group has
   // no members. The entry goes to the built-in "proxy" group until that changes.
+  // "egress_unavailable": the target exit has no material in Composition.egress, and
+  // "mesh_missing": the target mesh outbound is gone; the entry rejects its connections.
+  // "via_empty": an exit's via group has no members (entry_id is the exit, such as
+  // "egress:warp"; target the group); the exit goes out through "proxy" meanwhile.
+  // "mesh_restricted": a mesh outbound option that serves other devices was turned off
+  // (entry_id is the outbound's mesh id; target the option); docs/mesh.md §4.
   string reason = 2;
   string target = 3; // the target the plan names
 }
@@ -367,7 +416,20 @@ message SourceNode {
   string type = 2;   // mihomo adapter type, as in Proxy.type
   string region = 3; // region code; "ZZ" when no region matched
   bool info = 4;     // the name matches info_filter, so the pool leaves the node out
+  bool mesh = 5;     // a Tailscale, ZeroTier or EasyTier outbound, kept out of the pool
 }
+
+// Registers a WARP device through a group of the running configuration, or gives an
+// existing one a key for another protocol (docs/exits.md §3.2). Failures are
+// operation_failed with Cloudflare's text; not_running while the core is stopped.
+message RegisterWarpRequest {
+  string via = 1; // the group's name in the running configuration
+  WarpProtocol protocol = 2;
+  // An existing device to re-key; both empty registers a new one.
+  string device_id = 3;
+  string token = 4;
+}
+message RegisterWarpResponse { WarpAccount account = 1; }
 
 message ListGeoCategoriesRequest {}
 message ListGeoCategoriesResponse {

@@ -20,6 +20,7 @@ from solaris.host.base import (
     HostInfo,
     HostStatus,
     LogEntry,
+    MeshOutbound,
     PlanConversion,
     PoolNode,
     Proxy,
@@ -32,6 +33,7 @@ from solaris.host.base import (
     SourceNode,
     TrafficSample,
     TunnelConfig,
+    WarpAccount,
     bundled_geo_categories,
 )
 from solaris.host.client import ControlClient
@@ -44,6 +46,11 @@ MODES = {"rule": pb.MODE_RULE, "global": pb.MODE_GLOBAL, "direct": pb.MODE_DIREC
 EXPORT_FORMATS = {
     EXPORT_SHARE: pb.EXPORT_FORMAT_SHARE,
     EXPORT_GENERATED: pb.EXPORT_FORMAT_GENERATED,
+}
+WARP_PROTOCOLS = {
+    "masque-h2": pb.WARP_PROTOCOL_MASQUE_H2,
+    "masque-h3": pb.WARP_PROTOCOL_MASQUE_H3,
+    "wireguard": pb.WARP_PROTOCOL_WIREGUARD,
 }
 LOG_LEVELS = {
     "debug": pb.LOG_LEVEL_DEBUG,
@@ -74,6 +81,40 @@ def _composition(composition: Composition) -> pb.Composition:
         ],
         info_filter=composition.info_filter,
         plan_json=composition.plan_json,
+        egress=pb.Egress(
+            warp=_warp_account(composition.egress.warp) if composition.egress.warp else None
+        ),
+    )
+
+
+def _warp_account(account: WarpAccount) -> pb.WarpAccount:
+    return pb.WarpAccount(
+        device_id=account.device_id,
+        token=account.token,
+        protocol=WARP_PROTOCOLS[account.protocol],
+        private_key=account.private_key,
+        peer_public_key=account.peer_public_key,
+        endpoint=account.endpoint,
+        address_v4=account.address_v4,
+        address_v6=account.address_v6,
+        client_id=account.client_id,
+        registered_at_unix_ms=account.registered_at_unix_ms,
+    )
+
+
+def _warp_account_from(account: pb.WarpAccount) -> WarpAccount:
+    protocol = account.protocol or pb.WARP_PROTOCOL_MASQUE_H2  # unspecified means the default
+    return WarpAccount(
+        device_id=account.device_id,
+        token=account.token,
+        protocol=_enum_name(pb.WarpProtocol, "WARP_PROTOCOL_", protocol).replace("_", "-"),
+        private_key=account.private_key,
+        peer_public_key=account.peer_public_key,
+        endpoint=account.endpoint,
+        address_v4=account.address_v4,
+        address_v6=account.address_v6,
+        client_id=account.client_id,
+        registered_at_unix_ms=account.registered_at_unix_ms,
     )
 
 
@@ -106,6 +147,7 @@ def _report(response: pb.Response) -> CompositionReport | None:
         ),
         rules=tuple(_rule(r) for r in report.rules),
         nodes=tuple(_pool_node(n) for n in report.nodes),
+        mesh=tuple(MeshOutbound(m.id, m.name, m.type, m.source_id) for m in report.mesh),
     )
 
 
@@ -219,7 +261,9 @@ class ServiceHost:
         request = pb.InspectSourceRequest(yaml=yaml, info_filter=info_filter)
         inspected = (await self._call(pb.Request(inspect_source=request))).inspect_source
         return SourceInspection(
-            nodes=tuple(SourceNode(n.name, n.type, n.region, n.info) for n in inspected.nodes),
+            nodes=tuple(
+                SourceNode(n.name, n.type, n.region, n.info, n.mesh) for n in inspected.nodes
+            ),
             has_rules=inspected.has_rules,
             group_count=inspected.group_count,
             rule_count=inspected.rule_count,
@@ -283,6 +327,18 @@ class ServiceHost:
             options=_options(config.options),
         )
         return (await self._call(pb.Request(export_plan=request))).export_plan.yaml
+
+    async def register_warp(
+        self, via: str, protocol: str = "masque-h2", existing: WarpAccount | None = None
+    ) -> WarpAccount:
+        request = pb.RegisterWarpRequest(
+            via=via,
+            protocol=WARP_PROTOCOLS[protocol],
+            device_id=existing.device_id if existing else "",
+            token=existing.token if existing else "",
+        )
+        response = await self._call(pb.Request(register_warp=request))
+        return _warp_account_from(response.register_warp.account)
 
     async def stop(self) -> None:
         await self._call(pb.Request(stop=pb.StopRequest()))

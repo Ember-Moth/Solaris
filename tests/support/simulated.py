@@ -54,6 +54,7 @@ from solaris.host.base import (
     SourceNode,
     TrafficSample,
     TunnelConfig,
+    WarpAccount,
     bundled_geo_categories,
 )
 from solaris.models.plans import GROUP_TYPES
@@ -1069,6 +1070,25 @@ class SimulatedHost:
         if config.composition is None:
             raise ValueError("export_plan needs a composition")
         return export_yaml(config, export)
+
+    async def register_warp(
+        self, via: str, protocol: str = "masque-h2", existing: WarpAccount | None = None
+    ) -> WarpAccount:
+        # A fixed made-up device; the real one comes from Cloudflare (docs/exits.md §3.2).
+        if not self._running:
+            raise HostError("not_running", "the core is not running")
+        return WarpAccount(
+            device_id=existing.device_id if existing else "a1b2c3d4-0000-4000-8000-000000000000",
+            token=existing.token if existing else "simulated-token",
+            protocol=protocol,
+            private_key="simulated-private-key",
+            peer_public_key="simulated-peer-key",
+            endpoint="162.159.198.1:443",
+            address_v4="172.16.0.2",
+            address_v6="2606:4700:110:8a36::2",
+            client_id="AAAA",
+            registered_at_unix_ms=1_793_318_400_000,
+        )
 
     async def stop(self) -> None:
         self._running = False

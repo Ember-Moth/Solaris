@@ -13,14 +13,17 @@ from solaris.host.base import (
     CompositionReport,
     CompositionSource,
     CompositionWarning,
+    Egress,
     GeoCategories,
     HostError,
+    MeshOutbound,
     PoolNode,
     Rule,
     RunOptions,
     SourceInspection,
     SourceNode,
     TunnelConfig,
+    WarpAccount,
     bundled_geo_categories,
 )
 from solaris.host.service import ServiceHost
@@ -179,6 +182,74 @@ def test_service_host_routing_methods() -> None:
     # The installer's list stands in for what the core cannot list.
     assert categories.geoip == bundled_geo_categories().geoip
     assert categories.geoip.bundled
+
+
+WARP = WarpAccount(
+    device_id="dev-1",
+    token="tok",
+    protocol="wireguard",
+    private_key="priv",
+    peer_public_key="peer",
+    endpoint="162.159.192.1:2408",
+    address_v4="172.16.0.2",
+    address_v6="2606:4700:110::2",
+    client_id="AQID",
+    registered_at_unix_ms=1,
+)
+
+
+def test_service_host_carries_exits_and_mesh_outbounds() -> None:
+    """The second round's contract (docs/exits.md §7, docs/mesh.md §6): the WARP account
+    rides in the composition, RegisterWarp answers with one, and the report lists the mesh
+    outbounds."""
+    received: list[pb.Request] = []
+    mesh = pb.MeshOutbound(id="mesh:sub-a/家里", name="家里", type="Tailscale", source_id="sub-a")
+
+    async def answer(request: pb.Request) -> pb.Response:
+        received.append(request)
+        if request.WhichOneof("method") == "register_warp":
+            account = pb.WarpAccount(device_id="dev-2", token="t2", private_key="k2")
+            return pb.Response(register_warp=pb.RegisterWarpResponse(account=account))
+        return pb.Response(composition=pb.CompositionReport(mesh=[mesh]))
+
+    composition = Composition(
+        sources=COMPOSITION.sources, plan_json=COMPOSITION.plan_json, egress=Egress(warp=WARP)
+    )
+
+    async def scenario() -> tuple[CompositionReport | None, WarpAccount]:
+        server, opener = await serve(answer)
+        async with server:
+            host = ServiceHost(opener)
+            try:
+                report = await host.validate(TunnelConfig(composition=composition))
+                return report, await host.register_warp("节点选择", "wireguard", WARP)
+            finally:
+                await host.close()
+
+    report, account = asyncio.run(scenario())
+    assert report is not None
+    assert report.mesh == (MeshOutbound("mesh:sub-a/家里", "家里", "Tailscale", "sub-a"),)
+    sent = received[0].validate.composition.egress.warp
+    assert (sent.device_id, sent.protocol, sent.endpoint, sent.client_id) == (
+        "dev-1",
+        pb.WARP_PROTOCOL_WIREGUARD,
+        "162.159.192.1:2408",
+        "AQID",
+    )
+    assert received[1].register_warp == pb.RegisterWarpRequest(
+        via="节点选择", protocol=pb.WARP_PROTOCOL_WIREGUARD, device_id="dev-1", token="tok"
+    )
+    # An unspecified protocol is the default, MASQUE over HTTP/2.
+    assert (account.device_id, account.protocol, account.private_key) == (
+        "dev-2",
+        "masque-h2",
+        "k2",
+    )
+
+
+def test_a_composition_without_exits_sends_none() -> None:
+    assert not pb.Composition().HasField("egress")
+    assert COMPOSITION.egress == Egress()
 
 
 def test_bundled_categories_hold_what_the_default_template_names() -> None:

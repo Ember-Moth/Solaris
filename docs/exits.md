@@ -358,6 +358,10 @@ listeners:
 
 ### 7.1 `Composition` 与方案 JSON
 
+WARP 部分的字段已写进 `control.proto`（`Egress`、`WarpAccount`、`RegisterWarp`），Python 侧是 `host/base.py` 的
+`Egress`、`WarpAccount` 和 `TunnelHost.register_warp`；Tor 和 VPN Gate 的字段号 2、3 已预留。
+
+
 - `Composition` 新增 `egress`：
   - `warp`：账户（3.2 节的各项）和协议；
   - `tor`：P1 及其账号密码、P2 及其账号密码；
