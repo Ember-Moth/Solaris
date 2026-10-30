@@ -268,7 +268,11 @@ def _export_plans(connection: sqlite3.Connection) -> list[dict[str, Any]]:
                 "SELECT * FROM plan_rules WHERE plan_id = ? ORDER BY position, id", (row["id"],)
             )
         ]
-        plan = _record(row, ("id", "name", "fallback", "position", "created_at"))
+        plan = _record(
+            row,
+            ("id", "name", "fallback", "position", "created_at"),
+            egress=json.loads(row["egress"]),
+        )
         plans.append({**plan, "groups": groups, "rules": rules})
     return plans
 
@@ -330,6 +334,7 @@ _PLAN: dict[str, Check] = {
     "id": _text,
     "name": _text,
     "fallback": _text,
+    "egress": _any,
     "position": _integer,
     "created_at": _time,
     "updated_at": _time,
@@ -425,7 +430,7 @@ _PROFILES = _Table(
     created_at=True,
 )
 _OVERRIDES = _Table("overrides", ("scope",), ("yaml",))
-_PLANS = _Table("plans", ("id",), ("name", "fallback", "position"), created_at=True)
+_PLANS = _Table("plans", ("id",), ("name", "fallback", "egress", "position"), created_at=True)
 _GROUPS = _Table(
     "plan_groups",
     ("plan_id", "id"),
@@ -452,7 +457,8 @@ def restore(connection: sqlite3.Connection, snapshot: Snapshot, mode: str, now: 
     _restore_configs(connection, document["profiles"], mode, now)
     _restore_rows(connection, _OVERRIDES, document["overrides"], mode, now)
     routing = document["routing"]
-    _restore_rows(connection, _PLANS, routing["plans"], mode, now)
+    plans = [_stored_plan(plan) for plan in routing["plans"]]
+    _restore_rows(connection, _PLANS, plans, mode, now)
     for plan in routing["plans"]:
         if _deleted(plan):
             continue
@@ -474,6 +480,12 @@ def _stored_profile(record: dict[str, Any]) -> dict[str, Any]:
     if _deleted(record):
         return record
     return {**record, "in_pool": int(record["in_pool"])}
+
+
+def _stored_plan(record: dict[str, Any]) -> dict[str, Any]:
+    if _deleted(record):
+        return record
+    return {**record, "egress": _canonical(record["egress"])}
 
 
 def _stored_group(plan_id: str, record: dict[str, Any]) -> dict[str, Any]:
@@ -676,8 +688,8 @@ def _restore_settings(
                         continue
                 updated_at = now
         connection.execute(
-            "INSERT INTO settings (key, value, scope, updated_at) VALUES (?, ?, ?, ?) "
-            "ON CONFLICT (key) DO UPDATE SET value = excluded.value, scope = excluded.scope, "
+            "INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?) "
+            "ON CONFLICT (key) DO UPDATE SET value = excluded.value, "
             "updated_at = excluded.updated_at",
-            (name, json.dumps(value), SYNCED, updated_at),
+            (name, json.dumps(value), updated_at),
         )
