@@ -328,8 +328,8 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 | `system_proxy` | 布尔 | `false` | 本机 | 概览页的系统代理开关：下一次连接是否设置系统代理 |
 | `mixed_port` | 1024–65535 | 7890 | 本机 | 混合端口，总是覆盖配置里的 `mixed-port` |
 | `allow_lan` | 布尔 | `false` | 本机 | 允许局域网连接（architecture.md §8"局域网暴露"） |
-| `warp_protocol` | `masque-h2`、`masque-h3`、`wireguard` | `masque-h2` | 本机 | M9：WARP 出口的协议，在出口设置对话框里改（privacy.md 3.1 节） |
-| `tor_enabled` | 布尔 | `false` | 本机 | M10：设置页"实验功能"里的"Tor 出口"（privacy.md 第 4 节） |
+| `warp_protocol` | `masque-h2`、`masque-h3`、`wireguard` | `masque-h2` | 本机 | M9：WARP 出口的协议，在出口设置对话框里改（exits.md 3.1 节） |
+| `tor_enabled` | 布尔 | `false` | 本机 | M10：设置页"实验功能"里的"Tor 出口"（exits.md 第 4 节） |
 | `include_all_networks` | 布尔 | `false` | 本机 | 仅 macOS，M5 实现（D19）："包含所有网络"，把系统默认绕开隧道的流量也送进隧道。写进 VPN 配置的 `includeAllNetworks`，下次连接时生效；打开后 TUN 协议栈不能用 `system` 和 `mixed`，设置页把这两项置灰，已选的改成 gVisor（architecture.md §3.4） |
 
 - **映射到 `RunOptions`**（第 1 节）：Start 用 `Settings.run_options()` 的四项；Reload 的 TUN 和系统代理取自
