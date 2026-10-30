@@ -127,11 +127,39 @@ B1、B2 的结果与遗留：
 - **M7 备份的本地部分**：快照的导出、导入与合并，`BackupProvider` 接口，本地目录提供方。Google Cloud 项目建好后
   接上 Google Drive（C2）。
 
-**第三轮**（等环境）：
+**第三轮 A**（2026-10-30 开始，不等环境的部分，三个会话并行）：
 
-- **M4 Windows 产品化**（含 B3）：需要 Windows 虚拟机。
+| 工作 | 内容 |
+| --- | --- |
+| M4 服务 | 认领与属主（`Claim`，按 SID 划分 home 并设 ACL，`owner.json`）、属主注销时停止隧道（D5）、开机恢复（`was_running`、覆写、节点选择）、系统代理（模拟属主会话写 HKCU）、发布构建校验客户端的 Authenticode 签名者。管理员接管（D5b）等决定后再做。单元测试在 CI 的 Windows 机器上跑 |
+| M4 打包 | Windows 的 Nuitka 构建脚本、NSIS 安装器（安装、升级、卸载服务；注册 `solaris://`、`clash://`）、发布工作流加 Windows job（签名步骤留空，等签名方案） |
+| 两个设置 | "TUN 协议栈"（D3，两个平台）和"包含所有网络"（D19，仅 macOS）：设置项、`RunOptions` 新字段、内核与系统扩展的处理、设置页。本轮只有它改控制协议 |
+
+**第三轮 B**（等环境）：
+
+- **M4 实测**：wintun、strict-route、DNS 泄漏、四种栈、安装升级卸载。需要 Windows 虚拟机。
 - **M5 实测**：系统扩展审批、utun、四种栈、D8、`includeAllNetworks`；之后做 M7 的 iCloud 部分。需要测试 Mac。
-- **M6 收尾与首发**：Windows 签名方案、发布全流程。
+- **M6 收尾与首发**：Windows 签名、发布全流程（见下面的首发清单）。
+
+### 首发清单
+
+首发要求 Windows x64 和 macOS arm64 同时可用（D2）。下面每一项都完成才发布：
+
+| 项 | 状态 |
+| --- | --- |
+| Windows 服务、安装器、实测（M4） | 第三轮 A 写代码，实测等虚拟机 |
+| macOS 在全新 Mac 上的验收（M5），第一次公证 | 等测试 Mac |
+| "TUN 协议栈"与"包含所有网络"设置 | 第三轮 A |
+| 应用图标（macOS .icns、Windows .ico）与品牌素材 | 待讨论 |
+| Windows 代码签名，签名者常量替换占位值 | 等签名方案 |
+| 发布工作流：两个平台的安装包、发布到 GitHub Releases、SHA256SUMS；"检查更新"对真实 Release 验证 | M6 收尾 |
+| WARP 出口的真实验收（M9） | 等真实节点 |
+| 真实网络测试：真实订阅、DNS 泄漏、IPv6、睡眠唤醒、切换网络 | 两个平台实测时一起做 |
+| 用户可见的材料：下载页或 README、发布说明、隐私说明（WARP 经过 Cloudflare、诊断导出的内容） | 待写 |
+| 数据库表结构定稳：首发后不再"不写兼容代码"，改表要写迁移 | 首发前复核 |
+
+**建议放到首发之后**（待你确认）：Google Drive 与 iCloud 备份（首发用本地备份）、M10 Tor、M11 应用内组网、
+M12 VPN Gate。
 
 ### 首发之后
 
