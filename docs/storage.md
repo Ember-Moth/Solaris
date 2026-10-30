@@ -3,7 +3,7 @@
 本文描述界面侧用户数据的持久化方式（SQLite），以及如何把这些数据备份到 Google Drive 和 iCloud。
 相关决策是 [roadmap.md](roadmap.md) 中的 D13 和 D14，实施计划见 roadmap 的 M7。
 
-状态：存储层已实现（B1），云备份未实现。存储层的实现细节（线程、迁移、从文件存储导入）见 [ui.md](ui.md) §2。
+状态：存储层已实现（B1），云备份未实现。存储层的实现细节（线程、迁移）见 [ui.md](ui.md) §2。
 
 ## 1. 范围
 
@@ -33,14 +33,12 @@
 | `overrides` | `scope`（`global` 或某个 `profile_id`）、YAML 原文、`updated_at`、`deleted_at` |
 | `routing_state`、`plans`、`plan_groups`、`plan_rules` | 分流方式、当前使用的配置、节点池设置、分流方案及其策略组和规则条目，字段见 routing.md 第 9 节 |
 | `settings` | `key`、`value`（JSON）、`scope`（`synced` / `local`）、`updated_at`。每个设置项属于哪个 scope，由设置页的定义决定 |
-| `state` | 只属于本机的状态（`key`、`value`（JSON）、`updated_at`），例如文件存储的导入记录 |
+| `state` | 只属于本机的状态（`key`、`value`（JSON）、`updated_at`），目前没有使用 |
 | `backup_targets` | 已开启的备份目标：`id`、提供方、显示用的账户名、上次成功备份的时间、上次的错误、`created_at`、`updated_at`、`deleted_at`。不存令牌（见 4 节） |
 
 当前使用的配置存在 `routing_state` 里，作为"订阅自带"时用的配置（routing.md 第 9 节），不在 `state` 里。
 
-**迁移**：首次启动新版本时，如果发现 M2 的文件存储（`profiles.json`、`profiles/*.yaml`、`override.yaml`、
-`overrides/*.yaml`）或临时的设置文件 `settings.json`，就在一个事务里把它们导入数据库，失败时下次启动重试。导入后，
-旧文件改名加上 `.migrated` 后缀保留，不删除。细节见 ui.md 2.4 节。
+**旧数据**：项目首个版本发布之前不做旧数据的导入或迁移；表结构直接修改，`user_version` 保持 1。
 
 ## 3. 备份快照
 
