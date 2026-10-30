@@ -341,7 +341,7 @@ def test_a_network_without_its_secret_waits_for_it(
     with qtbot.waitSignal(routing.applied):
         routing.put_plan(replace(plan, rules=(rule, *plan.rules)), lambda: None, print)
     credentials.secrets.clear()
-    planned.library._secrets = None  # read again, as at the next start
+    planned.library.networks._secrets = None  # read again, as at the next start
     add(qtbot, networks, "tailscale", name="家里", login="key", auth_key="k")
     assert (row(networks, "实验室").status, row(networks, "实验室").tone) == (
         "缺少网络密钥",

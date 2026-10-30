@@ -28,14 +28,14 @@ def test_an_import_without_a_core_is_stored_unread_and_read_at_connect(tmp_path:
     scene = mac_scene(tmp_path)
     scene.fetcher.body = SAMPLE_CONFIG.encode()
 
-    profiles = run(lambda: scene.library.import_url("https://sub.example.com/a", "A"))
+    profiles = run(lambda: scene.library.profiles.import_url("https://sub.example.com/a", "A"))
     (profile,) = profiles.profiles
     assert (profile.unread, profile.proxy_count, profiles.active) == (True, None, None)
     assert scene.validated == []
     assert scene.state().mode is None  # the import settles it once the core read it
     assert run(scene.library.routing).has_rules(profile) is None
 
-    run(scene.library.start_tunnel)
+    run(scene.library.tunnel.start)
     assert scene.host.prepared == 1
     profiles = run(scene.library.current)
     (profile,) = profiles.profiles
@@ -52,10 +52,10 @@ def test_an_import_without_a_core_is_stored_unread_and_read_at_connect(tmp_path:
 def test_a_profile_in_use_the_core_refuses_takes_the_tunnel_down(tmp_path: Path) -> None:
     scene = mac_scene(tmp_path)
     scene.fetcher.body = BROKEN_RULES.encode()
-    run(lambda: scene.library.import_url("https://sub.example.com/broken", "Broken"))
+    run(lambda: scene.library.profiles.import_url("https://sub.example.com/broken", "Broken"))
 
     with pytest.raises(HostError) as raised:
-        run(scene.library.start_tunnel)
+        run(scene.library.tunnel.start)
     assert raised.value.code == "invalid_config"
     assert not scene.host.core_available  # down again, and nothing started
     assert scene.host.config is None
@@ -68,11 +68,11 @@ def test_a_profile_in_use_the_core_refuses_takes_the_tunnel_down(tmp_path: Path)
 def test_another_refused_profile_is_marked_and_left_out(tmp_path: Path) -> None:
     scene = mac_scene(tmp_path)
     scene.fetcher.body = NODES_ONLY.encode()
-    run(lambda: scene.library.import_url("https://nodes.example.com/a", "Nodes"))
+    run(lambda: scene.library.profiles.import_url("https://nodes.example.com/a", "Nodes"))
     scene.fetcher.body = BROKEN_RULES.encode()
-    run(lambda: scene.library.import_url("https://sub.example.com/broken", "Broken"))
+    run(lambda: scene.library.profiles.import_url("https://sub.example.com/broken", "Broken"))
 
-    run(scene.library.start_tunnel)
+    run(scene.library.tunnel.start)
     profiles = run(scene.library.current)
     nodes, broken = profiles.profiles
     assert scene.state().mode == MODE_PLAN  # the first one read has nodes only
@@ -89,8 +89,8 @@ def test_another_refused_profile_is_marked_and_left_out(tmp_path: Path) -> None:
 def test_without_a_core_changes_are_stored_and_start_checks_them(tmp_path: Path) -> None:
     scene = mac_scene(tmp_path)
     scene.fetcher.body = NODES_ONLY.encode()
-    run(lambda: scene.library.import_url("https://nodes.example.com/a", "Nodes"))
-    run(scene.library.start_tunnel)
+    run(lambda: scene.library.profiles.import_url("https://nodes.example.com/a", "Nodes"))
+    run(scene.library.tunnel.start)
     run(scene.host.stop)
     routing = run(scene.library.routing)
     plan = routing.plan()
@@ -98,18 +98,20 @@ def test_without_a_core_changes_are_stored_and_start_checks_them(tmp_path: Path)
     validated = len(scene.validated)
 
     first = replace(plan.rules[0], enabled=False)
-    changed = run(lambda: scene.library.put_plan(replace(plan, rules=(first, *plan.rules[1:]))))
+    changed = run(
+        lambda: scene.library.plans.put_plan(replace(plan, rules=(first, *plan.rules[1:])))
+    )
     assert routing.report is not None
     assert routing.report.nodes
     assert changed.report is None  # the counts wait for a core
     assert len(scene.validated) == validated
-    assert run(scene.library.compose_report).report is None
+    assert run(scene.library.plans.compose_report).report is None
     # Automatic updates wait for a core to read them.
     scene.fetcher.body = SAMPLE_CONFIG.encode()
-    profiles = run(scene.library.update_due)
+    profiles = run(scene.library.profiles.update_due)
     assert not profiles.profiles[0].unread
 
-    run(scene.library.start_tunnel)
+    run(scene.library.tunnel.start)
     assert not scene.running_plan()["rules"][0]["enabled"]
     assert run(scene.library.routing).report is not None
 
@@ -124,22 +126,22 @@ def test_after_a_restart_a_nodes_only_profile_never_takes_over_the_rules(
 ) -> None:
     connected = Scene(tmp_path)
     connected.fetcher.body = SAMPLE_CONFIG.encode()
-    rules = run(lambda: connected.library.import_url("https://sub.example.com/a", "Rules"))
+    rules = run(lambda: connected.library.profiles.import_url("https://sub.example.com/a", "Rules"))
     connected.fetcher.body = NODES_ONLY.encode()
-    run(lambda: connected.library.import_url("https://nodes.example.com/b", "Nodes"))
+    run(lambda: connected.library.profiles.import_url("https://nodes.example.com/b", "Nodes"))
     assert connected.state().mode == MODE_PROFILE
 
     scene = relaunched_without_a_core(tmp_path)
     profiles = run(scene.library.current)
     routing = run(scene.library.routing)
     assert [routing.has_rules(p) for p in profiles.profiles] == [True, False]
-    run(lambda: scene.library.remove(rules.profiles[0].id))
+    run(lambda: scene.library.profiles.remove(rules.profiles[0].id))
     # Nodes only: the plan takes over, as when the core can answer.
     assert scene.state().mode == MODE_PLAN
     assert run(scene.library.current).active is None
     with pytest.raises(ProfileError, match="no_rules"):
-        run(lambda: scene.library.set_mode(MODE_PROFILE))
-    run(scene.library.start_tunnel)
+        run(lambda: scene.library.plans.set_mode(MODE_PROFILE))
+    run(scene.library.tunnel.start)
     config = scene.host.config
     assert config is not None
     assert config.composition is not None
@@ -148,17 +150,19 @@ def test_after_a_restart_a_nodes_only_profile_never_takes_over_the_rules(
 def test_an_update_the_core_refuses_at_connect_falls_back(tmp_path: Path) -> None:
     connected = Scene(tmp_path)
     connected.fetcher.body = SAMPLE_CONFIG.encode()
-    (rules,) = run(lambda: connected.library.import_url("https://sub.example.com/a", "A")).profiles
+    (rules,) = run(
+        lambda: connected.library.profiles.import_url("https://sub.example.com/a", "A")
+    ).profiles
 
     scene = relaunched_without_a_core(tmp_path)
     scene.fetcher.body = BROKEN_RULES.encode()
-    profiles = run(lambda: scene.library.update(rules.id))
+    profiles = run(lambda: scene.library.profiles.update(rules.id))
     assert profiles.profiles[0].unread
     assert profiles.profiles[0].has_rules is None
     scene.fetcher.body = (BROKEN_RULES + "# again\n").encode()
-    run(lambda: scene.library.update(rules.id))  # another one waiting keeps the read text
+    run(lambda: scene.library.profiles.update(rules.id))  # another one waiting keeps the read text
 
-    run(scene.library.start_tunnel)
+    run(scene.library.tunnel.start)
     # The text the core read before stays in use, as after a failed update.
     config = scene.host.config
     assert config is not None

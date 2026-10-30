@@ -231,13 +231,13 @@ class RoutingViewModel(QObject):
             routing = await library.inspect_all()
             error = ""
             try:
-                routing = await library.compose_report()
+                routing = await library.plans.compose_report()
             except (HostError, ProfileError) as failure:
                 error = failure_text(failure)
             profiles = await library.current()
             rules = None
             if routing.mode == MODE_PROFILE and profiles.active is not None:
-                rules = await library.profile_rules(profiles.active)
+                rules = await library.plans.profile_rules(profiles.active)
             return routing, profiles, rules, error
 
         def done(result: tuple[Routing, ProfileList, ProfileRules | None, str]) -> None:
@@ -318,7 +318,7 @@ class RoutingViewModel(QObject):
         if mode in MODE_LABELS and mode != self._routing.mode:
             self._flush()
             self._clear_undo()
-            self._act(self._library.set_mode(mode))
+            self._act(self._library.plans.set_mode(mode))
 
     @Property(bool, notify=changed)
     def busy(self) -> bool:
@@ -441,7 +441,7 @@ class RoutingViewModel(QObject):
         if profile_id != self._list.active or self._routing.mode != MODE_PROFILE:
 
             async def use() -> Routing:
-                await self._library.activate(profile_id)
+                await self._library.profiles.activate(profile_id)
                 return await self._library.routing()
 
             self._act(use())
@@ -603,7 +603,7 @@ class RoutingViewModel(QObject):
         if plan_id != self.planId:
             self._flush()
             self._clear_undo()
-            self._act(self._library.select_plan(plan_id))
+            self._act(self._library.plans.select_plan(plan_id))
 
     @Property(str, notify=changed)
     def planError(self) -> str:
@@ -631,7 +631,7 @@ class RoutingViewModel(QObject):
         self._clear_undo()
         self._plan_error = ""
         self._act(
-            self._library.create_plan(name.strip(), base or None),
+            self._library.plans.create_plan(name.strip(), base or None),
             self.planSaved.emit,
             self._plan_failed,
         )
@@ -681,7 +681,7 @@ class RoutingViewModel(QObject):
         if plan is not None:
             self._flush()
             self._clear_undo()
-            self._act(self._library.delete_plan(plan.id))
+            self._act(self._library.plans.delete_plan(plan.id))
 
     # -- rules -------------------------------------------------------------------------------
     @Property(QObject, constant=True)
@@ -877,7 +877,7 @@ class RoutingViewModel(QObject):
                 self._test, self._test_error = None, failure_text(error)
             self.testChanged.emit()
 
-        self._runner.submit(self._library.match_rule(plan, *target), matched, failed)
+        self._runner.submit(self._library.plans.match_rule(plan, *target), matched, failed)
 
     @Property(str, notify=testChanged)
     def testResult(self) -> str:
@@ -1116,7 +1116,7 @@ class RoutingViewModel(QObject):
         """For a converted plan: store it, and route with it when ``use``."""
         self._flush()
         self._clear_undo()
-        self._act(self._library.add_plan(plan, use), done, failed)
+        self._act(self._library.plans.add_plan(plan, use), done, failed)
 
     def _references(self, group_id: str) -> tuple[list[str], list[str]]:
         """The rule entries that send traffic to the group, and the groups that hold it."""
@@ -1257,7 +1257,7 @@ class RoutingViewModel(QObject):
         def failed(message: str) -> None:
             self._info_error = message
 
-        self._act(self._library.set_info_pattern(stored), self.infoPatternSaved.emit, failed)
+        self._act(self._library.plans.set_info_pattern(stored), self.infoPatternSaved.emit, failed)
 
     @Slot()
     def clearInfoError(self) -> None:
@@ -1311,7 +1311,7 @@ class RoutingViewModel(QObject):
             else:
                 self._failed(error)
 
-        self._runner.submit(self._library.put_plan(plan), stored, refused)
+        self._runner.submit(self._library.plans.put_plan(plan), stored, refused)
 
     def _flush(self) -> None:
         """Store the moves still waiting, before another kind of change."""

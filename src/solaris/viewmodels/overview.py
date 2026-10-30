@@ -203,7 +203,7 @@ class OverviewViewModel(QObject):
         if self._busy or on == self._connected():
             return
         if on:
-            self._act(self._library.start_tunnel(), pending="start")
+            self._act(self._library.tunnel.start(), pending="start")
         else:
             self._act(self._host.stop(), pending="stop")
 
@@ -221,13 +221,15 @@ class OverviewViewModel(QObject):
     @Slot(bool)
     def setTun(self, enabled: bool) -> None:
         self._act(
-            self._library.set_tun(enabled), lambda: self._keep_switch(tun=enabled), switch=True
+            self._library.tunnel.set_tun(enabled),
+            lambda: self._keep_switch(tun=enabled),
+            switch=True,
         )
 
     @Slot(bool)
     def setSystemProxy(self, enabled: bool) -> None:
         self._act(
-            self._library.set_system_proxy(enabled),
+            self._library.tunnel.set_system_proxy(enabled),
             lambda: self._keep_switch(system_proxy=enabled),
             switch=True,
         )

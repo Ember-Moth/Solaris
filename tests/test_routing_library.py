@@ -82,11 +82,11 @@ def test_a_first_import_with_nodes_only_routes_with_the_default_plan(tmp_path: P
 
     async def scenario() -> None:
         await scene.host.stop()
-        profiles = await scene.library.import_url("https://nodes.example.com/s", "机场")
+        profiles = await scene.library.profiles.import_url("https://nodes.example.com/s", "机场")
         # Nodes only: no profile's own rules to use.
         assert profiles.active is None
         assert profiles.profiles[0].proxy_count == 3
-        await scene.library.start_tunnel()
+        await scene.library.tunnel.start()
 
     run(scenario)
     state = scene.state()
@@ -121,12 +121,12 @@ def test_a_first_import_with_rules_routes_with_them(tmp_path: Path) -> None:
 
     async def scenario() -> None:
         await scene.host.stop()
-        profiles = await scene.library.import_url("https://sub.example.com/s", "A")
+        profiles = await scene.library.profiles.import_url("https://sub.example.com/s", "A")
         assert profiles.active == profiles.profiles[0].id
-        await scene.library.start_tunnel()
+        await scene.library.tunnel.start()
         # A later import does not change the mode.
         scene.fetcher.body = NODES_ONLY.encode()
-        await scene.library.import_url("https://nodes.example.com/s", "B")
+        await scene.library.profiles.import_url("https://nodes.example.com/s", "B")
 
     run(scenario)
     assert scene.state().mode == MODE_PROFILE
@@ -144,7 +144,7 @@ def test_switching_modes_reloads_what_each_runs(tmp_path: Path) -> None:
     scene.store.write_override("sample-a", "mode: global\n")
 
     async def scenario() -> None:
-        routing = await scene.library.set_mode(MODE_PLAN)
+        routing = await scene.library.plans.set_mode(MODE_PLAN)
         assert routing.mode == MODE_PLAN
         assert routing.report is not None
         config = scene.host.config
@@ -153,7 +153,7 @@ def test_switching_modes_reloads_what_each_runs(tmp_path: Path) -> None:
         assert config.overrides == ("log-level: debug\n",)
         assert [s.id for s in config.composition.sources] == ["sample-a", "sample-b", "sample-c"]
 
-        routing = await scene.library.set_mode(MODE_PROFILE)
+        routing = await scene.library.plans.set_mode(MODE_PROFILE)
         assert routing.mode == MODE_PROFILE
         config = scene.host.config
         assert config is not None
@@ -167,7 +167,7 @@ def test_switching_modes_reloads_what_each_runs(tmp_path: Path) -> None:
 
 def test_a_plan_change_is_validated_stored_and_reloaded(tmp_path: Path) -> None:
     scene = Scene(tmp_path, seeded=True)
-    run(lambda: scene.library.set_mode(MODE_PLAN))
+    run(lambda: scene.library.plans.set_mode(MODE_PLAN))
     store = RoutingStore(scene.store.database)
     (plan,) = store.plans()
     telegram = PlanRule("tg", "service", {"service": "telegram"}, "region:JP")
@@ -175,7 +175,7 @@ def test_a_plan_change_is_validated_stored_and_reloaded(tmp_path: Path) -> None:
         plan.id, plan.name, plan.fallback, plan.groups, (telegram, *plan.rules)
     )
 
-    routing = run(lambda: scene.library.put_plan(changed))
+    routing = run(lambda: scene.library.plans.put_plan(changed))
     assert store.plan(plan.id).rules[0] == telegram
     assert scene.host.reloads == 2
     assert scene.running_plan()["rules"][0]["items"] == [
@@ -191,7 +191,7 @@ def test_a_plan_change_is_validated_stored_and_reloaded(tmp_path: Path) -> None:
 
     scene.host.validate = refuse  # type: ignore[method-assign]
     with pytest.raises(HostError):
-        run(lambda: scene.library.put_plan(plan))
+        run(lambda: scene.library.plans.put_plan(plan))
     assert store.plan(plan.id).rules[0] == telegram
     assert scene.host.reloads == 2
 
@@ -200,24 +200,24 @@ def test_plans_are_created_selected_and_deleted(tmp_path: Path) -> None:
     scene = Scene(tmp_path, seeded=True)
 
     async def scenario() -> None:
-        routing = await scene.library.set_mode(MODE_PLAN)
+        routing = await scene.library.plans.set_mode(MODE_PLAN)
         first = routing.plan()
         assert first is not None
         with pytest.raises(ProfileError, match="last_plan"):
-            await scene.library.delete_plan(first.id)
+            await scene.library.plans.delete_plan(first.id)
 
-        routing = await scene.library.create_plan("游戏", first.id)
+        routing = await scene.library.plans.create_plan("游戏", first.id)
         second = routing.plan()
         assert second is not None
         assert (second.name, len(second.rules)) == ("游戏", len(first.rules))
         assert routing.state.plan_id == second.id
-        blank = await scene.library.create_plan("空白", None)
+        blank = await scene.library.plans.create_plan("空白", None)
         assert [p.name for p in blank.plans] == ["日常", "游戏", "空白"]
 
-        routing = await scene.library.select_plan(first.id)
+        routing = await scene.library.plans.select_plan(first.id)
         assert routing.state.plan_id == first.id
         # Deleting the plan in use hands over to the next one.
-        routing = await scene.library.delete_plan(first.id)
+        routing = await scene.library.plans.delete_plan(first.id)
         assert [p.name for p in routing.plans] == ["游戏", "空白"]
         assert routing.state.plan_id == second.id
 
@@ -231,9 +231,9 @@ def test_removing_the_last_profile_with_rules_switches_to_the_plan(tmp_path: Pat
         scene.store.write_config(profile_id, NODES_ONLY)
 
     async def scenario() -> None:
-        removal = await scene.library.removal("sample-a")
+        removal = await scene.library.profiles.removal("sample-a")
         assert (removal.active, removal.successor) == (True, None)
-        profiles = await scene.library.remove("sample-a")
+        profiles = await scene.library.profiles.remove("sample-a")
         assert profiles.active is None
 
     run(scenario)
@@ -248,10 +248,10 @@ def test_the_pool_follows_the_profiles(tmp_path: Path) -> None:
     scene = Scene(tmp_path, seeded=True)
 
     async def scenario() -> None:
-        await scene.library.set_mode(MODE_PLAN)
-        removal = await scene.library.removal("sample-c")
+        await scene.library.plans.set_mode(MODE_PLAN)
+        removal = await scene.library.profiles.removal("sample-c")
         assert removal.pool_nodes == 9
-        profiles = await scene.library.set_in_pool("sample-b", False)
+        profiles = await scene.library.profiles.set_in_pool("sample-b", False)
         assert not profiles.get("sample-b").in_pool
 
     run(scenario)
@@ -267,10 +267,10 @@ def test_a_profiles_own_override_does_not_apply_to_the_plan(tmp_path: Path) -> N
     scene = Scene(tmp_path, seeded=True)
 
     async def scenario() -> None:
-        await scene.library.set_mode(MODE_PLAN)
-        await scene.library.save_override("sample-a", "mode: direct\n")
+        await scene.library.plans.set_mode(MODE_PLAN)
+        await scene.library.profiles.save_override("sample-a", "mode: direct\n")
         assert scene.host.reloads == 1  # the plan runs; the override waits for its profile
-        await scene.library.save_override(None, "mode: global\n")
+        await scene.library.profiles.save_override(None, "mode: global\n")
 
     run(scenario)
     assert scene.host.reloads == 2
@@ -282,13 +282,13 @@ def test_the_info_pattern_is_checked_and_stored(tmp_path: Path) -> None:
     scene = Scene(tmp_path, seeded=True)
 
     async def scenario() -> None:
-        await scene.library.set_mode(MODE_PLAN)
-        routing = await scene.library.set_info_pattern("香港")
+        await scene.library.plans.set_mode(MODE_PLAN)
+        routing = await scene.library.plans.set_info_pattern("香港")
         assert routing.info_pattern == "香港"
         assert routing.report is not None
         assert all("香港" not in node.name for node in routing.report.nodes)
         assert any(node.info for node in routing.inspections["sample-a"].nodes)
-        routing = await scene.library.set_info_pattern(None)
+        routing = await scene.library.plans.set_info_pattern(None)
         assert routing.info_pattern == DEFAULT_INFO_PATTERN
 
     run(scenario)
@@ -302,7 +302,7 @@ def test_using_a_profiles_rules_needs_some(tmp_path: Path) -> None:
     scene = Scene(tmp_path, seeded=True)
     scene.store.write_config("sample-b", NODES_ONLY)
     with pytest.raises(ProfileError, match="no_rules"):
-        run(lambda: scene.library.activate("sample-b"))
+        run(lambda: scene.library.profiles.activate("sample-b"))
     routing = run(scene.library.inspect_all)
     profiles = run(scene.library.current)
     assert routing.has_rules(profiles.get("sample-a"))
@@ -314,6 +314,6 @@ def test_the_plan_uses_the_ui_locale(tmp_path: Path) -> None:
     scene.library = ProfileLibrary(
         scene.store, scene.host, scene.fetcher, clock=lambda: NOW, locale=lambda: "en"
     )
-    run(lambda: scene.library.set_mode(MODE_PLAN))
+    run(lambda: scene.library.plans.set_mode(MODE_PLAN))
     assert scene.running_plan()["locale"] == "en"
     assert plans.FALLBACK_ENTRY == "fallback"

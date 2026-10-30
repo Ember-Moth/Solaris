@@ -156,7 +156,7 @@ class RuleEditor(QObject):
         self.opened.emit()
 
         async def categories() -> GeoCategories:
-            return await self._library.geo_categories()
+            return await self._library.plans.geo_categories()
 
         self._runner.submit(categories(), self._categories_read, lambda _: None)
 

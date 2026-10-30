@@ -42,7 +42,7 @@ def local_delay_tests(app: App, health: WebServer) -> None:
         PlanGroup(f"region:{code}", "region", "url-test", options=options) for code in ("HK", "JP")
     ]
     done: list[Routing] = []
-    runner.submit(library.put_plan(replace(plan, groups=tuple(groups))), done.append)
+    runner.submit(library.plans.put_plan(replace(plan, groups=tuple(groups))), done.append)
     app.until(lambda: done)
     app.view_models.routing.reload()
 

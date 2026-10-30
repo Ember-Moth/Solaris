@@ -312,7 +312,7 @@ class MeshNetworks(QObject):
                 self._statuses = {}
                 self._sync()
 
-        self._runner.submit(self._library.mesh_status(), read, failed)
+        self._runner.submit(self._library.networks.mesh_status(), read, failed)
 
     def status_of(self, mesh_id: str) -> MeshStatus | None:
         """How the running core reports a mesh outbound, by its plan id."""
@@ -337,7 +337,7 @@ class MeshNetworks(QObject):
             self._notice = failure_text(error)
             self.changed.emit()
 
-        self._runner.submit(self._library.login_mesh(name), self._open_url, failed)
+        self._runner.submit(self._library.networks.login_mesh(name), self._open_url, failed)
 
     def _open_pending_login(self) -> None:
         if not self._login_pending:
@@ -526,7 +526,7 @@ class MeshNetworks(QObject):
             self._error = failure_text(error)
             self.changed.emit()
 
-        self._runner.submit(self._library.put_network(network, keep), stored, failed)
+        self._runner.submit(self._library.networks.put_network(network, keep), stored, failed)
 
     def _settings(self, given: dict[str, str]) -> tuple[MeshSettings | None, str]:
         """The kind's settings from the dialog, or why they cannot be."""
@@ -592,4 +592,6 @@ class MeshNetworks(QObject):
             self._notice = failure_text(error)
             self.changed.emit()
 
-        self._runner.submit(self._library.remove_network(network_id), self._routing.adopt, failed)
+        self._runner.submit(
+            self._library.networks.remove_network(network_id), self._routing.adopt, failed
+        )

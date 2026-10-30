@@ -363,7 +363,7 @@ class SettingsViewModel(QObject):
             self.changed.emit()
 
         settings = replace(self._current(), **changes)
-        self._runner.submit(self._library.apply_settings(settings), applied, failed)
+        self._runner.submit(self._library.tunnel.apply_settings(settings), applied, failed)
 
     # -- about -------------------------------------------------------------------------------
     @Slot()

@@ -431,7 +431,7 @@ class BackupViewModel(QObject):
 
         async def restore() -> tuple[ProfileList, BaseException | None]:
             try:
-                return await self._library.restore(write), None
+                return await self._library.profiles.restore(write), None
             except (HostError, ProfileError) as error:
                 if not written:
                     raise

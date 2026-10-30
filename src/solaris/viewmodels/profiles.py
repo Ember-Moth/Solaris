@@ -353,12 +353,12 @@ class ProfilesViewModel(QObject):
         go there."""
         self.routingRequested.emit()
         if profile_id != self._list.active or self._routing.mode != MODE_PROFILE:
-            self._run(self._library.activate(profile_id), reloads=True)
+            self._run(self._library.profiles.activate(profile_id), reloads=True)
 
     @Slot(str, bool)
     def setInPool(self, profile_id: str, in_pool: bool) -> None:
         reloads = self._routing.mode == MODE_PLAN
-        self._run(self._library.set_in_pool(profile_id, in_pool), reloads=reloads)
+        self._run(self._library.profiles.set_in_pool(profile_id, in_pool), reloads=reloads)
 
     @Slot(str)
     def updateProfile(self, profile_id: str) -> None:
@@ -367,14 +367,14 @@ class ProfilesViewModel(QObject):
         self._updating.add(profile_id)
         reloads = profile_id == self._list.active
         self._run(
-            self._library.update(profile_id),
+            self._library.profiles.update(profile_id),
             lambda: self._updating.discard(profile_id),
             reloads=reloads,
         )
 
     @Slot(str, bool)
     def setAutoUpdate(self, profile_id: str, enabled: bool) -> None:
-        self._run(self._library.set_auto_update(profile_id, enabled))
+        self._run(self._library.profiles.set_auto_update(profile_id, enabled))
 
     # -- removal -----------------------------------------------------------------------------
     @Slot(str)
@@ -394,7 +394,7 @@ class ProfilesViewModel(QObject):
             self._error = failure_text(error)
             self.changed.emit()
 
-        self._runner.submit(self._library.removal(profile_id), ready, failed)
+        self._runner.submit(self._library.profiles.removal(profile_id), ready, failed)
 
     @Property(str, notify=changed)
     def removalTitle(self) -> str:
@@ -412,7 +412,7 @@ class ProfilesViewModel(QObject):
             self._removal_pending = False
             removal = self._removal
             reloads = removal.active or bool(removal.pool_nodes)
-            self._run(self._library.remove(removal.profile.id), reloads=reloads)
+            self._run(self._library.profiles.remove(removal.profile.id), reloads=reloads)
 
     @Slot()
     def cancelRemove(self) -> None:
@@ -447,7 +447,7 @@ class ProfilesViewModel(QObject):
             self._error = failure_text(error)
             self.changed.emit()
 
-        self._runner.submit(self._library.update_due(), checked, failed)
+        self._runner.submit(self._library.profiles.update_due(), checked, failed)
 
     def _updated_at(self, profile_id: str) -> float | None:
         return next((p.updated_at for p in self._list.profiles if p.id == profile_id), None)
@@ -503,7 +503,7 @@ class ProfilesViewModel(QObject):
             self._error = failure_text(error)
             self.changed.emit()
 
-        self._runner.submit(self._library.read_override(profile_id), read, failed)
+        self._runner.submit(self._library.profiles.read_override(profile_id), read, failed)
 
     @Property(str, notify=changed)
     def overrideTitle(self) -> str:
@@ -551,7 +551,7 @@ class ProfilesViewModel(QObject):
             self._override_error = failure_text(error)
             self.changed.emit()
 
-        self._runner.submit(self._library.save_override(target, text), saved, failed)
+        self._runner.submit(self._library.profiles.save_override(target, text), saved, failed)
 
     # -- import ------------------------------------------------------------------------------
     @Property(bool, notify=changed)
@@ -623,13 +623,13 @@ class ProfilesViewModel(QObject):
 
     @Slot(str, str, bool)
     def importUrl(self, url: str, name: str, auto_update: bool) -> None:
-        self._import(self._library.import_url(url, name, auto_update), from_link=True)
+        self._import(self._library.profiles.import_url(url, name, auto_update), from_link=True)
 
     @Slot(str)
     def importFile(self, file_url: str) -> None:
         """Import the file a FileDialog chose; it passes a file:// URL."""
         path = QUrl(file_url).toLocalFile() or file_url
-        self._import(self._library.import_file(Path(path)), from_link=False)
+        self._import(self._library.profiles.import_file(Path(path)), from_link=False)
 
     # -- active profile ----------------------------------------------------------------------
     def _active(self) -> Profile | None:

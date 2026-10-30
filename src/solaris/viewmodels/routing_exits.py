@@ -324,7 +324,7 @@ class WarpExit(QObject):
                 self._error = failure_text(error)
             self.changed.emit()
 
-        self._runner.submit(self._library.register_warp(renew=renew), registered, failed)
+        self._runner.submit(self._library.exits.register_warp(renew=renew), registered, failed)
 
     @Slot()
     def requestForget(self) -> None:
@@ -341,7 +341,7 @@ class WarpExit(QObject):
             self._error = failure_text(error)
             self.changed.emit()
 
-        self._runner.submit(self._library.forget_warp(), self._routing.adopt, failed)
+        self._runner.submit(self._library.exits.forget_warp(), self._routing.adopt, failed)
 
 
 # -- the VPN Gate exit (docs/exits.md §5) ------------------------------------------------------
@@ -457,7 +457,7 @@ class VpnGateExit(QObject):
             if not isinstance(error, HostError | ProfileError):
                 raise error
 
-        self._runner.submit(self._library.check_vpngate(), done, failed)
+        self._runner.submit(self._library.exits.check_vpngate(), done, failed)
 
     # -- the row -----------------------------------------------------------------------------
     @Property(str, notify=changed)
@@ -724,7 +724,7 @@ class VpnGateExit(QObject):
                 self._error = failure_text(error)
             self.changed.emit()
 
-        self._runner.submit(self._library.refresh_vpngate(), refreshed, failed)
+        self._runner.submit(self._library.exits.refresh_vpngate(), refreshed, failed)
 
     def _sync_rows(self) -> None:
         servers = self._list()
