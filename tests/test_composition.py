@@ -4,6 +4,7 @@ ListGeoCategories over the protocol, and the simulated host's stand-in for them.
 import asyncio
 import base64
 import json
+from dataclasses import replace
 
 import pytest
 
@@ -28,7 +29,7 @@ from solaris.host.base import (
 )
 from solaris.host.service import ServiceHost
 from solaris.protocol import control_pb2
-from tests.support.simulated import SAMPLE_CONFIG, SimulatedHost
+from tests.support.simulated import SAMPLE_CONFIG, SimulatedHost, check_config
 from tests.test_control_client import serve
 
 pb = control_pb2
@@ -294,6 +295,69 @@ def test_simulated_host_composes() -> None:
         asyncio.run(host.validate(TunnelConfig(composition=broken)))
     assert raised.value.code == "invalid_config"
     assert raised.value.message.startswith("plan: plan version 2 is not supported")
+
+
+MESH_SOURCE = """proxies:
+  - {name: 家里, type: tailscale, auth-key: tskey-sample}
+  - {name: 香港 01, type: easytier, network-name: home}
+"""
+
+
+def test_simulated_host_keeps_mesh_outbounds_apart_and_rejects_without_exits() -> None:
+    """docs/mesh.md §3 and docs/exits.md §3.3, as the core does them."""
+    plan = {
+        "version": 1,
+        "rules": [
+            {
+                "id": "ts",
+                "items": [{"type": "DOMAIN-SUFFIX", "value": "ts.net"}],
+                "target": "mesh:home/家里",
+            },
+            {
+                "id": "gone",
+                "items": [{"type": "DOMAIN", "value": "nas.lan"}],
+                "target": "mesh:home/旧的",
+            },
+            {
+                "id": "ai",
+                "items": [{"type": "GEOSITE", "value": "openai"}],
+                "target": "egress:warp",
+            },
+        ],
+        "fallback": "proxy",
+        "egress": {"warp": {"via": "region:KR"}},
+    }
+    sources = (*COMPOSITION.sources, CompositionSource("home", "家", MESH_SOURCE))
+    composition = Composition(sources, json.dumps(plan))
+    host = SimulatedHost()
+    report = asyncio.run(host.validate(TunnelConfig(composition=composition)))
+    assert report is not None
+    assert report.mesh == (
+        MeshOutbound("mesh:home/家里", "家里", "Tailscale", "home"),
+        # The name a pool node holds already gets the profile's.
+        MeshOutbound("mesh:home/香港 01", "香港 01 · 家", "EasyTier", "home"),
+    )
+    assert len(report.nodes) == 9
+    assert [(r.payload, r.proxy) for r in report.rules[:3]] == [
+        ("ts.net", "家里"),
+        ("nas.lan", "REJECT"),
+        ("openai", "REJECT"),
+    ]
+    assert report.warnings == (
+        CompositionWarning("gone", "mesh_missing", "mesh:home/旧的"),
+        CompositionWarning("ai", "egress_unavailable", "egress:warp"),
+    )
+    # With an account the exit goes out through its via group, or 节点选择 without nodes.
+    composition = replace(composition, egress=Egress(warp=WARP))
+    report = asyncio.run(host.validate(TunnelConfig(composition=composition)))
+    assert report is not None
+    assert report.rules[2].proxy == "WARP 出口"
+    assert report.warnings[-1] == CompositionWarning("egress:warp", "via_empty", "region:KR")
+    document = check_config(TunnelConfig(composition=composition))
+    warp = next(p for p in document["proxies"] if p["name"] == "WARP 出口")
+    assert (warp["type"], warp["dialer-proxy"]) == ("wireguard", "节点选择")
+    inspection = asyncio.run(host.inspect_source(MESH_SOURCE))
+    assert [(n.name, n.mesh) for n in inspection.nodes] == [("家里", True), ("香港 01", True)]
 
 
 def test_simulated_host_inspects_and_lists_categories() -> None:
