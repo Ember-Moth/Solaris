@@ -974,11 +974,37 @@ ScrollView {
                 }
             }
 
-            // Mesh outbounds: rule targets of their own, in no group (docs/mesh.md §5).
+            // Mesh networks: the ones added in the app (docs/mesh.md §10.7), then the pool's
+            // mesh outbounds (§5); rule targets of their own, in no group. The dialogs and the
+            // networks' menu live here too.
             ColumnLayout {
+                id: meshSection
+
+                readonly property MeshNetworks networks: page.routing.meshNetworks
+
                 Layout.fillWidth: true
-                visible: page.tab === "groups" && page.routing.hasMesh
+                visible: page.tab === "groups" && networks.available
                 spacing: Theme.space2
+
+                // How the networks stand is asked for while the section is on screen.
+                onVisibleChanged: networks.setWatching(visible)
+                Component.onCompleted: networks.setWatching(visible)
+
+                Connections {
+                    target: meshSection.networks
+
+                    function onOpened() {
+                        meshDialog.showFor(page.dialogTrigger, page.dialogFocusReason)
+                    }
+
+                    function onSaved() {
+                        meshDialog.close()
+                    }
+
+                    function onRemovalRequested() {
+                        removeNetworkDialog.showFor(networkMenu.trigger, networkMenu.triggerFocusReason)
+                    }
+                }
 
                 SectionLabel {
                     Layout.fillWidth: true
@@ -987,6 +1013,87 @@ ScrollView {
 
                 Group {
                     Layout.fillWidth: true
+
+                    Repeater {
+                        model: meshSection.networks.rows
+
+                        GroupRow {
+                            id: networkRow
+
+                            required property int index
+                            required property string networkId
+                            required property string name
+                            required property string caption
+                            required property string status
+                            required property string tone
+                            required property bool canLogin
+                            required property string address
+
+                            divider: index > 0
+
+                            // The name opens the network's settings.
+                            AbstractButton {
+                                id: networkName
+
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                padding: 0
+                                Accessible.role: Accessible.Button
+                                Accessible.name: qsTr("编辑「%1」").arg(networkRow.name)
+                                Accessible.description: qsTr("%1。%2").arg(networkRow.caption).arg(networkRow.status)
+                                onClicked: {
+                                    page.dialogTrigger = networkName
+                                    page.dialogFocusReason = Focus.reasonAfter(networkName)
+                                    meshSection.networks.openEdit(networkRow.networkId)
+                                }
+
+                                contentItem: Item {
+                                    ColumnLayout {
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        spacing: 0
+
+                                        UiText {
+                                            Layout.fillWidth: true
+                                            text: networkRow.name
+                                            role: Theme.type.labelMd
+                                            elide: Text.ElideRight
+                                        }
+
+                                        UiText {
+                                            Layout.fillWidth: true
+                                            text: networkRow.caption
+                                            role: Theme.type.caption
+                                            color: Theme.textMuted
+                                            elide: Text.ElideRight
+                                        }
+                                    }
+                                }
+
+                                background: Item {
+                                    FocusRing {
+                                        targetRadius: 4
+                                        visible: networkName.visualFocus
+                                    }
+                                }
+                            }
+
+                            UiText {
+                                text: networkRow.status
+                                role: Theme.type.bodySm
+                                color: networkRow.tone === "warning" ? Theme.warning : networkRow.tone === "muted" ? Theme.textMuted : Theme.text
+                            }
+
+                            IconButton {
+                                id: networkMore
+
+                                iconName: "more"
+                                accessibleName: qsTr("%1 的更多操作").arg(networkRow.name)
+                                onClicked: networkMenu.openFor(networkRow.networkId, networkRow.canLogin, networkRow.address, networkMore)
+                            }
+                        }
+                    }
 
                     Repeater {
                         model: page.routing.meshOutbounds
@@ -999,7 +1106,7 @@ ScrollView {
                             required property string name
                             required property string caption
 
-                            divider: index > 0
+                            divider: index > 0 || meshSection.networks.hasRows
 
                             ColumnLayout {
                                 Layout.fillWidth: true
@@ -1033,6 +1140,121 @@ ScrollView {
                             }
                         }
                     }
+
+                    GroupRow {
+                        divider: meshSection.networks.hasRows || page.routing.hasMesh
+                        rowHeight: Theme.rowSingle
+
+                        AccessibleText {
+                            Layout.fillWidth: true
+                            text: meshSection.networks.hasRows || page.routing.hasMesh ? qsTr("Tailscale、ZeroTier、EasyTier") : qsTr("还没有组网：访问自己的设备和内网")
+                            role: Theme.type.bodySm
+                            color: Theme.textMuted
+                            elide: Text.ElideRight
+                        }
+
+                        AppButton {
+                            id: addNetworkButton
+
+                            variant: "compact"
+                            text: qsTr("添加网络…")
+                            enabled: !meshSection.networks.busy
+                            onClicked: {
+                                page.dialogTrigger = addNetworkButton
+                                page.dialogFocusReason = Focus.reasonAfter(addNetworkButton)
+                                meshSection.networks.openAdd()
+                            }
+                        }
+                    }
+                }
+
+                AccessibleText {
+                    Layout.fillWidth: true
+                    visible: text !== ""
+                    text: meshSection.networks.notice
+                    role: Theme.type.caption
+                    color: Theme.danger
+                    wrapMode: Text.Wrap
+                }
+
+                AppMenu {
+                    id: networkMenu
+
+                    property string networkId
+                    property bool canLogin
+                    property string address
+
+                    function openFor(id: string, login: bool, at: string, anchor: Item) {
+                        networkId = id
+                        canLogin = login
+                        address = at
+                        openBelow(anchor)
+                    }
+
+                    AppMenuItem {
+                        text: qsTr("登录…")
+                        visible: networkMenu.canLogin
+                        onTriggered: meshSection.networks.login(networkMenu.networkId)
+                    }
+
+                    AppMenuItem {
+                        text: qsTr("复制本机地址")
+                        enabled: networkMenu.address !== ""
+                        onTriggered: meshSection.networks.copyAddress(networkMenu.networkId)
+                    }
+
+                    AppMenuSeparator {}
+
+                    AppMenuItem {
+                        text: qsTr("添加常用规则")
+                        enabled: !page.routing.busy
+                        onTriggered: {
+                            page.dialogTrigger = networkMenu.trigger
+                            page.dialogFocusReason = networkMenu.triggerFocusReason
+                            meshSection.networks.addCommonRules(networkMenu.networkId)
+                        }
+                    }
+
+                    AppMenuItem {
+                        text: qsTr("使用它的规则")
+                        onTriggered: {
+                            meshSection.networks.showRules(networkMenu.networkId)
+                            page.tab = "rules"
+                        }
+                    }
+
+                    AppMenuSeparator {}
+
+                    AppMenuItem {
+                        text: qsTr("编辑…")
+                        onTriggered: {
+                            page.dialogTrigger = networkMenu.trigger
+                            page.dialogFocusReason = networkMenu.triggerFocusReason
+                            meshSection.networks.openEdit(networkMenu.networkId)
+                        }
+                    }
+
+                    AppMenuItem {
+                        text: qsTr("删除…")
+                        destructive: true
+                        onTriggered: meshSection.networks.requestRemove(networkMenu.networkId)
+                    }
+                }
+
+                MeshDialog {
+                    id: meshDialog
+
+                    networks: meshSection.networks
+                }
+
+                ConfirmDialog {
+                    id: removeNetworkDialog
+
+                    title: meshSection.networks.removalTitle
+                    message: meshSection.networks.removalText
+                    confirmText: qsTr("删除")
+                    destructive: true
+                    onAccepted: meshSection.networks.confirmRemove()
                 }
             }
 

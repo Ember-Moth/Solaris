@@ -38,13 +38,16 @@ from solaris.host.base import (
     CompositionReport,
     CompositionWarning,
     Connection,
+    EasyTierSettings,
     GeoCategories,
     GroupPreview,
     HostError,
     HostInfo,
     HostStatus,
     LogEntry,
+    MeshNetwork,
     MeshOutbound,
+    MeshStatus,
     PlanConversion,
     PoolNode,
     Proxy,
@@ -54,9 +57,11 @@ from solaris.host.base import (
     SkippedRule,
     SourceInspection,
     SourceNode,
+    TailscaleSettings,
     TrafficSample,
     TunnelConfig,
     WarpAccount,
+    ZeroTierSettings,
     bundled_geo_categories,
 )
 from solaris.models.plans import GROUP_TYPES
@@ -226,6 +231,7 @@ ADAPTER_TYPES = {
 # Outbounds into the user's own networks (docs/mesh.md §3): kept out of the pool.
 MESH_TYPES = ("tailscale", "zerotier", "easytier")
 WARP_TARGET = "egress:warp"
+NETWORK_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
 WARP_NAMES = {"zh": "WARP 出口", "en": "WARP exit"}  # the outbound, by the plan's locale
 # Share link schemes as proxy types.
 LINK_SCHEMES = {
@@ -372,6 +378,22 @@ def compose(composition: Composition) -> tuple[dict[str, Any], CompositionReport
     mesh: list[MeshOutbound] = []
     mesh_proxies: list[dict[str, Any]] = []
     taken = set(BUILT_IN_PROXIES)
+    # The networks the user added take their names before the nodes (docs/mesh.md §10.3);
+    # the custom groups and the WARP exit before them.
+    taken |= {str(g.get("name")) for g in plan.get("groups") or [] if g.get("kind") == "custom"}
+    taken |= {"节点选择", "自动选择", *WARP_NAMES.values()}
+    vias: dict[str, str] = {}
+    for network in composition.mesh:
+        outbound = _network_outbound(network)
+        kind = ADAPTER_TYPES[network.kind]
+        name = network.name
+        if name in taken:
+            name = f"{network.name} · {kind}"
+        taken.add(name)
+        mesh.append(MeshOutbound(f"mesh:{network.id}", name, kind, ""))
+        mesh_proxies.append({**outbound, "name": name})
+        if network.via:
+            vias[name] = network.via
     for source in composition.sources:
         for proxy in _subscription(source.yaml, f"subscription {source.name!r}: ")[0]:
             original = proxy["name"]
@@ -406,6 +428,14 @@ def compose(composition: Composition) -> tuple[dict[str, Any], CompositionReport
     warp_name = WARP_NAMES.get(str(plan.get("locale")), WARP_NAMES["zh"])
     warp_used = False
     warnings: list[CompositionWarning] = []
+    for entry, proxy in zip(mesh, mesh_proxies, strict=False):
+        via = vias.get(proxy["name"])
+        if via is None:
+            continue
+        if via not in names or members.get(via, ([None], [None])) == ([], []):
+            warnings.append(CompositionWarning(entry.id, "via_empty", via))
+            via = "proxy"
+        proxy["dialer-proxy"] = names[via]
 
     def target(entry_id: str, wanted: str) -> str:
         nonlocal warp_used
@@ -942,6 +972,32 @@ OCCASIONAL_LOG = (
 LOG_BUFFER = 1024  # the service's buffer for one log subscription
 
 
+def _network_outbound(network: MeshNetwork) -> dict[str, Any]:
+    """The network as the core writes it (docs/mesh.md §10.3), with the core's checks."""
+    label = f"mesh network {network.name!r}: "
+    if not NETWORK_ID.fullmatch(network.id):
+        raise HostError("invalid_config", label + f"the id {network.id!r} is not letters, digits")
+    if not network.name.strip() or "," in network.name:
+        raise HostError("invalid_config", label + "the name is empty or holds a comma")
+    outbound: dict[str, Any] = {"type": network.kind, "state-dir": f"mesh/{network.id}"}
+    match network.settings:
+        case TailscaleSettings() as settings:
+            if settings.control_url and not settings.control_url.startswith(
+                ("https://", "http://")
+            ):
+                raise HostError("invalid_config", label + "the control server is no http URL")
+            outbound |= {"auth-key": settings.auth_key, "control-url": settings.control_url}
+        case ZeroTierSettings() as settings:
+            if not re.fullmatch(r"[0-9A-Fa-f]{16}", settings.network):
+                raise HostError("invalid_config", label + "the network id is not 16 hex digits")
+            outbound["network"] = settings.network.lower()
+        case EasyTierSettings() as settings:
+            if not settings.network_name or not settings.network_secret or not settings.peers:
+                raise HostError("invalid_config", label + "the network needs a name, secret, peers")
+            outbound |= {"network-name": settings.network_name, "peers": list(settings.peers)}
+    return {k: v for k, v in outbound.items() if v != ""}
+
+
 def _rank(level: str) -> int:
     return LOG_LEVELS.index(level)
 
@@ -980,6 +1036,10 @@ class SimulatedHost:
         # next one raises instead of registering.
         self.warp_calls: list[tuple[str, str, str]] = []
         self.warp_error: HostError | None = None
+        # How the mesh outbounds stand, by name, in place of what the simulation makes up;
+        # and the outbounds login_mesh was asked for, which are online from then on.
+        self.mesh_states: dict[str, MeshStatus] = {}
+        self.mesh_logins: list[str] = []
         self._mode = "rule"
         self._tun = not development
         self._system_proxy = False
@@ -1153,6 +1213,69 @@ class SimulatedHost:
             address_v6="2606:4700:110:8a36::2",
             client_id="AAAA",
             registered_at_unix_ms=1_793_318_400_000,
+        )
+
+    async def get_mesh_status(self) -> list[MeshStatus]:
+        if not self._running:
+            raise HostError("not_running", "the core is not running")
+        networks = {f"mesh:{n.id}": n for n in self._composition_mesh()}
+        statuses = []
+        for number, outbound in enumerate(self.report.mesh if self.report else (), 1):
+            status = self.mesh_states.get(outbound.name)
+            if status is None:
+                status = self._mesh_status(outbound, networks.get(outbound.id), number)
+            statuses.append(status)
+        return statuses
+
+    async def login_mesh(self, name: str) -> str:
+        if not self._running:
+            raise HostError("not_running", "the core is not running")
+        outbound = (
+            next((m for m in self.report.mesh if m.name == name), None) if self.report else None
+        )
+        if outbound is None or outbound.type != "Tailscale":
+            raise HostError("invalid_request", f"{name} has no login")
+        self.mesh_logins.append(name)
+        return "https://login.tailscale.com/a/simulated"
+
+    def _composition_mesh(self) -> tuple[MeshNetwork, ...]:
+        composition = self.config.composition if self.config else None
+        return composition.mesh if composition else ()
+
+    def _mesh_status(
+        self, outbound: MeshOutbound, network: MeshNetwork | None, number: int
+    ) -> MeshStatus:
+        """Made up: Tailscale online with a key or after a login, ZeroTier waiting for its
+        admin without an identity, EasyTier online with as many devices as peers."""
+        status = MeshStatus(outbound.name, outbound.id, outbound.type, "online")
+        settings = network.settings if network else None
+        login = "https://login.tailscale.com/a/simulated"
+        match settings:
+            case TailscaleSettings(auth_key="") if outbound.name not in self.mesh_logins:
+                return replace(status, state="needs_login", login_url=login)
+            case ZeroTierSettings(identity_secret=""):
+                return replace(status, state="waiting", node_id="a1b2c3d4e5")
+            case EasyTierSettings():
+                address = settings.ipv4 or f"10.144.144.{number + 1}/24"
+                return replace(
+                    status,
+                    addresses=(address,),
+                    peer_count=len(settings.peers),
+                    network_name=settings.network_name,
+                )
+        if outbound.type == "ZeroTier":
+            return replace(
+                status,
+                addresses=(f"10.147.17.{number + 4}/24",),
+                peer_count=2,
+                node_id="a1b2c3d4e5",
+                network_name="office",
+            )
+        return replace(
+            status,
+            addresses=(f"100.101.102.{number + 2}/32",),
+            peer_count=4,
+            network_name="example.ts.net",
         )
 
     async def stop(self) -> None:

@@ -8,9 +8,11 @@ A snapshot holds what the user made, nothing of this machine:
     overrides  the global override and each profile's own
     routing    the routing mode, the profile and the plan in use, the info pattern, and
                every plan with its groups and rules
+    mesh       the mesh networks added in the app, without their secrets
     settings   the settings whose scope is ``synced``
 
-Usage, cached downloads, local settings, tokens and the WARP account stay out. Records keep
+Usage, cached downloads, local settings, tokens, the WARP account and the mesh networks'
+secrets stay out. Records keep
 their times. A deleted record is a tombstone, its key and times without what it held, so a
 removed subscription's link does not live on in the backups.
 
@@ -32,6 +34,7 @@ from pathlib import Path
 from typing import Any
 
 from solaris import __version__
+from solaris.host.base import MESH_KINDS
 from solaris.models.database import Database
 from solaris.models.profiles import KIND_FILE, KIND_SUBSCRIPTION, ProfileError
 from solaris.models.routing import GROUP_KINDS, MODES, RULE_KINDS
@@ -202,6 +205,17 @@ def export(connection: sqlite3.Connection, now: float, device: str, app_version:
             for row in connection.execute("SELECT * FROM overrides ORDER BY scope")
         ],
         "routing": {**dict(state), "plans": _export_plans(connection)},
+        "mesh": [
+            _record(
+                row,
+                ("id", "kind", "name", "via", "position", "created_at"),
+                settings=json.loads(row["settings"]),
+            )
+            for row in connection.execute(
+                "SELECT * FROM mesh_networks "
+                "ORDER BY deleted_at IS NOT NULL, position, created_at, id"
+            )
+        ],
         "settings": [
             {"key": key, "value": json.loads(value), "updated_at": updated_at}
             for key, value, updated_at in connection.execute(
@@ -354,6 +368,16 @@ _RULE: dict[str, Check] = {
     "target": _text,
     "updated_at": _time,
 }
+_NETWORK: dict[str, Check] = {
+    "id": _text,
+    "kind": _one_of(*MESH_KINDS),
+    "name": _text,
+    "via": _text,
+    "settings": lambda value: isinstance(value, dict),
+    "position": _integer,
+    "created_at": _time,
+    "updated_at": _time,
+}
 _SETTING: dict[str, Check] = {"key": _text, "value": _any, "updated_at": _time}
 _HEADER_FIELDS: dict[str, Check] = {"created_at": _time, "device": _text, "app_version": _text}
 _SYNCED_SETTINGS = frozenset(f.name for f in fields(Settings) if scope(f.name) == SYNCED)
@@ -405,6 +429,8 @@ def _check_document(document: dict[str, Any]) -> None:
                 pass
             for _ in _records(plan.get("rules"), _RULE, "rules"):
                 pass
+    for _ in _records(document.get("mesh"), _NETWORK, "mesh"):
+        pass
     for _ in _records(document.get("settings"), _SETTING, "settings", key="key"):
         pass
 
@@ -434,6 +460,9 @@ _GROUPS = _Table(
 _RULES = _Table(
     "plan_rules", ("id",), ("plan_id", "position", "enabled", "kind", "content", "target")
 )
+_NETWORKS = _Table(
+    "mesh_networks", ("id",), ("kind", "name", "via", "settings", "position"), created_at=True
+)
 
 
 def _canonical(value: Any) -> str:
@@ -462,6 +491,8 @@ def restore(connection: sqlite3.Connection, snapshot: Snapshot, mode: str, now: 
         rules = [_stored_rule(plan["id"], rule) for rule in plan["rules"]]
         _restore_rows(connection, _RULES, rules, mode, now, scope=scoped)
     _restore_routing_state(connection, routing, mode, now)
+    networks = [_stored_network(network) for network in document["mesh"]]
+    _restore_rows(connection, _NETWORKS, networks, mode, now)
     _restore_settings(connection, document["settings"], mode, now)
     # What was downloaded for a profile no longer there is a cache of nothing.
     connection.execute(
@@ -485,6 +516,12 @@ def _stored_group(plan_id: str, record: dict[str, Any]) -> dict[str, Any]:
         "hidden": int(record["hidden"]),
     }
     return {**record, **converted, "plan_id": plan_id}
+
+
+def _stored_network(record: dict[str, Any]) -> dict[str, Any]:
+    if _deleted(record):
+        return record
+    return {**record, "settings": _canonical(record["settings"])}
 
 
 def _stored_rule(plan_id: str, record: dict[str, Any]) -> dict[str, Any]:

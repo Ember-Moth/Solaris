@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from PySide6.QtCore import QCoreApplication
 
-from solaris.host.base import CompositionReport, Rule
+from solaris.host.base import CompositionReport, MeshNetwork, Rule
 from solaris.i18n import QT_TRANSLATE_NOOP, current_language
 from solaris.models import plans, services
 from solaris.models.regions import region_code, region_id, region_name
@@ -49,10 +51,16 @@ def type_label(group_type: str) -> str:
     return tr(GROUP_TYPES.get(group_type, group_type))
 
 
-def target_label(target: str, plan: Plan | None, report: CompositionReport | None = None) -> str:
+def target_label(
+    target: str,
+    plan: Plan | None,
+    report: CompositionReport | None = None,
+    networks: Sequence[MeshNetwork] = (),
+) -> str:
     """A rule's target as the page names it: built-in groups, outbounds and exits translated,
     regions by their localized names, custom groups by the plan's names, mesh outbounds by
-    their names in the configuration (the report's) or else in their profile."""
+    their names in the configuration (the report's) or else in their profile, or the
+    ``networks`` the user added."""
     if target in BUILTIN_NAMES:
         return tr(BUILTIN_NAMES[target])
     if target in OUTBOUND_NAMES:
@@ -61,7 +69,10 @@ def target_label(target: str, plan: Plan | None, report: CompositionReport | Non
         return tr(EXIT_NAMES[target])
     if plans.is_mesh(target):
         found = next((m for m in report.mesh if m.id == target), None) if report else None
-        return found.name if found else plans.mesh_name(target)
+        if found:
+            return found.name
+        network = next((n for n in networks if f"{plans.MESH_PREFIX}{n.id}" == target), None)
+        return network.name if network else plans.mesh_name(target)
     code = region_code(target)
     if code is not None:
         return region_name(code)

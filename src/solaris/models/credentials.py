@@ -1,6 +1,7 @@
 """Credentials in the system's credential store, not in the database or a backup (decision
 D14): the macOS keychain, the Windows Credential Manager. The first one kept there is the
-WARP exit's account (docs/exits.md §3.2); a new device registers one of its own.
+WARP exit's account (docs/exits.md §3.2); a new device registers one of its own. The mesh
+networks' secrets follow (docs/mesh.md §10.2).
 
 Code depends on ``CredentialStore``; ``KeyringCredentials`` is the system's store through
 the keyring package. The tests swap ``system_keyring`` for one in memory, so they never
@@ -17,11 +18,12 @@ from typing import Protocol
 from keyring.backend import KeyringBackend
 from keyring.errors import KeyringError
 
-from solaris.host.base import WARP_PROTOCOLS, WarpAccount
+from solaris.host.base import MESH_SECRETS, WARP_PROTOCOLS, WarpAccount
 from solaris.models.profiles import ProfileError
 
 SERVICE = "Solaris"
 WARP_ACCOUNT = "warp-account"
+MESH_SECRET = "mesh:{id}"  # a mesh network's secrets
 
 
 class CredentialError(ProfileError):
@@ -125,3 +127,37 @@ class WarpAccounts:
 
     def delete(self) -> None:
         self._store.delete(WARP_ACCOUNT)
+
+
+class MeshSecrets:
+    """A mesh network's secrets, as compact JSON under ``mesh:<network id>``: Tailscale's
+    auth key, ZeroTier's identity, EasyTier's network secret."""
+
+    def __init__(self, store: CredentialStore) -> None:
+        self._store = store
+
+    def load(self, network_id: str) -> dict[str, str]:
+        """The secrets by name; empty when there are none, or none this version reads."""
+        text = self._store.read(MESH_SECRET.format(id=network_id))
+        if text is None:
+            return {}
+        try:
+            stored = json.loads(text)
+        except ValueError:
+            return {}
+        if not isinstance(stored, dict):
+            return {}
+        return {k: v for k, v in stored.items() if k in MESH_SECRETS and isinstance(v, str) and v}
+
+    def save(self, network_id: str, secrets: dict[str, str]) -> None:
+        """Keep the secrets that are set; with none, the stored ones go."""
+        kept = {k: v for k, v in secrets.items() if v}
+        if not kept:
+            self.delete(network_id)
+            return
+        self._store.write(
+            MESH_SECRET.format(id=network_id), json.dumps(kept, separators=(",", ":"))
+        )
+
+    def delete(self, network_id: str) -> None:
+        self._store.delete(MESH_SECRET.format(id=network_id))

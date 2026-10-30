@@ -159,9 +159,28 @@ CREATE TABLE plan_rules (
 CREATE INDEX plan_rules_by_plan ON plan_rules (plan_id, position);
 """
 
+# Version 1, mesh networks (M11, docs/mesh.md §10.2): the networks the user added in the app.
+# kind: 'tailscale', 'zerotier' or 'easytier'; via: '' to connect directly, or a group id of
+# the plan in use; settings: the kind's settings as JSON. Their secrets are in the system's
+# credential store, never here.
+_SCHEMA_1_MESH = """
+CREATE TABLE mesh_networks (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    name TEXT NOT NULL,
+    via TEXT NOT NULL DEFAULT '',
+    settings TEXT NOT NULL DEFAULT '{}',
+    position INTEGER NOT NULL,
+    created_at REAL NOT NULL,
+    updated_at REAL NOT NULL,
+    deleted_at REAL
+) STRICT;
+"""
+
 
 def _schema_1(connection: sqlite3.Connection) -> None:
     connection.executescript(_SCHEMA_1)
+    connection.executescript(_SCHEMA_1_MESH)
 
 
 MIGRATIONS: tuple[Migration, ...] = (_schema_1,)
