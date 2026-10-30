@@ -10,7 +10,6 @@ tunnel is stopped waits for the next connection. So does a key for a new protoco
 
 from __future__ import annotations
 
-import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
@@ -392,14 +391,12 @@ class VpnGateExit(QObject):
         runner: AsyncRunner,
         library: ProfileLibrary,
         parent: QObject | None = None,
-        *,
-        clock: Callable[[], float] = time.time,
     ) -> None:
         super().__init__(parent)
         self._routing = routing
         self._runner = runner
         self._library = library
-        self._clock = clock
+        self._clock = library.now
         self._running = False
         self._refreshing = False
         self._checking = False

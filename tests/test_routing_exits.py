@@ -1,11 +1,13 @@
-"""The routing page's second-round parts: mesh outbounds (docs/mesh.md §5) and the WARP exit
-(docs/exits.md §2, §6), with the simulated host and the credential store in memory."""
+"""The routing page's second-round parts: mesh outbounds (docs/mesh.md §5), the WARP exit and
+the VPN Gate exit (docs/exits.md §2, §6), with the simulated host and the credential store in
+memory."""
 
 # The UI's Chinese text has fullwidth punctuation.
 # ruff: noqa: RUF001
 
 import json
 from collections.abc import Iterator
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -16,14 +18,21 @@ from pytestqt.qtbot import QtBot
 
 from solaris.host.base import HostError
 from solaris.models import plans
+from solaris.models import vpngate as vpngate_list
+from solaris.models.backup import Backups
 from solaris.models.credentials import WARP_ACCOUNT
 from solaris.models.store import ProfileStore
 from solaris.viewmodels.composition import ViewModels, compose
 from solaris.viewmodels.routing import RoutingViewModel
-from solaris.viewmodels.routing_exits import WarpExit
+from solaris.viewmodels.routing_exits import VpnGateExit, WarpExit
 from solaris.viewmodels.rule_editor import RuleEditor
 from tests.support.credentials import MemoryCredentials
-from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
+from tests.support.simulated import (
+    VPNGATE_SERVERS,
+    SimulatedFetcher,
+    SimulatedHost,
+    seed_profiles,
+)
 
 NOW = datetime(2026, 10, 29, 12).timestamp()
 MESH_CONFIG = """proxies:
@@ -42,6 +51,10 @@ def rows(view_model: QObject, name: str) -> list[Any]:
 
 def warp(routing: RoutingViewModel) -> WarpExit:
     return routing._warp  # QML reads the property; Python has no converter for the type
+
+
+def vpngate(routing: RoutingViewModel) -> VpnGateExit:
+    return routing._vpngate
 
 
 def editor(routing: RoutingViewModel) -> RuleEditor:
@@ -358,3 +371,206 @@ def test_a_locked_credential_store_fails_closed(
     assert prop(exit_, "status") == "不可用"
     openai_to(qtbot, routing, plans.WARP)
     assert entry_target(host, routing, "OpenAI") == "REJECT"
+
+
+# -- the VPN Gate exit -------------------------------------------------------------------------
+JP_HOSTS = [s.host_name for s in VPNGATE_SERVERS if s.country == "JP"]
+
+
+def turn_on_vpngate(qtbot: QtBot, routing: RoutingViewModel) -> VpnGateExit:
+    exit_ = vpngate(routing)
+    with qtbot.waitSignal(routing.applied):
+        exit_.setActive(True)
+    qtbot.waitUntil(lambda: prop(exit_, "status") == "日本 5 台")
+    return exit_
+
+
+def picked(host: SimulatedHost) -> list[str]:
+    assert host.config is not None
+    assert host.config.composition is not None
+    return [s.host_name for s in host.config.composition.egress.vpngate]
+
+
+def test_vpngate_fetches_the_list_through_the_node_and_its_rules_follow(
+    qtbot: QtBot, planned: ViewModels, tmp_path: Path
+) -> None:
+    routing, host = planned.routing, host_of(planned)
+    exit_ = vpngate(routing)
+    assert (prop(exit_, "status"), prop(exit_, "statusTone")) == ("未启用", "muted")
+    assert prop(exit_, "caption") == "经由 节点选择 · 日本"
+    exit_ = turn_on_vpngate(qtbot, routing)
+    assert host.vpngate_calls == ["节点选择"]
+    assert prop(exit_, "serversTitle") == "在用 5 台服务器"
+    assert prop(exit_, "serversDetail") == "列表更新于 刚刚"
+    servers = rows(exit_, "servers")
+    assert [r.title for r in servers] == [f"日本 · {h}" for h in JP_HOSTS[:5]]
+    assert (servers[0].detail, servers[0].delay) == ("DESKTOP-K7Q2's owner", "—")
+    countries = [(c.name, c.note, c.picked) for c in rows(exit_, "countries")]
+    assert countries[:3] == [("日本", "6", True), ("韩国", "2", False), ("俄罗斯", "1", False)]
+    # A rule to the exit goes through the servers, best score first, each through the node.
+    openai_to(qtbot, routing, plans.VPNGATE)
+    openai = next(r for r in rows(routing, "rules") if r.name == "OpenAI")
+    assert (openai.target, openai.warning) == ("VPN Gate 出口", "")
+    assert entry_target(host, routing, "OpenAI") == "VPN Gate 出口"
+    assert picked(host) == JP_HOSTS[:5]
+    assert host.effective is not None
+    group = next(g for g in host.effective["proxy-groups"] if g["name"] == "VPN Gate 出口")
+    assert group["type"] == "load-balance"
+    outbound = next(p for p in host.effective["proxies"] if p["name"] == group["proxies"][0])
+    assert outbound["dialer-proxy"] == "节点选择"
+    # The proxies page lists the exit's group with its servers.
+    groups = planned.runner.submit(host.list_groups()).result(timeout=5)
+    listed = next(g for g in groups if g.name == "VPN Gate 出口")
+    assert listed.type == "LoadBalance"
+    first = listed.proxies[0]
+    assert (first.name, first.type) == (f"VPN Gate JP {JP_HOSTS[0]}", "OpenVPN")
+    # The list is this machine's: in the state table, never in a backup.
+    plan = routing.plan()
+    assert plan is not None
+    assert json.loads(plans.plan_json(plan, "zh"))["egress"] == {
+        "vpngate": {"via": "proxy", "countries": ["JP"], "count": 5, "mode": "per-site"}
+    }
+    database = ProfileStore(tmp_path).database
+    stored = vpngate_list.load(database)
+    assert (len(stored.servers), stored.picked) == (len(VPNGATE_SERVERS), tuple(JP_HOSTS[:5]))
+    assert "vpn381472650" not in json.dumps(Backups(database).snapshot().document)
+
+
+def test_vpngate_waits_for_the_connection(qtbot: QtBot, planned: ViewModels) -> None:
+    routing, host, overview = planned.routing, host_of(planned), planned.overview
+    exit_ = vpngate(routing)
+    overview.toggleConnection()
+    qtbot.waitUntil(lambda: not prop(overview, "connected"))
+    with qtbot.waitSignal(routing.applied):
+        exit_.setActive(True)
+    assert (prop(exit_, "status"), prop(exit_, "statusTone")) == ("连接后获取", "muted")
+    assert prop(exit_, "serversDetail") == "连接后经节点获取服务器列表"
+    assert host.vpngate_calls == []
+    overview.toggleConnection()
+    qtbot.waitUntil(lambda: prop(exit_, "status") == "日本 5 台", timeout=5000)
+    assert len(host.vpngate_calls) == 1
+    # A fresh list is not fetched again for the next connection.
+    overview.toggleConnection()
+    qtbot.waitUntil(lambda: not prop(overview, "connected"))
+    overview.toggleConnection()
+    qtbot.waitUntil(lambda: prop(overview, "connected"))
+    qtbot.wait(50)
+    assert len(host.vpngate_calls) == 1
+
+
+def test_a_failed_server_gives_up_its_position(qtbot: QtBot, planned: ViewModels) -> None:
+    routing, host, library = planned.routing, host_of(planned), planned.library
+    exit_ = turn_on_vpngate(qtbot, routing)
+    openai_to(qtbot, routing, plans.VPNGATE)
+    first = picked(host)
+    reloads = host.reloads
+    host.fail_vpngate(first[1])
+    exit_._tick()  # the two-minute check
+    qtbot.waitUntil(lambda: picked(host) != first)
+    # Only its position changes hands; the sites hashed to the others keep their servers.
+    assert picked(host) == [first[0], JP_HOSTS[5], *first[2:]]
+    assert host.reloads == reloads + 1
+    assert first[1] in library.routing_snapshot().vpngate.failing(library.now())
+    assert len(host.vpngate_calls) == 1
+    # Fewer than half working: the list is fetched again, though not within ten minutes.
+    now = library.now()
+    for name in picked(host)[:3]:
+        host.fail_vpngate(name)
+    exit_._tick()
+    qtbot.waitUntil(lambda: len(picked(host)) == 2)  # the two left in Japan
+    assert len(host.vpngate_calls) == 1
+    library._clock = lambda: now + 11 * 60
+    renamed = (replace(s, host_name=s.host_name + "2") for s in VPNGATE_SERVERS)
+    host.vpngate_servers = (*VPNGATE_SERVERS, *renamed)
+    for name in picked(host):
+        host.fail_vpngate(name)
+    exit_._tick()
+    qtbot.waitUntil(lambda: len(host.vpngate_calls) == 2)
+    qtbot.waitUntil(lambda: len(picked(host)) == 5)
+    assert all(h.endswith("2") for h in picked(host))
+
+
+def test_a_failed_list_says_why_and_rejects(qtbot: QtBot, planned: ViewModels) -> None:
+    routing, host = planned.routing, host_of(planned)
+    exit_ = vpngate(routing)
+    host.vpngate_error = HostError("operation_failed", "VPN Gate answered 503: busy")
+    with qtbot.waitSignal(routing.applied):
+        exit_.setActive(True)
+    qtbot.waitUntil(lambda: prop(exit_, "error") != "")
+    assert prop(exit_, "error") == "操作失败：VPN Gate answered 503: busy"
+    assert (prop(exit_, "status"), prop(exit_, "statusTone")) == ("不可用", "warning")
+    # Without servers the exit's rules reject, rather than go out through the node (D21).
+    openai_to(qtbot, routing, plans.VPNGATE)
+    openai = next(r for r in rows(routing, "rules") if r.name == "OpenAI")
+    assert (openai.target, openai.warning) == ("VPN Gate 出口", "不可用，已拒绝连接")
+    assert entry_target(host, routing, "OpenAI") == "REJECT"
+    exit_.refresh()
+    qtbot.waitUntil(lambda: prop(exit_, "status") == "日本 5 台")
+    assert prop(exit_, "error") == ""
+    assert entry_target(host, routing, "OpenAI") == "VPN Gate 出口"
+
+
+def test_vpngate_settings_go_with_the_plan(qtbot: QtBot, planned: ViewModels) -> None:
+    routing, host = planned.routing, host_of(planned)
+    exit_ = turn_on_vpngate(qtbot, routing)
+    openai_to(qtbot, routing, plans.VPNGATE)
+    with qtbot.waitSignal(routing.applied):
+        exit_.setCount("2")
+    assert picked(host) == JP_HOSTS[:2]
+    with qtbot.waitSignal(routing.applied):
+        exit_.toggleCountry("KR")
+    assert prop(exit_, "severalCountries")
+    assert prop(exit_, "caption") == "经由 节点选择 · 日本、韩国"
+    assert picked(host) == JP_HOSTS[:2]  # still usable, so they stay
+    with qtbot.waitSignal(routing.applied):
+        exit_.toggleCountry("JP")
+    assert picked(host) == [s.host_name for s in VPNGATE_SERVERS if s.country == "KR"]
+    assert prop(exit_, "status") == "韩国 2 台"
+    exit_.toggleCountry("KR")  # the last country stays
+    assert prop(exit_, "caption") == "经由 节点选择 · 韩国"
+    with qtbot.waitSignal(routing.applied):
+        exit_.setMode("single")
+    assert host.effective is not None
+    group = next(g for g in host.effective["proxy-groups"] if g["name"] == "VPN Gate 出口")
+    assert group["type"] == "fallback"
+    with qtbot.waitSignal(routing.applied):
+        exit_.toggleCountry("FR")
+    with qtbot.waitSignal(routing.applied):
+        exit_.toggleCountry("KR")
+    # No server in France: the exit has none, and its rules reject.
+    assert (prop(exit_, "status"), prop(exit_, "statusTone")) == ("不可用", "warning")
+    assert prop(exit_, "serversDetail").startswith("所选国家暂无可用的服务器 · ")
+    assert entry_target(host, routing, "OpenAI") == "REJECT"
+    plan = routing.plan()
+    assert plan is not None
+    assert json.loads(plans.plan_json(plan, "zh"))["egress"]["vpngate"] == {
+        "via": "proxy",
+        "countries": ["FR"],
+        "count": 2,
+        "mode": "single",
+    }
+
+
+def test_deleting_the_via_group_moves_vpngate_to_proxy(qtbot: QtBot, planned: ViewModels) -> None:
+    routing, host = planned.routing, host_of(planned)
+    exit_ = vpngate(routing)
+    with qtbot.waitSignal(routing.applied):
+        exit_.setVia("region:JP")
+    exit_ = turn_on_vpngate(qtbot, routing)
+    assert host.vpngate_calls == ["🇯🇵 日本"]
+    assert prop(exit_, "caption") == "经由 日本 · 日本"
+    dialog = routing._group_editor
+    with qtbot.waitSignal(dialog.opened):
+        dialog.openAdd()
+    dialog.setName("香港精选")
+    dialog.toggleRegion("HK")
+    with qtbot.waitSignal(dialog.saved):
+        dialog.save()
+    group = rows(routing, "customGroups")[0]
+    with qtbot.waitSignal(routing.applied):
+        exit_.setVia(group.groupId)
+    routing.requestRemoveGroup(group.groupId)
+    assert "VPN Gate 出口经由它，删除后改经「节点选择」。" in prop(routing, "groupRemovalText")
+    with qtbot.waitSignal(routing.applied):
+        routing.confirmRemoveGroup()
+    assert prop(exit_, "via") == plans.PROXY

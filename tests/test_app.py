@@ -355,3 +355,27 @@ def test_routing_page_loads_without_qml_warnings(qtbot: QtBot, loaded: Loaded) -
     view_models.shell.setPage("proxies")
     qtbot.waitUntil(lambda: view_models.proxies.property("currentGroup") != "")
     assert loaded.warnings == []
+
+
+@pytest.mark.parametrize("loaded", ["zh", "en"], indirect=True)
+def test_vpngate_dialog_loads_without_qml_warnings(qtbot: QtBot, loaded: Loaded) -> None:
+    """The VPN Gate exit's dialog with its countries and servers (docs/exits.md §6)."""
+    view_models = loaded.view_models
+    routing = view_models.routing
+    qtbot.waitUntil(lambda: view_models.overview.property("connected"))
+    view_models.shell.setPage("routing")
+    with qtbot.waitSignal(routing.routingChanged):
+        routing.setMode("plan")
+    page = loaded.item(lambda i: i.metaObject().className().startswith("RoutingPage"))
+    page.setProperty("tab", "groups")
+    exit_ = routing._vpngate
+    with qtbot.waitSignal(routing.applied):
+        exit_.setActive(True)
+    qtbot.waitUntil(lambda: exit_.property("servers").rowCount() == 5)
+    with qtbot.waitSignal(exit_.opened):
+        exit_.open()
+    qtbot.wait(100)
+    exit_.toggleCountry("KR")
+    qtbot.waitUntil(lambda: exit_.property("severalCountries"))
+    loaded.key(qtbot, Qt.Key.Key_Escape)
+    assert loaded.warnings == []

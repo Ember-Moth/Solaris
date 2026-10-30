@@ -219,6 +219,10 @@ class ProfileLibrary:
         self._state = self._routing_store.state()
         self._plans = self._routing_store.plans()
 
+    def now(self) -> float:
+        """The library's clock, which dates what it stores."""
+        return self._clock()
+
     def snapshot(self) -> ProfileList:
         """The profiles as loaded; call before the asyncio thread starts using the library."""
         return self._list
