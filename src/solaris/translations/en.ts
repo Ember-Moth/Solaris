@@ -186,6 +186,22 @@
         <translation>Can’t connect; will try again later</translation>
     </message>
     <message>
+        <source>没有获得授权</source>
+        <translation>Access wasn’t granted</translation>
+    </message>
+    <message>
+        <source>登录超时</source>
+        <translation>Sign-in timed out</translation>
+    </message>
+    <message>
+        <source>无法打开浏览器</source>
+        <translation>Can’t open the browser</translation>
+    </message>
+    <message>
+        <source>无法读写系统的凭据库</source>
+        <translation>Can’t use the system’s credential store</translation>
+    </message>
+    <message>
         <source>仅签名的安装版可用</source>
         <translation>Only in the signed installed app</translation>
     </message>
@@ -222,16 +238,20 @@
         <translation>Backing up…</translation>
     </message>
     <message>
-        <source>正在读取 iCloud 中的备份…</source>
-        <translation>Reading the backups in iCloud…</translation>
+        <source>需要重新登录</source>
+        <translation>Sign in again</translation>
+    </message>
+    <message>
+        <source>{provider} 中还没有备份</source>
+        <translation>No backups in {provider} yet</translation>
+    </message>
+    <message>
+        <source>已删除 {provider} 中的备份</source>
+        <translation>Deleted the backups in {provider}</translation>
     </message>
     <message>
         <source>正在下载备份…</source>
         <translation>Downloading the backup…</translation>
-    </message>
-    <message>
-        <source>正在删除 iCloud 中的备份…</source>
-        <translation>Deleting the backups in iCloud…</translation>
     </message>
     <message>
         <source>{profiles}、{plans}</source>
@@ -254,10 +274,6 @@
     <message>
         <source>正在导出…</source>
         <translation>Exporting…</translation>
-    </message>
-    <message>
-        <source>不加密，其中有订阅链接</source>
-        <translation>Not encrypted; contains subscription links</translation>
     </message>
     <message>
         <source>已导出到 {name}</source>
@@ -315,6 +331,22 @@
         <translation>Last backup failed: {reason}</translation>
     </message>
     <message>
+        <source>正在读取 {provider} 中的备份…</source>
+        <translation>Reading the backups in {provider}…</translation>
+    </message>
+    <message>
+        <source>正在删除 {provider} 中的备份…</source>
+        <translation>Deleting the backups in {provider}…</translation>
+    </message>
+    <message>
+        <source>请在浏览器中完成登录…</source>
+        <translation>Finish signing in in your browser…</translation>
+    </message>
+    <message>
+        <source>正在退出登录…</source>
+        <translation>Signing out…</translation>
+    </message>
+    <message>
         <source>尚未备份</source>
         <translation>Not backed up yet</translation>
     </message>
@@ -327,6 +359,30 @@
         <translation>Couldn’t turn on iCloud backup: {detail}</translation>
     </message>
     <message>
+        <source>未登录</source>
+        <translation>Not signed in</translation>
+    </message>
+    <message>
+        <source>已登录 Google Drive，可以关闭这个页面，回到 Solaris。</source>
+        <translation>Signed in to Google Drive. You can close this page and return to Solaris.</translation>
+    </message>
+    <message>
+        <source>没有登录 Google Drive，可以关闭这个页面。</source>
+        <translation>Not signed in to Google Drive. You can close this page.</translation>
+    </message>
+    <message>
+        <source>无法登录：{detail}</source>
+        <translation>Can’t sign in: {detail}</translation>
+    </message>
+    <message>
+        <source>无法开启 Google Drive 备份：{detail}</source>
+        <translation>Can’t turn on Google Drive backup: {detail}</translation>
+    </message>
+    <message>
+        <source>无法退出登录：{detail}</source>
+        <translation>Can’t sign out: {detail}</translation>
+    </message>
+    <message>
         <source>本机还没有可备份的数据</source>
         <translation>Nothing on this computer to back up yet</translation>
     </message>
@@ -335,16 +391,8 @@
         <translation>Backup failed: {detail}</translation>
     </message>
     <message>
-        <source>iCloud 中还没有备份</source>
-        <translation>No backups in iCloud yet</translation>
-    </message>
-    <message>
         <source>无法读取备份：{detail}</source>
         <translation>Couldn’t read the backups: {detail}</translation>
-    </message>
-    <message>
-        <source>已删除 iCloud 中的备份</source>
-        <translation>Deleted the backups in iCloud</translation>
     </message>
     <message>
         <source>删除失败：{detail}</source>
@@ -3362,12 +3410,44 @@ prepend-rules:
         <translation>Restore…</translation>
     </message>
     <message>
+        <source>取消</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>取消登录</source>
+        <translation>Cancel signing in</translation>
+    </message>
+    <message>
+        <source>登录…</source>
+        <translation>Sign in…</translation>
+    </message>
+    <message>
+        <source>登录 Google Drive</source>
+        <translation>Sign in to Google Drive</translation>
+    </message>
+    <message>
+        <source>Google Drive 备份的更多操作</source>
+        <translation>More actions for Google Drive backup</translation>
+    </message>
+    <message>
         <source>启动</source>
         <translation>Startup</translation>
     </message>
     <message>
         <source>登录时打开</source>
         <translation>Open at login</translation>
+    </message>
+    <message>
+        <source>退出登录</source>
+        <translation>Sign out</translation>
+    </message>
+    <message>
+        <source>删除 %1 中的备份？</source>
+        <translation>Delete the backups in %1?</translation>
+    </message>
+    <message>
+        <source>%1 中保存的备份会全部删除，无法恢复。本机的数据不受影响。</source>
+        <translation>All backups saved in %1 will be deleted. This can’t be undone. Data on this device isn’t affected.</translation>
     </message>
     <message>
         <source>打开系统设置</source>
@@ -3446,44 +3526,12 @@ prepend-rules:
         <translation>Diagnostics</translation>
     </message>
     <message>
-        <source>导出备份文件？</source>
-        <translation>Export a backup file?</translation>
-    </message>
-    <message>
-        <source>备份文件不加密，含订阅链接和配置原文，请妥善保管。</source>
-        <translation>The backup isn’t encrypted and holds your subscription links and configurations. Keep it safe.</translation>
-    </message>
-    <message>
-        <source>继续</source>
-        <translation>Continue</translation>
-    </message>
-    <message>
         <source>Solaris 备份 (*.json)</source>
         <translation>Solaris backup (*.json)</translation>
     </message>
     <message>
-        <source>开启 iCloud 备份？</source>
-        <translation>Turn on iCloud backup?</translation>
-    </message>
-    <message>
-        <source>备份不加密，其中有订阅链接和配置原文，能登录这个 Apple 账户的人都能看到。</source>
-        <translation>Backups aren’t encrypted and contain subscription links and config text. Anyone who can sign in to this Apple Account can see them.</translation>
-    </message>
-    <message>
-        <source>开启</source>
-        <translation>Turn on</translation>
-    </message>
-    <message>
         <source>删除云端备份</source>
         <translation>Delete cloud backups</translation>
-    </message>
-    <message>
-        <source>删除 iCloud 中的备份？</source>
-        <translation>Delete the backups in iCloud?</translation>
-    </message>
-    <message>
-        <source>iCloud 中保存的备份会全部删除，无法恢复。本机的数据不受影响。</source>
-        <translation>All backups saved in iCloud will be deleted and can’t be recovered. The data on this computer stays as it is.</translation>
     </message>
     <message>
         <source>删除</source>

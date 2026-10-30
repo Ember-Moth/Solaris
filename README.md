@@ -14,7 +14,7 @@ macOS。内核以 Go 库的形式内嵌：Windows 上运行在系统服务里，
 - **链式出口**：流量经你的节点再进入 Cloudflare WARP 或 VPN Gate，换一个出口 IP。
 - **组网**：在应用里添加 Tailscale、ZeroTier、EasyTier 网络，用规则访问网络里的设备。
 - **代理、连接与日志**：策略组与节点选择、延迟测试，实时的连接列表与流量，内核日志。
-- **备份**：导出到文件，从文件恢复（替换或合并）；macOS 上可以自动备份到 iCloud。
+- **备份**：导出到文件，从文件恢复（替换或合并）；自动备份到 Google Drive，macOS 上还可以备份到 iCloud。
 - 简体中文和英文，浅色与深色外观，托盘，登录时打开，检查更新，诊断信息导出。
 
 ## 下载与安装
@@ -136,10 +136,10 @@ uv run python scripts/gen_i18n.py
 | 文档 | 内容 |
 | --- | --- |
 | [docs/maintenance.md](docs/maintenance.md) | 现状、真机验收、已知问题、发布步骤与工作规则 |
-| [docs/decisions.md](docs/decisions.md) | 设计决策（D1–D29） |
+| [docs/decisions.md](docs/decisions.md) | 设计决策（D1–D30） |
 | [docs/architecture.md](docs/architecture.md) | 系统架构：engine、控制协议、Windows 服务、macOS 扩展、安全模型、构建与测试 |
 | [docs/ui.md](docs/ui.md) | 界面：宿主接口、配置存储、订阅、覆写、多语言、外观、连接与日志、设置与桌面行为、分流页 |
-| [docs/storage.md](docs/storage.md) | 本地数据库与备份：文件、iCloud；Google Drive（未实现） |
+| [docs/storage.md](docs/storage.md) | 本地数据库与备份：文件、Google Drive、iCloud |
 | [docs/routing.md](docs/routing.md) | 自定义分流 |
 | [docs/exits.md](docs/exits.md) | 链式出口：WARP、VPN Gate；Tor（未实现） |
 | [docs/mesh.md](docs/mesh.md) | 组网：Tailscale、ZeroTier、EasyTier |
