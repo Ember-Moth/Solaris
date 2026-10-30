@@ -26,5 +26,8 @@
 	<array>
 		<string>group.dev.tschen.solaris</string>
 	</array>
+	<!-- Qt Quick's JavaScript engine compiles to machine code under the hardened runtime. -->
+	<key>com.apple.security.cs.allow-jit</key>
+	<true/>
 </dict>
 </plist>

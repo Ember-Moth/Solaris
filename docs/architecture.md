@@ -9,7 +9,7 @@ sing-box，后来因为官方 sing-box for Desktop 已经发布，改为基于 m
 [routing.md](routing.md)，进度、计划与决策见 [roadmap.md](roadmap.md)。
 
 状态：engine（三种 TUN 模式）、控制协议和开发模式服务已实现；Windows 服务的属主、系统代理和安装尚未实现，
-macOS 扩展已能构建和签名，待测试 Mac 实测（roadmap.md 的 M4、M5）。
+macOS 的 `Solaris.app` 已能组装、签名，发布工作流负责公证，待测试 Mac 实测（roadmap.md 的 M4、M5）。
 
 ## 1. 定位与原则
 
@@ -449,15 +449,19 @@ WinINet；内核停止时还原。开机恢复时，如果属主尚未登录，�
 
 ```text
 Solaris.app/Contents/
-├── MacOS/Solaris                                   Nuitka standalone UI
+├── Info.plist                                      dev.tschen.solaris；URL scheme solaris、clash（D6）
+├── MacOS/SolarisUI                                 Nuitka standalone UI；旁边是它的库和 solaris/ 数据目录
 ├── Frameworks/SolarisManager.dylib                 Swift，C ABI，供 ctypes 调用
 └── Library/SystemExtensions/dev.tschen.solaris.tunnel.systemextension
-    └── NEPacketTunnelProvider + 本仓库 Go 模块编出的 xcframework（静态链接）
+    ├── MacOS/dev.tschen.solaris.tunnel             NEPacketTunnelProvider + 本仓库 Go 模块编出的 xcframework（静态链接）
+    └── Resources/GeoSite.dat、GeoIP.dat            安装包附带的 GEO 数据（routing.md 8.4 节）
 ```
 
-- 源码、构建与签名见 [apple/README.md](../apple/README.md)：XcodeGen 工程 `apple/project.yml`，构建脚本
-  `scripts/build_apple.py`。只构建 arm64（D2），最低系统版本暂定 macOS 15.0。
-- 需要 Developer ID 签名、公证，以及 `packet-tunnel-provider-systemextension` entitlement。
+- 源码、构建与签名见 [apple/README.md](../apple/README.md)：XcodeGen 工程 `apple/project.yml`，原生部分的构建
+  脚本 `scripts/build_apple.py`，整个 app 的组装与签名 `scripts/build_app.py`。只构建 arm64（D2）；扩展和管理库的
+  最低系统版本是 macOS 15.0，app 取 bundle 里所有库要求的最高版本（PySide6 6.12.0 要求 26.0，见 apple/README.md）。
+- 需要 Developer ID 签名、公证，以及 `packet-tunnel-provider-systemextension` entitlement。可执行文件叫
+  `SolarisUI`，因为卷不区分大小写，`MacOS/solaris/` 是 Python 包的数据目录。
 - 管理库用 `OSSystemExtensionRequest` 激活扩展（用户需在系统设置中批准；包内的扩展总是替换其他构建激活的
   扩展）、配置 `NETunnelProviderManager`、启停隧道、查询状态、收发 provider message。配置时按设置写
   `includeAllNetworks`（D19，默认关闭）；打开它时同时设 `excludeLocalNetworks`，局域网流量（打印机、AirDrop、
@@ -475,8 +479,9 @@ Solaris.app/Contents/
 2. 网络设置完成后 NE 才打开 utun。扩展在 0 到 1024 号描述符里找
    `getsockopt(SYSPROTO_CONTROL, UTUN_OPT_IFNAME)` 返回 utun 名字的那个（与 hypervpn 的
    `AppleRawTunFileDescriptor.locate` 相同），连同 `protocolConfiguration` 的 `includeAllNetworks`
-   用 `solaris_attach_tun` 交给 Go：Go 以 fd 模式打开 engine
-   （home 在扩展容器的 `Application Support/Solaris/core`）和分发器，mihomo 此时还不运行；
+   用 `solaris_attach_tun` 交给 Go，同时交出扩展的资源目录：Go 先把 home（扩展容器的
+   `Application Support/Solaris/core`）里缺少的 GEO 数据从资源目录复制过去，再以 fd 模式打开 engine 和分发器，
+   mihomo 此时还不运行；
 3. 配置和 Windows 一样由界面经控制协议的 `Start` / `Reload` 传入（决策 D7），不经
    `startVPNTunnel(options:)`；mihomo 在描述符的副本上运行 TUN（3.1 节）。不监听任何 socket，mihomo 的 HTTP
    控制器也不启动；
@@ -499,7 +504,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 - **访问控制由系统负责**：只有本应用（同一 Team ID、带 NE entitlement 的签名进程）能加载自己的
   `NETunnelProviderManager` 并取得 session，扩展内不再做对端校验。
 - **只有隧道已连接时可用**：扩展进程只在隧道连接期间运行。未连接时发送函数返回 `NOT_CONNECTED`，UI 只能
-  通过管理库查看连接状态。
+  通过管理库查看连接状态。`MacExtensionHost` 这时按隧道状态报告运行状态，列表和轮询为空，GEO 分类用安装包的
+  清单，其余需要内核的方法（包括 `Validate`、`InspectSource`）报 `not_running`（apple/README.md“Python 宿主”）。
 - **方法**：除 `Claim`、`SetSystemProxy` 外与 Windows 相同。隧道的启停走管理库，配置经 `Start` / `Reload` 走
   provider message；没有 attach 的隧道时，消息得到 `not_running`。
 - **消息大小**：单条 provider message 的上限需要实测，它决定 `Reload` 能否直接携带大配置。
@@ -511,8 +517,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 - 分层参考 hypervpn：视图（QML）→ ViewModel → models → 宿主客户端。asyncio 事件循环运行在后台线程，结果
   通过排队信号回到 Qt 线程。
 - 控制客户端只依赖 protobuf：Windows 上是命名管道的一条长连接，macOS 上通过 ctypes 调用管理库。
-- 宿主抽象 `TunnelHost` 有 `ServiceHost`（Windows 服务；开发模式下走本地 socket）和 `MacExtensionHost`（未实现）
-  两个实现；测试和预览用模拟宿主。
+- 宿主抽象 `TunnelHost` 有 `ServiceHost`（Windows 服务；开发模式下走本地 socket）和 `MacExtensionHost`（macOS
+  打包的 app，经管理库发 provider message，`src/solaris/host/extension.py`）两个实现；测试和预览用模拟宿主。
 - 计划中的 Tor 出口（M10）把 arti 做成 pyo3 扩展模块 `solaris_tor`，运行在界面进程里，不进服务和系统扩展
   （[exits.md](exits.md) 第 4 节）。
 
@@ -551,11 +557,14 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 | Windows 服务 | `go build`，按 3.4 节的标签，用 `-ldflags -X` 注入版本 |
 | macOS xcframework | 本仓库 Go 模块的 c-archive 构建，包含 engine 与控制分发器，导出供 `handleAppMessage` 调用的 C 函数 |
 | 协议绑定 | 由 `control.proto` 生成 Go 与 Python 代码 |
-| UI | Nuitka standalone |
+| UI | Nuitka standalone（macOS 上是 `--mode=app`） |
 | Windows 安装包 | NSIS |
-| macOS 包 | `.app` 签名与公证 |
+| macOS 包 | `scripts/build_app.py` 组装并签名 `Solaris.app`；发布工作流公证后做成 `.dmg` |
 
 - 需要的证书：Windows Authenticode（发布构建）、Apple Developer ID。
+- **发布工作流** `.github/workflows/release.yml`：`v*` 标签或手动触发，在 `release` Environment 里经审批后运行；
+  macOS 上建临时钥匙串、签名、`notarytool` 公证、staple，产出 `Solaris-<版本>-macos-arm64.dmg` 和它的 `.sha256`，
+  作为 workflow artifact 保存。发布 GitHub Release 和 Windows 部分在 M6、M4 加入。
 - 许可：本项目以 GPL-3.0-only 发布（[LICENSE](../LICENSE)）；服务和扩展链接的 mihomo 同为 GPL-3.0。
   发布二进制时须同时提供对应的源代码；新增依赖须与 GPL-3.0 兼容。
 

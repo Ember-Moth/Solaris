@@ -19,8 +19,8 @@
 | 数据存储与云备份 | 存储层完成（B1） | 界面数据在 SQLite；云备份未做 |
 | 自定义分流 | M8a 完成（B2、C1） | 分流方式、节点池、地区组、默认模板、41 个服务、规则编辑与撤销、立即生效；M8b（策略组编辑器、规则测试、导入导出）未做 |
 | 链式出口 | 设计完成 | WARP 出口（M9）、Tor 出口（M10，首发后）、VPN Gate 出口（M12）的设计见 exits.md，未实现 |
-| macOS 原生部分 | 部分（M5） | Xcode 工程、管理库 C 接口；系统扩展用 utun 以 fd 模式运行内核（`with_gvisor`）；Developer ID 签名与校验通过；`MacExtensionHost`、组装 .app、公证、测试 Mac 实测未做 |
-| 打包与安装 | 未开始 | 只有 Nuitka 入口文件和资源复制规则 |
+| macOS 原生部分 | 部分（M5） | Xcode 工程、管理库 C 接口；系统扩展用 utun 以 fd 模式运行内核（`with_gvisor`），带 GEO 数据；`MacExtensionHost`；测试 Mac 实测未做 |
+| 打包与安装 | macOS 部分 | `scripts/build_app.py` 组装并签名 `Solaris.app`；发布工作流（签名、公证、.dmg）已写好，未运行；Windows 未开始 |
 | CI | 全绿 | Python（macOS、Windows）、Go（macOS、Windows、Linux）、网络命名空间 TUN 测试（四种栈和 fd 模式）、macOS 上的 e2e |
 
 ## 2. 下一步开发计划
@@ -227,9 +227,13 @@ Apple 的签名材料（证书、两份描述文件、公证 API Key）已齐，
 PacketTunnel 系统扩展骨架、`scripts/build_apple.py`（签名与不签名两种模式）、CI 的不签名构建；签名材料齐全，
 本机签名校验通过。第二步 fd 模式已完成（2026-10-30）：engine 的 fd 模式、扩展找到 utun 描述符后交给 Go
 （`solaris_attach_tun` / `solaris_detach_tun`）、扩展带 `with_gvisor` 构建、CI 在网络命名空间里测 fd 模式。
-剩下：`MacExtensionHost`、"包含所有网络"设置（D19）、把 GEO 数据放进扩展的数据目录、组装 .app、公证与发布
-工作流、测试 Mac 实测（找 utun 描述符、四种栈、重连时描述符的归属、`includeAllNetworks`、D8）。
-部署目标暂定 macOS 15.0。
+第三步（阶段 D 第一轮，2026-10-30）：`MacExtensionHost`（ctypes 调用管理库，隧道未连接时按停止处理）；扩展
+带 GEO 数据，attach 时复制进 home；`scripts/build_app.py` 把 Nuitka 产物、管理库和扩展组装成 `Solaris.app` 并签名
+（本机签名校验通过，扩展 `strip -x`）；发布工作流 `release.yml`（临时钥匙串、签名、公证、staple、.dmg 和 sha256）。
+剩下："包含所有网络"设置（D19）、测试 Mac 实测（找 utun 描述符、四种栈、重连时描述符的归属、`includeAllNetworks`、
+D8、app 在 hardened runtime 下的启动）、第一次运行发布工作流（公证）。待决定：隧道未连接时 `Validate` 和
+`InspectSource` 没有内核可用，断开时导入订阅会失败；PySide6 6.12.0 的绑定库要求 macOS 26，要支持 15 得钉在 6.11.x
+（apple/README.md）。部署目标暂定 macOS 15.0。
 
 范围：
 
