@@ -645,7 +645,7 @@ ScrollView {
         id: exportDialog
 
         title: qsTr("导出备份文件？")
-        message: qsTr("备份文件不加密，其中有订阅链接，本地文件配置的原文里还可能有组网出站的凭据。拿到这个文件的人都能看到这些内容。")
+        message: qsTr("备份文件不加密，含订阅链接和配置原文，请妥善保管。")
         confirmText: qsTr("继续")
         onAccepted: {
             exportFileDialog.selectedFile = exportFileDialog.currentFolder + "/" + page.backup.exportName
