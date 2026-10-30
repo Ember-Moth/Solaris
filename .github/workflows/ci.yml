@@ -145,6 +145,41 @@ jobs:
       - name: Build (unsigned)
         run: uv run --no-project python scripts/build_apple.py --tags with_gvisor
 
+  # The unsigned Windows installer (docs/architecture.md §9, §10), then installed, upgraded and
+  # uninstalled on the runner by package/windows/smoke-test.ps1: the service starts and listens
+  # on its pipe, the UI opens its window. No TUN, no connection.
+  windows-installer:
+    runs-on: windows-latest
+    timeout-minutes: 75
+    env:
+      NUITKA_CACHE_DIR: ${{ github.workspace }}\build\nuitka-cache
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+        with:
+          enable-cache: true
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: src/core/go.mod
+          cache-dependency-path: src/core/go.sum
+      - name: NSIS
+        run: choco install nsis --yes --no-progress
+      - name: Install (locked)
+        run: uv sync --frozen
+      - uses: actions/cache@v6
+        with:
+          path: build/geodata
+          key: geodata-${{ hashFiles('scripts/fetch_geodata.py') }}
+      # Nuitka's compiled C: most of it is the dependencies', which change with the lock.
+      - uses: actions/cache@v6
+        with:
+          path: build/nuitka-cache
+          key: nuitka-windows-${{ hashFiles('uv.lock', 'scripts/build_windows.py') }}
+      - name: Build (unsigned)
+        run: uv run --frozen --with nuitka==4.2.2 python scripts/build_windows.py
+      - name: Install, upgrade and uninstall
+        run: ./package/windows/smoke-test.ps1 -Installer (Get-Item build/windows/Solaris-*-windows-x64-setup.exe).FullName
+
   # The owned-TUN and fd-mode tests create a real TUN, so they run only here, inside network
   # namespaces (docs/architecture.md §11). md-tun holds the engine; md-srv, on the
   # far side of a veth pair, serves the page the test fetches through the TUN. The
