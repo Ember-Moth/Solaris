@@ -772,8 +772,11 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   - Windows CI：客户端校验（真实的命名管道、文件 ID、锁住映像、签名者）、home 目录的 ACL 与拒绝链接、WinINet
     代理设置的读写与还原（只在 CI 上改代理）。服务的安装、升级与卸载由 `windows-installer` job 覆盖（第 9 节）；
     模拟属主 token 和认领后的服务重启要 SYSTEM 身份和登录的用户，CI 不覆盖；
-  - Python：用模拟宿主测试 models 与 ViewModel；模拟宿主的配置检查、错误码和措辞跟着真实服务走，端到端测试
-    核对两者一致。
+  - Python：用模拟宿主（`tests/support/simulated.py`）测试 models 与 ViewModel。它代替内核回答的部分在
+    `simulated_core.py`：配置检查、拼装、读订阅、预览、规则测试、转换和导出。`testdata/core-vectors.json` 记着内核
+    对一组输入的回答（`internal/compose/vectors_test.go` 核对，带 `-update` 时改写），`tests/test_simulated.py`
+    核对模拟宿主答得一样；配置检查的错误码和措辞由端到端测试与开发服务核对。内核运行时报告的 WARP 设备、
+    VPN Gate 列表和组网状态在模拟宿主里是编出来的样例，测试需要哪种状态就自己设定。
 - **竞态检查**：`go test -race` 会报出 mihomo 自身在 `log.SetLevel` 上的竞态（见 3.2 节），所以 CI 不带
   `-race`；分发器的订阅代码可以单独用 `-race` 检查。
 - **真机验收**：CI 覆盖不到的部分（真实 TUN 流量、系统代理的模拟写入、真机上的安装与升级、系统扩展激活）见

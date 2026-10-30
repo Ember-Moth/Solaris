@@ -1,5 +1,6 @@
 """PreviewGroup, MatchRule, ConvertToPlan and ExportPlan over the protocol, and the simulated
-host's stand-ins for them (docs/routing.md §8.2, §8.3)."""
+host's rule test and export (docs/routing.md §8.2, §8.3). Its previews and conversions are
+checked against the core in test_simulated.py."""
 
 import asyncio
 import json
@@ -140,19 +141,6 @@ def test_service_host_plan_methods() -> None:
     assert export_request.export_plan.options.mixed_port == 1
 
 
-def test_simulated_preview_follows_the_conditions() -> None:
-    host = SimulatedHost()
-    preview = asyncio.run(host.preview_group(COMPOSITION, "cheap"))
-    assert [n.name for n in preview.nodes] == ["香港 01", "香港 02", "日本 01"]
-    assert preview.others == ("DIRECT", "region:HK", "region:JP", "region:SG", "region:US")
-    region = asyncio.run(host.preview_group(COMPOSITION, "region:SG"))
-    assert [n.name for n in region.nodes] == ["新加坡 01", "新加坡 02"]
-    assert asyncio.run(host.preview_group(COMPOSITION, "region:KR")) == GroupPreview((), ())
-    with pytest.raises(HostError) as raised:
-        asyncio.run(host.preview_group(COMPOSITION, "nowhere"))
-    assert raised.value.code == "invalid_config"
-
-
 def test_simulated_match() -> None:
     host = SimulatedHost()
     config = TunnelConfig(composition=COMPOSITION)
@@ -173,27 +161,11 @@ def test_simulated_match() -> None:
     assert raised.value.code == "not_running"
 
 
-def test_simulated_conversion_and_export() -> None:
+def test_simulated_export() -> None:
     host = SimulatedHost()
-    source = (
-        "proxies:\n  - {name: 香港 01, type: http, server: a, port: 1}\n"
-        "proxy-groups:\n  - {name: 节点选择, type: select, proxies: [香港 01]}\n"
-        "  - {name: 媒体, type: url-test, proxies: [节点选择, 香港 01]}\n"
-        "rules:\n  - DOMAIN-SUFFIX,a.example,媒体\n  - DOMAIN,b.example,媒体\n"
-        "  - RULE-SET,ads,REJECT\n  - PROCESS-NAME,ssh,DIRECT\n  - MATCH,节点选择\n"
-    )
-    converted = asyncio.run(host.convert_to_plan(source, source_id="sub-a"))
-    assert (converted.group_count, converted.merged_group_count) == (2, 1)
-    assert (converted.rule_count, converted.raw_rule_count, converted.entry_count) == (5, 1, 2)
-    assert converted.skipped == (SkippedRule("RULE-SET,ads,REJECT", "rule_set"),)
-    plan = json.loads(converted.plan_json)
-    assert [g["name"] for g in plan["groups"]] == ["媒体"]
-    assert plan["groups"][0]["members"]["others"] == ["proxy"]
-
     shared = yaml.safe_load(asyncio.run(host.export_plan(TunnelConfig(composition=COMPOSITION))))
     assert list(shared) == ["proxy-groups", "rules"]
     generated = asyncio.run(
         host.export_plan(TunnelConfig(composition=COMPOSITION), EXPORT_GENERATED)
     )
-    assert "password" not in generated
     assert "server: node0.example.net" in generated

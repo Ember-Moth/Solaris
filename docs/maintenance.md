@@ -320,6 +320,9 @@ SHA-256。界面从不静默安装，用户确认后才打开安装包。
 - **协议**：先改 `proto/solaris/protocol/control.proto`，运行 `scripts/gen_protocol.py`；在同一个提交里同步修改 Go
   分发器、Python `ServiceHost` 和模拟宿主，并用共享样本（`testdata/`）守住两端一致。UI 与服务、扩展总是一起发布，
   协议版本不一致时直接拒绝，不做兼容（[architecture.md](architecture.md) §4.1）。
+- **内核的拼装、读订阅、预览和转换**：改了以后运行 `go -C src/core test ./internal/compose -run TestVectors -update`
+  更新 `testdata/core-vectors.json`，再按 `tests/test_simulated.py` 的失败改模拟宿主（`tests/support/simulated_core.py`），
+  界面的测试才不会依赖内核不再给的回答。
 - **视觉**：先改 [DESIGN.md](../DESIGN.md)，再运行 `scripts/gen_theme.py` 生成 `Theme.qml`。
 - **文案**：中文是源语言；改动文案后运行 `scripts/gen_i18n.py`，并在 `src/solaris/translations/en.ts` 里补齐英文。
   文案保持中立、简短（DESIGN.md 的 Typography 一节）。

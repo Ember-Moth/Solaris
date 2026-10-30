@@ -1,0 +1,1547 @@
+{
+  "comment": "Shared by src/core/internal/compose/vectors_test.go and tests/test_simulated.py: what the core answers for each input, so the simulated host's stand-ins (tests/support/simulated_core.py) are checked against the core. Inputs are written by hand; `go test ./internal/compose -run TestVectors -update` rewrites the answers.",
+  "compose": [
+    {
+      "name": "the pool, a region rule and a region fallback",
+      "composition": {
+        "sources": [
+          {
+            "id": "sub-a",
+            "name": "示例订阅 A",
+            "yaml": "mixed-port: 7890\nmode: rule\nproxies:\n  - {name: 香港 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node0.example.net, port: 443}\n  - {name: 香港 02, type: hysteria2, password: sample, server: node1.example.net, port: 443}\n  - {name: 香港 03, type: trojan, password: sample, server: node2.example.net, port: 443}\n  - {name: 日本 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node3.example.net, port: 443}\n  - {name: 日本 02, type: ss, cipher: aes-128-gcm, password: sample, server: node4.example.net, port: 443}\n  - {name: 新加坡 01, type: trojan, password: sample, server: node5.example.net, port: 443}\n  - {name: 新加坡 02, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node6.example.net, port: 443}\n  - {name: 美国 01, type: hysteria2, password: sample, server: node7.example.net, port: 443}\n  - {name: 美国 02, type: ss, cipher: aes-128-gcm, password: sample, server: node8.example.net, port: 443}\nproxy-groups:\n  - name: 节点选择\n    type: select\n    proxies:\n      - 香港 01\n      - 香港 02\n      - 香港 03\n      - 日本 01\n      - 日本 02\n      - 新加坡 01\n      - 新加坡 02\n      - 美国 01\n      - 美国 02\nrules:\n  - MATCH,节点选择\n"
+          }
+        ],
+        "info_filter": "剩余|到期",
+        "plan_json": "{\"version\": 1, \"rules\": [{\"id\": \"tg\", \"kind\": \"service\", \"items\": [{\"type\": \"GEOSITE\", \"value\": \"telegram\"}], \"target\": \"region:KR\"}, {\"id\": \"off\", \"enabled\": false, \"items\": [{\"type\": \"DOMAIN\", \"value\": \"x.example\"}], \"target\": \"REJECT\"}], \"fallback\": \"region:JP\"}",
+        "egress": {}
+      },
+      "report": {
+        "warnings": [
+          {
+            "entry_id": "tg",
+            "reason": "region_empty",
+            "target": "region:KR"
+          }
+        ],
+        "groups": [
+          {
+            "id": "proxy",
+            "name": "节点选择",
+            "kind": "GROUP_KIND_BUILTIN"
+          },
+          {
+            "id": "auto",
+            "name": "自动选择",
+            "kind": "GROUP_KIND_BUILTIN",
+            "node_count": 9
+          },
+          {
+            "id": "region:HK",
+            "name": "🇭🇰 香港",
+            "kind": "GROUP_KIND_REGION",
+            "region": "HK",
+            "node_count": 3
+          },
+          {
+            "id": "region:JP",
+            "name": "🇯🇵 日本",
+            "kind": "GROUP_KIND_REGION",
+            "region": "JP",
+            "node_count": 2
+          },
+          {
+            "id": "region:SG",
+            "name": "🇸🇬 新加坡",
+            "kind": "GROUP_KIND_REGION",
+            "region": "SG",
+            "node_count": 2
+          },
+          {
+            "id": "region:US",
+            "name": "🇺🇸 美国",
+            "kind": "GROUP_KIND_REGION",
+            "region": "US",
+            "node_count": 2
+          }
+        ],
+        "rules": [
+          {
+            "type": "GEOSITE",
+            "payload": "telegram",
+            "proxy": "节点选择",
+            "entry_id": "tg"
+          },
+          {
+            "type": "MATCH",
+            "proxy": "🇯🇵 日本",
+            "entry_id": "fallback"
+          }
+        ],
+        "nodes": [
+          {
+            "name": "香港 01",
+            "original_name": "香港 01",
+            "source_id": "sub-a",
+            "type": "Vless",
+            "region": "HK"
+          },
+          {
+            "name": "香港 02",
+            "original_name": "香港 02",
+            "source_id": "sub-a",
+            "type": "Hysteria2",
+            "region": "HK"
+          },
+          {
+            "name": "香港 03",
+            "original_name": "香港 03",
+            "source_id": "sub-a",
+            "type": "Trojan",
+            "region": "HK"
+          },
+          {
+            "name": "日本 01",
+            "original_name": "日本 01",
+            "source_id": "sub-a",
+            "type": "Vless",
+            "region": "JP"
+          },
+          {
+            "name": "日本 02",
+            "original_name": "日本 02",
+            "source_id": "sub-a",
+            "type": "Shadowsocks",
+            "region": "JP"
+          },
+          {
+            "name": "新加坡 01",
+            "original_name": "新加坡 01",
+            "source_id": "sub-a",
+            "type": "Trojan",
+            "region": "SG"
+          },
+          {
+            "name": "新加坡 02",
+            "original_name": "新加坡 02",
+            "source_id": "sub-a",
+            "type": "Vless",
+            "region": "SG"
+          },
+          {
+            "name": "美国 01",
+            "original_name": "美国 01",
+            "source_id": "sub-a",
+            "type": "Hysteria2",
+            "region": "US"
+          },
+          {
+            "name": "美国 02",
+            "original_name": "美国 02",
+            "source_id": "sub-a",
+            "type": "Shadowsocks",
+            "region": "US"
+          }
+        ]
+      }
+    },
+    {
+      "name": "custom groups: regions, an exclusion, a picked node and others; an empty group",
+      "composition": {
+        "sources": [
+          {
+            "id": "sub-a",
+            "name": "示例订阅 A",
+            "yaml": "mixed-port: 7890\nmode: rule\nproxies:\n  - {name: 香港 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node0.example.net, port: 443}\n  - {name: 香港 02, type: hysteria2, password: sample, server: node1.example.net, port: 443}\n  - {name: 香港 03, type: trojan, password: sample, server: node2.example.net, port: 443}\n  - {name: 日本 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node3.example.net, port: 443}\n  - {name: 日本 02, type: ss, cipher: aes-128-gcm, password: sample, server: node4.example.net, port: 443}\n  - {name: 新加坡 01, type: trojan, password: sample, server: node5.example.net, port: 443}\n  - {name: 新加坡 02, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node6.example.net, port: 443}\n  - {name: 美国 01, type: hysteria2, password: sample, server: node7.example.net, port: 443}\n  - {name: 美国 02, type: ss, cipher: aes-128-gcm, password: sample, server: node8.example.net, port: 443}\nproxy-groups:\n  - name: 节点选择\n    type: select\n    proxies:\n      - 香港 01\n      - 香港 02\n      - 香港 03\n      - 日本 01\n      - 日本 02\n      - 新加坡 01\n      - 新加坡 02\n      - 美国 01\n      - 美国 02\nrules:\n  - MATCH,节点选择\n"
+          }
+        ],
+        "plan_json": "{\"version\": 1, \"groups\": [{\"id\": \"cheap\", \"kind\": \"custom\", \"name\": \"低倍率\", \"members\": {\"regions\": [\"HK\"], \"exclude\": {\"mode\": \"keyword\", \"pattern\": \"03\"}, \"nodes\": [{\"source\": \"sub-a\", \"name\": \"日本 01\"}], \"others\": [\"DIRECT\", \"region:*\"]}}, {\"id\": \"empty\", \"kind\": \"custom\", \"name\": \"空组\", \"members\": {\"regions\": [\"KR\"]}}, {\"id\": \"named\", \"kind\": \"custom\", \"name\": \"美国节点\", \"type\": \"url-test\", \"members\": {\"name\": {\"mode\": \"regex\", \"pattern\": \"^美国\"}, \"others\": [\"auto\"]}}], \"rules\": [{\"id\": \"tg\", \"kind\": \"service\", \"items\": [{\"type\": \"GEOSITE\", \"value\": \"telegram\"}], \"target\": \"cheap\"}, {\"id\": \"lan\", \"items\": [{\"type\": \"IP-CIDR\", \"value\": \"10.0.0.0/8\"}], \"target\": \"DIRECT\"}, {\"id\": \"e\", \"items\": [{\"type\": \"DOMAIN\", \"value\": \"e.example\"}], \"target\": \"empty\"}], \"fallback\": \"proxy\"}",
+        "egress": {}
+      },
+      "report": {
+        "warnings": [
+          {
+            "entry_id": "e",
+            "reason": "group_empty",
+            "target": "empty"
+          }
+        ],
+        "groups": [
+          {
+            "id": "proxy",
+            "name": "节点选择",
+            "kind": "GROUP_KIND_BUILTIN"
+          },
+          {
+            "id": "auto",
+            "name": "自动选择",
+            "kind": "GROUP_KIND_BUILTIN",
+            "node_count": 9
+          },
+          {
+            "id": "region:HK",
+            "name": "🇭🇰 香港",
+            "kind": "GROUP_KIND_REGION",
+            "region": "HK",
+            "node_count": 3
+          },
+          {
+            "id": "region:JP",
+            "name": "🇯🇵 日本",
+            "kind": "GROUP_KIND_REGION",
+            "region": "JP",
+            "node_count": 2
+          },
+          {
+            "id": "region:SG",
+            "name": "🇸🇬 新加坡",
+            "kind": "GROUP_KIND_REGION",
+            "region": "SG",
+            "node_count": 2
+          },
+          {
+            "id": "region:US",
+            "name": "🇺🇸 美国",
+            "kind": "GROUP_KIND_REGION",
+            "region": "US",
+            "node_count": 2
+          },
+          {
+            "id": "cheap",
+            "name": "低倍率",
+            "kind": "GROUP_KIND_CUSTOM",
+            "node_count": 3
+          },
+          {
+            "id": "empty",
+            "name": "空组",
+            "kind": "GROUP_KIND_CUSTOM"
+          },
+          {
+            "id": "named",
+            "name": "美国节点",
+            "kind": "GROUP_KIND_CUSTOM",
+            "node_count": 2
+          }
+        ],
+        "rules": [
+          {
+            "type": "GEOSITE",
+            "payload": "telegram",
+            "proxy": "低倍率",
+            "entry_id": "tg"
+          },
+          {
+            "type": "IP-CIDR",
+            "payload": "10.0.0.0/8",
+            "proxy": "DIRECT",
+            "entry_id": "lan"
+          },
+          {
+            "type": "DOMAIN",
+            "payload": "e.example",
+            "proxy": "节点选择",
+            "entry_id": "e"
+          },
+          {
+            "type": "MATCH",
+            "proxy": "节点选择",
+            "entry_id": "fallback"
+          }
+        ],
+        "nodes": [
+          {
+            "name": "香港 01",
+            "original_name": "香港 01",
+            "source_id": "sub-a",
+            "type": "Vless",
+            "region": "HK"
+          },
+          {
+            "name": "香港 02",
+            "original_name": "香港 02",
+            "source_id": "sub-a",
+            "type": "Hysteria2",
+            "region": "HK"
+          },
+          {
+            "name": "香港 03",
+            "original_name": "香港 03",
+            "source_id": "sub-a",
+            "type": "Trojan",
+            "region": "HK"
+          },
+          {
+            "name": "日本 01",
+            "original_name": "日本 01",
+            "source_id": "sub-a",
+            "type": "Vless",
+            "region": "JP"
+          },
+          {
+            "name": "日本 02",
+            "original_name": "日本 02",
+            "source_id": "sub-a",
+            "type": "Shadowsocks",
+            "region": "JP"
+          },
+          {
+            "name": "新加坡 01",
+            "original_name": "新加坡 01",
+            "source_id": "sub-a",
+            "type": "Trojan",
+            "region": "SG"
+          },
+          {
+            "name": "新加坡 02",
+            "original_name": "新加坡 02",
+            "source_id": "sub-a",
+            "type": "Vless",
+            "region": "SG"
+          },
+          {
+            "name": "美国 01",
+            "original_name": "美国 01",
+            "source_id": "sub-a",
+            "type": "Hysteria2",
+            "region": "US"
+          },
+          {
+            "name": "美国 02",
+            "original_name": "美国 02",
+            "source_id": "sub-a",
+            "type": "Shadowsocks",
+            "region": "US"
+          }
+        ]
+      }
+    },
+    {
+      "name": "mesh outbounds stay out of the pool; without an account the WARP rules reject",
+      "composition": {
+        "sources": [
+          {
+            "id": "sub-a",
+            "name": "示例订阅 A",
+            "yaml": "mixed-port: 7890\nmode: rule\nproxies:\n  - {name: 香港 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node0.example.net, port: 443}\n  - {name: 香港 02, type: hysteria2, password: sample, server: node1.example.net, port: 443}\n  - {name: 香港 03, type: trojan, password: sample, server: node2.example.net, port: 443}\n  - {name: 日本 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node3.example.net, port: 443}\n  - {name: 日本 02, type: ss, cipher: aes-128-gcm, password: sample, server: node4.example.net, port: 443}\n  - {name: 新加坡 01, type: trojan, password: sample, server: node5.example.net, port: 443}\n  - {name: 新加坡 02, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node6.example.net, port: 443}\n  - {name: 美国 01, type: hysteria2, password: sample, server: node7.example.net, port: 443}\n  - {name: 美国 02, type: ss, cipher: aes-128-gcm, password: sample, server: node8.example.net, port: 443}\nproxy-groups:\n  - name: 节点选择\n    type: select\n    proxies:\n      - 香港 01\n      - 香港 02\n      - 香港 03\n      - 日本 01\n      - 日本 02\n      - 新加坡 01\n      - 新加坡 02\n      - 美国 01\n      - 美国 02\nrules:\n  - MATCH,节点选择\n"
+          },
+          {
+            "id": "home",
+            "name": "家",
+            "yaml": "proxies:\n  - {name: 家里, type: tailscale, auth-key: tskey-sample}\n  - {name: 香港 01, type: easytier, network-name: home}\n"
+          }
+        ],
+        "plan_json": "{\"version\": 1, \"rules\": [{\"id\": \"ts\", \"items\": [{\"type\": \"DOMAIN-SUFFIX\", \"value\": \"ts.net\"}], \"target\": \"mesh:home/家里\"}, {\"id\": \"gone\", \"items\": [{\"type\": \"DOMAIN\", \"value\": \"nas.lan\"}], \"target\": \"mesh:home/旧的\"}, {\"id\": \"ai\", \"items\": [{\"type\": \"GEOSITE\", \"value\": \"openai\"}], \"target\": \"egress:warp\"}], \"fallback\": \"proxy\", \"egress\": {\"warp\": {\"via\": \"region:KR\"}}}",
+        "egress": {}
+      },
+      "report": {
+        "warnings": [
+          {
+            "entry_id": "gone",
+            "reason": "mesh_missing",
+            "target": "mesh:home/旧的"
+          },
+          {
+            "entry_id": "ai",
+            "reason": "egress_unavailable",
+            "target": "egress:warp"
+          }
+        ],
+        "groups": [
+          {
+            "id": "proxy",
+            "name": "节点选择",
+            "kind": "GROUP_KIND_BUILTIN"
+          },
+          {
+            "id": "auto",
+            "name": "自动选择",
+            "kind": "GROUP_KIND_BUILTIN",
+            "node_count": 9
+          },
+          {
+            "id": "region:HK",
+            "name": "🇭🇰 香港",
+            "kind": "GROUP_KIND_REGION",
+            "region": "HK",
+            "node_count": 3
+          },
+          {
+            "id": "region:JP",
+            "name": "🇯🇵 日本",
+            "kind": "GROUP_KIND_REGION",
+            "region": "JP",
+            "node_count": 2
+          },
+          {
+            "id": "region:SG",
+            "name": "🇸🇬 新加坡",
+            "kind": "GROUP_KIND_REGION",
+            "region": "SG",
+            "node_count": 2
+          },
+          {
+            "id": "region:US",
+            "name": "🇺🇸 美国",
+            "kind": "GROUP_KIND_REGION",
+            "region": "US",
+            "node_count": 2
+          }
+        ],
+        "rules": [
+          {
+            "type": "DOMAIN-SUFFIX",
+            "payload": "ts.net",
+            "proxy": "家里",
+            "entry_id": "ts"
+          },
+          {
+            "type": "DOMAIN",
+            "payload": "nas.lan",
+            "proxy": "REJECT",
+            "entry_id": "gone"
+          },
+          {
+            "type": "GEOSITE",
+            "payload": "openai",
+            "proxy": "REJECT",
+            "entry_id": "ai"
+          },
+          {
+            "type": "MATCH",
+            "proxy": "节点选择",
+            "entry_id": "fallback"
+          }
+        ],
+        "nodes": [
+          {
+            "name": "香港 01",
+            "original_name": "香港 01",
+            "source_id": "sub-a",
+            "type": "Vless",
+            "region": "HK"
+          },
+          {
+            "name": "香港 02",
+            "original_name": "香港 02",
+            "source_id": "sub-a",
+            "type": "Hysteria2",
+            "region": "HK"
+          },
+          {
+            "name": "香港 03",
+            "original_name": "香港 03",
+            "source_id": "sub-a",
+            "type": "Trojan",
+            "region": "HK"
+          },
+          {
+            "name": "日本 01",
+            "original_name": "日本 01",
+            "source_id": "sub-a",
+            "type": "Vless",
+            "region": "JP"
+          },
+          {
+            "name": "日本 02",
+            "original_name": "日本 02",
+            "source_id": "sub-a",
+            "type": "Shadowsocks",
+            "region": "JP"
+          },
+          {
+            "name": "新加坡 01",
+            "original_name": "新加坡 01",
+            "source_id": "sub-a",
+            "type": "Trojan",
+            "region": "SG"
+          },
+          {
+            "name": "新加坡 02",
+            "original_name": "新加坡 02",
+            "source_id": "sub-a",
+            "type": "Vless",
+            "region": "SG"
+          },
+          {
+            "name": "美国 01",
+            "original_name": "美国 01",
+            "source_id": "sub-a",
+            "type": "Hysteria2",
+            "region": "US"
+          },
+          {
+            "name": "美国 02",
+            "original_name": "美国 02",
+            "source_id": "sub-a",
+            "type": "Shadowsocks",
+            "region": "US"
+          }
+        ],
+        "mesh": [
+          {
+            "id": "mesh:home/家里",
+            "name": "家里",
+            "type": "Tailscale",
+            "source_id": "home"
+          },
+          {
+            "id": "mesh:home/香港 01",
+            "name": "香港 01 · 家",
+            "type": "EasyTier",
+            "source_id": "home"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the WARP exit goes out through its via group, 节点选择 when that has no nodes",
+      "composition": {
+        "sources": [
+          {
+            "id": "sub-a",
+            "name": "示例订阅 A",
+            "yaml": "mixed-port: 7890\nmode: rule\nproxies:\n  - {name: 香港 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node0.example.net, port: 443}\n  - {name: 香港 02, type: hysteria2, password: sample, server: node1.example.net, port: 443}\n  - {name: 香港 03, type: trojan, password: sample, server: node2.example.net, port: 443}\n  - {name: 日本 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node3.example.net, port: 443}\n  - {name: 日本 02, type: ss, cipher: aes-128-gcm, password: sample, server: node4.example.net, port: 443}\n  - {name: 新加坡 01, type: trojan, password: sample, server: node5.example.net, port: 443}\n  - {name: 新加坡 02, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node6.example.net, port: 443}\n  - {name: 美国 01, type: hysteria2, password: sample, server: node7.example.net, port: 443}\n  - {name: 美国 02, type: ss, cipher: aes-128-gcm, password: sample, server: node8.example.net, port: 443}\nproxy-groups:\n  - name: 节点选择\n    type: select\n    proxies:\n      - 香港 01\n      - 香港 02\n      - 香港 03\n      - 日本 01\n      - 日本 02\n      - 新加坡 01\n      - 新加坡 02\n      - 美国 01\n      - 美国 02\nrules:\n  - MATCH,节点选择\n"
+          },
+          {
+            "id": "home",
+            "name": "家",
+            "yaml": "proxies:\n  - {name: 家里, type: tailscale, auth-key: tskey-sample}\n  - {name: 香港 01, type: easytier, network-name: home}\n"
+          }
+        ],
+        "plan_json": "{\"version\": 1, \"rules\": [{\"id\": \"ts\", \"items\": [{\"type\": \"DOMAIN-SUFFIX\", \"value\": \"ts.net\"}], \"target\": \"mesh:home/家里\"}, {\"id\": \"gone\", \"items\": [{\"type\": \"DOMAIN\", \"value\": \"nas.lan\"}], \"target\": \"mesh:home/旧的\"}, {\"id\": \"ai\", \"items\": [{\"type\": \"GEOSITE\", \"value\": \"openai\"}], \"target\": \"egress:warp\"}], \"fallback\": \"proxy\", \"egress\": {\"warp\": {\"via\": \"region:KR\"}}}",
+        "egress": {
+          "warp": {
+            "device_id": "dev-1",
+            "token": "tok",
+            "protocol": "WARP_PROTOCOL_WIREGUARD",
+            "private_key": "priv",
+            "peer_public_key": "peer",
+            "endpoint": "162.159.192.1:2408",
+            "address_v4": "172.16.0.2",
+            "address_v6": "2606:4700:110::2",
+            "client_id": "AQID",
+            "registered_at_unix_ms": "1"
+          }
+        }
+      },
+      "report": {
+        "warnings": [
+          {
+            "entry_id": "gone",
+            "reason": "mesh_missing",
+            "target": "mesh:home/旧的"
+          },
+          {
+            "entry_id": "egress:warp",
+            "reason": "via_empty",
+            "target": "region:KR"
+          }
+        ],
+        "groups": [
+          {
+            "id": "proxy",
+            "name": "节点选择",
+            "kind": "GROUP_KIND_BUILTIN"
+          },
+          {
+            "id": "auto",
+            "name": "自动选择",
+            "kind": "GROUP_KIND_BUILTIN",
+            "node_count": 9
+          },
+          {
+            "id": "region:HK",
+            "name": "🇭🇰 香港",
+            "kind": "GROUP_KIND_REGION",
+            "region": "HK",
+            "node_count": 3
+          },
+          {
+            "id": "region:JP",
+            "name": "🇯🇵 日本",
+            "kind": "GROUP_KIND_REGION",
+            "region": "JP",
+            "node_count": 2
+          },
+          {
+            "id": "region:SG",
+            "name": "🇸🇬 新加坡",
+            "kind": "GROUP_KIND_REGION",
+            "region": "SG",
+            "node_count": 2
+          },
+          {
+            "id": "region:US",
+            "name": "🇺🇸 美国",
+            "kind": "GROUP_KIND_REGION",
+            "region": "US",
+            "node_count": 2
+          }
+        ],
+        "rules": [
+          {
+            "type": "DOMAIN-SUFFIX",
+            "payload": "ts.net",
+            "proxy": "家里",
+            "entry_id": "ts"
+          },
+          {
+            "type": "DOMAIN",
+            "payload": "nas.lan",
+            "proxy": "REJECT",
+            "entry_id": "gone"
+          },
+          {
+            "type": "GEOSITE",
+            "payload": "openai",
+            "proxy": "WARP 出口",
+            "entry_id": "ai"
+          },
+          {
+            "type": "MATCH",
+            "proxy": "节点选择",
+            "entry_id": "fallback"
+          }
+        ],
+        "nodes": [
+          {
+            "name": "香港 01",
+            "original_name": "香港 01",
+            "source_id": "sub-a",
+            "type": "Vless",
+            "region": "HK"
+          },
+          {
+            "name": "香港 02",
+            "original_name": "香港 02",
+            "source_id": "sub-a",
+            "type": "Hysteria2",
+            "region": "HK"
+          },
+          {
+            "name": "香港 03",
+            "original_name": "香港 03",
+            "source_id": "sub-a",
+            "type": "Trojan",
+            "region": "HK"
+          },
+          {
+            "name": "日本 01",
+            "original_name": "日本 01",
+            "source_id": "sub-a",
+            "type": "Vless",
+            "region": "JP"
+          },
+          {
+            "name": "日本 02",
+            "original_name": "日本 02",
+            "source_id": "sub-a",
+            "type": "Shadowsocks",
+            "region": "JP"
+          },
+          {
+            "name": "新加坡 01",
+            "original_name": "新加坡 01",
+            "source_id": "sub-a",
+            "type": "Trojan",
+            "region": "SG"
+          },
+          {
+            "name": "新加坡 02",
+            "original_name": "新加坡 02",
+            "source_id": "sub-a",
+            "type": "Vless",
+            "region": "SG"
+          },
+          {
+            "name": "美国 01",
+            "original_name": "美国 01",
+            "source_id": "sub-a",
+            "type": "Hysteria2",
+            "region": "US"
+          },
+          {
+            "name": "美国 02",
+            "original_name": "美国 02",
+            "source_id": "sub-a",
+            "type": "Shadowsocks",
+            "region": "US"
+          }
+        ],
+        "mesh": [
+          {
+            "id": "mesh:home/家里",
+            "name": "家里",
+            "type": "Tailscale",
+            "source_id": "home"
+          },
+          {
+            "id": "mesh:home/香港 01",
+            "name": "香港 01 · 家",
+            "type": "EasyTier",
+            "source_id": "home"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the VPN Gate exit's servers go out through its via group",
+      "composition": {
+        "sources": [
+          {
+            "id": "sub-a",
+            "name": "示例订阅 A",
+            "yaml": "mixed-port: 7890\nmode: rule\nproxies:\n  - {name: 香港 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node0.example.net, port: 443}\n  - {name: 香港 02, type: hysteria2, password: sample, server: node1.example.net, port: 443}\n  - {name: 香港 03, type: trojan, password: sample, server: node2.example.net, port: 443}\n  - {name: 日本 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node3.example.net, port: 443}\n  - {name: 日本 02, type: ss, cipher: aes-128-gcm, password: sample, server: node4.example.net, port: 443}\n  - {name: 新加坡 01, type: trojan, password: sample, server: node5.example.net, port: 443}\n  - {name: 新加坡 02, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node6.example.net, port: 443}\n  - {name: 美国 01, type: hysteria2, password: sample, server: node7.example.net, port: 443}\n  - {name: 美国 02, type: ss, cipher: aes-128-gcm, password: sample, server: node8.example.net, port: 443}\nproxy-groups:\n  - name: 节点选择\n    type: select\n    proxies:\n      - 香港 01\n      - 香港 02\n      - 香港 03\n      - 日本 01\n      - 日本 02\n      - 新加坡 01\n      - 新加坡 02\n      - 美国 01\n      - 美国 02\nrules:\n  - MATCH,节点选择\n"
+          }
+        ],
+        "plan_json": "{\"version\": 1, \"rules\": [{\"id\": \"jp\", \"items\": [{\"type\": \"DOMAIN-SUFFIX\", \"value\": \"ifconfig.me\"}], \"target\": \"egress:vpngate\"}, {\"id\": \"none\", \"items\": [{\"type\": \"DOMAIN\", \"value\": \"b.example\"}], \"target\": \"region:US\"}], \"fallback\": \"proxy\", \"egress\": {\"vpngate\": {\"enabled\": true, \"via\": \"region:JP\", \"countries\": [\"JP\"], \"count\": 2, \"mode\": \"per-site\"}}}",
+        "egress": {
+          "vpn_gate": [
+            {
+              "host_name": "vpn381472650",
+              "ip": "203.0.113.11",
+              "country": "JP",
+              "score": "1480212",
+              "ping_ms": 9,
+              "speed_bps": "80000000",
+              "sessions": 12,
+              "uptime_ms": "86400000",
+              "operator": "DESKTOP-K7Q2's owner",
+              "openvpn": {
+                "server": "203.0.113.11",
+                "port": 443,
+                "proto": "tcp",
+                "cipher": "AES-128-CBC",
+                "data_ciphers": [
+                  "AES-128-CBC"
+                ],
+                "auth": "SHA1",
+                "ca": "-----BEGIN CERTIFICATE-----\nc2ltdWxhdGVk\n-----END CERTIFICATE-----\n",
+                "cert": "-----BEGIN CERTIFICATE-----\nc2ltdWxhdGVk\n-----END CERTIFICATE-----\n",
+                "key": "-----BEGIN CERTIFICATE-----\nc2ltdWxhdGVk\n-----END CERTIFICATE-----\n"
+              }
+            },
+            {
+              "host_name": "vpn902215377",
+              "ip": "203.0.113.21",
+              "country": "KR",
+              "score": "1204877",
+              "ping_ms": 31,
+              "speed_bps": "80000000",
+              "sessions": 12,
+              "uptime_ms": "86400000",
+              "operator": "MainPC's owner",
+              "openvpn": {
+                "server": "203.0.113.21",
+                "port": 443,
+                "proto": "tcp",
+                "cipher": "AES-128-CBC",
+                "data_ciphers": [
+                  "AES-128-CBC"
+                ],
+                "auth": "SHA1",
+                "ca": "-----BEGIN CERTIFICATE-----\nc2ltdWxhdGVk\n-----END CERTIFICATE-----\n",
+                "cert": "-----BEGIN CERTIFICATE-----\nc2ltdWxhdGVk\n-----END CERTIFICATE-----\n",
+                "key": "-----BEGIN CERTIFICATE-----\nc2ltdWxhdGVk\n-----END CERTIFICATE-----\n"
+              }
+            }
+          ]
+        }
+      },
+      "report": {
+        "groups": [
+          {
+            "id": "proxy",
+            "name": "节点选择",
+            "kind": "GROUP_KIND_BUILTIN"
+          },
+          {
+            "id": "auto",
+            "name": "自动选择",
+            "kind": "GROUP_KIND_BUILTIN",
+            "node_count": 9
+          },
+          {
+            "id": "region:HK",
+            "name": "🇭🇰 香港",
+            "kind": "GROUP_KIND_REGION",
+            "region": "HK",
+            "node_count": 3
+          },
+          {
+            "id": "region:JP",
+            "name": "🇯🇵 日本",
+            "kind": "GROUP_KIND_REGION",
+            "region": "JP",
+            "node_count": 2
+          },
+          {
+            "id": "region:SG",
+            "name": "🇸🇬 新加坡",
+            "kind": "GROUP_KIND_REGION",
+            "region": "SG",
+            "node_count": 2
+          },
+          {
+            "id": "region:US",
+            "name": "🇺🇸 美国",
+            "kind": "GROUP_KIND_REGION",
+            "region": "US",
+            "node_count": 2
+          }
+        ],
+        "rules": [
+          {
+            "type": "DOMAIN-SUFFIX",
+            "payload": "ifconfig.me",
+            "proxy": "VPN Gate 出口",
+            "entry_id": "jp"
+          },
+          {
+            "type": "DOMAIN",
+            "payload": "b.example",
+            "proxy": "🇺🇸 美国",
+            "entry_id": "none"
+          },
+          {
+            "type": "MATCH",
+            "proxy": "节点选择",
+            "entry_id": "fallback"
+          }
+        ],
+        "nodes": [
+          {
+            "name": "香港 01",
+            "original_name": "香港 01",
+            "source_id": "sub-a",
+            "type": "Vless",
+            "region": "HK"
+          },
+          {
+            "name": "香港 02",
+            "original_name": "香港 02",
+            "source_id": "sub-a",
+            "type": "Hysteria2",
+            "region": "HK"
+          },
+          {
+            "name": "香港 03",
+            "original_name": "香港 03",
+            "source_id": "sub-a",
+            "type": "Trojan",
+            "region": "HK"
+          },
+          {
+            "name": "日本 01",
+            "original_name": "日本 01",
+            "source_id": "sub-a",
+            "type": "Vless",
+            "region": "JP"
+          },
+          {
+            "name": "日本 02",
+            "original_name": "日本 02",
+            "source_id": "sub-a",
+            "type": "Shadowsocks",
+            "region": "JP"
+          },
+          {
+            "name": "新加坡 01",
+            "original_name": "新加坡 01",
+            "source_id": "sub-a",
+            "type": "Trojan",
+            "region": "SG"
+          },
+          {
+            "name": "新加坡 02",
+            "original_name": "新加坡 02",
+            "source_id": "sub-a",
+            "type": "Vless",
+            "region": "SG"
+          },
+          {
+            "name": "美国 01",
+            "original_name": "美国 01",
+            "source_id": "sub-a",
+            "type": "Hysteria2",
+            "region": "US"
+          },
+          {
+            "name": "美国 02",
+            "original_name": "美国 02",
+            "source_id": "sub-a",
+            "type": "Shadowsocks",
+            "region": "US"
+          }
+        ]
+      }
+    },
+    {
+      "name": "without servers the VPN Gate rules reject",
+      "composition": {
+        "sources": [
+          {
+            "id": "sub-a",
+            "name": "示例订阅 A",
+            "yaml": "mixed-port: 7890\nmode: rule\nproxies:\n  - {name: 香港 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node0.example.net, port: 443}\n  - {name: 香港 02, type: hysteria2, password: sample, server: node1.example.net, port: 443}\n  - {name: 香港 03, type: trojan, password: sample, server: node2.example.net, port: 443}\n  - {name: 日本 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node3.example.net, port: 443}\n  - {name: 日本 02, type: ss, cipher: aes-128-gcm, password: sample, server: node4.example.net, port: 443}\n  - {name: 新加坡 01, type: trojan, password: sample, server: node5.example.net, port: 443}\n  - {name: 新加坡 02, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node6.example.net, port: 443}\n  - {name: 美国 01, type: hysteria2, password: sample, server: node7.example.net, port: 443}\n  - {name: 美国 02, type: ss, cipher: aes-128-gcm, password: sample, server: node8.example.net, port: 443}\nproxy-groups:\n  - name: 节点选择\n    type: select\n    proxies:\n      - 香港 01\n      - 香港 02\n      - 香港 03\n      - 日本 01\n      - 日本 02\n      - 新加坡 01\n      - 新加坡 02\n      - 美国 01\n      - 美国 02\nrules:\n  - MATCH,节点选择\n"
+          }
+        ],
+        "plan_json": "{\"version\": 1, \"rules\": [{\"id\": \"jp\", \"items\": [{\"type\": \"DOMAIN-SUFFIX\", \"value\": \"ifconfig.me\"}], \"target\": \"egress:vpngate\"}, {\"id\": \"none\", \"items\": [{\"type\": \"DOMAIN\", \"value\": \"b.example\"}], \"target\": \"region:US\"}], \"fallback\": \"proxy\", \"egress\": {\"vpngate\": {\"enabled\": true, \"via\": \"region:JP\", \"countries\": [\"JP\"], \"count\": 2, \"mode\": \"per-site\"}}}",
+        "egress": {}
+      },
+      "report": {
+        "warnings": [
+          {
+            "entry_id": "jp",
+            "reason": "egress_unavailable",
+            "target": "egress:vpngate"
+          }
+        ],
+        "groups": [
+          {
+            "id": "proxy",
+            "name": "节点选择",
+            "kind": "GROUP_KIND_BUILTIN"
+          },
+          {
+            "id": "auto",
+            "name": "自动选择",
+            "kind": "GROUP_KIND_BUILTIN",
+            "node_count": 9
+          },
+          {
+            "id": "region:HK",
+            "name": "🇭🇰 香港",
+            "kind": "GROUP_KIND_REGION",
+            "region": "HK",
+            "node_count": 3
+          },
+          {
+            "id": "region:JP",
+            "name": "🇯🇵 日本",
+            "kind": "GROUP_KIND_REGION",
+            "region": "JP",
+            "node_count": 2
+          },
+          {
+            "id": "region:SG",
+            "name": "🇸🇬 新加坡",
+            "kind": "GROUP_KIND_REGION",
+            "region": "SG",
+            "node_count": 2
+          },
+          {
+            "id": "region:US",
+            "name": "🇺🇸 美国",
+            "kind": "GROUP_KIND_REGION",
+            "region": "US",
+            "node_count": 2
+          }
+        ],
+        "rules": [
+          {
+            "type": "DOMAIN-SUFFIX",
+            "payload": "ifconfig.me",
+            "proxy": "REJECT",
+            "entry_id": "jp"
+          },
+          {
+            "type": "DOMAIN",
+            "payload": "b.example",
+            "proxy": "🇺🇸 美国",
+            "entry_id": "none"
+          },
+          {
+            "type": "MATCH",
+            "proxy": "节点选择",
+            "entry_id": "fallback"
+          }
+        ],
+        "nodes": [
+          {
+            "name": "香港 01",
+            "original_name": "香港 01",
+            "source_id": "sub-a",
+            "type": "Vless",
+            "region": "HK"
+          },
+          {
+            "name": "香港 02",
+            "original_name": "香港 02",
+            "source_id": "sub-a",
+            "type": "Hysteria2",
+            "region": "HK"
+          },
+          {
+            "name": "香港 03",
+            "original_name": "香港 03",
+            "source_id": "sub-a",
+            "type": "Trojan",
+            "region": "HK"
+          },
+          {
+            "name": "日本 01",
+            "original_name": "日本 01",
+            "source_id": "sub-a",
+            "type": "Vless",
+            "region": "JP"
+          },
+          {
+            "name": "日本 02",
+            "original_name": "日本 02",
+            "source_id": "sub-a",
+            "type": "Shadowsocks",
+            "region": "JP"
+          },
+          {
+            "name": "新加坡 01",
+            "original_name": "新加坡 01",
+            "source_id": "sub-a",
+            "type": "Trojan",
+            "region": "SG"
+          },
+          {
+            "name": "新加坡 02",
+            "original_name": "新加坡 02",
+            "source_id": "sub-a",
+            "type": "Vless",
+            "region": "SG"
+          },
+          {
+            "name": "美国 01",
+            "original_name": "美国 01",
+            "source_id": "sub-a",
+            "type": "Hysteria2",
+            "region": "US"
+          },
+          {
+            "name": "美国 02",
+            "original_name": "美国 02",
+            "source_id": "sub-a",
+            "type": "Shadowsocks",
+            "region": "US"
+          }
+        ]
+      }
+    },
+    {
+      "name": "networks take their names before the nodes; a clash gets the type, then a number",
+      "composition": {
+        "sources": [
+          {
+            "id": "a",
+            "name": "机场 A",
+            "yaml": "proxies:\n  - {name: 香港 01, type: direct}\n"
+          }
+        ],
+        "plan_json": "{\"version\": 1, \"groups\": [{\"id\": \"g1\", \"kind\": \"custom\", \"name\": \"公司\"}, {\"id\": \"g2\", \"kind\": \"custom\", \"name\": \"工作\"}]}",
+        "egress": {},
+        "mesh": [
+          {
+            "id": "zt1",
+            "name": "公司",
+            "zerotier": {
+              "network_id": "8056c2e21c000001"
+            }
+          },
+          {
+            "id": "ts1",
+            "name": "家里",
+            "tailscale": {}
+          },
+          {
+            "id": "ts2",
+            "name": "家里",
+            "tailscale": {}
+          },
+          {
+            "id": "ts3",
+            "name": "香港 01",
+            "tailscale": {}
+          },
+          {
+            "id": "ts4",
+            "name": "WARP 出口",
+            "tailscale": {}
+          },
+          {
+            "id": "ts5",
+            "name": "🇭🇰 香港",
+            "tailscale": {}
+          },
+          {
+            "id": "ts6",
+            "name": "工作",
+            "tailscale": {}
+          },
+          {
+            "id": "ts7",
+            "name": "工作",
+            "tailscale": {}
+          },
+          {
+            "id": "et1",
+            "name": "办公室",
+            "via": "proxy",
+            "easytier": {
+              "network_name": "office",
+              "network_secret": "secret",
+              "peers": [
+                "tcp://203.0.113.9:11010"
+              ]
+            }
+          }
+        ]
+      },
+      "report": {
+        "groups": [
+          {
+            "id": "proxy",
+            "name": "节点选择",
+            "kind": "GROUP_KIND_BUILTIN"
+          },
+          {
+            "id": "auto",
+            "name": "自动选择",
+            "kind": "GROUP_KIND_BUILTIN",
+            "node_count": 1
+          },
+          {
+            "id": "region:HK",
+            "name": "🇭🇰 香港",
+            "kind": "GROUP_KIND_REGION",
+            "region": "HK",
+            "node_count": 1
+          },
+          {
+            "id": "g1",
+            "name": "公司",
+            "kind": "GROUP_KIND_CUSTOM"
+          },
+          {
+            "id": "g2",
+            "name": "工作",
+            "kind": "GROUP_KIND_CUSTOM"
+          }
+        ],
+        "rules": [
+          {
+            "type": "MATCH",
+            "proxy": "节点选择",
+            "entry_id": "fallback"
+          }
+        ],
+        "nodes": [
+          {
+            "name": "香港 01 · 机场 A",
+            "original_name": "香港 01",
+            "source_id": "a",
+            "type": "Direct",
+            "region": "HK"
+          }
+        ],
+        "mesh": [
+          {
+            "id": "mesh:zt1",
+            "name": "公司 · ZeroTier",
+            "type": "ZeroTier"
+          },
+          {
+            "id": "mesh:ts1",
+            "name": "家里",
+            "type": "Tailscale"
+          },
+          {
+            "id": "mesh:ts2",
+            "name": "家里 · Tailscale",
+            "type": "Tailscale"
+          },
+          {
+            "id": "mesh:ts3",
+            "name": "香港 01",
+            "type": "Tailscale"
+          },
+          {
+            "id": "mesh:ts4",
+            "name": "WARP 出口 · Tailscale",
+            "type": "Tailscale"
+          },
+          {
+            "id": "mesh:ts5",
+            "name": "🇭🇰 香港 · Tailscale",
+            "type": "Tailscale"
+          },
+          {
+            "id": "mesh:ts6",
+            "name": "工作 · Tailscale",
+            "type": "Tailscale"
+          },
+          {
+            "id": "mesh:ts7",
+            "name": "工作 · Tailscale 2",
+            "type": "Tailscale"
+          },
+          {
+            "id": "mesh:et1",
+            "name": "办公室",
+            "type": "EasyTier"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a plan of another version",
+      "composition": {
+        "sources": [
+          {
+            "id": "sub-a",
+            "name": "示例订阅 A",
+            "yaml": "mixed-port: 7890\nmode: rule\nproxies:\n  - {name: 香港 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node0.example.net, port: 443}\n  - {name: 香港 02, type: hysteria2, password: sample, server: node1.example.net, port: 443}\n  - {name: 香港 03, type: trojan, password: sample, server: node2.example.net, port: 443}\n  - {name: 日本 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node3.example.net, port: 443}\n  - {name: 日本 02, type: ss, cipher: aes-128-gcm, password: sample, server: node4.example.net, port: 443}\n  - {name: 新加坡 01, type: trojan, password: sample, server: node5.example.net, port: 443}\n  - {name: 新加坡 02, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node6.example.net, port: 443}\n  - {name: 美国 01, type: hysteria2, password: sample, server: node7.example.net, port: 443}\n  - {name: 美国 02, type: ss, cipher: aes-128-gcm, password: sample, server: node8.example.net, port: 443}\nproxy-groups:\n  - name: 节点选择\n    type: select\n    proxies:\n      - 香港 01\n      - 香港 02\n      - 香港 03\n      - 日本 01\n      - 日本 02\n      - 新加坡 01\n      - 新加坡 02\n      - 美国 01\n      - 美国 02\nrules:\n  - MATCH,节点选择\n"
+          }
+        ],
+        "plan_json": "{\"version\": 2}",
+        "egress": {}
+      },
+      "error": "plan: plan version 2 is not supported; this core reads version 1"
+    }
+  ],
+  "inspect": [
+    {
+      "name": "a profile with rules; 香港 marks information nodes",
+      "yaml": "mixed-port: 7890\nmode: rule\nproxies:\n  - {name: 香港 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node0.example.net, port: 443}\n  - {name: 香港 02, type: hysteria2, password: sample, server: node1.example.net, port: 443}\n  - {name: 香港 03, type: trojan, password: sample, server: node2.example.net, port: 443}\n  - {name: 日本 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node3.example.net, port: 443}\n  - {name: 日本 02, type: ss, cipher: aes-128-gcm, password: sample, server: node4.example.net, port: 443}\n  - {name: 新加坡 01, type: trojan, password: sample, server: node5.example.net, port: 443}\n  - {name: 新加坡 02, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node6.example.net, port: 443}\n  - {name: 美国 01, type: hysteria2, password: sample, server: node7.example.net, port: 443}\n  - {name: 美国 02, type: ss, cipher: aes-128-gcm, password: sample, server: node8.example.net, port: 443}\nproxy-groups:\n  - name: 节点选择\n    type: select\n    proxies:\n      - 香港 01\n      - 香港 02\n      - 香港 03\n      - 日本 01\n      - 日本 02\n      - 新加坡 01\n      - 新加坡 02\n      - 美国 01\n      - 美国 02\nrules:\n  - MATCH,节点选择\n",
+      "info_filter": "香港",
+      "inspection": {
+        "nodes": [
+          {
+            "name": "香港 01",
+            "type": "Vless",
+            "region": "HK",
+            "info": true
+          },
+          {
+            "name": "香港 02",
+            "type": "Hysteria2",
+            "region": "HK",
+            "info": true
+          },
+          {
+            "name": "香港 03",
+            "type": "Trojan",
+            "region": "HK",
+            "info": true
+          },
+          {
+            "name": "日本 01",
+            "type": "Vless",
+            "region": "JP"
+          },
+          {
+            "name": "日本 02",
+            "type": "Shadowsocks",
+            "region": "JP"
+          },
+          {
+            "name": "新加坡 01",
+            "type": "Trojan",
+            "region": "SG"
+          },
+          {
+            "name": "新加坡 02",
+            "type": "Vless",
+            "region": "SG"
+          },
+          {
+            "name": "美国 01",
+            "type": "Hysteria2",
+            "region": "US"
+          },
+          {
+            "name": "美国 02",
+            "type": "Shadowsocks",
+            "region": "US"
+          }
+        ],
+        "has_rules": true,
+        "group_count": 1,
+        "rule_count": 1
+      }
+    },
+    {
+      "name": "share links in base64",
+      "yaml": "dHJvamFuOi8veEB0LmV4YW1wbGU6NDQzIyVGMCU5RiU4NyVCOCVGMCU5RiU4NyVBQyUyMFNHJTIwMDEKdmxlc3M6Ly91QHYuZXhhbXBsZTo0NDMjJUU2JTk3JUE1JUU2JTlDJUFDJTIwMDIK",
+      "info_filter": "",
+      "inspection": {
+        "nodes": [
+          {
+            "name": "🇸🇬 SG 01",
+            "type": "Trojan",
+            "region": "SG"
+          },
+          {
+            "name": "日本 02",
+            "type": "Vless",
+            "region": "JP"
+          }
+        ]
+      }
+    },
+    {
+      "name": "mesh outbounds",
+      "yaml": "proxies:\n  - {name: 家里, type: tailscale, auth-key: tskey-sample}\n  - {name: 香港 01, type: easytier, network-name: home}\n",
+      "info_filter": "",
+      "inspection": {
+        "nodes": [
+          {
+            "name": "家里",
+            "type": "Tailscale",
+            "region": "ZZ",
+            "mesh": true
+          },
+          {
+            "name": "香港 01",
+            "type": "EasyTier",
+            "region": "HK",
+            "mesh": true
+          }
+        ]
+      }
+    }
+  ],
+  "preview": [
+    {
+      "name": "a custom group",
+      "composition": {
+        "sources": [
+          {
+            "id": "sub-a",
+            "name": "示例订阅 A",
+            "yaml": "mixed-port: 7890\nmode: rule\nproxies:\n  - {name: 香港 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node0.example.net, port: 443}\n  - {name: 香港 02, type: hysteria2, password: sample, server: node1.example.net, port: 443}\n  - {name: 香港 03, type: trojan, password: sample, server: node2.example.net, port: 443}\n  - {name: 日本 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node3.example.net, port: 443}\n  - {name: 日本 02, type: ss, cipher: aes-128-gcm, password: sample, server: node4.example.net, port: 443}\n  - {name: 新加坡 01, type: trojan, password: sample, server: node5.example.net, port: 443}\n  - {name: 新加坡 02, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node6.example.net, port: 443}\n  - {name: 美国 01, type: hysteria2, password: sample, server: node7.example.net, port: 443}\n  - {name: 美国 02, type: ss, cipher: aes-128-gcm, password: sample, server: node8.example.net, port: 443}\nproxy-groups:\n  - name: 节点选择\n    type: select\n    proxies:\n      - 香港 01\n      - 香港 02\n      - 香港 03\n      - 日本 01\n      - 日本 02\n      - 新加坡 01\n      - 新加坡 02\n      - 美国 01\n      - 美国 02\nrules:\n  - MATCH,节点选择\n"
+          }
+        ],
+        "plan_json": "{\"version\": 1, \"groups\": [{\"id\": \"cheap\", \"kind\": \"custom\", \"name\": \"低倍率\", \"members\": {\"regions\": [\"HK\"], \"exclude\": {\"mode\": \"keyword\", \"pattern\": \"03\"}, \"nodes\": [{\"source\": \"sub-a\", \"name\": \"日本 01\"}], \"others\": [\"DIRECT\", \"region:*\"]}}, {\"id\": \"empty\", \"kind\": \"custom\", \"name\": \"空组\", \"members\": {\"regions\": [\"KR\"]}}, {\"id\": \"named\", \"kind\": \"custom\", \"name\": \"美国节点\", \"type\": \"url-test\", \"members\": {\"name\": {\"mode\": \"regex\", \"pattern\": \"^美国\"}, \"others\": [\"auto\"]}}], \"rules\": [{\"id\": \"tg\", \"kind\": \"service\", \"items\": [{\"type\": \"GEOSITE\", \"value\": \"telegram\"}], \"target\": \"cheap\"}, {\"id\": \"lan\", \"items\": [{\"type\": \"IP-CIDR\", \"value\": \"10.0.0.0/8\"}], \"target\": \"DIRECT\"}, {\"id\": \"e\", \"items\": [{\"type\": \"DOMAIN\", \"value\": \"e.example\"}], \"target\": \"empty\"}], \"fallback\": \"proxy\"}",
+        "egress": {}
+      },
+      "group_id": "cheap",
+      "preview": {
+        "nodes": [
+          {
+            "name": "香港 01",
+            "original_name": "香港 01",
+            "source_id": "sub-a",
+            "type": "Vless",
+            "region": "HK"
+          },
+          {
+            "name": "香港 02",
+            "original_name": "香港 02",
+            "source_id": "sub-a",
+            "type": "Hysteria2",
+            "region": "HK"
+          },
+          {
+            "name": "日本 01",
+            "original_name": "日本 01",
+            "source_id": "sub-a",
+            "type": "Vless",
+            "region": "JP"
+          }
+        ],
+        "others": [
+          "DIRECT",
+          "region:HK",
+          "region:JP",
+          "region:SG",
+          "region:US"
+        ]
+      }
+    },
+    {
+      "name": "a group by name",
+      "composition": {
+        "sources": [
+          {
+            "id": "sub-a",
+            "name": "示例订阅 A",
+            "yaml": "mixed-port: 7890\nmode: rule\nproxies:\n  - {name: 香港 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node0.example.net, port: 443}\n  - {name: 香港 02, type: hysteria2, password: sample, server: node1.example.net, port: 443}\n  - {name: 香港 03, type: trojan, password: sample, server: node2.example.net, port: 443}\n  - {name: 日本 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node3.example.net, port: 443}\n  - {name: 日本 02, type: ss, cipher: aes-128-gcm, password: sample, server: node4.example.net, port: 443}\n  - {name: 新加坡 01, type: trojan, password: sample, server: node5.example.net, port: 443}\n  - {name: 新加坡 02, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node6.example.net, port: 443}\n  - {name: 美国 01, type: hysteria2, password: sample, server: node7.example.net, port: 443}\n  - {name: 美国 02, type: ss, cipher: aes-128-gcm, password: sample, server: node8.example.net, port: 443}\nproxy-groups:\n  - name: 节点选择\n    type: select\n    proxies:\n      - 香港 01\n      - 香港 02\n      - 香港 03\n      - 日本 01\n      - 日本 02\n      - 新加坡 01\n      - 新加坡 02\n      - 美国 01\n      - 美国 02\nrules:\n  - MATCH,节点选择\n"
+          }
+        ],
+        "plan_json": "{\"version\": 1, \"groups\": [{\"id\": \"cheap\", \"kind\": \"custom\", \"name\": \"低倍率\", \"members\": {\"regions\": [\"HK\"], \"exclude\": {\"mode\": \"keyword\", \"pattern\": \"03\"}, \"nodes\": [{\"source\": \"sub-a\", \"name\": \"日本 01\"}], \"others\": [\"DIRECT\", \"region:*\"]}}, {\"id\": \"empty\", \"kind\": \"custom\", \"name\": \"空组\", \"members\": {\"regions\": [\"KR\"]}}, {\"id\": \"named\", \"kind\": \"custom\", \"name\": \"美国节点\", \"type\": \"url-test\", \"members\": {\"name\": {\"mode\": \"regex\", \"pattern\": \"^美国\"}, \"others\": [\"auto\"]}}], \"rules\": [{\"id\": \"tg\", \"kind\": \"service\", \"items\": [{\"type\": \"GEOSITE\", \"value\": \"telegram\"}], \"target\": \"cheap\"}, {\"id\": \"lan\", \"items\": [{\"type\": \"IP-CIDR\", \"value\": \"10.0.0.0/8\"}], \"target\": \"DIRECT\"}, {\"id\": \"e\", \"items\": [{\"type\": \"DOMAIN\", \"value\": \"e.example\"}], \"target\": \"empty\"}], \"fallback\": \"proxy\"}",
+        "egress": {}
+      },
+      "group_id": "named",
+      "preview": {
+        "nodes": [
+          {
+            "name": "美国 01",
+            "original_name": "美国 01",
+            "source_id": "sub-a",
+            "type": "Hysteria2",
+            "region": "US"
+          },
+          {
+            "name": "美国 02",
+            "original_name": "美国 02",
+            "source_id": "sub-a",
+            "type": "Shadowsocks",
+            "region": "US"
+          }
+        ],
+        "others": [
+          "auto"
+        ]
+      }
+    },
+    {
+      "name": "a region with nodes",
+      "composition": {
+        "sources": [
+          {
+            "id": "sub-a",
+            "name": "示例订阅 A",
+            "yaml": "mixed-port: 7890\nmode: rule\nproxies:\n  - {name: 香港 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node0.example.net, port: 443}\n  - {name: 香港 02, type: hysteria2, password: sample, server: node1.example.net, port: 443}\n  - {name: 香港 03, type: trojan, password: sample, server: node2.example.net, port: 443}\n  - {name: 日本 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node3.example.net, port: 443}\n  - {name: 日本 02, type: ss, cipher: aes-128-gcm, password: sample, server: node4.example.net, port: 443}\n  - {name: 新加坡 01, type: trojan, password: sample, server: node5.example.net, port: 443}\n  - {name: 新加坡 02, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node6.example.net, port: 443}\n  - {name: 美国 01, type: hysteria2, password: sample, server: node7.example.net, port: 443}\n  - {name: 美国 02, type: ss, cipher: aes-128-gcm, password: sample, server: node8.example.net, port: 443}\nproxy-groups:\n  - name: 节点选择\n    type: select\n    proxies:\n      - 香港 01\n      - 香港 02\n      - 香港 03\n      - 日本 01\n      - 日本 02\n      - 新加坡 01\n      - 新加坡 02\n      - 美国 01\n      - 美国 02\nrules:\n  - MATCH,节点选择\n"
+          }
+        ],
+        "plan_json": "{\"version\": 1, \"groups\": [{\"id\": \"cheap\", \"kind\": \"custom\", \"name\": \"低倍率\", \"members\": {\"regions\": [\"HK\"], \"exclude\": {\"mode\": \"keyword\", \"pattern\": \"03\"}, \"nodes\": [{\"source\": \"sub-a\", \"name\": \"日本 01\"}], \"others\": [\"DIRECT\", \"region:*\"]}}, {\"id\": \"empty\", \"kind\": \"custom\", \"name\": \"空组\", \"members\": {\"regions\": [\"KR\"]}}, {\"id\": \"named\", \"kind\": \"custom\", \"name\": \"美国节点\", \"type\": \"url-test\", \"members\": {\"name\": {\"mode\": \"regex\", \"pattern\": \"^美国\"}, \"others\": [\"auto\"]}}], \"rules\": [{\"id\": \"tg\", \"kind\": \"service\", \"items\": [{\"type\": \"GEOSITE\", \"value\": \"telegram\"}], \"target\": \"cheap\"}, {\"id\": \"lan\", \"items\": [{\"type\": \"IP-CIDR\", \"value\": \"10.0.0.0/8\"}], \"target\": \"DIRECT\"}, {\"id\": \"e\", \"items\": [{\"type\": \"DOMAIN\", \"value\": \"e.example\"}], \"target\": \"empty\"}], \"fallback\": \"proxy\"}",
+        "egress": {}
+      },
+      "group_id": "region:SG",
+      "preview": {
+        "nodes": [
+          {
+            "name": "新加坡 01",
+            "original_name": "新加坡 01",
+            "source_id": "sub-a",
+            "type": "Trojan",
+            "region": "SG"
+          },
+          {
+            "name": "新加坡 02",
+            "original_name": "新加坡 02",
+            "source_id": "sub-a",
+            "type": "Vless",
+            "region": "SG"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a region without nodes",
+      "composition": {
+        "sources": [
+          {
+            "id": "sub-a",
+            "name": "示例订阅 A",
+            "yaml": "mixed-port: 7890\nmode: rule\nproxies:\n  - {name: 香港 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node0.example.net, port: 443}\n  - {name: 香港 02, type: hysteria2, password: sample, server: node1.example.net, port: 443}\n  - {name: 香港 03, type: trojan, password: sample, server: node2.example.net, port: 443}\n  - {name: 日本 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node3.example.net, port: 443}\n  - {name: 日本 02, type: ss, cipher: aes-128-gcm, password: sample, server: node4.example.net, port: 443}\n  - {name: 新加坡 01, type: trojan, password: sample, server: node5.example.net, port: 443}\n  - {name: 新加坡 02, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node6.example.net, port: 443}\n  - {name: 美国 01, type: hysteria2, password: sample, server: node7.example.net, port: 443}\n  - {name: 美国 02, type: ss, cipher: aes-128-gcm, password: sample, server: node8.example.net, port: 443}\nproxy-groups:\n  - name: 节点选择\n    type: select\n    proxies:\n      - 香港 01\n      - 香港 02\n      - 香港 03\n      - 日本 01\n      - 日本 02\n      - 新加坡 01\n      - 新加坡 02\n      - 美国 01\n      - 美国 02\nrules:\n  - MATCH,节点选择\n"
+          }
+        ],
+        "plan_json": "{\"version\": 1, \"groups\": [{\"id\": \"cheap\", \"kind\": \"custom\", \"name\": \"低倍率\", \"members\": {\"regions\": [\"HK\"], \"exclude\": {\"mode\": \"keyword\", \"pattern\": \"03\"}, \"nodes\": [{\"source\": \"sub-a\", \"name\": \"日本 01\"}], \"others\": [\"DIRECT\", \"region:*\"]}}, {\"id\": \"empty\", \"kind\": \"custom\", \"name\": \"空组\", \"members\": {\"regions\": [\"KR\"]}}, {\"id\": \"named\", \"kind\": \"custom\", \"name\": \"美国节点\", \"type\": \"url-test\", \"members\": {\"name\": {\"mode\": \"regex\", \"pattern\": \"^美国\"}, \"others\": [\"auto\"]}}], \"rules\": [{\"id\": \"tg\", \"kind\": \"service\", \"items\": [{\"type\": \"GEOSITE\", \"value\": \"telegram\"}], \"target\": \"cheap\"}, {\"id\": \"lan\", \"items\": [{\"type\": \"IP-CIDR\", \"value\": \"10.0.0.0/8\"}], \"target\": \"DIRECT\"}, {\"id\": \"e\", \"items\": [{\"type\": \"DOMAIN\", \"value\": \"e.example\"}], \"target\": \"empty\"}], \"fallback\": \"proxy\"}",
+        "egress": {}
+      },
+      "group_id": "region:KR",
+      "preview": {}
+    },
+    {
+      "name": "the built-in 节点选择",
+      "composition": {
+        "sources": [
+          {
+            "id": "sub-a",
+            "name": "示例订阅 A",
+            "yaml": "mixed-port: 7890\nmode: rule\nproxies:\n  - {name: 香港 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node0.example.net, port: 443}\n  - {name: 香港 02, type: hysteria2, password: sample, server: node1.example.net, port: 443}\n  - {name: 香港 03, type: trojan, password: sample, server: node2.example.net, port: 443}\n  - {name: 日本 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node3.example.net, port: 443}\n  - {name: 日本 02, type: ss, cipher: aes-128-gcm, password: sample, server: node4.example.net, port: 443}\n  - {name: 新加坡 01, type: trojan, password: sample, server: node5.example.net, port: 443}\n  - {name: 新加坡 02, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node6.example.net, port: 443}\n  - {name: 美国 01, type: hysteria2, password: sample, server: node7.example.net, port: 443}\n  - {name: 美国 02, type: ss, cipher: aes-128-gcm, password: sample, server: node8.example.net, port: 443}\nproxy-groups:\n  - name: 节点选择\n    type: select\n    proxies:\n      - 香港 01\n      - 香港 02\n      - 香港 03\n      - 日本 01\n      - 日本 02\n      - 新加坡 01\n      - 新加坡 02\n      - 美国 01\n      - 美国 02\nrules:\n  - MATCH,节点选择\n"
+          }
+        ],
+        "plan_json": "{\"version\": 1, \"groups\": [{\"id\": \"cheap\", \"kind\": \"custom\", \"name\": \"低倍率\", \"members\": {\"regions\": [\"HK\"], \"exclude\": {\"mode\": \"keyword\", \"pattern\": \"03\"}, \"nodes\": [{\"source\": \"sub-a\", \"name\": \"日本 01\"}], \"others\": [\"DIRECT\", \"region:*\"]}}, {\"id\": \"empty\", \"kind\": \"custom\", \"name\": \"空组\", \"members\": {\"regions\": [\"KR\"]}}, {\"id\": \"named\", \"kind\": \"custom\", \"name\": \"美国节点\", \"type\": \"url-test\", \"members\": {\"name\": {\"mode\": \"regex\", \"pattern\": \"^美国\"}, \"others\": [\"auto\"]}}], \"rules\": [{\"id\": \"tg\", \"kind\": \"service\", \"items\": [{\"type\": \"GEOSITE\", \"value\": \"telegram\"}], \"target\": \"cheap\"}, {\"id\": \"lan\", \"items\": [{\"type\": \"IP-CIDR\", \"value\": \"10.0.0.0/8\"}], \"target\": \"DIRECT\"}, {\"id\": \"e\", \"items\": [{\"type\": \"DOMAIN\", \"value\": \"e.example\"}], \"target\": \"empty\"}], \"fallback\": \"proxy\"}",
+        "egress": {}
+      },
+      "group_id": "proxy",
+      "preview": {
+        "others": [
+          "auto",
+          "region:HK",
+          "region:JP",
+          "region:SG",
+          "region:US",
+          "DIRECT"
+        ]
+      }
+    },
+    {
+      "name": "a group the plan does not have",
+      "composition": {
+        "sources": [
+          {
+            "id": "sub-a",
+            "name": "示例订阅 A",
+            "yaml": "mixed-port: 7890\nmode: rule\nproxies:\n  - {name: 香港 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node0.example.net, port: 443}\n  - {name: 香港 02, type: hysteria2, password: sample, server: node1.example.net, port: 443}\n  - {name: 香港 03, type: trojan, password: sample, server: node2.example.net, port: 443}\n  - {name: 日本 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node3.example.net, port: 443}\n  - {name: 日本 02, type: ss, cipher: aes-128-gcm, password: sample, server: node4.example.net, port: 443}\n  - {name: 新加坡 01, type: trojan, password: sample, server: node5.example.net, port: 443}\n  - {name: 新加坡 02, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node6.example.net, port: 443}\n  - {name: 美国 01, type: hysteria2, password: sample, server: node7.example.net, port: 443}\n  - {name: 美国 02, type: ss, cipher: aes-128-gcm, password: sample, server: node8.example.net, port: 443}\nproxy-groups:\n  - name: 节点选择\n    type: select\n    proxies:\n      - 香港 01\n      - 香港 02\n      - 香港 03\n      - 日本 01\n      - 日本 02\n      - 新加坡 01\n      - 新加坡 02\n      - 美国 01\n      - 美国 02\nrules:\n  - MATCH,节点选择\n"
+          }
+        ],
+        "plan_json": "{\"version\": 1, \"groups\": [{\"id\": \"cheap\", \"kind\": \"custom\", \"name\": \"低倍率\", \"members\": {\"regions\": [\"HK\"], \"exclude\": {\"mode\": \"keyword\", \"pattern\": \"03\"}, \"nodes\": [{\"source\": \"sub-a\", \"name\": \"日本 01\"}], \"others\": [\"DIRECT\", \"region:*\"]}}, {\"id\": \"empty\", \"kind\": \"custom\", \"name\": \"空组\", \"members\": {\"regions\": [\"KR\"]}}, {\"id\": \"named\", \"kind\": \"custom\", \"name\": \"美国节点\", \"type\": \"url-test\", \"members\": {\"name\": {\"mode\": \"regex\", \"pattern\": \"^美国\"}, \"others\": [\"auto\"]}}], \"rules\": [{\"id\": \"tg\", \"kind\": \"service\", \"items\": [{\"type\": \"GEOSITE\", \"value\": \"telegram\"}], \"target\": \"cheap\"}, {\"id\": \"lan\", \"items\": [{\"type\": \"IP-CIDR\", \"value\": \"10.0.0.0/8\"}], \"target\": \"DIRECT\"}, {\"id\": \"e\", \"items\": [{\"type\": \"DOMAIN\", \"value\": \"e.example\"}], \"target\": \"empty\"}], \"fallback\": \"proxy\"}",
+        "egress": {}
+      },
+      "group_id": "nowhere",
+      "error": "plan: no group \"nowhere\""
+    }
+  ],
+  "convert": [
+    {
+      "name": "a subscription's groups and rules",
+      "request": {
+        "yaml": "proxies:\n  - {name: 香港 01, type: http, server: a, port: 1}\nproxy-groups:\n  - {name: 节点选择, type: select, proxies: [香港 01]}\n  - {name: 媒体, type: url-test, proxies: [节点选择, 香港 01]}\nrules:\n  - DOMAIN-SUFFIX,a.example,媒体\n  - DOMAIN,b.example,媒体\n  - RULE-SET,ads,REJECT\n  - PROCESS-NAME,ssh,DIRECT\n  - MATCH,节点选择\n",
+        "source_id": "sub-a"
+      },
+      "conversion": {
+        "plan_json": "{\"version\":1,\"locale\":\"zh\",\"groups\":[{\"id\":\"g-cc0f080c2f39\",\"kind\":\"custom\",\"name\":\"媒体\",\"type\":\"url-test\",\"members\":{\"all\":true,\"others\":[\"proxy\"]}}],\"rules\":[{\"id\":\"r-f77b2fa3b6d6\",\"kind\":\"domain\",\"items\":[{\"type\":\"DOMAIN-SUFFIX\",\"value\":\"a.example\"},{\"type\":\"DOMAIN\",\"value\":\"b.example\"}],\"target\":\"g-cc0f080c2f39\"},{\"id\":\"r-e87b364c2c45\",\"kind\":\"raw\",\"items\":[{\"type\":\"PROCESS-NAME\",\"value\":\"ssh\"}],\"target\":\"DIRECT\"}],\"fallback\":\"proxy\"}",
+        "group_count": 2,
+        "merged_group_count": 1,
+        "rule_count": 5,
+        "raw_rule_count": 1,
+        "entry_count": 2,
+        "skipped": [
+          {
+            "rule": "RULE-SET,ads,REJECT",
+            "reason": "rule_set"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a configuration file",
+      "request": {
+        "yaml": "proxies:\n  - {name: 香港 01, type: http, server: a, port: 1}\nproxy-groups:\n  - {name: 媒体, type: select, proxies: [DIRECT]}\nrules:\n  - DOMAIN-SUFFIX,a.example,媒体\n  - DOMAIN,b.example,媒体\n  - RULE-SET,ads,REJECT\n  - PROCESS-NAME,ssh,DIRECT\n  - MATCH,媒体\n"
+      },
+      "conversion": {
+        "plan_json": "{\"version\":1,\"locale\":\"zh\",\"groups\":[{\"id\":\"g-f3cdec1f5934\",\"kind\":\"custom\",\"name\":\"媒体\",\"type\":\"select\",\"members\":{\"others\":[\"DIRECT\"]}}],\"rules\":[{\"id\":\"r-f77b2fa3b6d6\",\"kind\":\"domain\",\"items\":[{\"type\":\"DOMAIN-SUFFIX\",\"value\":\"a.example\"},{\"type\":\"DOMAIN\",\"value\":\"b.example\"}],\"target\":\"g-f3cdec1f5934\"},{\"id\":\"r-e87b364c2c45\",\"kind\":\"raw\",\"items\":[{\"type\":\"PROCESS-NAME\",\"value\":\"ssh\"}],\"target\":\"DIRECT\"}],\"fallback\":\"g-f3cdec1f5934\"}",
+        "group_count": 1,
+        "rule_count": 5,
+        "raw_rule_count": 1,
+        "entry_count": 2,
+        "skipped": [
+          {
+            "rule": "RULE-SET,ads,REJECT",
+            "reason": "rule_set"
+          }
+        ]
+      }
+    },
+    {
+      "name": "the sample profile",
+      "request": {
+        "yaml": "mixed-port: 7890\nmode: rule\nproxies:\n  - {name: 香港 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node0.example.net, port: 443}\n  - {name: 香港 02, type: hysteria2, password: sample, server: node1.example.net, port: 443}\n  - {name: 香港 03, type: trojan, password: sample, server: node2.example.net, port: 443}\n  - {name: 日本 01, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node3.example.net, port: 443}\n  - {name: 日本 02, type: ss, cipher: aes-128-gcm, password: sample, server: node4.example.net, port: 443}\n  - {name: 新加坡 01, type: trojan, password: sample, server: node5.example.net, port: 443}\n  - {name: 新加坡 02, type: vless, uuid: 2b4e5d0c-6c41-4b1e-9d5a-0a6f2f3c9e11, server: node6.example.net, port: 443}\n  - {name: 美国 01, type: hysteria2, password: sample, server: node7.example.net, port: 443}\n  - {name: 美国 02, type: ss, cipher: aes-128-gcm, password: sample, server: node8.example.net, port: 443}\nproxy-groups:\n  - name: 节点选择\n    type: select\n    proxies:\n      - 香港 01\n      - 香港 02\n      - 香港 03\n      - 日本 01\n      - 日本 02\n      - 新加坡 01\n      - 新加坡 02\n      - 美国 01\n      - 美国 02\nrules:\n  - MATCH,节点选择\n",
+        "source_id": "sample-a"
+      },
+      "conversion": {
+        "plan_json": "{\"version\":1,\"locale\":\"zh\",\"fallback\":\"proxy\"}",
+        "group_count": 1,
+        "merged_group_count": 1,
+        "rule_count": 1
+      }
+    },
+    {
+      "name": "nothing to convert",
+      "request": {
+        "yaml": "proxies: []\n"
+      },
+      "error": "it has neither groups nor rules"
+    }
+  ]
+}

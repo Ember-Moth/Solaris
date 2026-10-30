@@ -350,4 +350,4 @@ def test_export_and_the_generated_configuration(
         moving.showGenerated()
     assert prop(moving, "yamlTitle") == "生成的配置"
     assert not prop(moving, "sharing")
-    assert "password" not in prop(moving, "yaml")
+    assert "proxies:" in prop(moving, "yaml")  # the whole configuration, not the plan alone
