@@ -19,9 +19,11 @@ import (
 // Mesh outbounds run for as long as their configuration does (docs/mesh.md §10.4). mihomo
 // starts one at its first connection and, when a reload replaces it, leaves the old one to
 // the garbage collector, so a Tailscale or ZeroTier node could run twice on one state
-// directory for a while. The engine starts each one as soon as it applies a configuration,
-// keeps the one that runs when a reload leaves its settings as they were, and closes the
-// others.
+// directory for a while. The engine keeps the one that runs when a reload leaves its
+// settings as they were, and closes the others before the new configuration applies. It
+// starts the networks the user added in the app as soon as it applies a configuration;
+// the mesh outbounds a subscription or a profile brings start at their first connection,
+// as mihomo has them, since nothing the user did asked them to join their networks.
 
 // meshKinds are the mesh outbounds' types in the configuration.
 var meshKinds = []string{"tailscale", "zerotier", "easytier"}
@@ -33,10 +35,22 @@ type meshOutbound struct {
 	// configuration when the settings are the same.
 	adapter     C.ProxyAdapter
 	fingerprint string // the settings as the configuration wrote them
-	id          string // the mesh id when a composition made it
 
 	mu       sync.Mutex
-	startErr error // why the last start failed; nil once it starts
+	id       string // the mesh id when a composition made it; a reload may change it
+	startErr error  // why the last start failed; nil once it starts
+}
+
+func (m *meshOutbound) setID(id string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.id = id
+}
+
+func (m *meshOutbound) meshID() string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.id
 }
 
 func (m *meshOutbound) setStartErr(err error) {
@@ -97,7 +111,7 @@ func meshFingerprints(doc map[string]any) (names []string, fingerprints map[stri
 type meshRun struct {
 	order    []string
 	next     map[string]*meshOutbound
-	fresh    []*meshOutbound  // to start once applied
+	fresh    []*meshOutbound  // the app's networks, to start once applied
 	replaced []C.ProxyAdapter // the running ones the configuration no longer has
 	// networks are the ids of the composition's networks, whose state stays; nil when the
 	// configuration is no composition, which leaves every state as it is.
@@ -110,8 +124,10 @@ type meshRun struct {
 func (e *Engine) adoptMesh(admitted *admission) *meshRun {
 	order, fingerprints := meshFingerprints(admitted.doc)
 	ids := map[string]string{}
+	networks := map[string]bool{} // the composition's own networks, which have no source
 	for _, mesh := range admitted.report.GetMesh() {
 		ids[mesh.GetName()] = mesh.GetId()
+		networks[mesh.GetName()] = mesh.GetSourceId() == ""
 	}
 	run := &meshRun{next: map[string]*meshOutbound{}, networks: admitted.networks}
 	e.meshMu.Lock()
@@ -130,14 +146,16 @@ func (e *Engine) adoptMesh(admitted *admission) *meshRun {
 			parsed := proxy.ProxyAdapter
 			proxy.ProxyAdapter = old.adapter
 			_ = parsed.Close()
-			old.id = ids[name]
+			old.setID(ids[name])
 			run.next[name] = old
 			kept[name] = true
 			continue
 		}
 		outbound := &meshOutbound{name: name, adapter: proxy.ProxyAdapter, fingerprint: fingerprints[name], id: ids[name]}
 		run.next[name] = outbound
-		run.fresh = append(run.fresh, outbound)
+		if networks[name] {
+			run.fresh = append(run.fresh, outbound)
+		}
 	}
 	for name, old := range running {
 		if !kept[name] {
@@ -147,12 +165,17 @@ func (e *Engine) adoptMesh(admitted *admission) *meshRun {
 	return run
 }
 
-// runMesh follows hub.ApplyConfig: the replaced outbounds close before their successors
-// start on the same state, and the state of networks the composition no longer has goes.
-func (e *Engine) runMesh(run *meshRun) {
+// closeReplaced closes the outbounds the configuration replaces, before it applies: once
+// it does, a connection may start a successor on the state they hold.
+func closeReplaced(run *meshRun) {
 	for _, outbound := range run.replaced {
 		_ = outbound.Close()
 	}
+}
+
+// runMesh follows hub.ApplyConfig: the state of networks the composition no longer has
+// goes, and the app's networks start.
+func (e *Engine) runMesh(run *meshRun) {
 	e.meshMu.Lock()
 	e.mesh, e.meshOrder = run.next, run.order
 	e.meshMu.Unlock()

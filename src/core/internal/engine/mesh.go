@@ -10,13 +10,18 @@ import (
 
 // Mesh outbounds are only ever outbounds here (docs/mesh.md §4). The core runs as SYSTEM
 // on Windows and in the system extension on macOS, so an option that lets other devices
-// of the mesh network leave through this machine, or reach its LAN, would open the
-// user's network to them. EasyTier has three; Tailscale's exit-node uses another
+// of the mesh network leave through this machine, reach its LAN or connect to it, would
+// open the user's network to them. EasyTier has five; Tailscale's exit-node uses another
 // device's exit, and ZeroTier has none.
 
 // easyTierServing are EasyTier's options that serve other devices: being their exit,
-// routing them into local subnets, and announcing listeners to them.
-var easyTierServing = []string{"enable-exit-node", "proxy-networks", "mapped-listeners"}
+// routing them into local subnets, announcing listeners to them, and listening for their
+// connections. no-listener: false is the fifth: it listens on every interface.
+var easyTierServing = []string{"enable-exit-node", "proxy-networks", "mapped-listeners", "listeners"}
+
+// easyTierNoListener is the option that, when false, has EasyTier listen on mihomo's default
+// listener, tcp://0.0.0.0:11010 (component/easytier/toml.go).
+const easyTierNoListener = "no-listener"
 
 // easyTierGuard turns the same options off in a provider's own override expressions,
 // which mihomo applies to every proxy the provider loads, after its exclusions: the only
@@ -26,6 +31,8 @@ var easyTierGuard = []any{
 	`(select(.type == "easytier") | .enable-exit-node) = false`,
 	`(select(.type == "easytier") | .proxy-networks) = []`,
 	`(select(.type == "easytier") | .mapped-listeners) = []`,
+	`(select(.type == "easytier") | .listeners) = []`,
+	`(select(.type == "easytier") | .no-listener) = true`,
 }
 
 // meshRestriction is an option the pipeline turned off: on the outbound name, in the
@@ -58,6 +65,11 @@ func restrictMesh(doc map[string]any) ([]meshRestriction, error) {
 				}
 				delete(proxy, option)
 			}
+			if value, ok := proxy[easyTierNoListener]; ok && value != true {
+				restricted = append(restricted, meshRestriction{name, easyTierNoListener})
+			}
+			// mihomo then wants peers to connect to; an outbound without them is refused.
+			proxy[easyTierNoListener] = true
 			proxy["enable-exit-node"] = false
 		}
 		return nil

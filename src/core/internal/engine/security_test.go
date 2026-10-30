@@ -293,7 +293,8 @@ func TestSecurity6MeshOutboundsOnlyGoOut(t *testing.T) {
 	}
 
 	const serving = "{name: %s, type: easytier, network-name: n, network-secret: s, peers: ['tcp://198.51.100.1:11010'], " +
-		"enable-exit-node: true, proxy-networks: [192.168.1.0/24], mapped-listeners: ['tcp://203.0.113.1:11010']}"
+		"enable-exit-node: true, proxy-networks: [192.168.1.0/24], mapped-listeners: ['tcp://203.0.113.1:11010'], " +
+		"listeners: ['tcp://0.0.0.0:11010']}"
 	source := "mixed-port: 7890\nrules: ['MATCH,DIRECT']\nproxies:\n  - " + fmt.Sprintf(serving, "et-profile") + `
 proxy-providers:
   inline:
@@ -305,7 +306,7 @@ proxy-providers:
     url: http://127.0.0.1:1/p.yaml
     path: providers/remote.yaml
     override:
-      override-expr: ['.type = "easytier"', '.enable-exit-node = true', '.proxy-networks = ["0.0.0.0/0"]']
+      override-expr: ['.type = "easytier"', '.enable-exit-node = true', '.proxy-networks = ["0.0.0.0/0"]', '.no-listener = false']
 `
 	profile := profileOf(source)
 	profile.Overrides = [][]byte{[]byte("prepend-proxies:\n  - " + fmt.Sprintf(serving, "et-override") + "\n")}
@@ -321,7 +322,8 @@ proxy-providers:
 	}
 	for _, raw := range outbounds {
 		outbound := raw.(map[string]any)
-		if outbound["enable-exit-node"] != false || outbound["proxy-networks"] != nil || outbound["mapped-listeners"] != nil {
+		if outbound["enable-exit-node"] != false || outbound["proxy-networks"] != nil || outbound["mapped-listeners"] != nil ||
+			outbound["listeners"] != nil || outbound["no-listener"] != true {
 			t.Errorf("%v still serves other devices", outbound)
 		}
 	}
@@ -339,7 +341,7 @@ proxy-providers:
 	}
 	for _, loaded := range []map[string]any{
 		{"name": "ss", "type": "ss", "server": "a.example", "port": 1},
-		{"name": "et", "type": "easytier", "mapped-listeners": []any{"tcp://203.0.113.1:1"}},
+		{"name": "et", "type": "easytier", "mapped-listeners": []any{"tcp://203.0.113.1:1"}, "listeners": []any{"tcp://0.0.0.0:1"}},
 	} {
 		for _, raw := range override["override-expr"].([]any) {
 			expression, err := provider.NewOverrideExpr(raw.(string))
@@ -350,8 +352,9 @@ proxy-providers:
 				t.Fatalf("%q: %v", raw, err)
 			}
 		}
-		if loaded["type"] != "easytier" || loaded["enable-exit-node"] != false ||
-			len(loaded["proxy-networks"].([]any)) != 0 || len(loaded["mapped-listeners"].([]any)) != 0 {
+		if loaded["type"] != "easytier" || loaded["enable-exit-node"] != false || loaded["no-listener"] != true ||
+			len(loaded["proxy-networks"].([]any)) != 0 || len(loaded["mapped-listeners"].([]any)) != 0 ||
+			len(loaded["listeners"].([]any)) != 0 {
 			t.Errorf("loaded as %v", loaded)
 		}
 	}

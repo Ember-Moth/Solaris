@@ -340,3 +340,81 @@ func TestEasyTierAddress(t *testing.T) {
 		}
 	}
 }
+
+// A subscription's mesh outbounds start at their first connection, as mihomo has them; only
+// the networks the user added start at once. And a subscription's EasyTier outbound never
+// listens for peers (docs/mesh.md §4).
+func TestSubscriptionMeshOutboundsWaitForTraffic(t *testing.T) {
+	starts := replaceStartMesh(t)
+	engine := openEngine(t, TunNone)
+	profile := meshProfile(freePort(t), easyTierNetwork("et", "实验室", "s"))
+	profile.Composition.Sources = append(profile.Composition.Sources, compose.Source{ID: "m", Name: "M", YAML: []byte(`
+proxies:
+  - {name: 公司, type: zerotier, network: 8056c2e21c000001}
+  - {name: 机房, type: easytier, network-name: n, network-secret: s, peers: ['tcp://198.51.100.1:11010'],
+     no-listener: false, listeners: ['tcp://0.0.0.0:11010']}
+`)})
+	report, err := engine.Start(profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = engine.Stop() })
+	if got := starts.waitStarts(t, 1); !slices.Equal(got, []string{"实验室"}) {
+		t.Fatalf("started %v", got)
+	}
+	select {
+	case name := <-starts.done:
+		t.Fatalf("%s started without a connection", name)
+	case <-time.After(200 * time.Millisecond):
+	}
+	var restricted []string
+	for _, warning := range report.GetWarnings() {
+		if warning.GetReason() == compose.ReasonMeshRestricted {
+			restricted = append(restricted, warning.GetEntryId()+" "+warning.GetTarget())
+		}
+	}
+	if want := []string{"mesh:m/机房 listeners", "mesh:m/机房 no-listener"}; !slices.Equal(restricted, want) {
+		t.Fatalf("restricted %v", restricted)
+	}
+	// Still a status for each: the lazy ones as starting until something uses them.
+	statuses, err := engine.MeshStatus(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(statuses) != 3 {
+		t.Fatalf("statuses = %v", statuses)
+	}
+}
+
+// MeshStatus runs beside reloads: the go test -race of the mesh tests watches it.
+func TestMeshStatusDuringReloads(t *testing.T) {
+	replaceStartMesh(t)
+	engine := openEngine(t, TunNone)
+	port := freePort(t)
+	if _, err := engine.Start(meshProfile(port, easyTierNetwork("et", "实验室", "s"))); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = engine.Stop() })
+	done := make(chan struct{})
+	var wait sync.WaitGroup
+	wait.Go(func() {
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				if _, err := engine.MeshStatus(context.Background()); err != nil {
+					t.Error(err)
+					return
+				}
+			}
+		}
+	})
+	for range 5 {
+		if _, err := engine.Reload(meshProfile(port, easyTierNetwork("et", "实验室", "s"))); err != nil {
+			t.Fatal(err)
+		}
+	}
+	close(done)
+	wait.Wait()
+}
