@@ -141,8 +141,9 @@ ScrollView {
                                         elide: Text.ElideRight
                                     }
 
+                                    // The section's group count, or the group's type.
                                     UiText {
-                                        text: groupButton.kind
+                                        text: groupButton.header ? groupButton.now : groupButton.kind
                                         role: Theme.type.caption
                                         color: Theme.textMuted
                                     }
