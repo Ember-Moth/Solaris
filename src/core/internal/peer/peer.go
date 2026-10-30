@@ -12,5 +12,6 @@ type Identity struct {
 	ProcessID uint32
 }
 
-// Verifier accepts or rejects a freshly accepted connection.
-type Verifier func(net.Conn) (Identity, error)
+// Verifier accepts or rejects a freshly accepted connection. The connection it returns is
+// the one to serve and close: it may hold what the check needs kept until then.
+type Verifier func(net.Conn) (net.Conn, Identity, error)

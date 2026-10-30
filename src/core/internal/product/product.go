@@ -21,5 +21,15 @@ const (
 // FrameMagic opens every frame on the Windows pipe.
 var FrameMagic = [4]byte{'S', 'L', 'R', 'S'}
 
+// WindowsSigner is the Authenticode signer of release builds, the display name of the
+// certificate. It is a placeholder until the Windows signing plan is decided (roadmap M6);
+// src/solaris/update/signature.py's WINDOWS_SIGNER holds the same value.
+const WindowsSigner = "Ember Moth"
+
 // Version is set at link time with -ldflags "-X <module>/internal/product.Version=<version>".
 var Version = "dev"
+
+// SignedRelease is set to "true" at link time, like Version, in signed release builds. The
+// Windows service then accepts only a UI that WindowsSigner signed (docs/architecture.md
+// §5.3). Unsigned builds, such as those for the test VM, leave it off.
+var SignedRelease = "false"
