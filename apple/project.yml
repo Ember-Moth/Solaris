@@ -72,6 +72,10 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Tunnel/SolarisTunnel.entitlements
         PROVISIONING_PROFILE_SPECIFIER: Solaris Tunnel Developer ID
         SKIP_INSTALL: YES
+        # strip -x before signing: the local symbols of Swift and the Go archive go.
+        DEPLOYMENT_POSTPROCESSING: YES
+        STRIP_INSTALLED_PRODUCT: YES
+        STRIP_STYLE: non-global
 schemes:
   Solaris:
     build:

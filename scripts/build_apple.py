@@ -55,6 +55,7 @@ TUNNEL_PROFILE = "Solaris Tunnel Developer ID"
 ARCH = "arm64"  # D2
 DEPLOYMENT_TARGET = "15.0"  # as in apple/project.yml
 GOPROXY = "https://goproxy.cn,direct"
+GO_VERSION_VARIABLE = "github.com/Ember-Moth/Solaris/src/core/internal/product.Version"
 # All four TUN stacks, as on Windows (D3); fd mode defaults to gVisor (docs/architecture.md §3.4).
 GO_TAGS = "with_gvisor"
 PROFILE_DIRECTORIES = (
@@ -123,9 +124,9 @@ def fetch_geodata() -> None:
     _run([sys.executable, ROOT / "scripts" / "fetch_geodata.py"], stdout=subprocess.DEVNULL)
 
 
-def build_go(tags: str) -> None:
+def build_go(tags: str, version: str) -> None:
     """The Go dispatcher (src/core/apple) as an arm64 C archive in SolarisCore.xcframework,
-    which the extension target links."""
+    which the extension target links. GetInfo reports ``version`` as the service version."""
     go = BUILD / "go"
     include = go / "include"
     _remove(go)
@@ -140,7 +141,15 @@ def build_go(tags: str) -> None:
         "CGO_CFLAGS": minimum,
         "CGO_LDFLAGS": minimum,
     }
-    command: list[str | Path] = ["go", "-C", CORE, "build", "-trimpath", "-buildmode=c-archive"]
+    command: list[str | Path] = [
+        "go",
+        "-C",
+        CORE,
+        "build",
+        "-trimpath",
+        "-buildmode=c-archive",
+        f"-ldflags=-X {GO_VERSION_VARIABLE}={version}",
+    ]
     if tags:
         command += ["-tags", tags]
     _run([*command, "-o", go / "libsolaris.a", "./apple"], env=environment)
@@ -446,7 +455,7 @@ def main() -> None:
             profiles = (find_profile(APP_PROFILE), find_profile(TUNNEL_PROFILE))
             identity = find_identity(list(profiles))
         fetch_geodata()
-        build_go(arguments.tags)
+        build_go(arguments.tags, version)
         products = build_xcode(identity, version, arguments.build_number)
         dylib, extension = collect(products)
         check_products(dylib, extension)
