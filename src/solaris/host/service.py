@@ -15,6 +15,7 @@ from solaris.host.base import (
     CompositionReport,
     CompositionWarning,
     Connection,
+    EasyTierSettings,
     GeoCategories,
     GeoDataset,
     GroupPreview,
@@ -22,7 +23,9 @@ from solaris.host.base import (
     HostInfo,
     HostStatus,
     LogEntry,
+    MeshNetwork,
     MeshOutbound,
+    MeshStatus,
     OpenVpnOptions,
     PlanConversion,
     PoolNode,
@@ -34,10 +37,12 @@ from solaris.host.base import (
     SkippedRule,
     SourceInspection,
     SourceNode,
+    TailscaleSettings,
     TrafficSample,
     TunnelConfig,
     VpnGateServer,
     WarpAccount,
+    ZeroTierSettings,
     bundled_geo_categories,
     taken_over,
 )
@@ -128,6 +133,53 @@ def _composition(composition: Composition) -> pb.Composition:
             warp=_warp_account(composition.egress.warp) if composition.egress.warp else None,
             vpn_gate=[_vpngate_server(server) for server in composition.egress.vpngate],
         ),
+        mesh=[_mesh_network(network) for network in composition.mesh],
+    )
+
+
+def _mesh_network(network: MeshNetwork) -> pb.MeshNetwork:
+    message = pb.MeshNetwork(id=network.id, name=network.name, via=network.via)
+    match network.settings:
+        case TailscaleSettings() as settings:
+            message.tailscale.CopyFrom(
+                pb.TailscaleNetwork(
+                    auth_key=settings.auth_key,
+                    control_url=settings.control_url,
+                    hostname=settings.hostname,
+                )
+            )
+        case ZeroTierSettings() as settings:
+            message.zerotier.CopyFrom(
+                pb.ZeroTierNetwork(
+                    network_id=settings.network, identity_secret=settings.identity_secret
+                )
+            )
+        case EasyTierSettings() as settings:
+            message.easytier.CopyFrom(
+                pb.EasyTierNetwork(
+                    network_name=settings.network_name,
+                    network_secret=settings.network_secret,
+                    peers=list(settings.peers),
+                    ipv4=settings.ipv4,
+                    hostname=settings.hostname,
+                )
+            )
+    return message
+
+
+def _mesh_status(status: pb.MeshStatus) -> MeshStatus:
+    return MeshStatus(
+        name=status.name,
+        id=status.id,
+        type=status.type,
+        # An unknown state reads as still starting.
+        state=_enum_name(pb.MeshState, "MESH_STATE_", status.state or pb.MESH_STATE_STARTING),
+        login_url=status.login_url,
+        addresses=tuple(status.addresses),
+        peer_count=status.peer_count,
+        node_id=status.node_id,
+        network_name=status.network_name,
+        error=status.error,
     )
 
 
@@ -494,6 +546,14 @@ class ServiceHost:
         request = pb.Request(list_vpn_gate=pb.ListVpnGateRequest(via=via))
         response = await self._call(request, LIST_VPNGATE_TIMEOUT_S)
         return [_vpngate_server_from(server) for server in response.list_vpn_gate.servers]
+
+    async def get_mesh_status(self) -> list[MeshStatus]:
+        response = await self._call(pb.Request(get_mesh_status=pb.GetMeshStatusRequest()))
+        return [_mesh_status(status) for status in response.get_mesh_status.networks]
+
+    async def login_mesh(self, name: str) -> str:
+        response = await self._call(pb.Request(login_mesh=pb.LoginMeshRequest(name=name)))
+        return response.login_mesh.login_url
 
     async def stop(self) -> None:
         await self._unclaimed(self._call(pb.Request(stop=pb.StopRequest())), None)

@@ -1144,6 +1144,243 @@
     </message>
 </context>
 <context>
+    <name>MeshDialog</name>
+    <message>
+        <source>已保存；留空不改</source>
+        <translation>Saved; leave empty to keep it</translation>
+    </message>
+    <message>
+        <source>类型</source>
+        <translation>Type</translation>
+    </message>
+    <message>
+        <source>名称</source>
+        <translation>Name</translation>
+    </message>
+    <message>
+        <source>如：家里</source>
+        <translation>e.g. Home</translation>
+    </message>
+    <message>
+        <source>设备名</source>
+        <translation>Device name</translation>
+    </message>
+    <message>
+        <source>网络 ID</source>
+        <translation>Network ID</translation>
+    </message>
+    <message>
+        <source>16 位十六进制数</source>
+        <translation>16 hex digits</translation>
+    </message>
+    <message>
+        <source>本机地址（可选）</source>
+        <translation>This device’s address (optional)</translation>
+    </message>
+    <message>
+        <source>如 10.144.144.2/24；留空由网络分配</source>
+        <translation>e.g. 10.144.144.2/24; empty lets the network assign one</translation>
+    </message>
+    <message>
+        <source>本机地址</source>
+        <translation>This device’s address</translation>
+    </message>
+    <message>
+        <source>登录方式</source>
+        <translation>Log in with</translation>
+    </message>
+    <message>
+        <source>授权密钥</source>
+        <translation>Auth key</translation>
+    </message>
+    <message>
+        <source>控制服务器（可选）</source>
+        <translation>Control server (optional)</translation>
+    </message>
+    <message>
+        <source>留空使用 Tailscale；自建的 Headscale 填它的地址</source>
+        <translation>Empty uses Tailscale’s; for your own Headscale, enter its address</translation>
+    </message>
+    <message>
+        <source>控制服务器</source>
+        <translation>Control server</translation>
+    </message>
+    <message>
+        <source>身份密钥（可选）</source>
+        <translation>Identity secret (optional)</translation>
+    </message>
+    <message>
+        <source>留空由本机生成；之后要在网络的管理页授权这台设备</source>
+        <translation>Empty makes a new one here; then authorize this device on the network’s admin page</translation>
+    </message>
+    <message>
+        <source>身份密钥</source>
+        <translation>Identity secret</translation>
+    </message>
+    <message>
+        <source>网络名称</source>
+        <translation>Network name</translation>
+    </message>
+    <message>
+        <source>网络密钥</source>
+        <translation>Network secret</translation>
+    </message>
+    <message>
+        <source>对等节点</source>
+        <translation>Peers</translation>
+    </message>
+    <message>
+        <source>多个用逗号分开；本机只连出去，不接受连接</source>
+        <translation>Separate several with commas; this device only connects out and accepts no connections</translation>
+    </message>
+    <message>
+        <source>经由</source>
+        <translation>Via</translation>
+    </message>
+    <message>
+        <source>经节点连接时没有点对点直连，只走中继</source>
+        <translation>Through a node there are no direct peer-to-peer links, only relays</translation>
+    </message>
+    <message>
+        <source>取消</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>保存</source>
+        <translation>Save</translation>
+    </message>
+    <message>
+        <source>添加</source>
+        <translation>Add</translation>
+    </message>
+</context>
+<context>
+    <name>MeshNetworks</name>
+    <message>
+        <source>浏览器登录</source>
+        <translation>Browser</translation>
+    </message>
+    <message>
+        <source>授权密钥</source>
+        <translation>Auth key</translation>
+    </message>
+    <message>
+        <source>连接中…</source>
+        <translation>Connecting…</translation>
+    </message>
+    <message>
+        <source>需要登录</source>
+        <translation>Login needed</translation>
+    </message>
+    <message>
+        <source>等待授权</source>
+        <translation>Awaiting approval</translation>
+    </message>
+    <message>
+        <source>在线</source>
+        <translation>Online</translation>
+    </message>
+    <message>
+        <source>出错</source>
+        <translation>Error</translation>
+    </message>
+    <message>
+        <source>缺少网络密钥</source>
+        <translation>Network secret missing</translation>
+    </message>
+    <message>
+        <source>未连接</source>
+        <translation>Not connected</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 台设备</source>
+        <translation>
+            <numerusform>%n device</numerusform>
+            <numerusform>%n devices</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>本机 ID {node}</source>
+        <translation>Device ID {node}</translation>
+    </message>
+    <message>
+        <source>经由 {via}，暂经节点选择</source>
+        <translation>Via {via}, through Proxy for now</translation>
+    </message>
+    <message>
+        <source>经由 {via}</source>
+        <translation>Via {via}</translation>
+    </message>
+    <message>
+        <source>连接后才能登录</source>
+        <translation>Connect first to log in</translation>
+    </message>
+    <message>
+        <source>登录链接不是网页地址，没有打开</source>
+        <translation>The login link is not a web address, so it was not opened</translation>
+    </message>
+    <message>
+        <source>添加网络</source>
+        <translation>Add network</translation>
+    </message>
+    <message>
+        <source>编辑「{name}」</source>
+        <translation>Edit “{name}”</translation>
+    </message>
+    <message>
+        <source>直连</source>
+        <translation>Direct</translation>
+    </message>
+    <message>
+        <source>请填写名称</source>
+        <translation>Enter a name</translation>
+    </message>
+    <message>
+        <source>名称里不能有逗号</source>
+        <translation>The name can’t hold a comma</translation>
+    </message>
+    <message>
+        <source>已有同名的网络</source>
+        <translation>A network has this name already</translation>
+    </message>
+    <message>
+        <source>请填写授权密钥</source>
+        <translation>Enter the auth key</translation>
+    </message>
+    <message>
+        <source>控制服务器要以 https:// 或 http:// 开头</source>
+        <translation>The control server starts with https:// or http://</translation>
+    </message>
+    <message>
+        <source>网络 ID 是 16 位十六进制数</source>
+        <translation>The network ID is 16 hex digits</translation>
+    </message>
+    <message>
+        <source>请填写网络名称</source>
+        <translation>Enter the network name</translation>
+    </message>
+    <message>
+        <source>请填写网络密钥</source>
+        <translation>Enter the network secret</translation>
+    </message>
+    <message>
+        <source>请填写至少一个对等节点</source>
+        <translation>Enter at least one peer</translation>
+    </message>
+    <message>
+        <source>本机地址写成 10.144.144.2/24 这样</source>
+        <translation>Write the address like 10.144.144.2/24</translation>
+    </message>
+    <message>
+        <source>删除「{name}」？</source>
+        <translation>Delete “{name}”?</translation>
+    </message>
+    <message>
+        <source>本机的登录状态和密钥一并删除，指向它的规则会拒绝连接。设备要到网络的管理页移除。</source>
+        <translation>Its login and secrets on this device go too, and its rules reject connections. Remove the device on the network’s admin page.</translation>
+    </message>
+</context>
+<context>
     <name>OverrideDialog</name>
     <message>
         <source># 例：在规则最前面加一条直连规则
@@ -2214,6 +2451,30 @@ prepend-rules:
     <message>
         <source>组网</source>
         <translation>Mesh networks</translation>
+    </message>
+    <message>
+        <source>Tailscale、ZeroTier、EasyTier</source>
+        <translation>Tailscale, ZeroTier, EasyTier</translation>
+    </message>
+    <message>
+        <source>还没有组网：访问自己的设备和内网</source>
+        <translation>No mesh networks yet: reach your own devices and LANs</translation>
+    </message>
+    <message>
+        <source>添加网络…</source>
+        <translation>Add network…</translation>
+    </message>
+    <message>
+        <source>登录…</source>
+        <translation>Log in…</translation>
+    </message>
+    <message>
+        <source>复制本机地址</source>
+        <translation>Copy this device’s address</translation>
+    </message>
+    <message>
+        <source>删除…</source>
+        <translation>Delete…</translation>
     </message>
     <message>
         <source>链式出口</source>

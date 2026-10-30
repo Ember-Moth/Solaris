@@ -539,7 +539,9 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   "没有成员，暂走节点选择"、`egress_unavailable`"不可用，已拒绝连接"、`mesh_missing`"不存在，已拒绝连接"；
   `via_empty`、`mesh_restricted` 不属于哪条规则，写在出口行和组网行上。
 - **组网出站**（mesh.md 第 5 节）：策略组标签里自建之后是"组网"一节，行来自报告的 `mesh`（只在"我的方案"下），
-  说明写"类型 · 来自「订阅名」"，有 `mesh_restricted` 时加"· 已关闭 选项"；节点池里没有组网出站时整节不显示。
+  说明写"类型 · 来自「订阅名」"，有 `mesh_restricted` 时加"· 已关闭 选项"。应用内添加的网络（M11）排在它们前面，
+  由 `MeshNetworks`（`viewmodels/routing_mesh.py`）提供，见 mesh.md 10.7 节；所以"我的方案"下这一节总是显示，
+  最后一行是"添加网络…"。
   名称取报告里生成配置用的名称，报告里没有了（`mesh_missing`）时取 `mesh:` 引用里的原名。"更多"菜单：
   - "添加常用规则"：Tailscale 把 `plans.common_mesh_rules` 的 IP 段规则（`100.64.0.0/10`、`fd7a:115c:a1e0::/48`，
     `no-resolve`）和域名规则（`ts.net`）插在最前面，已有一样的条目就跳过，标题栏给出撤销提示；ZeroTier、EasyTier

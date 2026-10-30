@@ -116,9 +116,11 @@ type admission struct {
 	cfg *config.Config
 	// doc is the configuration as it went to mihomo's parser.
 	doc map[string]any
-	// report and entries come with a composition.
-	report  *controlpb.CompositionReport
-	entries *ruleEntries
+	// report and entries come with a composition, and so do the ids of its mesh networks,
+	// whose state stays in the home; networks is nil otherwise.
+	networks []string
+	report   *controlpb.CompositionReport
+	entries  *ruleEntries
 }
 
 func admit(profile Profile, mode TunMode) (*config.Config, error) {
@@ -181,6 +183,10 @@ func admitProfile(profile Profile, mode TunMode) (*admission, error) {
 	}
 	admitted := &admission{cfg: cfg, doc: doc}
 	if composed != nil {
+		admitted.networks = []string{}
+		for _, network := range profile.Composition.Mesh {
+			admitted.networks = append(admitted.networks, network.GetId())
+		}
 		meshWarnings(composed.Report, restricted)
 		admitted.report = composed.Report
 		admitted.entries = newRuleEntries(composed, doc, cfg)

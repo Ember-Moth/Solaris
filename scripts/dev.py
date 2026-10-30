@@ -30,8 +30,11 @@ START_TIMEOUT_S = 30.0
 
 
 def build_service(output: Path) -> Path:
-    """``go build`` the service into ``output``; Go's build cache makes repeats cheap."""
-    subprocess.run(["go", "-C", str(CORE), "build", "-o", str(output), "./service"], check=True)
+    """``go build`` the service into ``output``; Go's build cache makes repeats cheap. It has
+    the release builds' tag, with_gvisor, without which mihomo refuses Tailscale outbounds
+    (docs/mesh.md §4)."""
+    command = ["go", "-C", str(CORE), "build", "-tags", "with_gvisor", "-o", str(output)]
+    subprocess.run([*command, "./service"], check=True)
     return output
 
 

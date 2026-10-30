@@ -14,7 +14,8 @@
   - Windows 服务在 `C:\ProgramData\Solaris\` 下保存的运行副本（architecture.md §5.1），它只用于开机恢复；
   - mihomo 自己的 provider 缓存和 `cache.db`；
   - 链式出口的 WARP 账户（系统凭据库）、VPN Gate 服务器列表（`state` 表）和 Tor 数据目录，都只在本机，不进备份
-    （[exits.md](exits.md) 第 8 节）。
+    （[exits.md](exits.md) 第 8 节）；
+  - 应用内组网网络的凭据（系统凭据库），不进备份；网络本身进备份（[mesh.md](mesh.md) 10.2 节）。
 - **读写方**：数据库只由界面进程以当前用户身份读写。服务和系统扩展都不访问它，它们从宿主请求里拿到配置。
 
 ## 2. 本地数据库
@@ -55,6 +56,7 @@
 | `settings` | `key`、`value`（JSON）、`updated_at`。每个设置项的范围（`synced` / `local`）由 `models/settings.py` 里字段的元数据决定（ui.md §8），不存进表里 |
 | `state` | 只属于本机的状态（`key`、`value`（JSON）、`updated_at`）：每个备份目标上次上传的快照摘要（`backup_digest:<目标 id>`）；VPN Gate 出口的服务器列表、在用的服务器和近一小时失效的服务器（`vpngate`，exits.md 5.2 节） |
 | `backup_targets` | 已开启的备份目标：`id`、提供方、显示用的账户名、上次成功备份的时间、上次的错误、`created_at`、`updated_at`、`deleted_at`。不存令牌（见 4 节） |
+| `mesh_networks` | 应用内添加的组网网络：`id`、`kind`（`tailscale` / `zerotier` / `easytier`）、`name`、`via`、`settings`（JSON，不含凭据）、`position`、`created_at`、`updated_at`、`deleted_at`。凭据在系统凭据库（mesh.md 10.2 节） |
 
 当前使用的配置存在 `routing_state` 里，作为"订阅自带"时用的配置（routing.md 第 9 节），不在 `state` 里。
 
@@ -79,12 +81,13 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
 - `routing`：`mode`、`profile_id`（当前使用的配置）、`plan_id`（当前使用的方案）、`info_pattern`（信息节点表达式）、
   `updated_at`，以及 `plans`：全部分流方案，每套带 `groups` 和 `rules`，字段与表相同，`egress`、`conditions`、
   `options`、`content` 是 JSON 值而不是字符串；
+- `mesh`：应用内添加的组网网络，字段与表相同，`settings` 是 JSON 值；
 - `settings`：只包含 `synced` 范围、改过的设置，`key`、`value`、`updated_at`。
 
 快照不包含用量、下载缓存（`profile_contents` 里订阅的原文和下载信息）、本机范围的设置、`state` 和 `backup_targets`，
-也不包含任何令牌和 WARP 账户。
+也不包含任何令牌、WARP 账户和组网网络的凭据。恢复出来的网络要重新登录或重新填写密钥（mesh.md 10.2 节）。
 
-- **删除的记录**：配置、覆写、方案、策略组和规则条目删除后只留**墓碑**：主键、`updated_at` 和 `deleted_at`，
+- **删除的记录**：配置、覆写、方案、策略组、规则条目和组网网络删除后只留**墓碑**：主键、`updated_at` 和 `deleted_at`，
   不带内容，所以删掉的订阅链接不会一直留在备份里。删除的方案不带它的策略组和规则。墓碑在本机保留 90 天
   （第 2 节），清除之后快照里也就没有了。
 - **摘要**：去掉 `format`、`version`、`created_at`、`device`、`app_version` 之后，按键排序的紧凑 JSON 的 SHA-256。

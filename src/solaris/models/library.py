@@ -26,7 +26,9 @@ system proxy state the host reports, so neither is interrupted.
 The WARP exit's account belongs to the device, not to a plan: it lives in the system's
 credential store (credentials.py) and joins the composition of every plan that turns the
 exit on (docs/exits.md §3.2). So does the VPN Gate exit's server list (vpngate.py, §5.2),
-from which each composition takes the servers its plan chooses.
+from which each composition takes the servers its plan chooses; and so do the mesh networks
+the user added (mesh.py): every composition carries all of them, with their secrets from the
+credential store (docs/mesh.md §10).
 
 Every method runs on the asyncio thread. Downloads and their validation run outside the
 lock; writing the store and reloading hold it, so an automatic update cannot interleave
@@ -40,7 +42,7 @@ import contextlib
 import logging
 import time
 import uuid
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Collection, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -55,6 +57,8 @@ from solaris.host.base import (
     GroupPreview,
     HostError,
     HostStatus,
+    MeshNetwork,
+    MeshStatus,
     PlanConversion,
     ProxyGroup,
     Rule,
@@ -67,11 +71,12 @@ from solaris.host.base import (
     WarpAccount,
     bundled_geo_categories,
 )
-from solaris.models import plans, vpngate
+from solaris.models import mesh, plans, vpngate
 from solaris.models.credentials import (
     CredentialError,
     CredentialStore,
     KeyringCredentials,
+    MeshSecrets,
     WarpAccounts,
 )
 from solaris.models.profiles import (
@@ -132,6 +137,10 @@ class Routing:
     inspections: Mapping[str, SourceInspection]  # by profile id; missing until read
     warp: WarpAccount | None = None  # this device's WARP account; None until read, or none
     vpngate: ServerList = field(default_factory=ServerList)  # this device's VPN Gate list
+    networks: tuple[MeshNetwork, ...] = ()  # the mesh networks, without their secrets
+    # The names of the secrets the credential store holds for each network, by id; empty
+    # until read.
+    secrets: Mapping[str, frozenset[str]] = field(default_factory=dict)
 
     @property
     def mode(self) -> str | None:
@@ -204,7 +213,8 @@ class ProfileLibrary:
     ) -> None:
         """``settings`` returns the current settings; it is read on the asyncio thread.
         ``locale`` names the groups the core generates for a plan (routing.md §8.5).
-        ``credentials`` keeps the WARP account; the system's store by default."""
+        ``credentials`` keeps the WARP account and the mesh networks' secrets; the system's
+        store by default."""
         self._store = store
         self._routing_store = RoutingStore(store.database)
         self._host = host
@@ -217,10 +227,16 @@ class ProfileLibrary:
         self._failed: dict[str, float] = {}  # profile id -> time of the failed update
         self._inspections: dict[str, SourceInspection] = {}
         self._report: CompositionReport | None = None
-        self._accounts = WarpAccounts(credentials or KeyringCredentials())
+        credentials = credentials or KeyringCredentials()
+        self._accounts = WarpAccounts(credentials)
         self._warp: WarpAccount | None = None
         self._warp_read = False
         self._vpngate = vpngate.load(store.database)
+        self._mesh_store = mesh.MeshStore(store.database)
+        self._mesh_secrets = MeshSecrets(credentials)
+        self._networks = self._mesh_store.networks()
+        # Each network's secrets by id; None until the credential store has been read.
+        self._secrets: dict[str, dict[str, str]] | None = None
         # None until the first import picks the mode (routing.md §5.1).
         self._state = self._routing_store.state()
         self._plans = self._routing_store.plans()
@@ -251,6 +267,11 @@ class ProfileLibrary:
             dict(self._inspections),
             self._warp,
             self._vpngate,
+            self._networks,
+            {
+                network_id: frozenset(secrets)
+                for network_id, secrets in (self._secrets or {}).items()
+            },
         )
 
     @property
@@ -272,6 +293,7 @@ class ProfileLibrary:
         the WARP account. A profile the host cannot read stays unknown."""
         await self._inspect_missing()
         await self._read_warp()
+        await self._read_secrets()
         return self._routing()
 
     async def _inspect_missing(self) -> None:
@@ -639,6 +661,7 @@ class ProfileLibrary:
             self._list = await asyncio.to_thread(self._store.load)
             self._state = await asyncio.to_thread(self._routing_store.state)
             self._plans = await asyncio.to_thread(self._routing_store.plans)
+            await self._take_restored_networks()
             self._failed.clear()
             self._inspections.clear()
             self._report = None
@@ -979,16 +1002,118 @@ class ProfileLibrary:
             await asyncio.to_thread(vpngate.save, self._store.database, self._vpngate)
         return chosen
 
-    async def _recompose(self) -> None:
+    # -- mesh networks (docs/mesh.md §10) ---------------------------------------------------
+    async def put_network(
+        self, network: MeshNetwork, keep_secrets: Collection[str] = ()
+    ) -> Routing:
+        """Add or change a mesh network once the host accepts the composition with it, and
+        reload a tunnel that routes with the plan in use. ``network`` brings its secrets;
+        those named in ``keep_secrets`` that it leaves empty keep the stored ones."""
+        async with self._lock:
+            stored = await self._network_secrets()
+            kept = {
+                name: value
+                for name, value in stored.get(network.id, {}).items()
+                if name in keep_secrets
+            }
+            network = mesh.with_secrets(network, {**kept, **mesh.secrets_of(network)})
+            public = mesh.without_secrets(network)
+            networks = tuple(n for n in self._networks if n.id != network.id)
+            if len(networks) == len(self._networks):
+                networks = (*networks, public)
+            else:
+                networks = tuple(public if n.id == network.id else n for n in self._networks)
+            with_secrets = tuple(
+                network if n.id == network.id else mesh.with_secrets(n, stored.get(n.id, {}))
+                for n in networks
+            )
+            plan = self._current_plan()
+            composition = await self._composition(
+                plan, self._list, info=self._info_filter(), networks=with_secrets
+            )
+            report = await self._host.validate(
+                TunnelConfig(overrides=await self._global_override(), composition=composition)
+            )
+            secrets = mesh.secrets_of(network)
+            await asyncio.to_thread(self._mesh_secrets.save, network.id, secrets)
+            await asyncio.to_thread(self._mesh_store.put, public)
+            stored[network.id] = secrets
+            self._networks = await asyncio.to_thread(self._mesh_store.networks)
+            await self._recompose(report)
+            return self._routing()
+
+    async def remove_network(self, network_id: str) -> Routing:
+        """Remove a mesh network with its secrets; its rules reject their connections from
+        now on, and the core removes its state at the next start or reload."""
+        async with self._lock:
+            await asyncio.to_thread(self._mesh_store.delete, network_id)
+            self._networks = await asyncio.to_thread(self._mesh_store.networks)
+            stored = await self._network_secrets()
+            stored.pop(network_id, None)
+            await asyncio.to_thread(self._mesh_secrets.delete, network_id)
+            await self._recompose()
+            return self._routing()
+
+    async def mesh_status(self) -> list[MeshStatus]:
+        """How the running configuration's mesh outbounds stand; HostError("not_running")
+        while the tunnel is stopped."""
+        return await self._host.get_mesh_status()
+
+    async def login_mesh(self, name: str) -> str:
+        """The URL that logs the running mesh outbound ``name`` in, to open in the browser."""
+        return await self._host.login_mesh(name)
+
+    async def _network_secrets(self) -> dict[str, dict[str, str]]:
+        """Every network's secrets, read from the credential store once."""
+        if self._secrets is None:
+            secrets = {}
+            for network in self._networks:
+                secrets[network.id] = await asyncio.to_thread(self._mesh_secrets.load, network.id)
+            self._secrets = secrets
+        return self._secrets
+
+    async def _read_secrets(self) -> dict[str, dict[str, str]]:
+        """The secrets, or none while the credential store cannot be read: Tailscale and
+        ZeroTier then run on the login and identity the core keeps, and an EasyTier network
+        waits for its secret."""
+        try:
+            return await self._network_secrets()
+        except CredentialError as error:
+            _log.warning("cannot read the mesh networks' secrets: %s", error.message)
+            return {}
+
+    async def _mesh_networks(
+        self, networks: tuple[MeshNetwork, ...] | None
+    ) -> tuple[MeshNetwork, ...]:
+        """The networks a composition carries: with their secrets, and without those the
+        core cannot run yet."""
+        if networks is None:
+            secrets = await self._read_secrets()
+            networks = tuple(mesh.with_secrets(n, secrets.get(n.id, {})) for n in self._networks)
+        return tuple(n for n in networks if mesh.runnable(n))
+
+    async def _take_restored_networks(self) -> None:
+        """Read the networks a restore wrote; the secrets of those it removed go."""
+        before = {network.id for network in self._networks}
+        self._networks = await asyncio.to_thread(self._mesh_store.networks)
+        for network_id in before - {network.id for network in self._networks}:
+            try:
+                await asyncio.to_thread(self._mesh_secrets.delete, network_id)
+            except CredentialError as error:
+                _log.warning("cannot delete a mesh network's secrets: %s", error.message)
+        self._secrets = None
+
+    async def _recompose(self, report: CompositionReport | None = None) -> None:
         """Bring the report and a tunnel that routes with the plan in use up to date with
-        something outside the plan, such as the WARP account."""
+        something outside the plan, such as the WARP account; ``report`` is what Validate
+        made of it already."""
         plan = self._current_plan()
         if plan is None:
             return
         if self._state.mode == MODE_PLAN and await self._running() is not None:
             await self._reload_if_running()
         else:
-            self._report = await self._validate_plan(plan, self._list)
+            self._report = report or await self._validate_plan(plan, self._list)
 
     def _current_plan(self) -> Plan | None:
         return self._routing().plan()
@@ -1033,9 +1158,10 @@ class ProfileLibrary:
         *,
         texts: Mapping[str, str] | None = None,
         info: str,
+        networks: tuple[MeshNetwork, ...] | None = None,
     ) -> Composition:
         """The pool of ``profiles`` with ``plan``, the default one for None; ``texts`` stand
-        for stored configs."""
+        for stored configs, and ``networks``, with their secrets, for the stored ones."""
         sources = []
         for profile in profiles.profiles:
             if not profile.in_pool or (profile.unread and profile.id not in (texts or {})):
@@ -1055,7 +1181,13 @@ class ProfileLibrary:
         # A plan that turns an exit off gets no account or servers: its rules reject (D21).
         warp = await self._read_warp() if plans.warp_exit(plan).enabled else None
         servers = await self._vpngate_servers(plan)
-        return Composition(tuple(sources), plan_json, info, Egress(warp, servers))
+        return Composition(
+            tuple(sources),
+            plan_json,
+            info,
+            Egress(warp, servers),
+            await self._mesh_networks(networks),
+        )
 
     # -- tunnel ------------------------------------------------------------------------------
     async def start_tunnel(self) -> None:

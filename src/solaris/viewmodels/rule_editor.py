@@ -132,15 +132,24 @@ class RuleEditor(QObject):
         if rule is not None and rule.kind != "raw":
             self._open(rule)
 
-    def openAddRanges(self, target: str) -> None:
+    def openAddRanges(self, target: str, ranges: list[str] | None = None) -> None:
         """添加规则 · IP 段 with the target chosen, for a mesh outbound whose network has
-        ranges of its own (docs/mesh.md §5)."""
-        self._open(None, kind="ip", target=target)
+        ranges of its own (docs/mesh.md §5), and ``ranges`` filled in (§10.7)."""
+        self._open(None, kind="ip", target=target, ranges=ranges or [])
 
-    def _open(self, rule: PlanRule | None, *, kind: str = "", target: str = "") -> None:
+    def _open(
+        self,
+        rule: PlanRule | None,
+        *,
+        kind: str = "",
+        target: str = "",
+        ranges: list[str] | None = None,
+    ) -> None:
         self._reset(rule)
         if kind:
             self._kind = kind
+        if ranges:
+            self._ip_text = "\n".join(ranges)
         if target:
             self._target, self._target_touched = target, True
         self.changed.emit()

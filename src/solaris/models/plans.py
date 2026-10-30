@@ -172,8 +172,10 @@ def is_mesh(target: str) -> bool:
 
 
 def mesh_name(target: str) -> str:
-    """The outbound's name in its profile, as ``mesh:<profile id>/<name>`` holds it."""
-    return target.removeprefix(MESH_PREFIX).partition("/")[2]
+    """The outbound's name in its profile, as ``mesh:<profile id>/<name>`` holds it. A
+    network added in the app, ``mesh:<id>``, holds none, so it goes by its target."""
+    _, slash, name = target.removeprefix(MESH_PREFIX).partition("/")
+    return name if slash else target
 
 
 def common_mesh_rules(mesh_type: str, target: str) -> tuple[PlanRule, ...]:

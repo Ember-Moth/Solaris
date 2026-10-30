@@ -21,14 +21,19 @@ type Source struct {
 	YAML []byte
 }
 
-// node is one proxy of the pool.
+// node is one proxy of the pool, or a mesh outbound.
 type node struct {
 	name     string // in the generated configuration
-	original string // in the subscription
-	source   int    // index into the sources
+	original string // in the subscription, or the network's own name
+	source   int    // index into the sources; -1 for a network of the composition
 	kind     string // mihomo adapter type
 	region   string
 	mapping  map[string]any
+	// id is how a plan names a mesh outbound: by its source and its name there, which a
+	// rename for a clashing name does not change, or by the network's id.
+	id string
+	// via is a network's via group id; empty dials directly.
+	via string
 }
 
 // subscription is what a source holds: its proxies and, for a mihomo profile, the
@@ -219,6 +224,7 @@ func buildPool(sources []Source, filter infoFilter, taken map[string]bool) (pool
 				mapping:  renamed,
 			}
 			if meshOutbound {
+				n.id = meshPrefix + source.ID + "/" + original
 				mesh = append(mesh, n)
 			} else {
 				pool = append(pool, n)

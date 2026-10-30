@@ -127,6 +127,58 @@ class Egress:
     vpngate: tuple[VpnGateServer, ...] = ()
 
 
+MESH_KINDS = ("tailscale", "zerotier", "easytier")  # docs/mesh.md §10.2
+
+
+@dataclass(frozen=True)
+class TailscaleSettings:
+    auth_key: str = ""  # a secret; "" logs in through the browser
+    control_url: str = ""  # "" is Tailscale's own; a Headscale server otherwise
+    hostname: str = ""  # the device's name in the tailnet
+
+
+@dataclass(frozen=True)
+class ZeroTierSettings:
+    network: str = ""  # the network id, 16 hex digits
+    identity_secret: str = ""  # a secret; "" lets the core make one
+
+
+@dataclass(frozen=True)
+class EasyTierSettings:
+    network_name: str = ""
+    network_secret: str = ""  # a secret, which the network needs
+    peers: tuple[str, ...] = ()  # such as tcp://example.com:11010
+    ipv4: str = ""  # such as 10.144.144.2/24; "" asks the network for one
+    hostname: str = ""
+
+
+type MeshSettings = TailscaleSettings | ZeroTierSettings | EasyTierSettings
+
+MESH_SETTINGS: dict[str, type[MeshSettings]] = {
+    "tailscale": TailscaleSettings,
+    "zerotier": ZeroTierSettings,
+    "easytier": EasyTierSettings,
+}
+# The settings that are secrets: they live in the system's credential store, out of the
+# database and of backups, and only the core sees them.
+MESH_SECRETS = ("auth_key", "identity_secret", "network_secret")
+
+
+@dataclass(frozen=True)
+class MeshNetwork:
+    """A mesh network the user added in the app (docs/mesh.md §10): an outbound of its own
+    that plans name ``mesh:<id>``."""
+
+    id: str
+    name: str
+    settings: MeshSettings
+    via: str = ""  # the group id it connects through; "" connects directly
+
+    @property
+    def kind(self) -> str:
+        return next(k for k, settings in MESH_SETTINGS.items() if type(self.settings) is settings)
+
+
 @dataclass(frozen=True)
 class Composition:
     """The node pool and a plan, for "my plan" routing: the core assembles the configuration
@@ -138,6 +190,8 @@ class Composition:
     # Names of information nodes ("剩余流量"), in mihomo's regular expressions; "" keeps all.
     info_filter: str = ""
     egress: Egress = Egress()
+    # Every network the user added; the core removes the state of those it no longer gets.
+    mesh: tuple[MeshNetwork, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -200,10 +254,12 @@ class MeshOutbound:
     """A Tailscale, ZeroTier or EasyTier outbound from a pool subscription: not a pool node,
     but a rule target of its own (docs/mesh.md §3)."""
 
-    id: str  # "mesh:<subscription id>/<name in the subscription>", as plans name it
+    # "mesh:<subscription id>/<name in the subscription>", or "mesh:<network id>" for a
+    # network of Composition.mesh; as plans name it
+    id: str
     name: str  # in the generated configuration
     type: str  # mihomo adapter type
-    source_id: str
+    source_id: str  # "" for a network of Composition.mesh
 
 
 @dataclass(frozen=True)
@@ -368,6 +424,25 @@ class Connection:
     rule_entry_id: str = ""  # the plan's rule entry the rule came from, as Rule.entry_id
 
 
+# How a mesh outbound stands (docs/mesh.md §10.5): starting or reaching its network, waiting
+# for a login in the browser or for the network's admin, online, or failed.
+MESH_STATES = ("starting", "needs_login", "waiting", "online", "failed")
+
+
+@dataclass(frozen=True)
+class MeshStatus:
+    name: str  # the outbound's name in the running configuration
+    id: str  # its mesh id when a composition made it; "" otherwise
+    type: str  # mihomo adapter type: "Tailscale", "ZeroTier" or "EasyTier"
+    state: str  # one of MESH_STATES
+    login_url: str = ""
+    addresses: tuple[str, ...] = ()  # the device's own, as CIDR
+    peer_count: int = 0  # the other devices it reaches
+    node_id: str = ""  # ZeroTier's node address, which the network's admin authorizes
+    network_name: str = ""
+    error: str = ""
+
+
 LOG_LEVELS = ("debug", "info", "warning", "error")  # lowest first
 
 
@@ -462,6 +537,17 @@ class TunnelHost(Protocol):
         configuration's group ``via`` (its name; docs/exits.md §5.2). Raises
         HostError("not_running") while the core is stopped, and "operation_failed" when the
         list cannot be fetched."""
+        ...
+
+    async def get_mesh_status(self) -> list[MeshStatus]:
+        """The running configuration's mesh outbounds, in its order (docs/mesh.md §10.5).
+        Raises HostError("not_running") while the core is stopped."""
+        ...
+
+    async def login_mesh(self, name: str) -> str:
+        """A URL to open in the browser that logs the mesh outbound ``name`` in: Tailscale
+        starts a login, ZeroTier gives its network's sign-on. HostError("invalid_request")
+        when there is nothing to log in to."""
         ...
 
     async def stop(self) -> None: ...

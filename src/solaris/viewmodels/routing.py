@@ -14,8 +14,8 @@ What only the core can work out (the rule test, the group preview, conversion an
 the pool's counts) is left out while no core answers: on macOS, while the tunnel is down
 (``coreAvailable``, D27).
 
-The groups tab also lists the mesh outbounds the pool brought (docs/mesh.md §5) and the
-chained exits (routing_exits.py).
+The groups tab also lists the mesh networks the user added (routing_mesh.py) and the mesh
+outbounds the pool brought (docs/mesh.md §5), and the chained exits (routing_exits.py).
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ from typing import Any
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
-from solaris.host.base import CompositionReport, HostError, RuleMatch, WarpAccount
+from solaris.host.base import CompositionReport, HostError, MeshNetwork, RuleMatch, WarpAccount
 from solaris.i18n import QT_TRANSLATE_NOOP
 from solaris.models import plans
 from solaris.models.library import ProfileLibrary, ProfileRules, Routing
@@ -51,6 +51,7 @@ from solaris.viewmodels.common.keyed_list import KeyedListModel
 from solaris.viewmodels.feedback import failure_text
 from solaris.viewmodels.routing_exits import VpnGateExit, WarpExit
 from solaris.viewmodels.routing_groups import GroupEditor
+from solaris.viewmodels.routing_mesh import MeshNetworks
 from solaris.viewmodels.routing_transfer import PlanTransfer
 from solaris.viewmodels.rule_editor import RuleEditor
 
@@ -202,6 +203,7 @@ class RoutingViewModel(QObject):
         self._transfer = PlanTransfer(self, runner, library, self)
         self._warp = WarpExit(self, runner, library, settings, self)
         self._vpngate = VpnGateExit(self, runner, library, self)
+        self._mesh_networks = MeshNetworks(self, runner, library, self)
         self.changed.connect(self._sync_rows)
         self.testChanged.connect(self._sync_rows)
         self._sync_rows()
@@ -215,6 +217,7 @@ class RoutingViewModel(QObject):
         self._transfer.retranslate()
         self._warp.retranslate()
         self._vpngate.retranslate()
+        self._mesh_networks.retranslate()
 
     # -- loading -----------------------------------------------------------------------------
     @Slot()
@@ -512,15 +515,29 @@ class RoutingViewModel(QObject):
     def vpngate_list(self) -> ServerList:
         return self._routing.vpngate
 
+    def networks(self) -> tuple[MeshNetwork, ...]:
+        """The mesh networks the user added, without their secrets."""
+        return self._routing.networks
+
+    def network_secrets(self) -> dict[str, frozenset[str]]:
+        """The names of each network's secrets the credential store holds, by network id."""
+        return dict(self._routing.secrets)
+
+    def has_mesh(self) -> bool:
+        """The pool brings mesh outbounds of its own."""
+        return bool(self._mesh.rows)
+
     def routes_with_plan(self) -> bool:
         return self._routing.mode == MODE_PLAN
 
     def tunnel_running(self, running: bool) -> None:
-        """The overview saw the tunnel start or stop; the exits may have waited for it.
+        """The overview saw the tunnel start or stop; the exits may have waited for it,
+        and the mesh networks have a status from now on.
         On macOS a core answers only while the tunnel runs: the page reads what it shows
         again, and the subscriptions page what the connection read (D27)."""
         self._warp.set_running(running)
         self._vpngate.set_running(running)
+        self._mesh_networks.set_running(running)
         core = self._library.core_available
         if core == self._core:
             return
@@ -683,7 +700,9 @@ class RoutingViewModel(QObject):
     @Property(str, notify=changed)
     def fallbackLabel(self) -> str:
         plan = self._plan()
-        return text.target_label(plan.fallback if plan else plans.PROXY, plan, self._routing.report)
+        return text.target_label(
+            plan.fallback if plan else plans.PROXY, plan, self._routing.report, self.networks()
+        )
 
     @Property(str, notify=changed)
     def fallbackWarning(self) -> str:
@@ -938,7 +957,7 @@ class RoutingViewModel(QObject):
         known = text.target_options(plan, self._routing.report)
         listed = [o for o in known if o["value"] in used]
         listed += [
-            {"value": t, "label": text.target_label(t, plan, self._routing.report)}
+            {"value": t, "label": text.target_label(t, plan, self._routing.report, self.networks())}
             for t in sorted(used - {str(o["value"]) for o in known})
         ]
         for n, option in enumerate(listed):
@@ -951,7 +970,9 @@ class RoutingViewModel(QObject):
     def targetFilterLabel(self) -> str:
         if not self._target_filter:
             return self.tr("全部目标")
-        return text.target_label(self._target_filter, self._plan(), self._routing.report)
+        return text.target_label(
+            self._target_filter, self._plan(), self._routing.report, self.networks()
+        )
 
     @Property(bool, notify=changed)
     def filtering(self) -> bool:
@@ -976,7 +997,7 @@ class RoutingViewModel(QObject):
             (
                 text.rule_name(rule),
                 text.rule_caption(rule),
-                text.target_label(rule.target, plan, self._routing.report),
+                text.target_label(rule.target, plan, self._routing.report, self.networks()),
             )
         )
         return query in haystack.lower()
@@ -1025,11 +1046,18 @@ class RoutingViewModel(QObject):
     def hasMesh(self) -> bool:
         return bool(self._mesh.rows)
 
+    @Property(MeshNetworks, constant=True)
+    def meshNetworks(self) -> MeshNetworks:
+        return self._mesh_networks
+
     @Slot(str)
     def addMeshRules(self, mesh_id: str) -> None:
+        self.add_mesh_rules(mesh_id)
+
+    def add_mesh_rules(self, mesh_id: str, ranges: list[str] | None = None) -> None:
         """添加常用规则: Tailscale's ranges and domain go ahead of the other rules; ZeroTier and
         EasyTier networks choose their own ranges, so the rule dialog opens for them with
-        the outbound as the target."""
+        the outbound as the target, and ``ranges`` filled in when the network's are known."""
         plan = self._plan()
         report = self._routing.report
         outbound = next((m for m in report.mesh if m.id == mesh_id), None) if report else None
@@ -1037,7 +1065,7 @@ class RoutingViewModel(QObject):
             return
         rules = plans.common_mesh_rules(outbound.type, mesh_id)
         if not rules:
-            self._editor.openAddRanges(mesh_id)
+            self._editor.openAddRanges(mesh_id, ranges or [])
             return
         added = [
             rule
@@ -1309,7 +1337,9 @@ class RoutingViewModel(QObject):
                     name=text.rule_name(rule),
                     caption=text.rule_caption(rule),
                     mono=rule.kind == "raw",
-                    target=text.target_label(rule.target, plan, self._routing.report),
+                    target=text.target_label(
+                        rule.target, plan, self._routing.report, self.networks()
+                    ),
                     targetId=rule.target,
                     active=rule.enabled,
                     warning=warnings.get(rule.id, "") if rule.enabled else "",
@@ -1383,6 +1413,8 @@ class RoutingViewModel(QObject):
                 turned_off.setdefault(warning.entry_id, []).append(warning.target)
         rows = []
         for outbound in report.mesh:
+            if not outbound.source_id:  # a network added in the app, routing_mesh.py's
+                continue
             source = names.get(outbound.source_id, outbound.source_id)
             caption = self.tr("{type} · 来自「{source}」").format(type=outbound.type, source=source)
             if outbound.id in turned_off:

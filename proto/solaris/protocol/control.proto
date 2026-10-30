@@ -55,6 +55,11 @@ message Request {
     // core, since they go out through one of its groups.
     RegisterWarpRequest register_warp = 55;
     ListVpnGateRequest list_vpn_gate = 56;
+
+    // Mesh networks (docs/mesh.md §10.5), served on both platforms; they need a running
+    // core.
+    GetMeshStatusRequest get_mesh_status = 57;
+    LoginMeshRequest login_mesh = 58;
   }
 }
 
@@ -83,6 +88,8 @@ message Response {
     ExportPlanResponse export_plan = 54;
     RegisterWarpResponse register_warp = 55;
     ListVpnGateResponse list_vpn_gate = 56;
+    GetMeshStatusResponse get_mesh_status = 57;
+    LoginMeshResponse login_mesh = 58;
   }
 }
 
@@ -181,6 +188,41 @@ message Composition {
   // What the chained exits need (docs/exits.md §7.1). Without an exit's material the exit
   // is unavailable, and the rules that name it reject their connections (decision D21).
   Egress egress = 4;
+  // The mesh networks the user added in the app (docs/mesh.md §10), every one of them.
+  // Each becomes an outbound of its own, as the subscriptions' mesh outbounds do; its
+  // state, such as a Tailscale login, lives in the core's home under mesh/<id>, and Start
+  // and Reload remove the state of networks no longer listed.
+  repeated MeshNetwork mesh = 5;
+}
+// A mesh network the user added in the app. Its secrets are credentials: the UI keeps them
+// in the system's credential store, out of backups, and the core keeps them in memory only.
+message MeshNetwork {
+  string id = 1;   // plans name it "mesh:<id>"; letters, digits, - and _
+  string name = 2; // the outbound's name, unless a group or an earlier network has it
+  // The group of the plan whose node the network connects through, by id; empty connects
+  // directly. A group without members passes it to "proxy" (warning via_empty).
+  string via = 3;
+  oneof network {
+    TailscaleNetwork tailscale = 10;
+    ZeroTierNetwork zerotier = 11;
+    EasyTierNetwork easytier = 12;
+  }
+}
+message TailscaleNetwork {
+  string auth_key = 1;    // empty logs in through the browser (LoginMesh)
+  string control_url = 2; // empty is Tailscale's own; a Headscale server otherwise
+  string hostname = 3;    // the device's name in the tailnet
+}
+message ZeroTierNetwork {
+  string network_id = 1;      // 16 hex digits
+  string identity_secret = 2; // empty: the core makes one and keeps it in the state
+}
+message EasyTierNetwork {
+  string network_name = 1;
+  string network_secret = 2;
+  repeated string peers = 3; // such as tcp://example.com:11010; at least one
+  string ipv4 = 4;           // such as 10.144.144.2/24; empty asks the network for one
+  string hostname = 5;
 }
 message Egress {
   WarpAccount warp = 1;
@@ -228,10 +270,12 @@ message CompositionReport {
   repeated MeshOutbound mesh = 5;
 }
 message MeshOutbound {
-  string id = 1;        // "mesh:<subscription id>/<name in the subscription>", as plans name it
+  // "mesh:<subscription id>/<name in the subscription>", or "mesh:<network id>" for a
+  // network of Composition.mesh; as plans name it.
+  string id = 1;
   string name = 2;      // the name in the generated configuration
   string type = 3;      // mihomo adapter type, as in Proxy.type
-  string source_id = 4;
+  string source_id = 4; // empty for a network of Composition.mesh
 }
 message CompositionWarning {
   string entry_id = 1; // a rule entry, or "fallback"
@@ -484,6 +528,37 @@ message OpenVpnOptions {
   string tls_auth = 11;
   string key_direction = 12;
 }
+
+// The mesh outbounds among the running configuration's proxies, as they stand now
+// (docs/mesh.md §10.5). The core starts them as soon as it applies the configuration.
+message GetMeshStatusRequest {}
+message GetMeshStatusResponse { repeated MeshStatus networks = 1; } // in configuration order
+enum MeshState {
+  MESH_STATE_UNSPECIFIED = 0;
+  MESH_STATE_STARTING = 1;    // starting, or reaching the network
+  MESH_STATE_NEEDS_LOGIN = 2; // log in at login_url
+  MESH_STATE_WAITING = 3;     // the network's admin has to let the device in
+  MESH_STATE_ONLINE = 4;
+  MESH_STATE_FAILED = 5;      // error says why
+}
+message MeshStatus {
+  string name = 1; // the outbound's name in the running configuration
+  string id = 2;   // its mesh id when a composition made it; empty otherwise
+  string type = 3; // mihomo adapter type: Tailscale, ZeroTier or EasyTier
+  MeshState state = 4;
+  string login_url = 5;
+  repeated string addresses = 6; // the device's own, as CIDR: 100.101.102.103/32
+  uint32 peer_count = 7;         // the other devices it reaches
+  string node_id = 8;            // ZeroTier's node address, which the admin authorizes
+  string network_name = 9;       // the tailnet's or the ZeroTier network's name
+  string error = 10;
+}
+
+// A login URL for a mesh outbound of the running configuration: Tailscale starts an
+// interactive login, ZeroTier gives its network's single sign-on URL. The UI opens it in
+// the user's browser. invalid_request when there is nothing to log in to.
+message LoginMeshRequest { string name = 1; }
+message LoginMeshResponse { string login_url = 1; }
 
 message ListGeoCategoriesRequest {}
 message ListGeoCategoriesResponse {
