@@ -11,14 +11,20 @@
                                                           # tun is the macOS extension's
     uv run python scripts/preview.py --plan  # route with my plan, the default template
     uv run python scripts/preview.py --update  # a newer release on a fake GitHub
+    uv run python scripts/preview.py --google  # Google Drive backup to a fake Google
 
 Profiles live in a temporary directory and links resolve to sample data, so the preview
 touches neither the real profiles nor the network; updates come from a fake GitHub on a
-loopback port, whose installer passes a fake signature check. Source-tree only: the preview's test
-doubles never ship in the package.
+loopback port, whose installer passes a fake signature check. With --google, Google Drive is a
+fake Google on a loopback port too, whose browser consents at once, and its sign-in stays in
+memory. Without it, SOLARIS_GOOGLE_CLIENT_ID and SOLARIS_GOOGLE_CLIENT_SECRET sign in to the real
+Google (docs/maintenance.md §2.8). Source-tree only: the preview's test doubles never ship in
+the package.
 """
 
 import argparse
+import contextlib
+import os
 import sys
 import tempfile
 import time
@@ -34,6 +40,8 @@ from solaris.models.store import ProfileStore
 from solaris.update.releases import ReleaseSource
 from solaris.update.updater import Updater
 from solaris.viewmodels.appearance import MODES
+from tests.support.credentials import MemoryCredentials
+from tests.support.google import FakeGoogle
 from tests.support.releases import FakeVerifier, sample_github
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
 
@@ -56,11 +64,16 @@ if __name__ == "__main__":
         "--plan", action="store_true", help="route with my plan instead of a profile's rules"
     )
     parser.add_argument("--update", action="store_true", help="offer a newer release")
+    parser.add_argument("--google", action="store_true", help="back up to a fake Google Drive")
     args, qt_args = parser.parse_known_args()
     sys.argv[1:] = qt_args
+    google = FakeGoogle() if args.google else None
+    if google is not None:
+        os.environ["no_proxy"] = "127.0.0.1"  # the fake is on a loopback port
     with (
         tempfile.TemporaryDirectory(prefix="solaris-preview-") as directory,
         sample_github(newer=args.update) as github,
+        contextlib.closing(google) if google else contextlib.nullcontext(),
     ):
         store = ProfileStore(Path(directory))
         seed_profiles(store, time.time())
@@ -82,5 +95,6 @@ if __name__ == "__main__":
             language=args.lang,
             appearance=args.appearance,
             updater=Updater(Path(directory), ReleaseSource(github.latest_url), FakeVerifier()),
+            google=google.provider(MemoryCredentials()) if google else None,
         )
     raise SystemExit(code)

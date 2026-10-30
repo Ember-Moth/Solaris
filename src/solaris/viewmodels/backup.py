@@ -1,8 +1,11 @@
-"""Backup ViewModel: the settings page's 备份与同步 group (docs/storage.md §3, §5, docs/ui.md §8).
+"""Backup ViewModel: the settings page's 备份与同步 group (docs/storage.md §3 to §5, docs/ui.md
+§8).
 
-A snapshot goes to a file and comes back from one, and on macOS to iCloud: the row turns the
-iCloud target on and off, shows its last backup, backs up now, restores from it and deletes
-its snapshots. A backup is not encrypted: exporting and turning iCloud on say so first.
+A snapshot goes to a file and comes back from one, to iCloud on macOS and to Google Drive
+where the build has a Google OAuth client. The iCloud row turns its target on and off; the
+Google Drive row signs in, which turns its target on, and signs out, which turns it off.
+Each row shows its last backup and deletes its snapshots; below them the group backs up to
+every target now, and restores from any of them.
 
 Restoring asks whether to replace or merge (restoreRequested, cloudRestoreRequested) when
 this machine has profiles; without any, the backup's data comes in as it is. Then the library
@@ -12,8 +15,9 @@ the other pages to show the new data.
 With a cloud provider, automatic backup (AutoBackup) runs on a timer: every TICK_MS it looks
 whether the database changed and uploads once a change has settled; at start and every
 CATCH_UP_S it catches up with the targets that are a day behind or failed last time. iCloud
-waits while the system's account cannot be used. One cloud task runs at a time: turning a
-target off or deleting its snapshots waits for an upload in flight.
+waits while the system's account cannot be used, Google Drive while it holds no sign-in. One
+cloud task runs at a time: turning a target off or deleting its snapshots waits for an
+upload in flight.
 """
 
 from __future__ import annotations
@@ -21,7 +25,8 @@ from __future__ import annotations
 import asyncio
 import sys
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
+from concurrent.futures import Future
 from datetime import datetime
 from functools import partial
 from pathlib import Path
@@ -46,6 +51,8 @@ from solaris.models.backup import (
     write_file,
 )
 from solaris.models.backup_auto import AutoBackup, BackupTargets, Changes, Outcome, Target
+from solaris.models.backup_google import DISPLAY_NAME as GOOGLE_DRIVE_NAME
+from solaris.models.backup_google import GOOGLE_DRIVE, GoogleDriveProvider, SignInPages
 from solaris.models.backup_icloud import (
     ACCOUNT,
     AVAILABLE,
@@ -78,11 +85,16 @@ _FAILURES = {
         "BackupViewModel", "这份备份来自更新版本的 Solaris，请先更新"
     ),
     "too_large": QT_TRANSLATE_NOOP("BackupViewModel", "备份文件过大"),
-    # The providers' (backup_icloud.py); cloud_failed shows its message as it is.
+    # The providers' (backup_icloud.py, backup_google.py); cloud_failed shows its message
+    # as it is.
     "not_signed_in": QT_TRANSLATE_NOOP("BackupViewModel", "账户未登录"),
     "backup_missing": QT_TRANSLATE_NOOP("BackupViewModel", "这份备份已不存在"),
     "cloud_full": QT_TRANSLATE_NOOP("BackupViewModel", "储存空间已满"),
     "cloud_unreachable": QT_TRANSLATE_NOOP("BackupViewModel", "无法连接，稍后会再试"),
+    "not_authorized": QT_TRANSLATE_NOOP("BackupViewModel", "没有获得授权"),
+    "sign_in_timed_out": QT_TRANSLATE_NOOP("BackupViewModel", "登录超时"),
+    "browser_failed": QT_TRANSLATE_NOOP("BackupViewModel", "无法打开浏览器"),
+    "credentials_unavailable": QT_TRANSLATE_NOOP("BackupViewModel", "无法读写系统的凭据库"),
 }
 # What the iCloud row says of the system's account when it cannot be used.
 _ICLOUD_STATES = {
@@ -114,14 +126,20 @@ LISTING = "listing"
 DOWNLOADING = "downloading"
 DELETING = "deleting"
 DISABLING = "disabling"
+SIGNING_IN = "signing_in"
+SIGNING_OUT = "signing_out"
+# What the rows of the providers a cloud task involves say meanwhile.
 _CLOUD_TASKS = {
     ENABLING: QT_TRANSLATE_NOOP("BackupViewModel", "正在备份…"),
     BACKING_UP: QT_TRANSLATE_NOOP("BackupViewModel", "正在备份…"),
-    LISTING: QT_TRANSLATE_NOOP("BackupViewModel", "正在读取 iCloud 中的备份…"),
+    LISTING: QT_TRANSLATE_NOOP("BackupViewModel", "正在读取 {provider} 中的备份…"),
     DOWNLOADING: QT_TRANSLATE_NOOP("BackupViewModel", "正在下载备份…"),
-    DELETING: QT_TRANSLATE_NOOP("BackupViewModel", "正在删除 iCloud 中的备份…"),
+    DELETING: QT_TRANSLATE_NOOP("BackupViewModel", "正在删除 {provider} 中的备份…"),
+    SIGNING_IN: QT_TRANSLATE_NOOP("BackupViewModel", "请在浏览器中完成登录…"),
+    SIGNING_OUT: QT_TRANSLATE_NOOP("BackupViewModel", "正在退出登录…"),
 }
 FILE = "file"  # where a restore comes from: a file, or a provider's kind
+PROVIDER_NAMES = {ICLOUD: ACCOUNT, GOOGLE_DRIVE: GOOGLE_DRIVE_NAME}
 
 
 def _call[T](write: Callable[[], T]) -> T:
@@ -152,11 +170,13 @@ class BackupViewModel(QObject):
         targets: BackupTargets | None = None,
         changes: Changes | None = None,
         icloud: ICloudProvider | None = None,
+        google: GoogleDriveProvider | None = None,
         parent: QObject | None = None,
     ) -> None:
         """Automatic backup needs ``targets``, ``changes`` and a provider: ``icloud``, the
-        provider of a packaged macOS app. Without one, the iCloud row shows on macOS
-        all the same and says what it needs."""
+        provider of a packaged macOS app, or ``google``, there when the build has a Google
+        OAuth client. Without ``icloud`` the iCloud row shows on macOS all the same and says
+        what it needs; without ``google`` there is no Google Drive row."""
         super().__init__(parent)
         self._backups = backups
         self._library = library
@@ -175,24 +195,30 @@ class BackupViewModel(QObject):
         self._notice_timer.setSingleShot(True)
         self._notice_timer.setInterval(NOTICE_MS)
         self._notice_timer.timeout.connect(self._clear_export_notice)
-        # iCloud and automatic backup
+        # The cloud and automatic backup
         self._icloud = icloud
         self._icloud_shown = icloud is not None or sys.platform == "darwin"
         self._icloud_status: int | None = None if icloud else UNSUPPORTED  # None: not read yet
+        self._google = google
+        # Whether Google Drive holds a sign-in; None: not read yet.
+        self._google_signed_in: bool | None = None if google else False
+        self._sign_in: Future[str] | None = None  # waiting for the browser
         self._targets_table = targets
         self._changes = changes
         self._auto: AutoBackup | None = None
-        if icloud is not None and targets is not None and changes is not None:
+        has_provider = icloud is not None or google is not None
+        if has_provider and targets is not None and changes is not None:
             self._auto = AutoBackup(backups, targets, self._provider, changes=changes, clock=clock)
         # Held on the asyncio thread by each cloud task, automatic or not, for all of it.
         self._cloud_lock = asyncio.Lock()
         self._targets: tuple[Target, ...] = ()
+        self._task_kinds: frozenset[str] = frozenset()  # the rows the cloud task shows on
         self._auto_running = False
         self._caught_up_at: float | None = None
         self._minute = -1
-        self._cloud_notice = ""
-        self._cloud_failed = False
-        self._cloud_entries: list[BackupEntry] = []  # awaiting a pick in the restore dialog
+        self._cloud_notices: dict[str, tuple[str, bool]] = {}  # by provider: text, failed
+        # Awaiting a pick in the restore dialog: the provider's kind and the snapshot.
+        self._cloud_entries: list[tuple[str, BackupEntry]] = []
         self._cloud_pick = 0
         self._cloud_local: Counts | None = None
         self._cloud_notice_timer = QTimer(self)
@@ -246,9 +272,7 @@ class BackupViewModel(QObject):
     def exportStatus(self) -> str:
         if self._task == EXPORTING:
             return self.tr("正在导出…")
-        if self._export_notice:
-            return self._export_notice
-        return self.tr("不加密，其中有订阅链接")
+        return self._export_notice
 
     @Property(bool, notify=changed)
     def exportFailed(self) -> bool:
@@ -390,7 +414,11 @@ class BackupViewModel(QObject):
         notice goes to that one's row."""
         self._task = RESTORING
         self._restoring = source
-        notify = self._show_restore_notice if source == FILE else self._show_cloud_notice
+        notify = (
+            self._show_restore_notice
+            if source == FILE
+            else partial(self._show_cloud_notice, source)
+        )
         if source == FILE:
             self._restore_notice = ""
         self.changed.emit()
@@ -445,11 +473,11 @@ class BackupViewModel(QObject):
         self._restore_failed = failed
         self.changed.emit()
 
-    # -- iCloud and automatic backup ---------------------------------------------------------
+    # -- the cloud and automatic backup ------------------------------------------------------
     def start(self) -> None:
-        """Read the targets and the iCloud account, catch up and back up on the timer. A
-        change the last run made shortly before it quit is in no upload yet: looking
-        once the debounce is over takes it along."""
+        """Read the targets and the accounts, catch up and back up on the timer. A change the
+        last run made shortly before it quit is in no upload yet: looking once the debounce
+        is over takes it along."""
         if self._auto is None:
             return
         self._refresh_targets()
@@ -462,18 +490,37 @@ class BackupViewModel(QObject):
 
     def _provider(self, target: Target) -> BackupProvider | None:
         """The provider of a target that can take a snapshot now: iCloud only while the
-        system's account can be used, so that a signed-out Mac makes no attempts."""
+        system's account can be used, so that a signed-out Mac makes no attempts, and Google
+        Drive only while it holds a sign-in. Called on the asyncio thread."""
         if target.provider == ICLOUD and self._icloud_status == AVAILABLE:
             return self._icloud
+        if target.provider == GOOGLE_DRIVE and self._google and self._google.signed_in:
+            return self._google
         return None
+
+    def _usable(self, target: Target) -> bool:
+        """Whether the target's account can be used, as the page last read it."""
+        if target.provider == ICLOUD:
+            return self._icloud_status == AVAILABLE
+        return target.provider == GOOGLE_DRIVE and bool(self._google_signed_in)
+
+    def _providers(self, kinds: Iterable[str]) -> list[tuple[str, BackupProvider]]:
+        providers = {ICLOUD: self._icloud, GOOGLE_DRIVE: self._google}
+        return [(kind, p) for kind in sorted(kinds) if (p := providers.get(kind)) is not None]
+
+    def _ready_kinds(self) -> frozenset[str]:
+        return frozenset(t.provider for t in self._targets if self._usable(t))
 
     async def _own[T](self, write: Callable[[], T]) -> T:
         """A write to the targets' table that is no change of the user's data."""
         changes = self._changes
         return await asyncio.to_thread(changes.own if changes else _call, write)
 
-    def _icloud_target(self) -> Target | None:
-        return next((t for t in self._targets if t.provider == ICLOUD), None)
+    def _target(self, kind: str) -> Target | None:
+        return next((t for t in self._targets if t.provider == kind), None)
+
+    def _accounts_read(self) -> bool:
+        return self._icloud_status is not None and self._google_signed_in is not None
 
     def _tick(self) -> None:
         auto, changes = self._auto, self._changes
@@ -483,10 +530,10 @@ class BackupViewModel(QObject):
         if int(now // 60) != self._minute:  # "5 分钟前" moves on
             self._minute = int(now // 60)
             if self._icloud_status != AVAILABLE:
-                self.refreshCloud()  # the user may have signed in meanwhile
+                self._refresh_icloud()  # the user may have signed in meanwhile
             self.changed.emit()
-        # Not before the account is read: a catch-up meanwhile would find no provider.
-        if self._auto_running or self._task is not None or self._icloud_status is None:
+        # Not before the accounts are read: a catch-up meanwhile would find no provider.
+        if self._auto_running or self._task is not None or not self._accounts_read():
             return
         starting = self._caught_up_at is None
         catch_up = starting or now - (self._caught_up_at or now) >= CATCH_UP_S
@@ -510,7 +557,7 @@ class BackupViewModel(QObject):
                 self._targets = targets
                 self.changed.emit()
             if any(isinstance(o.error, BackupError) for o in outcomes):
-                self.refreshCloud()
+                self.refreshCloud()  # a sign-in Google refused is gone, for one
 
         def failed(_: BaseException) -> None:  # the database could not be read
             self._auto_running = False
@@ -528,6 +575,14 @@ class BackupViewModel(QObject):
 
         self._runner.submit(self._read_targets(), read, lambda _: None)
 
+    def _start_cloud(self, task: str, kinds: Iterable[str]) -> None:
+        """A cloud task begins on the rows of ``kinds``, without their last notice."""
+        self._task = task
+        self._task_kinds = frozenset(kinds)
+        for kind in self._task_kinds:
+            self._cloud_notices.pop(kind, None)
+        self.changed.emit()
+
     def _finish_cloud(self, targets: tuple[Target, ...]) -> None:
         """A cloud task is over: show the targets as it left them, in the same change."""
         self._task = None
@@ -536,7 +591,12 @@ class BackupViewModel(QObject):
 
     @Slot()
     def refreshCloud(self) -> None:
-        """Ask again whether the system is signed in to iCloud."""
+        """Ask again whether the system is signed in to iCloud and Google Drive holds a
+        sign-in."""
+        self._refresh_icloud()
+        self._refresh_google()
+
+    def _refresh_icloud(self) -> None:
         icloud = self._icloud
         if icloud is None:
             return
@@ -550,16 +610,47 @@ class BackupViewModel(QObject):
 
         self._runner.submit(icloud.status(), read, lambda _: None)
 
-    def _show_cloud_notice(self, text: str, *, failed: bool = False) -> None:
-        self._cloud_notice = text
-        self._cloud_failed = failed
+    def _refresh_google(self) -> None:
+        google = self._google
+        if google is None:
+            return
+
+        def read(account: str | None) -> None:
+            signed_in = account is not None
+            if signed_in != self._google_signed_in:
+                self._google_signed_in = signed_in
+                self.changed.emit()
+
+        self._runner.submit(google.account(), read, lambda _: read(None))
+
+    def _show_cloud_notice(self, kind: str, text: str, *, failed: bool = False) -> None:
+        self._cloud_notices[kind] = (text, failed)
         self._cloud_notice_timer.start()
         self.changed.emit()
 
     def _clear_cloud_notice(self) -> None:
-        self._cloud_notice = ""
+        self._cloud_notices.clear()
         self.changed.emit()
 
+    def _caption(self, kind: str) -> tuple[str, bool] | None:
+        """What a row says while a task involves it, or after one: None for neither."""
+        if self._task == RESTORING and self._restoring == kind:
+            return self.tr("正在恢复，并重新下载订阅…"), False
+        if self._task in _CLOUD_TASKS and kind in self._task_kinds:
+            text = self.tr(_CLOUD_TASKS[self._task]).format(provider=PROVIDER_NAMES[kind])
+            return text, False
+        return self._cloud_notices.get(kind)
+
+    def _last_backup(self, target: Target) -> tuple[str, bool]:
+        if target.last_error is not None:
+            reason = self._stored_failure(target.last_error)
+            return self.tr("上次备份失败：{reason}").format(reason=reason), True
+        if target.last_backup_at is None:
+            return self.tr("尚未备份"), False
+        when = fmt.ago(target.last_backup_at, self._clock())
+        return self.tr("上次备份：{when} · 成功").format(when=when), False
+
+    # -- iCloud ------------------------------------------------------------------------------
     @Property(bool, constant=True)
     def icloudShown(self) -> bool:
         """macOS only; from source the row says it needs the signed app."""
@@ -567,18 +658,18 @@ class BackupViewModel(QObject):
 
     @Property(bool, notify=changed)
     def icloudOn(self) -> bool:
-        return self._icloud_target() is not None
+        return self._target(ICLOUD) is not None
 
     @Property(bool, notify=changed)
     def icloudSwitchShown(self) -> bool:
         """Not while the system is signed out, unless to turn the target off."""
-        return self._icloud_status != NO_ACCOUNT or self._icloud_target() is not None
+        return self._icloud_status != NO_ACCOUNT or self._target(ICLOUD) is not None
 
     @Property(bool, notify=changed)
     def icloudSwitchEnabled(self) -> bool:
-        if self._auto is None or self._task is not None:
+        if self._auto is None or self._icloud is None or self._task is not None:
             return False
-        return self._icloud_status == AVAILABLE or self._icloud_target() is not None
+        return self._icloud_status == AVAILABLE or self._target(ICLOUD) is not None
 
     @Property(bool, notify=changed)
     def icloudSettingsShown(self) -> bool:
@@ -600,60 +691,32 @@ class BackupViewModel(QObject):
 
     def _icloud_caption(self) -> tuple[str, bool]:
         """The row's second line, and whether it warns."""
-        if self._task == RESTORING and self._restoring == ICLOUD:
-            return self.tr("正在恢复，并重新下载订阅…"), False
-        if self._task in _CLOUD_TASKS:
-            return self.tr(_CLOUD_TASKS[self._task]), False
-        if self._cloud_notice:
-            return self._cloud_notice, self._cloud_failed
+        caption = self._caption(ICLOUD)
+        if caption is not None:
+            return caption
         status = AVAILABLE if self._icloud_status is None else self._icloud_status
         if status in _ICLOUD_STATES:
             return self.tr(_ICLOUD_STATES[status]), status != UNSUPPORTED
         if status != AVAILABLE:
             return self.tr("无法确认 iCloud 的状态"), True
-        target = self._icloud_target()
+        target = self._target(ICLOUD)
         if target is None:
             return self.tr("未开启"), False
-        if target.last_error is not None:
-            reason = self._stored_failure(target.last_error)
-            return self.tr("上次备份失败：{reason}").format(reason=reason), True
-        if target.last_backup_at is None:
-            return self.tr("尚未备份"), False
-        when = fmt.ago(target.last_backup_at, self._clock())
-        return self.tr("上次备份：{when} · 成功").format(when=when), False
-
-    @Property(bool, constant=True)
-    def cloudShown(self) -> bool:
-        """Whether this platform has a cloud row, and so the buttons for all of them."""
-        return self._icloud_shown
-
-    @Property(bool, notify=changed)
-    def cloudReady(self) -> bool:
-        """A target is on and its account can be used."""
-        return self._cloud_ready()
-
-    def _cloud_ready(self) -> bool:
-        return (
-            self._task is None
-            and self._icloud_target() is not None
-            and self._icloud_status == AVAILABLE
-        )
+        return self._last_backup(target)
 
     @Slot(bool)
     def setICloudEnabled(self, on: bool) -> None:
-        """Turn the iCloud target on, after the view said what a backup holds, and back up at
-        once; or off, keeping its snapshots."""
+        """Turn the iCloud target on and back up at once; or off, keeping its snapshots."""
         auto, table, icloud = self._auto, self._targets_table, self._icloud
         if auto is None or table is None or icloud is None or self._task is not None:
             return
-        target = self._icloud_target()
+        target = self._target(ICLOUD)
         if on == (target is not None):
             return
         if target is not None:
             # Off at once on the page; the table follows once an upload in flight is over.
-            self._task = DISABLING
             self._targets = tuple(t for t in self._targets if t.id != target.id)
-            self.changed.emit()
+            self._start_cloud(DISABLING, ())
 
             async def disable() -> tuple[Target, ...]:
                 async with self._cloud_lock:
@@ -666,9 +729,7 @@ class BackupViewModel(QObject):
 
             self._runner.submit(disable(), self._finish_cloud, not_disabled)
             return
-        self._task = ENABLING
-        self._cloud_notice = ""
-        self.changed.emit()
+        self._start_cloud(ENABLING, (ICLOUD,))
 
         async def enable() -> tuple[Target, ...]:
             async with self._cloud_lock:
@@ -680,11 +741,180 @@ class BackupViewModel(QObject):
         def failed(error: BaseException) -> None:
             self._task = None
             text = self.tr("无法开启 iCloud 备份：{detail}").format(detail=self._failure(error))
-            self._show_cloud_notice(text, failed=True)
+            self._show_cloud_notice(ICLOUD, text, failed=True)
             self._refresh_targets()
-            self.refreshCloud()
+            self._refresh_icloud()
 
         self._runner.submit(enable(), self._finish_cloud, failed)
+
+    @Slot()
+    def openICloudSettings(self) -> None:
+        QDesktopServices.openUrl(QUrl(ICLOUD_SETTINGS))
+
+    # -- Google Drive ------------------------------------------------------------------------
+    @Property(bool, constant=True)
+    def googleShown(self) -> bool:
+        """Only where the build has a Google OAuth client (docs/storage.md §4)."""
+        return self._google is not None
+
+    @Property(bool, notify=changed)
+    def googleOn(self) -> bool:
+        return self._target(GOOGLE_DRIVE) is not None
+
+    @Property(bool, notify=changed)
+    def googleSigningIn(self) -> bool:
+        return self._task == SIGNING_IN
+
+    @Property(bool, notify=changed)
+    def googleSignInShown(self) -> bool:
+        """Signed out, or the sign-in is gone: Google refused it, or the store lost it."""
+        if self._google is None or self._task == SIGNING_IN:
+            return False
+        return self._target(GOOGLE_DRIVE) is None or self._google_signed_in is False
+
+    @Property(bool, notify=changed)
+    def googleSignInEnabled(self) -> bool:
+        return self._auto is not None and self._task is None
+
+    @Property(bool, notify=changed)
+    def googleMenuShown(self) -> bool:
+        """Signing out is there whenever the target is on; deleting needs the sign-in."""
+        return self._auto is not None and self._target(GOOGLE_DRIVE) is not None
+
+    @Property(bool, notify=changed)
+    def googleDeleteEnabled(self) -> bool:
+        return bool(self._google_signed_in)
+
+    @Property(str, notify=changed)
+    def googleStatus(self) -> str:
+        return self._google_caption()[0]
+
+    @Property(bool, notify=changed)
+    def googleWarning(self) -> bool:
+        return self._google_caption()[1]
+
+    def _google_caption(self) -> tuple[str, bool]:
+        caption = self._caption(GOOGLE_DRIVE)
+        if caption is not None:
+            return caption
+        target = self._target(GOOGLE_DRIVE)
+        if target is None:
+            return self.tr("未登录"), False
+        if self._google_signed_in is False:
+            text, warning = self.tr("需要重新登录"), True
+        else:
+            text, warning = self._last_backup(target)
+        return f"{target.account} · {text}", warning
+
+    @Slot()
+    def signInGoogle(self) -> None:
+        """Sign in through the browser; then the target goes on, for the account signed in,
+        and backs up at once."""
+        google = self._google
+        if google is None or self._auto is None or self._task is not None:
+            return
+        self._start_cloud(SIGNING_IN, (GOOGLE_DRIVE,))
+        pages = SignInPages(
+            self.tr("已登录 Google Drive，可以关闭这个页面，回到 Solaris。"),
+            self.tr("没有登录 Google Drive，可以关闭这个页面。"),
+        )
+
+        def failed(error: BaseException) -> None:
+            self._sign_in = None
+            self._task = None
+            text = self.tr("无法登录：{detail}").format(detail=self._failure(error))
+            self._show_cloud_notice(GOOGLE_DRIVE, text, failed=True)
+            self._refresh_google()
+
+        def cancelled() -> None:
+            self._sign_in = None
+            self._task = None
+            self.changed.emit()
+
+        self._sign_in = self._runner.submit(
+            google.sign_in(pages), self._google_signed_in_as, failed, on_cancel=cancelled
+        )
+
+    def _google_signed_in_as(self, account: str) -> None:
+        """The browser came back: turn the target on for ``account``. One signed in to
+        another account before takes its place, with nothing of what that one took."""
+        auto, table = self._auto, self._targets_table
+        if auto is None or table is None:
+            return
+        self._sign_in = None
+        self._google_signed_in = True
+        self._start_cloud(ENABLING, (GOOGLE_DRIVE,))
+
+        async def enable() -> tuple[Target, ...]:
+            async with self._cloud_lock:
+                targets = await self._read_targets()
+                target = next((t for t in targets if t.provider == GOOGLE_DRIVE), None)
+                if target is not None and target.account != account:
+                    await self._own(partial(table.remove, target.id))
+                    target = None
+                if target is None:
+                    target = await self._own(partial(table.add, GOOGLE_DRIVE, account))
+                await auto.backup([target])
+                return await self._read_targets()
+
+        def failed(error: BaseException) -> None:
+            self._task = None
+            text = self.tr("无法开启 Google Drive 备份：{detail}").format(
+                detail=self._failure(error)
+            )
+            self._show_cloud_notice(GOOGLE_DRIVE, text, failed=True)
+            self._refresh_targets()
+
+        self._runner.submit(enable(), self._finish_cloud, failed)
+
+    @Slot()
+    def cancelGoogleSignIn(self) -> None:
+        """Stop waiting for the browser."""
+        if self._sign_in is not None:
+            self._sign_in.cancel()
+
+    @Slot()
+    def signOutGoogle(self) -> None:
+        """Turn the target off, revoke the sign-in and delete it here; the snapshots stay."""
+        google, table = self._google, self._targets_table
+        if google is None or table is None or self._task is not None:
+            return
+        target = self._target(GOOGLE_DRIVE)
+        self._start_cloud(SIGNING_OUT, (GOOGLE_DRIVE,))
+
+        async def sign_out() -> tuple[Target, ...]:
+            async with self._cloud_lock:  # after an upload in flight
+                if target is not None:
+                    await self._own(partial(table.remove, target.id))
+                await google.sign_out()
+                return await self._read_targets()
+
+        def done(targets: tuple[Target, ...]) -> None:
+            self._google_signed_in = False
+            self._finish_cloud(targets)
+
+        def failed(error: BaseException) -> None:
+            self._task = None
+            text = self.tr("无法退出登录：{detail}").format(detail=self._failure(error))
+            self._show_cloud_notice(GOOGLE_DRIVE, text, failed=True)
+            self._refresh_targets()
+            self._refresh_google()
+
+        self._runner.submit(sign_out(), done, failed)
+
+    # -- every target ------------------------------------------------------------------------
+    @Property(bool, constant=True)
+    def cloudShown(self) -> bool:
+        """Whether this build has a cloud row, and so the buttons for all of them."""
+        return self._icloud_shown or self._google is not None
+
+    @Property(bool, notify=changed)
+    def cloudReady(self) -> bool:
+        """A target is on and its account can be used."""
+        return self._cloud_ready()
+
+    def _cloud_ready(self) -> bool:
+        return self._task is None and bool(self._ready_kinds())
 
     @Slot()
     def backUpNow(self) -> None:
@@ -692,9 +922,8 @@ class BackupViewModel(QObject):
         auto = self._auto
         if auto is None or not self._cloud_ready():
             return
-        self._task = BACKING_UP
-        self._cloud_notice = ""
-        self.changed.emit()
+        kinds = self._ready_kinds()
+        self._start_cloud(BACKING_UP, kinds)
 
         async def back_up() -> tuple[list[Outcome], tuple[Target, ...]]:
             async with self._cloud_lock:
@@ -705,34 +934,51 @@ class BackupViewModel(QObject):
             outcomes, targets = result
             self._finish_cloud(targets)
             if outcomes and not any(o.uploaded or o.error for o in outcomes):
-                self._show_cloud_notice(self.tr("本机还没有可备份的数据"))
+                for kind in kinds:
+                    self._show_cloud_notice(kind, self.tr("本机还没有可备份的数据"))
 
         def failed(error: BaseException) -> None:
             self._task = None
             text = self.tr("备份失败：{detail}").format(detail=self._failure(error))
-            self._show_cloud_notice(text, failed=True)
+            for kind in kinds:
+                self._show_cloud_notice(kind, text, failed=True)
 
         self._runner.submit(back_up(), done, failed)
 
     @Slot()
     def openCloudRestore(self) -> None:
-        """List the snapshots in iCloud; the view then asks which one, and how."""
-        icloud = self._icloud
-        if icloud is None or not self._cloud_ready():
+        """List the snapshots of every target that can be used; the view then asks which
+        one, and how. A provider that cannot list says so on its row."""
+        if not self._cloud_ready():
             return
-        self._task = LISTING
-        self._cloud_notice = ""
-        self.changed.emit()
+        providers = self._providers(self._ready_kinds())
+        self._start_cloud(LISTING, (kind for kind, _ in providers))
 
-        async def read() -> tuple[list[BackupEntry], Counts]:
-            entries = await icloud.list()
-            return list(entries), await asyncio.to_thread(self._backups.counts)
+        async def read() -> tuple[list[tuple[str, BackupEntry]], dict[str, ProfileError], Counts]:
+            listed: list[tuple[str, BackupEntry]] = []
+            failures: dict[str, ProfileError] = {}
+            for kind, provider in providers:
+                try:
+                    listed += [(kind, entry) for entry in await provider.list()]
+                except ProfileError as error:  # BackupError, CredentialError
+                    failures[kind] = error
+            listed.sort(key=lambda pair: (pair[1].info.created_at, pair[1].id), reverse=True)
+            return listed, failures, await asyncio.to_thread(self._backups.counts)
 
-        def done(result: tuple[list[BackupEntry], Counts]) -> None:
-            entries, local = result
+        def done(
+            result: tuple[list[tuple[str, BackupEntry]], dict[str, ProfileError], Counts],
+        ) -> None:
+            entries, failures, local = result
             self._task = None
+            for kind, error in failures.items():
+                text = self.tr("无法读取备份：{detail}").format(detail=self._failure(error))
+                self._show_cloud_notice(kind, text, failed=True)
             if not entries:
-                self._show_cloud_notice(self.tr("iCloud 中还没有备份"))
+                for kind, _ in providers:
+                    if kind not in failures:
+                        text = self.tr("{provider} 中还没有备份")
+                        self._show_cloud_notice(kind, text.format(provider=PROVIDER_NAMES[kind]))
+                self.changed.emit()
                 return
             self._cloud_entries = entries
             self._cloud_pick = 0
@@ -744,7 +990,8 @@ class BackupViewModel(QObject):
         def failed(error: BaseException) -> None:
             self._task = None
             text = self.tr("无法读取备份：{detail}").format(detail=self._failure(error))
-            self._show_cloud_notice(text, failed=True)
+            for kind, _ in providers:
+                self._show_cloud_notice(kind, text, failed=True)
 
         self._runner.submit(read(), done, failed)
 
@@ -755,9 +1002,9 @@ class BackupViewModel(QObject):
             {
                 "title": self._snapshot_when(entry.info),
                 "detail": f"{entry.info.device} · {self._counts(entry.info.counts)}",
-                "provider": ACCOUNT,
+                "provider": PROVIDER_NAMES[kind],
             }
-            for entry in self._cloud_entries
+            for kind, entry in self._cloud_entries
         ]
 
     @Property(int, notify=changed)
@@ -787,51 +1034,52 @@ class BackupViewModel(QObject):
     @Slot()
     def confirmCloudRestore(self) -> None:
         """Download the snapshot the view picked and restore it with the mode chosen."""
-        icloud = self._icloud
-        if icloud is None or not self._cloud_entries or self._task is not None:
+        if not self._cloud_entries or self._task is not None:
             return
-        entry = self._cloud_entries[self._cloud_pick]
+        kind, entry = self._cloud_entries[self._cloud_pick]
         mode = self._mode if self._cloud_asks_mode() else REPLACE
         self._cloud_entries, self._cloud_local = [], None
-        self._task = DOWNLOADING
-        self._cloud_notice = ""
-        self.changed.emit()
+        found = self._providers((kind,))
+        if not found:
+            self.changed.emit()
+            return
+        provider = found[0][1]
+        self._start_cloud(DOWNLOADING, (kind,))
 
         def downloaded(snapshot: Snapshot) -> None:
             self._task = None
-            self._restore(ACCOUNT, snapshot, mode, ICLOUD)
+            self._restore(PROVIDER_NAMES[kind], snapshot, mode, kind)
 
         def failed(error: BaseException) -> None:
             self._task = None
             text = self.tr("无法恢复：{detail}").format(detail=self._failure(error))
-            self._show_cloud_notice(text, failed=True)
+            self._show_cloud_notice(kind, text, failed=True)
 
-        self._runner.submit(icloud.download(entry.id), downloaded, failed)
+        self._runner.submit(provider.download(entry.id), downloaded, failed)
 
     @Slot()
     def cancelCloudRestore(self) -> None:
         self._cloud_entries, self._cloud_local = [], None
         self.changed.emit()
 
-    @Slot()
-    def deleteICloudBackups(self) -> None:
-        """Delete every snapshot in iCloud. A target that stays on uploads again with the next
-        change or start, so the row no longer claims a backup."""
-        icloud, table = self._icloud, self._targets_table
-        if icloud is None or table is None or self._task is not None:
+    @Slot(str)
+    def deleteCloudBackups(self, kind: str) -> None:
+        """Delete every snapshot of the provider ``kind``. A target that stays on uploads again
+        with the next change or start, so the row no longer claims a backup."""
+        table, found = self._targets_table, self._providers((kind,))
+        if table is None or not found or self._task is not None:
             return
-        target = self._icloud_target()
-        self._task = DELETING
-        self._cloud_notice = ""
-        self.changed.emit()
+        provider = found[0][1]
+        target = self._target(kind)
+        self._start_cloud(DELETING, (kind,))
 
         async def delete() -> tuple[Target, ...]:
             # After an upload in flight, so that its snapshot goes too. Forgetting is no
             # change of the data: the next upload waits for one, or for the next start.
             async with self._cloud_lock:
                 try:
-                    for entry in await icloud.list():
-                        await icloud.delete(entry.id)
+                    for entry in await provider.list():
+                        await provider.delete(entry.id)
                 finally:
                     if target is not None:
                         await self._own(partial(table.forget, target.id))
@@ -842,16 +1090,13 @@ class BackupViewModel(QObject):
             # with the next change or the next hour's catch-up.
             self._caught_up_at = self._clock()
             self._finish_cloud(targets)
-            self._show_cloud_notice(self.tr("已删除 iCloud 中的备份"))
+            text = self.tr("已删除 {provider} 中的备份").format(provider=PROVIDER_NAMES[kind])
+            self._show_cloud_notice(kind, text)
 
         def failed(error: BaseException) -> None:
             self._task = None
             self._refresh_targets()
             text = self.tr("删除失败：{detail}").format(detail=self._failure(error))
-            self._show_cloud_notice(text, failed=True)
+            self._show_cloud_notice(kind, text, failed=True)
 
         self._runner.submit(delete(), done, failed)
-
-    @Slot()
-    def openICloudSettings(self) -> None:
-        QDesktopServices.openUrl(QUrl(ICLOUD_SETTINGS))
