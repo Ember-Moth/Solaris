@@ -35,7 +35,8 @@ ScrollView {
             AppButton {
                 text: page.overview.connectLabel
                 variant: page.overview.connected ? "secondary" : "primary"
-                enabled: !page.overview.busy
+                // Another user's tunnel is theirs to disconnect (docs/architecture.md §5.4).
+                enabled: !page.overview.busy && !page.overview.ownedByOtherUser
                 onClicked: page.overview.toggleConnection()
             }
         }

@@ -8,8 +8,9 @@ sing-box，后来因为官方 sing-box for Desktop 已经发布，改为基于 m
 本文只讲系统层面的结构；界面各部分的设计见 [ui.md](ui.md)，计划中的存储与分流见 [storage.md](storage.md) 和
 [routing.md](routing.md)，进度、计划与决策见 [roadmap.md](roadmap.md)。
 
-状态：engine（三种 TUN 模式）、控制协议和开发模式服务已实现；Windows 服务的属主、系统代理和安装尚未实现，
-macOS 的 `Solaris.app` 已能组装、签名，发布工作流负责公证，待测试 Mac 实测（roadmap.md 的 M4、M5）。
+状态：engine（三种 TUN 模式）、控制协议和开发模式服务已实现；Windows 服务的属主、开机恢复、系统代理和客户端
+校验已实现，只在 CI 的 Windows 机器上测过，待 Windows 虚拟机实测；macOS 的 `Solaris.app` 已能组装、签名，发布
+工作流负责公证，待测试 Mac 实测（roadmap.md 的 M4、M5）。
 
 ## 1. 定位与原则
 
@@ -123,8 +124,8 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
 
 - **初始化**（`engine.New`）：为属主设置 mihomo 的 home 目录（`C.SetHomeDir`），开启 `route.SetEmbedMode(true)`，
   然后自检路径沙箱。开发服务的 home 默认在用户配置目录下的 `Solaris/dev-core`（`-home` 可改）；
-  Windows 服务暂用 `%ProgramData%\Solaris\core`，按 SID 划分的目录随 M4 的 `Claim` 实现。
-  mihomo 在进程内只打开一次 `cache.db`，所以 home 在进程生命周期内不能更换，更换属主需要新的服务进程。
+  Windows 服务的 home 是属主的 `%ProgramData%\Solaris\users\<SID>`（5.1 节）。
+  mihomo 在进程内只打开一次 `cache.db`，所以 home 在进程生命周期内不能更换，更换属主需要新的服务进程（5.4 节）。
 - **配置准入**：用户 YAML 解析为映射（锚点和合并键在这一步展开，补丁无法被别名绕过），或者由节点池和方案
   拼装出映射 → 依次应用覆写 → 按 TUN 模式打补丁 → 最后一步强制安全项 → 重新编码后交给
   `executor.ParseWithBytes` → 校验解析结果，任一项不符就拒绝（fail closed）→ `hub.ApplyConfig`。`Validate`、
@@ -284,12 +285,12 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 
 | 方法 | 平台 | 说明 |
 | --- | --- | --- |
-| `GetInfo` | 两者 | 协议版本、服务版本、mihomo 版本、运行状态；Windows 上还返回属主状态（空闲 / 调用者 / 其他用户） |
-| `Claim` | Windows | 服务空闲或调用者已是属主时认领 |
+| `GetInfo` | 两者 | 协议版本、服务版本、mihomo 版本、运行状态；Windows 上还返回属主状态（空闲 / 调用者 / 其他用户，5.4 节） |
+| `Claim` | Windows | 服务没有属主、调用者已是属主，或属主的隧道没在运行时认领（5.4 节） |
 | `Validate` | 两者 | 配置只经过流水线解析，不应用 |
-| `Start` | 两者 | 提交配置（YAML 或拼装来源）、覆写和运行选项，然后准入、应用；Windows 上还要持久化 |
-| `Reload` | 两者 | 运行中替换配置，由 `hub.ApplyConfig` 原地应用 |
-| `Stop` | 两者 | 停止内核；Windows 上还清除 `was_running` |
+| `Start` | 两者 | 提交配置（YAML 或拼装来源）、覆写和运行选项，然后准入、应用；Windows 上还要持久化（5.2 节） |
+| `Reload` | 两者 | 运行中替换配置，由 `hub.ApplyConfig` 原地应用；Windows 上同样持久化 |
+| `Stop` | 两者 | 停止内核；Windows 上还清除 `was_running`、还原属主的系统代理 |
 | `SetSystemProxy` | Windows | 开启或关闭属主的系统代理 |
 
 内核方法两个平台都有，直接调用 engine：
@@ -331,13 +332,18 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 - `InspectSource`、`ListGeoCategories` 只读，不需要内核在运行，两种宿主都提供。`InspectSource` 读不了订阅时
   返回 `invalid_config`；`ListGeoCategories` 在 home 里没有某个文件时那一类为空，`ServiceHost` 改用应用附带的
   分类名清单。
-- `Stop` 对已停止的内核不做任何事。开发模式下 `Claim` 直接成功，因为开发 socket 只接受运行服务的那个用户。
+- `Stop` 对已停止的内核不做任何事。开发模式下 `Claim` 直接成功、`GetInfo` 报告调用者就是属主，因为开发 socket
+  只接受运行服务的那个用户。
+- Windows 服务上，属主以外的调用者只能调用 `GetInfo` 和 `Claim`，其余方法得到 `not_claimed`（可以认领：服务没有
+  属主，或属主的隧道没在运行）或 `owned_by_other_user`（另一个用户的隧道正在运行）。
 - 内核未运行时，列表类查询（代理组、provider、规则）返回空列表，改变状态的内核方法返回 `not_running`；
   `GetStatus` 和订阅随时可用。
 - `Claim` 和 `SetSystemProxy` 只在 `HostMethods` 打开时提供（Windows 服务和开发服务），其余宿主返回
   `unsupported_method`，`RunOptions.system_proxy_enabled` 也是；其余方法在所有宿主上都有。
 - 系统代理：开发服务对开启请求（`SetSystemProxy`，以及 `RunOptions.system_proxy_enabled`）返回
-  `unsupported_method`，关闭请求直接成功；Windows 服务在 M4 实现之前返回 `not_implemented`。
+  `unsupported_method`，关闭请求直接成功。Windows 服务把属主的系统代理指向 `RunOptions.mixed_port`（5.5 节），
+  所以开启时这个端口不能为 0；`SetSystemProxy` 开启需要内核在运行（否则 `not_running`），关闭随时可以。
+  `GetStatus.system_proxy_enabled` 是服务的系统代理此刻是否在属主那里生效。
 
 错误码：
 
@@ -347,6 +353,9 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 | `unsupported_protocol_version` | 协议版本不一致 | 否 |
 | `unsupported_method` | 当前宿主不提供该方法或该能力（如开发服务上的 TUN 和系统代理） | 否 |
 | `not_implemented` | 方法已定义、尚未实现 | 否 |
+| `not_claimed` | Windows 服务不属于调用者，但可以认领（5.4 节） | 否 |
+| `owned_by_other_user` | Windows 服务属于另一个用户，他的隧道正在运行 | 否 |
+| `service_restarting` | 认领换了属主，服务要重启才能打开新属主的 home；稍后再认领 | 是 |
 | `invalid_config` | 配置无法解析，或被准入流水线拒绝；`message` 是 mihomo 的原始错误文本。拼装出错时以 `plan: ` 或 `subscription "名称": ` 开头 | 否 |
 | `not_running` | 需要运行中的内核 | 否 |
 | `already_running` | 内核已在运行时调用 `Start`（切换配置走 `Reload`） | 否 |
@@ -395,15 +404,23 @@ C:\Program Files\Solaris\            管理员所有，用户只读
 └── …                                  Python / Qt 运行依赖
 
 C:\ProgramData\Solaris\              仅 SYSTEM 与 Administrators 可访问
-├── service.log
-├── owner.json                         当前属主 SID、会话
-└── users\<SID>\                       该用户的 mihomo home 目录（IsSafePath 根）
-    ├── config.yaml                    UI 提交的配置
-    ├── overrides.json                 UI 提交的覆写（按应用顺序的 YAML 原文，ui.md §4）
-    ├── options.json                   运行选项与 was_running
+├── service.log                        服务日志；启动时超过 1 MiB 就移到 service.log.1
+├── owner.json                         属主的 SID，和他最近一次认领或登录所在的会话
+└── users\<SID>\                       该用户的 mihomo home 目录（IsSafePath 根）：只有 SYSTEM 能写，属主能读
+    ├── profile.json                   最近一次 Start / Reload 生效的请求：配置来源、覆写、运行选项（protojson）
+    ├── state.json                     was_running：属主下次登录时是否恢复隧道
+    ├── proxy.json                     服务的系统代理生效期间，属主自己原来的代理设置（5.5 节）
     ├── providers\ …                   provider 与规则集缓存
-    └── cache.db                       mihomo profile 缓存
+    └── cache.db                       mihomo profile 缓存，包括节点选择（store-selected）
 ```
+
+- 服务启动和认领时创建这些目录并设置 ACL：所有者是 Administrators（管理员总能取回），DACL 受保护，不继承
+  ProgramData 默认允许用户新建子目录的 ACE。已有的目录如果是链接，或者不是 SYSTEM 或 Administrators 建的，服务
+  拒绝使用：它的创建者能把 ACL 改回去，也可能在里面留了链接。
+- 属主对自己的 home 只能读：mihomo 以 SYSTEM 身份在里面写文件，属主能写的话，放一个链接就能把这些写入引到任意
+  位置。
+- `profile.json` 是订阅原文或拼装来源，可能含订阅链接里的令牌和 WARP 账户的密钥（[exits.md](exits.md) 第 3 节），
+  所以只有 SYSTEM 和属主能读。
 
 UI 必须使用 Nuitka standalone 模式。onefile 模式会解压到 `%TEMP%` 后运行，客户端路径校验会失败，
 而且 `%TEMP%` 对用户可写。
@@ -412,10 +429,20 @@ UI 必须使用 Nuitka standalone 模式。onefile 模式会解压到 `%TEMP%` �
 
 - 服务名 `SolarisService`，以 LocalSystem 身份运行，自动启动。
 - SCM 故障恢复：依次在 5 s、15 s、60 s 后重启。
-- 接受的控制事件：Stop、Shutdown、SessionChange、PowerEvent。PowerEvent 用于唤醒后重置连接。
-- 启动时读取 `owner.json` 和对应用户的 `options.json`；若 `was_running` 为真，按保存的配置恢复隧道。
+- 接受的控制事件：Stop、Shutdown、SessionChange（SessionLogon、SessionLogoff）。PowerEvent（唤醒后重置连接）还没有做。
+- **一个进程只服务一个属主**：启动时读 `owner.json`，在属主的 home 里打开 engine；没有属主时不打开 engine，只回答
+  `GetInfo` 和 `Claim`。认领换了属主时（包括第一次认领），服务写好新的 `owner.json`，回复 `service_restarting`，
+  启动一个 `solaris-service.exe -restart` 辅助进程，然后退出；辅助进程等服务停下后再启动它，新进程打开新属主的
+  home。界面重连后再次认领（5.4 节）。
+- **持久化**：`Start`、`Reload` 生效后写 `profile.json` 并置 `was_running`；`Stop` 清除 `was_running`；
+  `SetSystemProxy` 改写 `profile.json` 里的系统代理开关。写入失败只记日志，已经生效的请求照常成功。节点选择由
+  mihomo 的 `store-selected` 存在 home 的 `cache.db` 里（3.3 节第 5 条）。
+- **恢复**：`was_running` 为真时，在属主登录着的时候恢复，走与 `Start` 相同的流水线，系统代理也照 `profile.json`
+  打开。服务启动时属主已经登录（服务重启、升级）就立即恢复；否则（开机）等属主的 SessionLogon。开机后先登录的
+  其他用户因此不会走属主的隧道，与 D5 一致。
+- 服务停止（关机、升级）时还原属主的系统代理，`was_running` 保留，下次启动时一并恢复。
 - 超时逐层递减，参考 hypervpn：UI 请求超时 > 服务处理超时 > 内核启动或停止超时。
-  这样内核卡死时，服务的操作锁和 SCM 的停止流程不会被一并卡住。
+  这样内核卡死时，服务的操作锁和 SCM 的停止流程不会被一并卡住。尚未实现。
 
 ### 5.3 管道与客户端校验
 
@@ -425,29 +452,53 @@ UI 必须使用 Nuitka standalone 模式。onefile 模式会解压到 `%TEMP%` �
 `ProtectedPrefix\Administrators` 前缀下只有管理员和 SYSTEM 能创建管道，因此客户端不必再核对服务端
 PID 来防止管道名被抢注。
 
-服务在每条连接建立时校验客户端，任一项不通过就断开：
+服务在每条连接建立时校验客户端（`internal/peer`），任一项不通过就断开：
 
-1. 用 `GetNamedPipeClientProcessId` 取得客户端进程，并在整个连接期间持有其进程句柄；
-2. 客户端映像的最终路径必须是安装目录里的 `Solaris.exe`，并锁住文件句柄、比较文件 ID，防止中途被替换；
-3. 读取客户端 token 的用户 SID 和会话 ID，作为后续属主判断的身份；
-4. 发布构建额外要求客户端的 Authenticode 签名者与服务相同。
+1. 用 `GetNamedPipeClientProcessId` 取得客户端进程，并在整个连接期间持有其进程句柄，这期间进程 ID 不会给别的
+   进程用；
+2. 以只允许共享读的方式打开客户端的映像文件，比较它与服务旁边的 `Solaris.exe` 的卷序列号和文件 ID；映像的句柄
+   同样持有到连接结束，这期间文件不能被改写、改名或删除；
+3. 客户端必须在用户会话里（会话 ID 不为 0）；读取它 token 的用户 SID 和会话 ID，作为属主判断的身份；
+4. 签名的发布构建（链接时设 `product.SignedRelease=true`）还要求客户端的 Authenticode 签名为 Windows 信任、签名者
+   的显示名是 `product.WindowsSigner`。不检查吊销：那可能要联网，而且每条连接都要做。签名方案未定，这个常量和
+   `src/solaris/update/signature.py` 的 `WINDOWS_SIGNER` 一样是占位值；未签名的构建（包括给测试虚拟机的）不开这一项；
+5. 最后确认客户端进程仍在运行。
 
-后三项的做法参考 sing-box `experimental/boxdd` 的 `peer_windows.go`。
+做法参考 sing-box `experimental/boxdd` 的 `peer_windows.go`。
 
 ### 5.4 属主
 
-- 同一时间只有一个属主（用户 SID 加会话）。
-- 属主以外的用户只能调用 `GetInfo`，其余方法一律返回 `owned_by_other_user` 错误。
-- 属主注销时停止隧道，保留 `was_running`，属主下次登录后自动恢复（决策 D5）。TUN 是全局的，不停止的话，其他用户的
-  流量会走属主的订阅。
-- 内核运行中能否由管理员接管，待定。
+实现在 `internal/owner`。
+
+- 同一时间只有一个属主，按用户 SID 认定。`owner.json` 还记下他最近一次认领或登录所在的会话，写系统代理和判断
+  注销时用它。
+- `GetInfo` 的属主状态：调用者就是属主时为"调用者"；另一个用户的隧道在运行（内核不是停止或失败）时为"其他
+  用户"；其余情况（没有属主，或属主的隧道没在运行）为"空闲"。
+- 属主以外的调用者只能调用 `GetInfo` 和 `Claim`，其余方法得到 `not_claimed` 或 `owned_by_other_user`（4.3 节）。
+- `Claim`：调用者已是属主时成功（会话变了就记下新的）；服务没有属主，或属主的隧道没在运行时，改认调用者，服务
+  重启（5.2 节）；另一个用户的隧道在运行时返回 `owned_by_other_user`。属主注销后，隧道等他下次登录再恢复，这期间
+  其他用户可以认领，因为原属主可能不再登录；认领之后原属主的隧道不再恢复。
+- 属主注销他所在的会话时停止隧道，保留 `was_running`，属主下次登录后自动恢复（决策 D5）。TUN 是全局的，不停止的
+  话，其他用户的流量会走属主的订阅。
+- 界面（`ServiceHost`）只在要做事时认领：只读的请求（状态、代理组、规则、订阅、GEO 分类、停止、关闭连接）遇到
+  `not_claimed` 时按内核停止作答，不认领。两个用户同时开着界面时，各自的轮询因此不会把服务抢来抢去（每换一次
+  属主都要重启服务）。其余请求遇到 `not_claimed` 就先认领，等过服务重启再发一次。遇到 `owned_by_other_user` 时，
+  概览页标题栏提示"其他用户正在使用"，连接按钮不可用。
+- 内核运行中能否由管理员接管其他用户的隧道（D5b）还没定，没有实现；接管会加在 `owner.Service.Claim` 里。
 
 ### 5.5 系统代理
 
-系统代理是每个用户 HKCU 下的设置，服务以 SYSTEM 身份直接写只会改到 SYSTEM 自己。
-服务的做法是：用 `WTSQueryUserToken` 取得属主会话的 token，模拟该用户写入 Internet Settings 并通知
-WinINet；内核停止时还原。开机恢复时，如果属主尚未登录，就等收到 SessionLogon 事件再写入。
-实现参考 boxdd 的 `platform_windows.go`。
+系统代理是每个用户 HKCU 下的设置，服务以 SYSTEM 身份直接写只会改到 SYSTEM 自己。服务的做法（`internal/sysproxy`，
+参考 boxdd 的 `platform_windows.go`）：
+
+- 先调 `RegDisablePredefinedCacheEx`，让 `HKEY_CURRENT_USER` 跟着线程的 token 走；用 `WTSQueryUserToken` 取得属主
+  会话的 token，在锁定的线程上模拟该用户，经 WinINet 的 `INTERNET_OPTION_PER_CONNECTION_OPTION` 读写默认连接的
+  代理设置，再发 `SETTINGS_CHANGED` 和 `REFRESH` 通知正在运行的程序；
+- 开启时先把属主原来的设置（开关、代理服务器、例外、自动配置脚本）存进 home 的 `proxy.json`，再写
+  `127.0.0.1:<混合端口>`，例外是回环、私有地址和 `<local>`；
+- `Stop`、属主注销、服务停止时写回原来的设置，删除 `proxy.json`。属主不在登录状态、写不了时，`proxy.json` 留到他
+  下次登录再写回；属主已经换了人也一样，原属主登录时服务替他写回；
+- 恢复隧道时（5.2 节）照 `profile.json` 的开关再开启。
 
 ## 6. macOS：NetworkExtension
 
@@ -534,14 +585,18 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 
 | 威胁 | 措施 |
 | --- | --- |
-| 其他本地进程冒充 UI | Windows：连接建立时校验映像路径、文件身份、SID 与会话，发布构建再校验签名者；macOS：只有本应用能取得 NE session |
+| 其他本地进程冒充 UI | Windows：连接建立时比较映像与安装的 `Solaris.exe` 的文件 ID 并锁住映像，要求用户会话，读取 SID 与会话，签名的发布构建再校验签名者（5.3 节）；macOS：只有本应用能取得 NE session |
 | 抢注服务管道名 | 使用 `ProtectedPrefix\Administrators` 前缀 |
 | 配置让 SYSTEM 读写任意文件 | 每个 SID 独立的 mihomo home 目录 + `IsSafePath`（不带 `cmfa`，不设 `SKIP_SAFE_PATH_CHECK` / `SAFE_PATHS`），并修正 `ResolveAsRoot` |
+| 用户借链接让 SYSTEM 写到别处 | home 只有 SYSTEM 能写，属主不能在里面放链接；服务不用链接或别人建的目录（5.1 节） |
+| 属主的配置与凭据落在磁盘上 | `profile.json` 和 mihomo 的缓存只有 SYSTEM 和属主能读 |
 | 配置开放 mihomo 控制器 | engine 清空全部控制器字段，HTTP 控制器从不启动；embed mode 作为第二道防线 |
 | 通过控制接口替换二进制或重启进程 | 对外只有方法表中的方法，没有对应能力 |
 | 畸形或超大的消息 | Windows 先校验帧头再分配缓冲区，macOS 在解码前检查长度；未知方法和枚举直接拒绝 |
 | 订阅拖住内核或泄漏 | 事件缓存在有界缓冲区，满了丢弃最旧的；超过 30 秒未拉取的订阅自动失效 |
-| 其他用户接管隧道 | 属主 SID 校验 |
+| 其他用户接管隧道 | 属主 SID 校验；另一个用户的隧道运行时不能认领；一个服务进程只打开一个属主的 home |
+| 其他用户的流量走属主的隧道 | 属主注销时停止隧道，只在属主登录时恢复（D5） |
+| 系统代理留在失效的端口上 | 停止、注销、服务停止时写回属主原来的设置；写不了就存着，等他下次登录 |
 | 局域网暴露 | `allow-lan` 和监听 `0.0.0.0` 的 listeners 默认关闭，由用户显式开启 |
 | 链式出口的回环端口被同一台机器的其他用户使用（M10） | 只监听回环地址，要求每次界面启动随机生成的账号密码 |
 | Tor 中继发来的数据攻击解析代码（M10） | arti 运行在普通用户权限的界面进程里，不进 SYSTEM 服务和系统扩展 |
@@ -625,7 +680,11 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   - engine：配置流水线的回归测试，对应 3.3 节各项；开发模式护栏；启停与重载；50 次启停的泄漏检查；
   - 控制协议：帧头校验、超限拒绝、请求 ID 匹配、订阅缓冲与过期，Go 与 Python 两端用同一组样本互测
     （样本里的响应来自一个不链接 mihomo 的假 engine，所以不随 mihomo 版本变化）；
-  - Windows CI：服务的客户端校验、管道 SDDL、属主与恢复流程；
+  - 属主：认领与换属主重启、按属主恢复、注销停止、系统代理的开启与还原，用替身平台在所有平台上测
+    （`internal/owner`），分发器的放行和错误码见 `internal/control/host_test.go`；
+  - Windows CI：客户端校验（真实的命名管道、文件 ID、锁住映像、签名者）、home 目录的 ACL 与拒绝链接、WinINet
+    代理设置的读写与还原（只在 CI 上改代理）。模拟属主 token 要 SYSTEM 身份，和服务的安装、重启一起留到 Windows
+    虚拟机；
   - Python：用模拟宿主测试 models 与 ViewModel；模拟宿主的配置检查、错误码和措辞跟着真实服务走，端到端测试
     核对两者一致。
 - **竞态检查**：`go test -race` 会报出 mihomo 自身在 `log.SetLevel` 上的竞态（见 3.2 节），所以 CI 不带

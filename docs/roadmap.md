@@ -12,7 +12,7 @@
 | 架构与视觉规范 | 完成 | architecture.md、ui.md、DESIGN.md；原型在 Claude Design 画布上（第 29 版，含深色画板、分流 v2、链式出口、应用图标与顶部区域） |
 | 控制协议 | v1 | 消息、方法表、帧编解码已定；Go 与 Python 共用样本测试；配置来源可以是订阅原文或拼装（`Composition`）；`InspectSource`、`ListGeoCategories`、`PreviewGroup`、`MatchRule`、`ConvertToPlan`、`ExportPlan`、`RegisterWarp`；链式出口与组网出站的字段 |
 | engine（内嵌 mihomo） | 完成（M1、M5） | mihomo v1.19.33；无 TUN、自管 TUN 和 fd 三种模式，覆写、§3.3 安全项、开发模式护栏 |
-| Go 分发器与服务入口 | 部分 | 全部内核方法、Start / Stop / Reload / Validate、`PollEvents`；`Claim`、系统代理、Authenticode 校验留到 M4 |
+| Go 分发器与服务入口 | 完成，待实测 | 全部内核方法、Start / Stop / Reload / Validate、`PollEvents`；Windows 服务的认领与属主、注销停止与登录恢复、系统代理、客户端校验（第三轮 A），只在 CI 的 Windows 机器上测过，服务本身待 Windows 虚拟机实测 |
 | Python 宿主层 | 完成 | 控制客户端、全部请求映射、日志与连接接口、模拟宿主 |
 | 界面 | 完成（M2、M3、C1） | 七页全部可用（新增分流页，"配置"改名"订阅"）；覆写编辑；中英双语；浅色与深色；托盘、单实例、登录时打开；qmllint 与无障碍检查进了测试 |
 | 端到端联调 | 完成（A2） | 界面连真实开发服务跑通 M1、M2 的验收步骤；`tests/e2e` 自动化，CI 的 `e2e` job 在 macOS 上运行 |
@@ -141,7 +141,8 @@ B1、B2 的结果与遗留：
 
 **第三轮 B**（等环境）：
 
-- **M4 实测**：wintun、strict-route、DNS 泄漏、四种栈、安装升级卸载。需要 Windows 虚拟机。
+- **M4 实测**：wintun、strict-route、DNS 泄漏、四种栈、安装升级卸载；服务的认领与换属主重启、注销停止与登录
+  恢复、系统代理的模拟写入（见 M4 的状态）。需要 Windows 虚拟机。
 - **M5 实测**：系统扩展审批、utun、四种栈、D8、`includeAllNetworks`；之后做 M7 的 iCloud 部分。需要测试 Mac。
 - **M6 收尾与首发**：Windows 签名、发布全流程（见下面的首发清单）。
 
@@ -156,7 +157,7 @@ B1、B2 的结果与遗留：
 | "TUN 协议栈"与"包含所有网络"设置 | 第三轮 A |
 | 隐藏系统标题栏，自绘顶部区域（DESIGN.md「顶部区域」） | 第三轮 A 合并后 |
 | 应用图标（macOS .icns、Windows .ico）与品牌素材 | 已定为"日冕"（2026-10-30，DESIGN.md "Shapes"）：`scripts/gen_icons.py` 生成全部尺寸，`.icns` 已接入 `Solaris.app`；Windows 的 `.ico` 随 M4 打包接入 Nuitka 和安装器 |
-| Windows 代码签名，签名者常量替换占位值 | 等签名方案 |
+| Windows 代码签名，签名者常量替换占位值（`update/signature.py` 与 `internal/product`），发布构建链接时打开 `SignedRelease` | 等签名方案 |
 | 发布工作流：两个平台的安装包、发布到 GitHub Releases、SHA256SUMS；"检查更新"对真实 Release 验证 | M6 收尾 |
 | WARP 出口的真实验收（M9） | 等真实节点 |
 | 真实网络测试：真实订阅、DNS 泄漏、IPv6、睡眠唤醒、切换网络 | 两个平台实测时一起做 |
@@ -236,9 +237,25 @@ Apple 的签名材料（证书、两份描述文件、公证 API Key）已齐，
 
 目标：在全新的 Windows 上完成安装、连接、开机恢复、升级和卸载的完整流程。
 
+**状态**：服务部分的代码已完成（2026-10-30，阶段 D 第三轮 A），设计按实现写在 architecture.md 第 5 节：
+- 认领与属主：`internal/owner`；一个服务进程只服务一个属主，换属主（包括第一次认领）时写好 `owner.json`、回复
+  `service_restarting` 并经辅助进程重启；home 是 `users\<SID>`，只有 SYSTEM 能写、属主能读；`GetInfo` 返回属主状态，
+  非属主得到 `not_claimed` 或 `owned_by_other_user`。
+- 持久化与恢复：`profile.json`（最近生效的请求）和 `state.json`（`was_running`），节点选择在 home 的 `cache.db`；
+  只在属主登录着的时候恢复，属主注销时停止（D5），服务停止时保留。
+- 系统代理：模拟属主会话的 token 写 WinINet 设置，原来的设置存在 `proxy.json`，停止、注销、服务停止时写回。
+- 客户端校验：持有进程与映像句柄、比较文件 ID、拒绝会话 0；签名的发布构建（`SignedRelease`）校验签名者常量。
+- 界面：`ServiceHost` 在要做事时认领，只读请求不认领；概览页在其他用户占用时提示并禁用连接按钮。
+- 测试：属主、恢复与系统代理的逻辑用替身平台在所有平台上测；客户端校验、目录 ACL、WinINet 读写在 CI 的 Windows
+  机器上测。
+
+等 Windows 虚拟机实测的：服务以 SYSTEM 运行时的认领与重启辅助进程、`SessionLogon` / `SessionLogoff` 事件、模拟
+token 写 HKCU 并让浏览器生效、开机后登录时恢复、ACL 在真实 ProgramData 下的效果、Nuitka 构建的 UI 通过客户端校验。
+管理员接管（D5b）未做；PowerEvent 唤醒后重置连接、超时逐层递减也还没做。
+
 范围：
 
-- **属主管理**：`Claim` / `TakeOver`；按 SID 划分 home 目录并设置 ACL；`owner.json`；属主注销时停止隧道并在下次登录时恢复（D5），管理员接管（D5b）。
+- **属主管理**：`Claim`；按 SID 划分 home 目录并设置 ACL；`owner.json`；属主注销时停止隧道并在下次登录时恢复（D5），管理员接管（D5b，待定）。
 - **持久化与开机恢复**：`was_running`、`overrides.json` 和节点选择（`store-selected`）。
 - **系统代理**：模拟属主会话的 token 写入用户的 HKCU，停止时还原（architecture.md §5.5）。
 - **客户端校验补全**：锁定文件身份；发布构建校验 Authenticode 签名者（architecture.md §5.3）。
@@ -425,7 +442,7 @@ fake-ip 下的一致性留到 M5 / M4 实测（routing.md 第 12 节）。
 
 | # | 事项 | 最晚何时 | 影响 |
 | --- | --- | --- | --- |
-| D5b | 内核运行中能否由管理员接管其他用户的隧道（倾向可以，需 UAC 确认） | M4 | 服务的属主逻辑 |
+| D5b | 内核运行中能否由管理员接管其他用户的隧道（倾向可以，需 UAC 确认） | M4 实测前 | 服务的属主逻辑；接管加在 `owner.Service.Claim` 里，现在只能等隧道停了再认领 |
 | D8 | provider message 单条大小上限 | M5 原型 | `Reload` 能否直接携带大配置 |
 
 ### 5.2 已决定（2026-10-29 至 10-30）

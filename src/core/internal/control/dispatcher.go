@@ -33,7 +33,21 @@ const (
 	CodeUnknownSubscription  = "unknown_subscription"
 	CodeTooManySubscriptions = "too_many_subscriptions"
 	CodeOperationFailed      = "operation_failed"
+	CodeNotClaimed           = "not_claimed"
+	CodeOwnedByOtherUser     = "owned_by_other_user"
+	CodeServiceRestarting    = "service_restarting"
 	codeInternal             = "internal_error"
+)
+
+// The Windows service's answers to callers that are not its owner (docs/architecture.md §5.4).
+var (
+	// ErrNotClaimed: the caller is not the owner, and Claim would make them so.
+	ErrNotClaimed = errors.New("the service is not yours; claim it first")
+	// ErrOwnedByOtherUser: another user owns the service and their tunnel is up.
+	ErrOwnedByOtherUser = errors.New("another user's tunnel is running")
+	// ErrRestarting: a new service process takes on the new owner, since mihomo's home is
+	// fixed for the life of a process; claim again once it is back.
+	ErrRestarting = errors.New("the service restarts for its new owner; claim again")
 )
 
 // Engine is what the dispatcher needs from internal/engine.
@@ -70,7 +84,31 @@ type Engine interface {
 	RegisterWarp(ctx context.Context, via string, request warp.Request) (*controlpb.WarpAccount, error)
 }
 
+// Host is the Windows service's part of the host methods (docs/architecture.md §5): who may
+// use the core, the profile that comes back when the owner signs in again, and the owner's
+// system proxy. The macOS extension and the development server have none.
+type Host interface {
+	// Ownership is how caller stands to the owner, for GetInfo.
+	Ownership(caller peer.Identity) controlpb.Ownership
+	// Admit lets the owner through; anyone else gets ErrNotClaimed or ErrOwnedByOtherUser.
+	Admit(caller peer.Identity) error
+	// Claim makes caller the owner when the service has none, is theirs already, or its
+	// owner's tunnel is down. ErrRestarting means a new process will serve them.
+	Claim(caller peer.Identity) error
+	// Applied follows Start, Reload and Resume once the core took start: the service keeps
+	// it for the next sign-in and sets the owner's system proxy as its options say.
+	Applied(start *controlpb.StartRequest) error
+	// Stopped follows Stop, after which the tunnel stays down; Suspended follows Suspend,
+	// after which it comes back at the owner's next sign-in. Both restore their proxy.
+	Stopped() error
+	Suspended() error
+	SetSystemProxy(enabled bool) error
+	SystemProxyEnabled() bool
+}
+
 type Options struct {
+	// Engine is nil in a Windows service that has no owner yet: it answers GetInfo and Claim
+	// only, since mihomo's home is the owner's (§3.2).
 	Engine Engine
 	// HostMethods enables Claim and SetSystemProxy, which only the Windows service (and
 	// the development server) has. Validate, Start, Reload and Stop run on every host: the
@@ -81,12 +119,15 @@ type Options struct {
 	// changes the machine's network: turning on the system proxy fails with
 	// unsupported_method, as does the TUN through the engine's no-TUN mode.
 	Development bool
+	// Host is the Windows service's owner, persistence and system proxy.
+	Host Host
 }
 
 type Dispatcher struct {
 	engine      Engine
 	hostMethods bool
 	development bool
+	host        Host
 	// ops serializes the methods that change state (§4.1); queries run concurrently.
 	ops           sync.Mutex
 	subscriptions *subscriptions
@@ -97,6 +138,7 @@ func New(options Options) *Dispatcher {
 		engine:        options.Engine,
 		hostMethods:   options.HostMethods,
 		development:   options.Development,
+		host:          options.Host,
 		subscriptions: newSubscriptions(options.Engine),
 	}
 }
@@ -132,12 +174,28 @@ func (d *Dispatcher) Handle(ctx context.Context, caller peer.Identity, payload [
 }
 
 func (d *Dispatcher) dispatch(ctx context.Context, caller peer.Identity, request *controlpb.Request) *controlpb.Response {
-	switch method := request.Method.(type) {
+	switch request.Method.(type) {
 	case *controlpb.Request_GetInfo:
-		return &controlpb.Response{Result: &controlpb.Response_GetInfo{GetInfo: d.info()}}
-	case *controlpb.Request_Claim, *controlpb.Request_SetSystemProxy:
+		return &controlpb.Response{Result: &controlpb.Response_GetInfo{GetInfo: d.info(caller)}}
+	case *controlpb.Request_Claim:
 		if !d.hostMethods {
-			return failure(CodeUnsupportedMethod, methodName(request)+" is only served by the Windows service")
+			return failure(CodeUnsupportedMethod, "claim is only served by the Windows service")
+		}
+		return d.locked(func() *controlpb.Response { return d.claim(caller) })
+	}
+	// Only the owner reaches the core (§5.4).
+	if d.host != nil {
+		if err := d.host.Admit(caller); err != nil {
+			return hostFailure(err)
+		}
+	}
+	if d.engine == nil {
+		return failure(CodeNotClaimed, ErrNotClaimed.Error())
+	}
+	switch method := request.Method.(type) {
+	case *controlpb.Request_SetSystemProxy:
+		if !d.hostMethods {
+			return failure(CodeUnsupportedMethod, "set_system_proxy is only served by the Windows service")
 		}
 		return d.hostMethod(request)
 	case *controlpb.Request_Validate, *controlpb.Request_Start, *controlpb.Request_Stop:
@@ -153,12 +211,6 @@ func (d *Dispatcher) hostMethod(request *controlpb.Request) *controlpb.Response 
 	d.ops.Lock()
 	defer d.ops.Unlock()
 	switch method := request.Method.(type) {
-	case *controlpb.Request_Claim:
-		if !d.development {
-			return failure(CodeNotImplemented, "claim is not implemented yet")
-		}
-		// The development socket only admits the user running the server.
-		return empty()
 	case *controlpb.Request_Validate:
 		validate := method.Validate
 		profile := engine.Profile{
@@ -173,13 +225,36 @@ func (d *Dispatcher) hostMethod(request *controlpb.Request) *controlpb.Response 
 		if response != nil {
 			return response
 		}
-		return d.applied(d.engine.Start(profile))
+		report, err := d.engine.Start(profile)
+		if err == nil && d.host != nil {
+			err = d.host.Applied(start)
+		}
+		return d.applied(report, err)
 	case *controlpb.Request_Stop:
-		return d.result(d.engine.Stop())
+		err := d.engine.Stop()
+		if err == nil && d.host != nil {
+			err = d.host.Stopped()
+		}
+		return d.result(err)
 	case *controlpb.Request_SetSystemProxy:
 		return d.systemProxy(method.SetSystemProxy.GetEnabled())
 	}
 	return failure(codeInternal, "unrouted host method")
+}
+
+// claim answers Claim. The development socket only admits the user running the server, who
+// owns it already.
+func (d *Dispatcher) claim(caller peer.Identity) *controlpb.Response {
+	switch {
+	case d.development:
+		return empty()
+	case d.host == nil:
+		return failure(CodeNotImplemented, "claim is not implemented by this host")
+	}
+	if err := d.host.Claim(caller); err != nil {
+		return hostFailure(err)
+	}
+	return empty()
 }
 
 func (d *Dispatcher) reload(reload *controlpb.ReloadRequest) *controlpb.Response {
@@ -187,7 +262,65 @@ func (d *Dispatcher) reload(reload *controlpb.ReloadRequest) *controlpb.Response
 	if response != nil {
 		return response
 	}
-	return d.applied(d.engine.Reload(profile))
+	report, err := d.engine.Reload(profile)
+	if err == nil && d.host != nil {
+		err = d.host.Applied(asStart(reload))
+	}
+	return d.applied(report, err)
+}
+
+// asStart is a Reload's profile as Start would carry it, which is how the service keeps it.
+func asStart(reload *controlpb.ReloadRequest) *controlpb.StartRequest {
+	start := &controlpb.StartRequest{Overrides: reload.GetOverrides(), Options: reload.GetOptions()}
+	switch source := reload.GetSource().(type) {
+	case *controlpb.ReloadRequest_ConfigYaml:
+		start.Source = &controlpb.StartRequest_ConfigYaml{ConfigYaml: source.ConfigYaml}
+	case *controlpb.ReloadRequest_Composition:
+		start.Source = &controlpb.StartRequest_Composition{Composition: source.Composition}
+	}
+	return start
+}
+
+// Running reports whether the core is up or on its way up or down; a stopped or failed core
+// leaves the tunnel down.
+func (d *Dispatcher) Running() bool {
+	if d.engine == nil {
+		return false
+	}
+	switch d.engine.State() {
+	case controlpb.RunState_RUN_STATE_STOPPED, controlpb.RunState_RUN_STATE_FAILED:
+		return false
+	}
+	return true
+}
+
+// Resume starts the core with the profile the Windows service kept, as Start does, when its
+// owner signs in again (docs/architecture.md §5.2). A core that runs is left alone.
+func (d *Dispatcher) Resume(start *controlpb.StartRequest) error {
+	d.ops.Lock()
+	defer d.ops.Unlock()
+	if d.Running() {
+		return nil
+	}
+	profile, response := d.profile(start.GetConfigYaml(), start.GetComposition(), start.GetOverrides(), start.GetOptions())
+	if response != nil {
+		return errors.New(response.GetError().GetMessage())
+	}
+	if _, err := d.engine.Start(profile); err != nil {
+		return err
+	}
+	return d.host.Applied(start)
+}
+
+// Suspend stops the core when its owner signs out (decision D5). Unlike Stop, the tunnel
+// comes back at their next sign-in.
+func (d *Dispatcher) Suspend() error {
+	d.ops.Lock()
+	defer d.ops.Unlock()
+	if err := d.engine.Stop(); err != nil {
+		return err
+	}
+	return d.host.Suspended()
 }
 
 // applied answers Validate, Start and Reload: a composition's report, or Empty.
@@ -232,7 +365,7 @@ func (d *Dispatcher) profile(configYAML string, source *controlpb.Composition, o
 		return engine.Profile{}, failure(CodeInvalidRequest, "mixed_port must be a TCP port")
 	}
 	if options.GetSystemProxyEnabled() {
-		if response := d.systemProxy(true); response.GetError() != nil {
+		if response := d.systemProxyServed(); response != nil {
 			return engine.Profile{}, response
 		}
 	}
@@ -248,20 +381,30 @@ func (d *Dispatcher) profile(configYAML string, source *controlpb.Composition, o
 	}, nil
 }
 
-// systemProxy answers a request to set the owner's system proxy. The macOS extension has
-// none, the development server never touches it, and the Windows implementation arrives
-// with M4 (§5.5).
+// systemProxy answers a request to set the owner's system proxy (§5.5). The macOS extension
+// has none, and the development server never touches it.
 func (d *Dispatcher) systemProxy(enabled bool) *controlpb.Response {
-	switch {
-	case !d.hostMethods && enabled:
-		return failure(CodeUnsupportedMethod, "only the Windows service sets the system proxy")
-	case d.development && enabled:
-		return failure(CodeUnsupportedMethod, "the development server never sets the system proxy")
-	case d.development:
+	if !enabled && d.development {
 		return empty()
-	default:
-		return failure(CodeNotImplemented, "the system proxy is not implemented yet")
 	}
+	if response := d.systemProxyServed(); response != nil {
+		return response
+	}
+	return d.result(d.host.SetSystemProxy(enabled))
+}
+
+// systemProxyServed is nil when this host can turn the system proxy on, and the refusal
+// otherwise.
+func (d *Dispatcher) systemProxyServed() *controlpb.Response {
+	switch {
+	case !d.hostMethods:
+		return failure(CodeUnsupportedMethod, "only the Windows service sets the system proxy")
+	case d.development:
+		return failure(CodeUnsupportedMethod, "the development server never sets the system proxy")
+	case d.host == nil:
+		return failure(CodeNotImplemented, "the system proxy is not implemented by this host")
+	}
+	return nil
 }
 
 func (d *Dispatcher) locked(run func() *controlpb.Response) *controlpb.Response {
@@ -273,8 +416,11 @@ func (d *Dispatcher) locked(run func() *controlpb.Response) *controlpb.Response 
 func (d *Dispatcher) coreMethod(ctx context.Context, caller peer.Identity, request *controlpb.Request) *controlpb.Response {
 	switch method := request.Method.(type) {
 	case *controlpb.Request_GetStatus:
-		// The system proxy is never on until the Windows service sets it (M4).
-		return &controlpb.Response{Result: &controlpb.Response_GetStatus{GetStatus: d.engine.Status()}}
+		status := d.engine.Status()
+		if d.host != nil {
+			status.SystemProxyEnabled = d.host.SystemProxyEnabled()
+		}
+		return &controlpb.Response{Result: &controlpb.Response_GetStatus{GetStatus: status}}
 	case *controlpb.Request_SetMode:
 		return d.locked(func() *controlpb.Response { return d.result(d.engine.SetMode(method.SetMode.GetMode())) })
 	case *controlpb.Request_ListGroups:
@@ -504,18 +650,26 @@ func knownSort(sort controlpb.GroupSort) bool {
 	return ok
 }
 
-func (d *Dispatcher) info() *controlpb.GetInfoResponse {
-	ownership := controlpb.Ownership_OWNERSHIP_UNSPECIFIED
-	if d.hostMethods {
-		ownership = controlpb.Ownership_OWNERSHIP_AVAILABLE
-	}
-	return &controlpb.GetInfoResponse{
+func (d *Dispatcher) info(caller peer.Identity) *controlpb.GetInfoResponse {
+	info := &controlpb.GetInfoResponse{
 		ProtocolVersion: product.ProtocolVersion,
 		ServiceVersion:  product.Version,
-		CoreVersion:     d.engine.CoreVersion(),
-		State:           d.engine.State(),
-		Ownership:       ownership,
+		CoreVersion:     engine.Version(),
+		State:           controlpb.RunState_RUN_STATE_STOPPED,
 	}
+	if d.engine != nil {
+		info.CoreVersion, info.State = d.engine.CoreVersion(), d.engine.State()
+	}
+	switch {
+	case d.host != nil:
+		info.Ownership = d.host.Ownership(caller)
+	case d.development:
+		// The development socket only admits the user running the server.
+		info.Ownership = controlpb.Ownership_OWNERSHIP_CALLER
+	case d.hostMethods:
+		info.Ownership = controlpb.Ownership_OWNERSHIP_AVAILABLE
+	}
+	return info
 }
 
 func (d *Dispatcher) result(err error) *controlpb.Response {
@@ -549,6 +703,21 @@ func engineFailure(err error) *controlpb.Response {
 	response := failure(CodeOperationFailed, err.Error())
 	response.GetError().Retryable = true
 	return response
+}
+
+// hostFailure maps the Windows service's refusals; anything else is an engine error.
+func hostFailure(err error) *controlpb.Response {
+	switch {
+	case errors.Is(err, ErrNotClaimed):
+		return failure(CodeNotClaimed, err.Error())
+	case errors.Is(err, ErrOwnedByOtherUser):
+		return failure(CodeOwnedByOtherUser, err.Error())
+	case errors.Is(err, ErrRestarting):
+		response := failure(CodeServiceRestarting, err.Error())
+		response.GetError().Retryable = true
+		return response
+	}
+	return engineFailure(err)
 }
 
 func subscriptionFailure(err error) *controlpb.Response {

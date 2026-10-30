@@ -9,7 +9,7 @@ from typing import Any
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
-from solaris.host.base import ProxyGroup, TunnelHost
+from solaris.host.base import HostError, ProxyGroup, TunnelHost
 from solaris.i18n import QT_TRANSLATE_NOOP
 from solaris.models import format as fmt
 from solaris.models.library import ProfileLibrary
@@ -72,6 +72,8 @@ class OverviewViewModel(QObject):
         self._ticks = 0
         self._error = ""  # the last action's failure, until the next action
         self._refresh_error = ""  # the last refresh's failure, until one succeeds
+        # Another user's tunnel runs (docs/architecture.md §5.4): only they can disconnect it.
+        self._other_user = False
         self._switch_error = ""
         self._timer = QTimer(self)
         self._timer.setInterval(REFRESH_MS)
@@ -113,6 +115,7 @@ class OverviewViewModel(QObject):
     def _applied(self, snapshot: TunnelSnapshot) -> None:
         self._refreshing = False
         self._refresh_error = ""
+        self._other_user = False
         self._snapshot = snapshot
         if snapshot.groups is not None:
             self._groups = snapshot.groups
@@ -122,6 +125,7 @@ class OverviewViewModel(QObject):
         self._refreshing = False
         self._snapshot = None
         self._refresh_error = failure_text(error)
+        self._other_user = isinstance(error, HostError) and error.code == "owned_by_other_user"
         self.changed.emit()
 
     def _act(
@@ -199,13 +203,21 @@ class OverviewViewModel(QObject):
     def busy(self) -> bool:
         return self._busy
 
+    @Property(bool, notify=changed)
+    def ownedByOtherUser(self) -> bool:
+        return self._other_user
+
     @Property(str, notify=changed)
     def statusTitle(self) -> str:
+        if self._other_user:
+            return self.tr("其他用户正在使用")
         title = STATE_TITLES.get(self._snapshot.status.state) if self._snapshot else None
         return self.tr(title) if title else self.tr("未连接")
 
     @Property(str, notify=changed)
     def statusDetail(self) -> str:
+        if self._other_user and not self._error:
+            return self.tr("另一位用户已连接，对方断开后才能在这里连接")
         if self._error or self._refresh_error:
             return self._error or self._refresh_error
         if not self._connected() or self._snapshot is None:
