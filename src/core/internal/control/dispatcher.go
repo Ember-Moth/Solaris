@@ -361,8 +361,9 @@ func overrides(sources []string) [][]byte {
 }
 
 func (d *Dispatcher) profile(configYAML string, source *controlpb.Composition, overrideYAML []string, options *controlpb.RunOptions) (engine.Profile, *controlpb.Response) {
-	if options.GetMixedPort() > 0xffff {
-		return engine.Profile{}, failure(CodeInvalidRequest, "mixed_port must be a TCP port")
+	run, response := runOptions(options)
+	if response != nil {
+		return engine.Profile{}, response
 	}
 	if options.GetSystemProxyEnabled() {
 		if response := d.systemProxyServed(); response != nil {
@@ -373,11 +374,32 @@ func (d *Dispatcher) profile(configYAML string, source *controlpb.Composition, o
 		Config:      []byte(configYAML),
 		Composition: composition(source),
 		Overrides:   overrides(overrideYAML),
-		Options: engine.RunOptions{
-			TUN:       options.GetTunEnabled(),
-			MixedPort: uint16(options.GetMixedPort()),
-			AllowLAN:  options.GetAllowLan(),
-		},
+		Options:     run,
+	}, nil
+}
+
+// tunStacks are mihomo's names for the stacks RunOptions may ask for.
+var tunStacks = map[controlpb.TunStack]string{
+	controlpb.TunStack_TUN_STACK_UNSPECIFIED: "",
+	controlpb.TunStack_TUN_STACK_SYSTEM:      "system",
+	controlpb.TunStack_TUN_STACK_MIPS:        "mips",
+	controlpb.TunStack_TUN_STACK_GVISOR:      "gvisor",
+	controlpb.TunStack_TUN_STACK_MIXED:       "mixed",
+}
+
+func runOptions(options *controlpb.RunOptions) (engine.RunOptions, *controlpb.Response) {
+	if options.GetMixedPort() > 0xffff {
+		return engine.RunOptions{}, failure(CodeInvalidRequest, "mixed_port must be a TCP port")
+	}
+	stack, ok := tunStacks[options.GetTunStack()]
+	if !ok {
+		return engine.RunOptions{}, failure(CodeInvalidRequest, "unknown TUN stack")
+	}
+	return engine.RunOptions{
+		TUN:       options.GetTunEnabled(),
+		MixedPort: uint16(options.GetMixedPort()),
+		AllowLAN:  options.GetAllowLan(),
+		Stack:     stack,
 	}, nil
 }
 
@@ -622,18 +644,15 @@ func (d *Dispatcher) matchRule(match *controlpb.MatchRuleRequest) *controlpb.Res
 // draftProfile is a configuration the routing methods build on the side; unlike profile,
 // it never touches the system proxy.
 func (d *Dispatcher) draftProfile(configYAML string, source *controlpb.Composition, overrideYAML []string, options *controlpb.RunOptions) (engine.Profile, *controlpb.Response) {
-	if options.GetMixedPort() > 0xffff {
-		return engine.Profile{}, failure(CodeInvalidRequest, "mixed_port must be a TCP port")
+	run, response := runOptions(options)
+	if response != nil {
+		return engine.Profile{}, response
 	}
 	return engine.Profile{
 		Config:      []byte(configYAML),
 		Composition: composition(source),
 		Overrides:   overrides(overrideYAML),
-		Options: engine.RunOptions{
-			TUN:       options.GetTunEnabled(),
-			MixedPort: uint16(options.GetMixedPort()),
-			AllowLAN:  options.GetAllowLan(),
-		},
+		Options:     run,
 	}, nil
 }
 

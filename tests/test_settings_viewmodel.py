@@ -11,6 +11,7 @@ from solaris.desktop.login import LoginItemError, LoginItemStatus
 from solaris.host.base import RunOptions
 from solaris.models.settings import DatabaseSettingsStore, Settings
 from solaris.models.store import ProfileStore, open_database
+from solaris.viewmodels import settings as settings_view_model
 from solaris.viewmodels.composition import ViewModels, compose
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
 from tests.support.storage import refuse_writes
@@ -212,3 +213,104 @@ def test_launch_at_login_from_source(qtbot: QtBot, tmp_path: Path) -> None:
         assert built.settings_store.current == Settings()
     finally:
         built.shutdown()
+
+
+def test_the_tun_stack_reloads_the_running_tunnel(qtbot: QtBot, view_models: ViewModels) -> None:
+    settings, host = view_models.settings, view_models.host
+    assert isinstance(host, SimulatedHost)
+    options = prop(settings, "tunStackOptions")
+    assert [o["value"] for o in options] == ["profile", "system", "mips", "gvisor", "mixed"]
+    assert [o["label"] for o in options] == ["跟随配置", "System", "Mips", "gVisor", "Mixed"]
+    assert all(o.get("enabled", True) for o in options)
+    assert prop(settings, "tunStack") == "profile"
+
+    settings.setTunStack("gvisor")
+    qtbot.waitUntil(lambda: prop(settings, "tunStack") == "gvisor")
+    assert host.reloads == 1
+    assert host.config is not None
+    assert host.config.options.tun_stack == "gvisor"
+    assert view_models.settings_store.current.tun_stack == "gvisor"
+
+    settings.setTunStack("gVisor")  # not a choice
+    settings.setTunStack("gvisor")  # unchanged
+    settings.setTunStack("profile")
+    qtbot.waitUntil(lambda: prop(settings, "tunStack") == "profile")
+    assert host.reloads == 2
+    assert host.config.options.tun_stack == ""
+
+
+def test_a_stack_the_core_refuses_is_not_kept(qtbot: QtBot, view_models: ViewModels) -> None:
+    settings, host = view_models.settings, view_models.host
+    assert isinstance(host, SimulatedHost)
+    host.gvisor = False  # a core built without with_gvisor
+    settings.setTunStack("mixed")
+    qtbot.waitUntil(lambda: prop(settings, "stackError") != "")
+    message = "配置无效：tun.stack mixed needs a build with the with_gvisor tag"  # noqa: RUF001
+    assert prop(settings, "stackError") == message
+    assert prop(settings, "tunStack") == "profile"
+    assert view_models.settings_store.current.tun_stack == "profile"
+
+
+@pytest.fixture
+def on_macos(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings_view_model, "INCLUDE_ALL_NETWORKS", True)
+
+
+def options_enabled(settings: QObject) -> dict[str, bool]:
+    return {o["value"]: o.get("enabled", True) for o in prop(settings, "tunStackOptions")}
+
+
+@pytest.mark.usefixtures("on_macos")
+def test_including_all_networks_rules_out_system_and_mixed(
+    qtbot: QtBot, view_models: ViewModels
+) -> None:
+    settings, host, store = view_models.settings, view_models.host, view_models.settings_store
+    assert isinstance(host, SimulatedHost)
+    assert prop(settings, "includeAllNetworksAvailable")
+    settings.setTunStack("system")
+    qtbot.waitUntil(lambda: prop(settings, "tunStack") == "system")
+    reloads = host.reloads
+
+    # The chosen stack cannot run with it, so it becomes gVisor, in the running tunnel too.
+    settings.setIncludeAllNetworks(True)
+    qtbot.waitUntil(lambda: prop(settings, "includeAllNetworks"))
+    assert prop(settings, "tunStack") == "gvisor"
+    assert (store.current.include_all_networks, store.current.tun_stack) == (True, "gvisor")
+    assert host.reloads == reloads + 1
+    assert host.config is not None
+    assert host.config.options.tun_stack == "gvisor"
+    assert options_enabled(settings) == {
+        "profile": True,
+        "system": False,
+        "mips": True,
+        "gvisor": True,
+        "mixed": False,
+    }
+    notes = {o["value"]: o.get("note", "") for o in prop(settings, "tunStackOptions")}
+    assert notes["system"] == notes["mixed"] == "包含所有网络时不可用"
+    settings.setTunStack("mixed")  # disabled
+    assert store.current.tun_stack == "gvisor"
+
+    # Turning it off only waits for the next connection.
+    settings.setIncludeAllNetworks(False)
+    assert not prop(settings, "includeAllNetworks")
+    assert all(options_enabled(settings).values())
+    assert host.reloads == reloads + 1
+    settings.setTunStack("mips")
+    qtbot.waitUntil(lambda: prop(settings, "tunStack") == "mips")
+    settings.setIncludeAllNetworks(True)  # mips runs with it: stored, nothing to reload
+    assert store.current.include_all_networks
+    assert store.current.tun_stack == "mips"
+    assert host.reloads == reloads + 2
+
+
+def test_include_all_networks_is_only_on_macos(
+    qtbot: QtBot, view_models: ViewModels, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings_view_model, "INCLUDE_ALL_NETWORKS", False)
+    settings, store = view_models.settings, view_models.settings_store
+    assert not prop(settings, "includeAllNetworksAvailable")
+    settings.setIncludeAllNetworks(True)
+    assert not store.current.include_all_networks
+    store.update(include_all_networks=True)  # e.g. stored on a Mac
+    assert all(options_enabled(settings).values())

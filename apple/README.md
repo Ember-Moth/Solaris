@@ -176,8 +176,8 @@ mihomo home 在扩展容器的 `Application Support/Solaris/core`，`startTunnel
 | 函数 | 作用 |
 | --- | --- |
 | `solaris_manager_activate(timeout, &error)` | 激活包内的系统扩展，替换其他构建激活的扩展 |
-| `solaris_manager_configure(&error)` | 创建或修复 VPN 配置并启用；第一次保存时系统请用户允许 |
-| `solaris_manager_start(timeout, &error)` | 必要时先配置，再启动隧道，等到已连接 |
+| `solaris_manager_configure(include_all_networks, &error)` | 创建或修复 VPN 配置并启用，按 `include_all_networks` 写 `includeAllNetworks` 和 `excludeLocalNetworks`（D19）；第一次保存时系统请用户允许 |
+| `solaris_manager_start(timeout, include_all_networks, &error)` | 必要时先配置（同上），再启动隧道，等到已连接 |
 | `solaris_manager_stop(timeout, &error)` | 停止隧道，等到断开；本来就没运行时直接成功 |
 | `solaris_manager_status(&status, &error)` | 隧道状态：`SOLARIS_TUNNEL_*`，对应 `NEVPNStatus`，另加“未配置” |
 | `solaris_manager_send(request, length, timeout, &response, &response_length, &error)` | 发一条编码好的 Request，取回 Response |
@@ -197,7 +197,11 @@ mihomo home 在扩展容器的 `Application Support/Solaris/core`，`startTunnel
 - **激活**：系统要用户批准时，`activate` 立即返回 `NEEDS_APPROVAL`，请求继续挂着；之后的调用等同一个请求，
   用户允许后返回 `OK`，到超时仍未允许则再返回 `NEEDS_APPROVAL`。替换时总是用包内的扩展，因为只有它和
   这个 app 的控制协议一致。
-- **配置**（D7）：`start` 不带任何配置；连接后，宿主用 `send` 发 `Start` / `Reload`。
+- **配置**（D7）：`start` 不带内核的配置；连接后，宿主用 `send` 发 `Start` / `Reload`。
+- **包含所有网络**（D19）：`include_all_networks` 是 `bool`。VPN 配置的 `includeAllNetworks` 与它不同时，
+  `configure` 和 `start` 重写并保存配置，`excludeLocalNetworks` 随它一起开关，让局域网流量照旧不进隧道。只在隧道
+  断开时改写：扩展只在 attach 时读一次，所以隧道没断开时改的设置下次连接时生效；`start` 遇到正在断开的隧道，
+  等它断开后再写。
 - Swift 侧导入同一份头文件，编译时逐个比对导出函数的签名；构建脚本再核对 dylib 实际导出的符号。
 
 预期的调用顺序：`activate`（`NEEDS_APPROVAL` 时提示用户并继续调用）→ `start` → `send(Start)` →
@@ -210,7 +214,7 @@ mihomo home 在扩展容器的 `Application Support/Solaris/core`，`startTunnel
 | 函数 | 作用 |
 | --- | --- |
 | `solaris_tunnel_network(&length)` | 隧道的网络（`engine.FDNetwork`）的 JSON：IPv4 地址和掩码、IPv6 地址和前缀长度、DNS 服务器、MTU |
-| `solaris_attach_tun(fd, home, resources)` | 把 `resources` 里的 GEO 数据复制进 `home`（缺少时），再以 fd 模式打开 engine 和分发器；返回 NULL 或错误字符串 |
+| `solaris_attach_tun(fd, home, resources, include_all_networks)` | 把 `resources` 里的 GEO 数据复制进 `home`（缺少时），再以 fd 模式打开 engine 和分发器；`include_all_networks` 是扩展从 `protocolConfiguration` 读到的 `includeAllNetworks`，打开时 engine 把 `system`、`mixed` 栈换成 gVisor（D19）；返回 NULL 或错误字符串 |
 | `solaris_detach_tun()` | 取消在途消息并等它们结束，停止内核，关闭分发器和 Go 的描述符副本 |
 | `solaris_handle_message(request, length, &response_length)` | 处理一条编码好的 Request，返回 Response；没有 attach 时返回 `not_running` |
 | `solaris_free(pointer)` | 释放上面几个函数返回的缓冲区和字符串 |
@@ -231,7 +235,8 @@ mihomo home 在扩展容器的 `Application Support/Solaris/core`，`startTunnel
 主队列，进行中的调用要等到超时，daemon 线程不会拖住退出。
 
 - **启动**：本次运行第一次连接时 `activate`（要用户批准时报 `extension_needs_approval`，需要重启时报
-  `extension_needs_reboot`），再 `start`，然后 `send(Start)`；内核拒绝配置时把隧道停掉，不让流量进入没有内核的
+  `extension_needs_reboot`），再 `start`（`include_all_networks` 取自 `RunOptions.include_all_networks`，即设置页的
+  "包含所有网络"），然后 `send(Start)`；内核拒绝配置时把隧道停掉，不让流量进入没有内核的
   隧道。**停止**：`stop`，扩展 detach 时停止内核。关闭宿主不动隧道。
 - **隧道未连接**（`NOT_CONNECTED`、`NOT_CONFIGURED`，或扩展回答没有 attach）：`get_status` 按隧道状态报
   stopped / starting / stopping，`get_info` 用 Info.plist 里的内核版本，列表和轮询返回空，GEO 分类用安装包的清单，
@@ -248,7 +253,9 @@ mihomo home 在扩展容器的 `Application Support/Solaris/core`，`startTunnel
   `not_running`，界面在断开时导入订阅会失败。需要决定做法，例如把 Go 内核的无 TUN 只读部分也链进管理库。
 - **最低系统版本**：PySide6 6.12.0 让 app 要求 macOS 26（见“组装 Solaris.app”）。
 - **测试 Mac 上的实测**：激活、批准、连接；utun 描述符的查找、四种栈经过 utun 的流量、DNS 劫持、断开与
-  重连后描述符的归属；provider message 的大小上限（D8）；app 在 hardened runtime 下的启动。
+  重连后描述符的归属；provider message 的大小上限（D8）；app 在 hardened runtime 下的启动；`includeAllNetworks`：
+  打开后系统默认绕开隧道的流量确实进入隧道、局域网流量不进，扩展自己（mihomo 的出站）的流量不被卷回隧道，
+  `mips` 和 `gvisor` 栈都能工作，保存配置时系统是否再次请用户允许。
 - **发布工作流**还没有运行过（要在 `release` Environment 里批准）；公证结果未知。
 - 批准扩展、需要重启等新错误码的界面文案；app 图标；卸载前停用扩展（`deactivationRequest`）、扩展说明文字的
   本地化。

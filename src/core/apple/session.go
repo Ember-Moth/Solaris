@@ -33,8 +33,8 @@ var (
 )
 
 // attach seeds home with the GEO data in resources, unless resources is empty, then opens
-// the engine and the dispatcher on the descriptor.
-func attach(fd int, home, resources string) error {
+// the engine and the dispatcher on the descriptor. includeAllNetworks is the tunnel's.
+func attach(fd int, home, resources string, includeAllNetworks bool) error {
 	lifecycle.Lock()
 	defer lifecycle.Unlock()
 	mu.RLock()
@@ -48,7 +48,12 @@ func attach(fd int, home, resources string) error {
 			return err
 		}
 	}
-	core, err := engine.New(engine.Options{HomeDir: home, Tun: engine.TunFD, TunFD: fd})
+	core, err := engine.New(engine.Options{
+		HomeDir:            home,
+		Tun:                engine.TunFD,
+		TunFD:              fd,
+		IncludeAllNetworks: includeAllNetworks,
+	})
 	if err != nil {
 		return err
 	}

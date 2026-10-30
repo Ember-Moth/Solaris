@@ -10,8 +10,8 @@
 | 部分 | 状态 | 说明 |
 | --- | --- | --- |
 | 架构与视觉规范 | 完成 | architecture.md、ui.md、DESIGN.md；原型在 Claude Design 画布上（第 29 版，含深色画板、分流 v2、链式出口、应用图标与顶部区域） |
-| 控制协议 | v1 | 消息、方法表、帧编解码已定；Go 与 Python 共用样本测试；配置来源可以是订阅原文或拼装（`Composition`）；`InspectSource`、`ListGeoCategories`、`PreviewGroup`、`MatchRule`、`ConvertToPlan`、`ExportPlan`、`RegisterWarp`；链式出口与组网出站的字段 |
-| engine（内嵌 mihomo） | 完成（M1、M5） | mihomo v1.19.33；无 TUN、自管 TUN 和 fd 三种模式，覆写、§3.3 安全项、开发模式护栏 |
+| 控制协议 | v1 | 消息、方法表、帧编解码已定；Go 与 Python 共用样本测试；配置来源可以是订阅原文或拼装（`Composition`）；`InspectSource`、`ListGeoCategories`、`PreviewGroup`、`MatchRule`、`ConvertToPlan`、`ExportPlan`、`RegisterWarp`；链式出口与组网出站的字段；`RunOptions.tun_stack` |
+| engine（内嵌 mihomo） | 完成（M1、M5） | mihomo v1.19.33；无 TUN、自管 TUN 和 fd 三种模式，覆写、§3.3 安全项、开发模式护栏；设置页选的 TUN 栈（D3），fd 模式下 `includeAllNetworks` 时换用 gVisor（D19） |
 | Go 分发器与服务入口 | 完成，待实测 | 全部内核方法、Start / Stop / Reload / Validate、`PollEvents`；Windows 服务的认领与属主、注销停止与登录恢复、系统代理、客户端校验（第三轮 A），只在 CI 的 Windows 机器上测过，服务本身待 Windows 虚拟机实测 |
 | Python 宿主层 | 完成 | 控制客户端、全部请求映射、日志与连接接口、模拟宿主 |
 | 界面 | 完成（M2、M3、C1） | 七页全部可用（新增分流页，"配置"改名"订阅"）；覆写编辑；中英双语；浅色与深色；托盘、单实例、登录时打开；qmllint 与无障碍检查进了测试 |
@@ -19,7 +19,7 @@
 | 数据存储与云备份 | 存储层（B1）、本地备份完成 | 界面数据在 SQLite；快照的导出与恢复（替换或合并）、提供方接口、本地目录提供方、自动备份的逻辑，设置页可导出到文件、从文件恢复；Google Drive、iCloud 未做 |
 | 自定义分流 | 完成（M8a：B2、C1；M8b） | 分流方式、节点池、地区组、默认模板、41 个服务、规则编辑与撤销、立即生效；策略组编辑器与实时预览、规则测试、搜索与按目标筛选、以此创建方案、导入导出、查看生成的配置 |
 | 链式出口与组网 | 部分 | 设计见 exits.md、mesh.md。WARP 出口（M9）内核与界面都已完成（第二轮），只对假服务器和模拟宿主验证过，真实节点的验收未做；组网出站的单独处理（D24）随它完成。Tor 出口（M10，首发后）、VPN Gate 出口（M12）、应用内组网（M11）未实现 |
-| macOS 原生部分 | 部分（M5） | Xcode 工程、管理库 C 接口；系统扩展用 utun 以 fd 模式运行内核（`with_gvisor`），带 GEO 数据；`MacExtensionHost`；测试 Mac 实测未做 |
+| macOS 原生部分 | 部分（M5） | Xcode 工程、管理库 C 接口；系统扩展用 utun 以 fd 模式运行内核（`with_gvisor`），带 GEO 数据；`MacExtensionHost`；"包含所有网络"（D19）；测试 Mac 实测未做 |
 | 打包与安装 | macOS 部分 | `scripts/build_app.py` 组装并签名 `Solaris.app`；发布工作流（签名、公证、.dmg）已写好，未运行；Windows 未开始 |
 | 发布准备（M6） | 部分 | 检查更新与下载、诊断信息导出、第三方许可证清单、一键导入链接的处理已做（release.md）；macOS 的 scheme 已由 `Solaris.app` 的 Info.plist 注册；Windows 签名方案、发布全流程、Windows 的 scheme 注册（随 M4 安装器）未做 |
 | CI | 全绿 | Python（macOS、Windows）、Go（macOS、Windows、Linux）、网络命名空间 TUN 测试（四种栈和 fd 模式）、macOS 上的 e2e |
@@ -154,7 +154,7 @@ B1、B2 的结果与遗留：
 | --- | --- |
 | Windows 服务、安装器、实测（M4） | 第三轮 A 写代码，实测等虚拟机 |
 | macOS 在全新 Mac 上的验收（M5），第一次公证 | 等测试 Mac |
-| "TUN 协议栈"与"包含所有网络"设置 | 第三轮 A |
+| "TUN 协议栈"与"包含所有网络"设置 | 代码完成（第三轮 A）：设置项、`RunOptions.tun_stack`、内核与系统扩展的处理、设置页。四种栈和 `includeAllNetworks` 的实测、各平台的默认栈，等 Windows 虚拟机和测试 Mac |
 | 隐藏系统标题栏，自绘顶部区域（DESIGN.md「顶部区域」） | 第三轮 A 合并后 |
 | 应用图标（macOS .icns、Windows .ico）与品牌素材 | 已定为"日冕"（2026-10-30，DESIGN.md "Shapes"）：`scripts/gen_icons.py` 生成全部尺寸，`.icns` 已接入 `Solaris.app`；Windows 的 `.ico` 随 M4 打包接入 Nuitka 和安装器 |
 | Windows 代码签名，签名者常量替换占位值（`update/signature.py` 与 `internal/product`），发布构建链接时打开 `SignedRelease` | 等签名方案 |
@@ -260,7 +260,8 @@ token 写 HKCU 并让浏览器生效、开机后登录时恢复、ACL 在真实 
 - **系统代理**：模拟属主会话的 token 写入用户的 HKCU，停止时还原（architecture.md §5.5）。
 - **客户端校验补全**：锁定文件身份；发布构建校验 Authenticode 签名者（architecture.md §5.3）。
 - **TUN 栈**：带 `with_gvisor` 构建，四种栈（system、mips、gvisor、mixed）都提供；设置页加"TUN 协议栈"选项（本机
-  设置，映射到配置的 `tun.stack`），默认值按实测结果定（D3）。
+  设置，映射到配置的 `tun.stack`），默认值按实测结果定（D3）。设置项、`RunOptions.tun_stack` 和运行中改栈的
+  Reload 已在第三轮 A 完成，默认先是"跟随配置"。
 - **实测**：wintun、strict-route、DNS 泄漏，四种栈逐一验证；登录时打开的计划任务。
 - **打包**：Nuitka standalone 构建脚本（包括 QML 目录、字体、翻译）；NSIS 安装器负责安装、升级、卸载，参考 hypervpn 的 `packaging/windows/`。
 
@@ -282,7 +283,8 @@ PacketTunnel 系统扩展骨架、`scripts/build_apple.py`（签名与不签名�
 第三步（阶段 D 第一轮，2026-10-30）：`MacExtensionHost`（ctypes 调用管理库，隧道未连接时按停止处理）；扩展
 带 GEO 数据，attach 时复制进 home；`scripts/build_app.py` 把 Nuitka 产物、管理库和扩展组装成 `Solaris.app` 并签名
 （本机签名校验通过，扩展 `strip -x`）；发布工作流 `release.yml`（临时钥匙串、签名、公证、staple、.dmg 和 sha256）。
-剩下："包含所有网络"设置（D19）、测试 Mac 实测（找 utun 描述符、四种栈、重连时描述符的归属、`includeAllNetworks`、
+"包含所有网络"设置（D19）已在第三轮 A 完成：管理库写 VPN 配置，扩展在 attach 时告诉 engine，设置页的开关。
+剩下：测试 Mac 实测（找 utun 描述符、四种栈、重连时描述符的归属、`includeAllNetworks`、
 D8、app 在 hardened runtime 下的启动）、第一次运行发布工作流（公证）。待决定：隧道未连接时 `Validate` 和
 `InspectSource` 没有内核可用，断开时导入订阅会失败；PySide6 6.12.0 的绑定库要求 macOS 26，要支持 15 得钉在 6.11.x
 （apple/README.md）。部署目标暂定 macOS 15.0。

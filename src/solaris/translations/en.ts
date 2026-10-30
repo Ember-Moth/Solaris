@@ -2728,6 +2728,18 @@ prepend-rules:
         <translation>TUN mode</translation>
     </message>
     <message>
+        <source>TUN 协议栈</source>
+        <translation>TUN stack</translation>
+    </message>
+    <message>
+        <source>包含所有网络</source>
+        <translation>Include all networks</translation>
+    </message>
+    <message>
+        <source>系统默认绕开隧道的流量也进入隧道，下次连接时生效</source>
+        <translation>Traffic the system keeps out of the tunnel enters it too; takes effect on the next connection</translation>
+    </message>
+    <message>
         <source>系统代理</source>
         <translation>System proxy</translation>
     </message>
@@ -2907,12 +2919,20 @@ prepend-rules:
         <translation>Quit the app</translation>
     </message>
     <message>
+        <source>跟随配置</source>
+        <translation>From profile</translation>
+    </message>
+    <message>
         <source>仅安装版可用</source>
         <translation>Only in the installed app</translation>
     </message>
     <message>
         <source>需要在系统设置的登录项中允许</source>
         <translation>Allow it under Login Items in System Settings</translation>
+    </message>
+    <message>
+        <source>包含所有网络时不可用</source>
+        <translation>Not with all networks included</translation>
     </message>
     <message>
         <source>端口应在 {low}–{high} 之间</source>

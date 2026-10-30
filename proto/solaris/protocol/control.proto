@@ -119,11 +119,23 @@ message GetInfoResponse {
 
 message ClaimRequest {}
 
+// mihomo's TUN stacks (docs/architecture.md §3.4). gVisor and mixed need a core built with
+// with_gvisor; the macOS extension replaces system and mixed with gVisor while its tunnel
+// includes all networks (D19).
+enum TunStack {
+  TUN_STACK_UNSPECIFIED = 0; // the profile's own tun.stack
+  TUN_STACK_SYSTEM = 1;
+  TUN_STACK_MIPS = 2;
+  TUN_STACK_GVISOR = 3;
+  TUN_STACK_MIXED = 4;
+}
+
 message RunOptions {
   bool tun_enabled = 1;
   bool system_proxy_enabled = 2;
   uint32 mixed_port = 3;
   bool allow_lan = 4;
+  TunStack tun_stack = 5;
 }
 
 // Validate, Start and Reload take the configuration from one of two sources: a

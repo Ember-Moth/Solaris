@@ -10,13 +10,14 @@ import subprocess
 import sys
 import threading
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 from solaris import __version__
 from solaris.host import extension
-from solaris.host.base import HostError, HostInfo, HostStatus, TunnelConfig
+from solaris.host.base import HostError, HostInfo, HostStatus, RunOptions, TunnelConfig
 from solaris.host.extension import (
     MacExtensionHost,
     ManagerError,
@@ -51,6 +52,7 @@ class FakeManager:
         self.threads: set[threading.Thread] = set()
         self.failures: dict[str, ManagerError] = {}  # by call, raised once
         self.answer_ids = True  # False sends the answer's own id, as for id 0
+        self.include_all_networks: list[bool] = []  # what configure and start were given
 
     def _record(self, name: str) -> None:
         self.calls.append(name)
@@ -61,11 +63,13 @@ class FakeManager:
     def activate(self, timeout: float) -> None:
         self._record("activate")
 
-    def configure(self) -> None:
+    def configure(self, include_all_networks: bool) -> None:
         self._record("configure")
+        self.include_all_networks.append(include_all_networks)
 
-    def start(self, timeout: float) -> None:
+    def start(self, timeout: float, include_all_networks: bool) -> None:
         self._record("start")
+        self.include_all_networks.append(include_all_networks)
         self.tunnel = extension.TUNNEL_CONNECTED
 
     def stop(self, timeout: float) -> None:
@@ -157,14 +161,15 @@ def test_start_activates_connects_and_sends_the_config() -> None:
 
     manager = FakeManager(answer)
     host = MacExtensionHost(manager)
-    config = TunnelConfig("proxies: []\n", ("mode: rule\n",))
+    config = TunnelConfig("proxies: []\n", ("mode: rule\n",), RunOptions(tun_stack="gvisor"))
+    all_networks = replace(config, options=RunOptions(include_all_networks=True))
 
     async def scenario() -> tuple[HostStatus, HostInfo]:
         assert await host.start(config) is None
         status = await host.get_status()
         info = await host.get_info()
         await host.stop()
-        await host.start(config)
+        await host.start(all_networks)
         return status, info
 
     status, info = asyncio.run(scenario())
@@ -179,6 +184,9 @@ def test_start_activates_connects_and_sends_the_config() -> None:
     ]
     start = manager.requests[0].start
     assert (start.config_yaml, list(start.overrides)) == ("proxies: []\n", ["mode: rule\n"])
+    assert start.options.tun_stack == pb.TUN_STACK_GVISOR
+    # The VPN configuration carries the setting; the extension tells the core (D19).
+    assert manager.include_all_networks == [False, True]
     assert [request.id for request in manager.requests] == [1, 2, 3, 4]
     assert threading.main_thread() not in manager.threads
 
@@ -327,6 +335,7 @@ FAKE_MANAGER_C = r"""
 static int outstanding;
 static SolarisManagerResult next_result;
 static double last_timeout;
+static int last_include_all_networks = -1;
 
 static void *allocate(size_t size) {
   outstanding++;
@@ -347,16 +356,22 @@ static SolarisManagerResult finish(char **error) {
 void fake_fail_next(SolarisManagerResult result) { next_result = result; }
 int fake_outstanding(void) { return outstanding; }
 double fake_last_timeout(void) { return last_timeout; }
+int fake_last_include_all_networks(void) { return last_include_all_networks; }
 
 SolarisManagerResult solaris_manager_activate(double timeout_seconds, char **error) {
   last_timeout = timeout_seconds;
   return finish(error);
 }
 
-SolarisManagerResult solaris_manager_configure(char **error) { return finish(error); }
+SolarisManagerResult solaris_manager_configure(bool include_all_networks, char **error) {
+  last_include_all_networks = include_all_networks;
+  return finish(error);
+}
 
-SolarisManagerResult solaris_manager_start(double timeout_seconds, char **error) {
+SolarisManagerResult solaris_manager_start(double timeout_seconds, bool include_all_networks,
+                                           char **error) {
   last_timeout = timeout_seconds;
+  last_include_all_networks = include_all_networks;
   return finish(error);
 }
 
@@ -415,12 +430,16 @@ def test_manager_library_calls_and_releases_every_buffer(fake_library: Path) -> 
     assert fake.fake_last_timeout() == 2.5
     assert manager.send(b"", 1.0) == b""
     assert manager.status() == extension.TUNNEL_REASSERTING
-    manager.configure()
+    manager.configure(True)
+    assert fake.fake_last_include_all_networks() == 1
     manager.activate(60.0)
-    manager.start(30.0)
+    manager.start(30.0, False)
+    assert (fake.fake_last_timeout(), fake.fake_last_include_all_networks()) == (30.0, 0)
+    manager.start(30.0, True)
+    assert fake.fake_last_include_all_networks() == 1
     manager.stop(15.0)
     assert fake.fake_last_timeout() == 15.0
-    for call in (lambda: manager.send(b"x", 1.0), lambda: manager.start(1.0)):
+    for call in (lambda: manager.send(b"x", 1.0), lambda: manager.start(1.0, False)):
         fake.fake_fail_next(extension.NOT_CONNECTED)
         with pytest.raises(ManagerError) as raised:
             call()

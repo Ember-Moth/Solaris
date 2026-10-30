@@ -16,6 +16,7 @@
 #ifndef SOLARIS_MANAGER_H
 #define SOLARIS_MANAGER_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -57,13 +58,16 @@ enum {
 SolarisManagerResult solaris_manager_activate(double timeout_seconds, char **error);
 
 // Creates or repairs the app's VPN configuration (NETunnelProviderManager) and enables it. The
-// first save asks the user to allow adding a VPN configuration.
-SolarisManagerResult solaris_manager_configure(char **error);
+// first save asks the user to allow adding a VPN configuration. include_all_networks sets the
+// configuration's includeAllNetworks, and excludeLocalNetworks with it (D19); a connected tunnel
+// keeps the value it connected with until it connects again.
+SolarisManagerResult solaris_manager_configure(bool include_all_networks, char **error);
 
-// Starts the tunnel, configuring first when needed, and waits until it is connected. The engine's
-// configuration does not travel here: once connected, the host sends Start with
-// solaris_manager_send (docs/roadmap.md D7).
-SolarisManagerResult solaris_manager_start(double timeout_seconds, char **error);
+// Starts the tunnel, configuring first as solaris_manager_configure does, and waits until it is
+// connected. The engine's configuration does not travel here: once connected, the host sends
+// Start with solaris_manager_send (docs/roadmap.md D7).
+SolarisManagerResult solaris_manager_start(double timeout_seconds, bool include_all_networks,
+                                           char **error);
 
 // Stops the tunnel and waits until it is down. OK when it is not running.
 SolarisManagerResult solaris_manager_stop(double timeout_seconds, char **error);

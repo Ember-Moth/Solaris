@@ -10,9 +10,10 @@ from pytestqt.qtbot import QtBot
 
 from solaris.app import MAIN_QML, switch_language
 from solaris.i18n import Translations
+from solaris.viewmodels import settings as settings_view_model
 from solaris.viewmodels.composition import ViewModels
 from tests.support.appearance import SystemColorScheme
-from tests.support.window import Loaded, texts
+from tests.support.window import Loaded, find, texts
 
 TRAY_QML = MAIN_QML.parent / "components" / "TrayIcon.qml"
 
@@ -211,6 +212,28 @@ def test_settings_page_loads_without_qml_warnings(
     shown = texts(loaded.window.contentItem())
     assert set(labels) <= shown
     assert "mihomo v1.19.33" in shown
+    assert loaded.warnings == []
+
+
+@pytest.fixture
+def all_networks(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> bool:
+    """Whether the platform has "include all networks" (D19), as indirect parametrization
+    says; request it before ``loaded``, which reads it as the page loads."""
+    monkeypatch.setattr(settings_view_model, "INCLUDE_ALL_NETWORKS", request.param)
+    return request.param
+
+
+@pytest.mark.parametrize("all_networks", [True, False], indirect=True)
+def test_settings_page_offers_the_tun_stack(
+    qtbot: QtBot, all_networks: bool, loaded: Loaded
+) -> None:
+    """The stack on every platform; "include all networks" only where macOS has it."""
+    loaded.view_models.shell.setPage("settings")
+    content = loaded.window.contentItem()
+    qtbot.waitUntil(lambda: find(content, lambda i: i.property("text") == "TUN 协议栈") is not None)
+    assert find(content, lambda i: i.property("text") == "跟随配置") is not None
+    row = find(content, lambda i: i.property("text") == "包含所有网络")
+    assert (row is not None) == all_networks
     assert loaded.warnings == []
 
 

@@ -91,12 +91,22 @@ def _enum_name(enum: type, prefix: str, value: int) -> str:
     return enum.Name(value).removeprefix(prefix).lower()
 
 
+TUN_STACKS = {
+    "": pb.TUN_STACK_UNSPECIFIED,
+    "system": pb.TUN_STACK_SYSTEM,
+    "mips": pb.TUN_STACK_MIPS,
+    "gvisor": pb.TUN_STACK_GVISOR,
+    "mixed": pb.TUN_STACK_MIXED,
+}
+
+
 def _options(options: RunOptions) -> pb.RunOptions:
     return pb.RunOptions(
         tun_enabled=options.tun_enabled,
         system_proxy_enabled=options.system_proxy_enabled,
         mixed_port=options.mixed_port,
         allow_lan=options.allow_lan,
+        tun_stack=TUN_STACKS[options.tun_stack],
     )
 
 

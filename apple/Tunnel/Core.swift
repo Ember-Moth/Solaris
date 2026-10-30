@@ -19,13 +19,16 @@ enum Core {
 
   /// Opens the engine in fd mode on the utun descriptor, after copying the GEO data in
   /// `resources` into `home` where it is missing. Go runs mihomo on duplicates of the
-  /// descriptor and never closes the descriptor itself.
-  static func attach(_ fileDescriptor: Int32, home: URL, resources: URL) throws {
+  /// descriptor and never closes the descriptor itself. `includeAllNetworks` is the tunnel's
+  /// setting, which rules out the system and mixed stacks.
+  static func attach(
+    _ fileDescriptor: Int32, home: URL, resources: URL, includeAllNetworks: Bool
+  ) throws {
     let failure = home.path.withCString { home in
       resources.path.withCString { resources in
         solaris_attach_tun(
           fileDescriptor, UnsafeMutablePointer(mutating: home),
-          UnsafeMutablePointer(mutating: resources))
+          UnsafeMutablePointer(mutating: resources), includeAllNetworks)
       }
     }
     if let failure {

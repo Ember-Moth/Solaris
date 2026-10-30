@@ -32,6 +32,7 @@ from solaris.host.base import (
     EXPORT_GENERATED,
     EXPORT_SHARE,
     LOG_LEVELS,
+    TUN_STACKS,
     ComposedGroup,
     Composition,
     CompositionReport,
@@ -965,6 +966,8 @@ class SimulatedHost:
         self._health_check_s = health_check_s
         self._development = development
         self.busy_ports: set[int] = set()  # mixed ports that another program listens on
+        # Whether the core was built with with_gvisor, which the gvisor and mixed stacks need.
+        self.gvisor = True
         # Whether the core has GEO data to list; without it the installer's list stands in.
         self.has_geodata = True
         self._running = True
@@ -1375,7 +1378,16 @@ class SimulatedHost:
             )
         if self._development and config.options.tun_enabled:
             raise HostError("unsupported_method", "this host never creates a TUN")
+        stack = config.options.tun_stack
+        if stack and stack not in TUN_STACKS:
+            raise HostError("invalid_request", "unknown TUN stack")
+        if config.options.tun_enabled and stack in ("gvisor", "mixed") and not self.gvisor:
+            message = f"tun.stack {stack} needs a build with the with_gvisor tag"
+            raise HostError("invalid_config", message)
         self.effective = check_config(config)
+        if stack:
+            tun = self.effective.get("tun")
+            self.effective["tun"] = {**(tun if isinstance(tun, dict) else {}), "stack": stack}
         report = compose(config.composition)[1] if config.composition is not None else None
         if config.options.mixed_port in self.busy_ports:
             address = f"127.0.0.1:{config.options.mixed_port}"

@@ -44,6 +44,9 @@ func TestFDTUN(t *testing.T) {
 	}
 	for _, stack := range stacks {
 		t.Run(stack, func(t *testing.T) { fdTUN(t, stack, target, outbound) })
+		if breaksAllNetworks(stack) {
+			t.Run(stack+" including all networks", func(t *testing.T) { fdTUNAllNetworks(t, stack, target, outbound) })
+		}
 	}
 }
 
@@ -137,6 +140,34 @@ tun: {stack: %s, dns-hijack: [%s]}
 		t.Fatal(err)
 	}
 	requireTUNDescriptors(t, 1)
+}
+
+// fdTUNAllNetworks runs a stack that NetworkExtension breaks once the tunnel includes all
+// networks (D19): the engine runs the default fd stack in its place, and traffic still flows.
+func fdTUNAllNetworks(t *testing.T, stack, target, outbound string) {
+	address, err := url.Parse(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	host := hostTUNDevice(t, address.Hostname())
+	engine, err := New(Options{HomeDir: testHome, Tun: TunFD, TunFD: host, IncludeAllNetworks: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer engine.Close()
+	profile := Profile{Config: []byte(fmt.Sprintf(`mode: rule
+interface-name: %s
+proxies: []
+rules: ['MATCH,DIRECT']
+dns: {nameserver: ['udp://127.0.0.1:1'], enhanced-mode: redir-host}
+`, outbound)), Options: RunOptions{Stack: stack}}
+	if _, err := engine.Start(profile); err != nil {
+		t.Fatalf("Start in fd mode: %v", err)
+	}
+	if got := strings.ToLower(listener.LastTunConf.Stack.String()); got != defaultFDStack() {
+		t.Fatalf("mihomo runs the %s stack, want %s", got, defaultFDStack())
+	}
+	throughTUN(t, engine, target)
 }
 
 // hostTUNDevice does what the extension and NetworkExtension do: a TUN with FDNetwork's
