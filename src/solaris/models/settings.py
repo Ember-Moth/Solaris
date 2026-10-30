@@ -25,6 +25,8 @@ from solaris.models.profiles import ProfileError
 LANGUAGES = ("system", "zh", "en")
 APPEARANCES = ("system", "light", "dark")
 CLOSE_ACTIONS = ("tray", "quit")  # what closing the main window does; the tunnel stays up
+# How often the UI looks for a new release (docs/release.md §2): every day, 3 days or week.
+UPDATE_CHECK_HOURS = (24, 72, 168)
 DEFAULT_MIXED_PORT = 7890
 MIN_MIXED_PORT = 1024
 MAX_MIXED_PORT = 65535
@@ -52,6 +54,9 @@ class Settings:
     # A port free here may be taken elsewhere; LAN access exposes it to this network.
     mixed_port: int = _setting(DEFAULT_MIXED_PORT, LOCAL)
     allow_lan: bool = _setting(False, LOCAL)
+    # Look for a new release at startup and then every so many hours.
+    update_check: bool = _setting(True, SYNCED)
+    update_check_hours: int = _setting(UPDATE_CHECK_HOURS[0], SYNCED)
 
     def run_options(self) -> RunOptions:
         return RunOptions(
@@ -110,6 +115,8 @@ def _accepts(name: str, value: object, default: object) -> bool:
         return value in _CHOICES[name]
     if name == "mixed_port":
         return valid_port(value)
+    if name == "update_check_hours":
+        return type(value) is int and value in UPDATE_CHECK_HOURS
     return type(value) is type(default)
 
 

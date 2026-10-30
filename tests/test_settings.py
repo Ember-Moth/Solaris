@@ -41,6 +41,8 @@ def test_every_setting_has_a_scope() -> None:
         "system_proxy": LOCAL,
         "mixed_port": LOCAL,
         "allow_lan": LOCAL,
+        "update_check": SYNCED,
+        "update_check_hours": SYNCED,
     }
 
 
@@ -87,6 +89,8 @@ def test_update_writes_and_notifies(tmp_path: Path, database: Database) -> None:
         {"mixed_port": 80},
         {"mixed_port": 70000},
         {"mixed_port": True},
+        {"update_check_hours": 12},
+        {"update_check_hours": True},
         {"allow_lan": "yes"},
     ],
 )
