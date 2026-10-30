@@ -45,8 +45,30 @@ targets:
         # Imports SolarisManager.h so that each export is checked against its declaration.
         SWIFT_INCLUDE_PATHS: $(SRCROOT)/Manager
         SKIP_INSTALL: YES
+  # dev.tschen.solaris.tunnel.systemextension: the packet tunnel provider with the Go dispatcher.
+  SolarisTunnel:
+    type: system-extension
+    platform: macOS
+    sources:
+      - path: Tunnel
+    dependencies:
+      # Built from src/core/apple by scripts/build_apple.py.
+      - framework: ../build/apple/SolarisCore.xcframework
+        embed: false
+      - sdk: NetworkExtension.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.tschen.solaris.tunnel
+        # A system extension's bundle is named after its identifier.
+        PRODUCT_NAME: dev.tschen.solaris.tunnel
+        PRODUCT_MODULE_NAME: SolarisTunnel
+        INFOPLIST_FILE: Tunnel/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Tunnel/SolarisTunnel.entitlements
+        PROVISIONING_PROFILE_SPECIFIER: Solaris Tunnel Developer ID
+        SKIP_INSTALL: YES
 schemes:
   Solaris:
     build:
       targets:
         SolarisManager: all
+        SolarisTunnel: all
