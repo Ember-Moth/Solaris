@@ -4,3 +4,4 @@ singleton Status 1.0 Status.qml
 singleton Fonts 1.0 Fonts.qml
 singleton Motion 1.0 Motion.qml
 singleton Focus 1.0 Focus.qml
+singleton TitleBand 1.0 TitleBand.qml

@@ -1,4 +1,5 @@
-"""Desktop ViewModel: the tray icon, what closing the window does, and requests to show it.
+"""Desktop ViewModel: the tray icon, the window's title bar, what closing the window does, and
+requests to show it.
 
 Closing the window or quitting the UI never touches the tunnel; the service or the system
 extension keeps it running (docs/architecture.md §1, docs/ui.md §8).
@@ -12,8 +13,10 @@ from PySide6.QtCore import Property, QObject, Qt, QTimer, QUrl, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
+from solaris.desktop.titlebar import titlebar_style
 from solaris.desktop.tray import taskbar_is_light, tray_icon
 from solaris.models.settings import Settings, SettingsStore
+from solaris.viewmodels.titlebar import TitleBar
 
 QML_IMPORT_NAME = "Solaris"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -53,6 +56,7 @@ class DesktopViewModel(QObject):
         self._start_hidden = start_hidden and tray_available
         self._mac = platform == "darwin"
         self._windows = platform == "win32"
+        self.title_bar = TitleBar(titlebar_style(platform), self)
         self._light_taskbar = taskbar_is_light()
         self._timer = QTimer(self)
         self._timer.setInterval(TASKBAR_POLL_MS)
@@ -113,6 +117,10 @@ class DesktopViewModel(QObject):
             self.trayIconChanged.emit()
 
     # -- window ------------------------------------------------------------------------------
+    @Property(TitleBar, constant=True)
+    def titleBar(self) -> TitleBar:
+        return self.title_bar
+
     @Property(bool, notify=closeActionChanged)
     def hideOnClose(self) -> bool:
         """Closing the window leaves the UI in the tray; without a tray it quits the UI."""

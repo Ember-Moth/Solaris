@@ -252,6 +252,25 @@
     </message>
 </context>
 <context>
+    <name>CaptionButtons</name>
+    <message>
+        <source>最小化</source>
+        <translation>Minimize</translation>
+    </message>
+    <message>
+        <source>还原</source>
+        <translation>Restore</translation>
+    </message>
+    <message>
+        <source>最大化</source>
+        <translation>Maximize</translation>
+    </message>
+    <message>
+        <source>关闭</source>
+        <translation>Close</translation>
+    </message>
+</context>
+<context>
     <name>ConfirmDialog</name>
     <message>
         <source>取消</source>

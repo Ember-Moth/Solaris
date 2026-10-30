@@ -107,7 +107,7 @@ ScrollView {
 
         PageHeader {
             Layout.fillWidth: true
-            Layout.topMargin: Theme.pageTop
+            Layout.topMargin: Theme.titlebarPageTop
             Layout.leftMargin: Theme.pageX
             Layout.rightMargin: Theme.pageX
             title: qsTr("订阅")

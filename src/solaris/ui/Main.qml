@@ -39,6 +39,10 @@ ApplicationWindow {
     minimumHeight: Theme.windowMinHeight
     visible: !desktopViewModel.startHidden
     title: Qt.application.name
+    // No system title bar: the sidebar and the pages run up to the top edge, under the title
+    // band (DESIGN.md "顶部区域"), which keeps clear of the traffic lights itself.
+    flags: desktopViewModel.titleBar.windowFlags
+    topPadding: 0
     color: Theme.background
     font.family: Fonts.resolve(Theme.type.bodyMd.fontFamily)
     font.pixelSize: Theme.type.bodyMd.fontSize
@@ -71,6 +75,20 @@ ApplicationWindow {
         target: Theme
         property: "appearance"
         value: window.appearance
+    }
+
+    Binding {
+        target: TitleBand
+        property: "titleBar"
+        value: window.desktopViewModel.titleBar
+    }
+
+    Component.onCompleted: {
+        desktopViewModel.titleBar.attach(window)
+        // Qt keeps the frame a window with a title bar would have, so the window grew by the
+        // title bar it does not show; the design's size is the whole window.
+        width = Theme.windowDefaultWidth
+        height = Theme.windowDefaultHeight
     }
 
     // Closing the window never stops the tunnel: it either stays in the tray or the UI quits.
@@ -157,5 +175,13 @@ ApplicationWindow {
                 backup: window.backupViewModel
             }
         }
+    }
+
+    // Last, so that they are above the pages and Tab reaches them after the page.
+    CaptionButtons {
+        anchors.top: parent.top
+        anchors.right: parent.right
+        visible: TitleBand.windows
+        titleBar: window.desktopViewModel.titleBar
     }
 }

@@ -5,7 +5,7 @@
 # qmllint 6.12 does not read the `singleton` lines of the qmldir beside a file when it lints
 # that file, so every singleton is reported as undeclared; a directory holding only that
 # qmldir line and a `pragma Singleton` QtObject reproduces it. components/qmldir declares all
-# six, and the running app loads them as singletons.
+# seven, and the running app loads them as singletons.
 [[exemption]]
 file = "components/Theme.qml"
 category = "import"
@@ -40,4 +40,10 @@ reason = "qmllint ignores the singleton lines of the file's own qmldir"
 file = "components/Focus.qml"
 category = "import"
 message = "Type Focus not declared as singleton in qmldir"
+reason = "qmllint ignores the singleton lines of the file's own qmldir"
+
+[[exemption]]
+file = "components/TitleBand.qml"
+category = "import"
+message = "Type TitleBand not declared as singleton in qmldir"
 reason = "qmllint ignores the singleton lines of the file's own qmldir"
