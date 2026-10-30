@@ -25,7 +25,7 @@ Item {
     readonly property real chainWidth: flexWidth * 1.4 / 5
     // The search and the network filter share the header row while it has room for them
     // beside the title and status; otherwise they get a row of their own under it.
-    readonly property bool filtersInHeader: header.width >= filters.implicitWidth + closeAllButton.implicitWidth + 280
+    readonly property bool filtersInHeader: header.rowWidth >= filters.implicitWidth + closeAllButton.implicitWidth + 280
 
     // Whether a rectangle in the table's content coordinates shows in its viewport. Qt's
     // software scene graph draws a Shape that lies wholly outside its clip anyway, so the
@@ -52,7 +52,7 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.topMargin: Theme.pageTop
+        anchors.topMargin: Theme.titlebarPageTop
         anchors.leftMargin: Theme.pageX
         anchors.rightMargin: Theme.pageX
         anchors.bottomMargin: Theme.pageBottom

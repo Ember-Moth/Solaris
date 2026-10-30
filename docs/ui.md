@@ -373,6 +373,32 @@ TUN 与系统代理开关、托盘和关闭窗口的行为都只依赖这个接�
   - 图标在 `ui/tray/`，是侧栏标记的线条图形，未连接时调成 45% 不透明度。macOS 用模板图（只看 alpha，由菜单栏
     着色）；Windows 按任务栏主题（注册表 `SystemUsesLightTheme`，Qt 报告的是应用主题，不是任务栏的）选深色或
     白色图形，每 10 秒和系统配色变化时重读。
+- **标题带**（DESIGN.md「顶部区域」）：`viewmodels/titlebar.py` 的 `TitleBar` 给 Main.qml 窗口标志和平台样式，
+  平台调用在 `desktop/titlebar.py`，Main.qml 创建完成后调用 `attach`。
+  - 窗口用 Qt 的 `ExpandedClientAreaHint` 和 `NoTitleBarBackgroundHint` 去掉系统标题栏，内容铺到上沿；
+    `ApplicationWindow` 的 `topPadding` 设为 0，不按安全边距下移。Qt 按有标题栏时的外框创建窗口，窗口会高出
+    标题栏的高度，所以 Main.qml 随后把大小设回 1280 × 800。
+  - 拖动和双击：侧栏顶部和页面标题栏（`PageHeader`，向上、向两侧盖住页边距）下面各垫一层 `TitleBandArea`。
+    拖过阈值后调用 `startSystemMove()`，由系统移动窗口，贴靠照常；双击按 `TitleBar.doubleClickAction()`
+    缩放或最小化。控件在它上面，点击归控件。页面滚动后，滚进标题带的内容不能拖动窗口，侧栏顶部始终可以。
+  - macOS：红绿灯由系统绘制和定位。侧栏上内边距取 `sidebar-top-macos` 与"安全边距上沿 + 24"中较大的一个，
+    系统标题栏更高时标记跟着下移。Qt 不隐藏窗口标题，`attach` 经 Objective-C 运行时把 `titleVisibility`
+    设为隐藏，读屏和「窗口」菜单仍有标题。双击读系统设置 `AppleActionOnDoubleClick`：`Minimize` 最小化，
+    `None` 不动，其余缩放。
+  - Windows：窗口标志再加 `CustomizeWindowHint` 和 `WindowSystemMenuHint`，不带按钮提示，Qt 就不画自己的
+    标题栏，边框、阴影、圆角和边缘缩放仍由系统提供。三个按钮由 `CaptionButtons.qml` 绘制。`attach` 装上
+    原生事件过滤器 `WindowsFrame`：
+    - 给窗口样式补上 Qt 在没有按钮提示时去掉的 `WS_MINIMIZEBOX`、`WS_MAXIMIZEBOX`，任务栏点击最小化、
+      Win+↑↓、贴靠和系统菜单里的这两项才可用；
+    - 自己回答 `WM_NCHITTEST`：两侧和下边框交给 `DefWindowProc`；未最大化时上边缘的缩放区返回 `HTTOP`；
+      最大化按钮的矩形（QML 写进 `TitleBar.maximizeArea`）返回 `HTMAXBUTTON`，悬停时系统弹出贴靠布局；
+      其余是客户区，由 QML 处理；
+    - 最大化按钮因此收到非客户区消息：悬停和按下转成 `maximizeHovered`、`maximizePressed` 供按钮显示，
+      按下和松开不交给系统（否则系统会画出旧式按钮），松开时发出 `maximizeClicked`；
+    - Alt+空格：Qt 自己弹出的系统菜单按窗口标志把最小化、最大化置灰，所以截下这个按键，改发
+      `WM_SYSCOMMAND`（`SC_KEYMENU`），由系统弹出原生菜单。
+  - 其他平台（如测试用的 offscreen）只有布局，不做平台调用。`tests/test_titlebar.py` 在两种样式下检查布局、
+    读屏名称、Tab 顺序和双击，并用替身检查 Windows 的命中测试和消息处理；系统实际怎么响应只能在 Windows 上看。
 - **关闭窗口**：`tray`（默认）时隐藏窗口，界面留在托盘；Windows 上点托盘图标、macOS 上点 Dock 图标（Qt 把每次
   点击报告为应用激活）恢复窗口。`quit` 时退出界面进程。两种情况下隧道都继续运行（architecture.md §1）。
 - **退出界面**：托盘菜单的「退出界面」、`--quit`、macOS 的 ⌘Q 和注销时系统的请求都直接离开事件循环

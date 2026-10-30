@@ -11,7 +11,7 @@ Item {
         anchors.fill: parent
         anchors.leftMargin: Theme.pageX
         anchors.rightMargin: Theme.pageX
-        anchors.topMargin: Theme.pageTop
+        anchors.topMargin: Theme.titlebarPageTop
         spacing: Theme.space5
 
         PageHeader {

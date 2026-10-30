@@ -14,7 +14,7 @@ Item {
 
     // The search and the level filter share the header row while it has room for them
     // beside the title and status; otherwise they get a row of their own under it.
-    readonly property bool filtersInHeader: header.width >= filters.implicitWidth + actions.implicitWidth + 280
+    readonly property bool filtersInHeader: header.rowWidth >= filters.implicitWidth + actions.implicitWidth + 280
     readonly property var levelColors: ({
             "debug": Theme.textMuted,
             "info": Theme.info,
@@ -30,7 +30,7 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.topMargin: Theme.pageTop
+        anchors.topMargin: Theme.titlebarPageTop
         anchors.leftMargin: Theme.pageX
         anchors.rightMargin: Theme.pageX
         anchors.bottomMargin: Theme.pageBottom

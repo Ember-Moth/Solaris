@@ -139,7 +139,6 @@ QtObject {
     readonly property int space8: 32  // spacing.8
     readonly property int space10: 40  // spacing.10
     readonly property int pageX: 32  // spacing.page-x
-    readonly property int pageTop: 20  // spacing.page-top
     readonly property int pageBottom: 40  // spacing.page-bottom
     readonly property int sidebarWidth: 216  // spacing.sidebar-width
     readonly property int groupColumnMin: 400  // spacing.group-column-min

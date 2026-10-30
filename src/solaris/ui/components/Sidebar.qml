@@ -12,6 +12,14 @@ Rectangle {
     implicitWidth: Theme.sidebarWidth
     color: Theme.sidebar
 
+    // The top of the sidebar is part of the title band.
+    TitleBandArea {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        height: Theme.titlebarHeight
+    }
+
     Rectangle {
         anchors.right: parent.right
         anchors.top: parent.top
@@ -22,7 +30,11 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.topMargin: Theme.space5
+        // macOS: the mark goes below the traffic lights, which the system places in the title
+        // bar the safe area covers. Windows: it is centred in the title band.
+        anchors.topMargin: TitleBand.mac
+            ? Math.max(Theme.sidebarTopMacos, root.SafeArea.margins.top + Theme.space6)
+            : Theme.sidebarTopWindows
         anchors.bottomMargin: Theme.space5
         anchors.leftMargin: 14
         anchors.rightMargin: 15
