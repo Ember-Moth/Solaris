@@ -9,7 +9,7 @@
 
 | 部分 | 状态 | 说明 |
 | --- | --- | --- |
-| 架构与视觉规范 | 完成 | architecture.md、ui.md、DESIGN.md；原型在 Claude Design 画布上（第 19 版，含深色画板与分流 v2） |
+| 架构与视觉规范 | 完成 | architecture.md、ui.md、DESIGN.md；原型在 Claude Design 画布上（第 21 版，含深色画板、分流 v2 与隐私出口） |
 | 控制协议 | v1 | 消息、方法表、帧编解码已定；Go 与 Python 共用样本测试；配置来源可以是订阅原文或拼装（`Composition`）；`InspectSource`、`ListGeoCategories` |
 | engine（内嵌 mihomo） | 完成（M1、M5） | mihomo v1.19.33；无 TUN、自管 TUN 和 fd 三种模式，覆写、§3.3 安全项、开发模式护栏 |
 | Go 分发器与服务入口 | 部分 | 全部内核方法、Start / Stop / Reload / Validate、`PollEvents`；`Claim`、系统代理、Authenticode 校验留到 M4 |
