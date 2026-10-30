@@ -3,7 +3,7 @@
 本文规划从现在到首个可发布版本的工作：现在做到了哪里、接下来按什么顺序做、每个里程碑怎样算完成、哪些决定要在
 什么时候做出。各部分的设计见 [文档一览](#8-文档一览)。每完成一个阶段更新本文。
 
-最近一次整理：2026-10-30，C1 合并后。
+最近一次整理：2026-10-30，M5 第一步（Xcode 工程）合并后。
 
 ## 1. 当前进度
 
@@ -18,7 +18,7 @@
 | 端到端联调 | 完成（A2） | 界面连真实开发服务跑通 M1、M2 的验收步骤；`tests/e2e` 自动化，CI 的 `e2e` job 在 macOS 上运行 |
 | 数据存储与云备份 | 存储层完成（B1） | 界面数据在 SQLite；云备份未做 |
 | 自定义分流 | M8a 完成（B2、C1） | 分流方式、节点池、地区组、默认模板、41 个服务、规则编辑与撤销、立即生效；M8b（策略组编辑器、规则测试、导入导出）未做 |
-| macOS 原生部分 | 未开始 | 只有 Go 侧的 C archive 导出 |
+| macOS 原生部分 | 部分（M5） | Xcode 工程、管理库 C 接口、系统扩展骨架；Developer ID 签名与校验通过；fd 模式、组装 .app、公证未做 |
 | 打包与安装 | 未开始 | 只有 Nuitka 入口文件和资源复制规则 |
 | CI | 全绿 | Python（macOS、Windows）、Go（macOS、Windows、Linux）、网络命名空间 TUN 测试（四种栈）、macOS 上的 e2e |
 
@@ -195,9 +195,14 @@ B1、B2 的结果与遗留：
 
 目标：发布形态的 .app 在全新的 Mac 上通过系统扩展提供隧道。
 
+**状态**：第一步已完成（2026-10-30）。XcodeGen 工程（`apple/project.yml`）、`SolarisManager.dylib` 的 C 接口、
+PacketTunnel 系统扩展骨架、`scripts/build_apple.py`（签名与不签名两种模式）、CI 的不签名构建；签名材料齐全，
+本机签名校验通过。剩下：engine 的 fd 模式、`MacExtensionHost`、组装 .app、公证与发布工作流、测试 Mac 实测。
+部署目标暂定 macOS 15.0。
+
 范围：
 
-- **前置条件**：Team ID 和标识已就绪（apple/README.md）；还差 Developer ID 证书、描述文件、公证 API Key，以及一台单独的测试 Mac 或 macOS 虚拟机。系统扩展会创建 utun，不在开发机上运行。
+- **前置条件**：签名材料已齐（apple/README.md）；还差一台单独的测试 Mac 或 macOS 虚拟机。系统扩展会创建 utun，不在开发机上运行。
 - **Xcode 工程**：管理库（C ABI）和 PacketTunnel 系统扩展；xcframework 由 `src/core/apple` 编出，包含 engine 的 fd 模式和控制分发器。
 - **架构**：先只做 arm64（D2）。
 - **扩展内部**：获取 utun fd，设置隧道网络和 DNS，建立 provider message 通道。配置和 Windows 一样经 `Start` /
