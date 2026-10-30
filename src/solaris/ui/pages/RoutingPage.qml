@@ -90,6 +90,14 @@ ScrollView {
     }
 
     Connections {
+        target: page.routing.vpngate
+
+        function onOpened() {
+            vpngateDialog.showFor(page.dialogTrigger, page.dialogFocusReason)
+        }
+    }
+
+    Connections {
         target: page.routing.transfer
 
         function onConversionReady() {
@@ -1036,7 +1044,7 @@ ScrollView {
                 }
             }
 
-            // Chained exits: for now WARP (docs/exits.md §6).
+            // Chained exits: WARP and VPN Gate (docs/exits.md §6).
             ColumnLayout {
                 Layout.fillWidth: true
                 visible: page.tab === "groups"
@@ -1113,6 +1121,70 @@ ScrollView {
                             iconName: "more"
                             accessibleName: qsTr("%1 的更多操作").arg(page.routing.warp.name)
                             onClicked: exitMenu.openBelow(warpMore)
+                        }
+                    }
+
+                    GroupRow {
+                        AbstractButton {
+                            id: vpngateButton
+
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            padding: 0
+                            Accessible.role: Accessible.Button
+                            Accessible.name: qsTr("设置「%1」").arg(page.routing.vpngate.name)
+                            Accessible.description: qsTr("%1。%2").arg(page.routing.vpngate.caption).arg(page.routing.vpngate.status)
+                            onClicked: {
+                                page.dialogTrigger = vpngateButton
+                                page.dialogFocusReason = Focus.reasonAfter(vpngateButton)
+                                page.routing.vpngate.open()
+                            }
+
+                            contentItem: Item {
+                                ColumnLayout {
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 0
+
+                                    UiText {
+                                        Layout.fillWidth: true
+                                        text: page.routing.vpngate.name
+                                        role: Theme.type.labelMd
+                                        color: page.routing.vpngate.active ? Theme.text : Theme.textMuted
+                                        elide: Text.ElideRight
+                                    }
+
+                                    UiText {
+                                        Layout.fillWidth: true
+                                        text: page.routing.vpngate.caption
+                                        role: Theme.type.caption
+                                        color: Theme.textMuted
+                                        elide: Text.ElideRight
+                                    }
+                                }
+                            }
+
+                            background: Item {
+                                FocusRing {
+                                    targetRadius: 4
+                                    visible: vpngateButton.visualFocus
+                                }
+                            }
+                        }
+
+                        UiText {
+                            text: page.routing.vpngate.status
+                            role: Theme.type.bodySm
+                            color: page.routing.vpngate.statusTone === "warning" ? Theme.warning : page.routing.vpngate.statusTone === "muted" ? Theme.textMuted : Theme.text
+                        }
+
+                        IconButton {
+                            id: vpngateMore
+
+                            iconName: "more"
+                            accessibleName: qsTr("%1 的更多操作").arg(page.routing.vpngate.name)
+                            onClicked: vpngateMenu.openBelow(vpngateMore)
                         }
                     }
                 }
@@ -1583,6 +1655,25 @@ ScrollView {
         }
     }
 
+    AppMenu {
+        id: vpngateMenu
+
+        AppMenuItem {
+            text: qsTr("设置…")
+            onTriggered: {
+                page.dialogTrigger = vpngateMenu.trigger
+                page.dialogFocusReason = vpngateMenu.triggerFocusReason
+                page.routing.vpngate.open()
+            }
+        }
+
+        AppMenuItem {
+            text: qsTr("立即刷新")
+            enabled: page.routing.vpngate.canRefresh
+            onTriggered: page.routing.vpngate.refresh()
+        }
+    }
+
     RuleDialog {
         id: ruleDialog
 
@@ -1617,6 +1708,12 @@ ScrollView {
         id: warpDialog
 
         warp: page.routing.warp
+    }
+
+    VpnGateDialog {
+        id: vpngateDialog
+
+        vpngate: page.routing.vpngate
     }
 
     YamlDialog {

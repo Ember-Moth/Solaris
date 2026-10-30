@@ -118,10 +118,11 @@ def test_mesh_outbounds_stay_out_of_the_pool(
     assert "家里" not in auto["proxies"]
     # Rule targets of their own, after the groups and before the exits (docs/mesh.md §5).
     labels = [(o["label"], o["separator"]) for o in prop(routing, "targetOptions")]
-    assert labels[-5:] == [
+    assert labels[-6:] == [
         ("家里", True),
         ("公司", False),
         ("WARP 出口", True),
+        ("VPN Gate 出口", False),
         ("直连", True),
         ("拒绝", False),
     ]

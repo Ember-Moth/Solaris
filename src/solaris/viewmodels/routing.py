@@ -40,11 +40,12 @@ from solaris.models.routing import (
     PlanRule,
 )
 from solaris.models.settings import SettingsStore
+from solaris.models.vpngate import ServerList
 from solaris.viewmodels import routing_text as text
 from solaris.viewmodels.common.async_runner import AsyncRunner
 from solaris.viewmodels.common.keyed_list import KeyedListModel
 from solaris.viewmodels.feedback import failure_text
-from solaris.viewmodels.routing_exits import WarpExit
+from solaris.viewmodels.routing_exits import VpnGateExit, WarpExit
 from solaris.viewmodels.routing_groups import GroupEditor
 from solaris.viewmodels.routing_transfer import PlanTransfer
 from solaris.viewmodels.rule_editor import RuleEditor
@@ -195,6 +196,7 @@ class RoutingViewModel(QObject):
         self._group_editor = GroupEditor(self, runner, library, self)
         self._transfer = PlanTransfer(self, runner, library, self)
         self._warp = WarpExit(self, runner, library, settings, self)
+        self._vpngate = VpnGateExit(self, runner, library, self)
         self.changed.connect(self._sync_rows)
         self.testChanged.connect(self._sync_rows)
         self._sync_rows()
@@ -207,6 +209,7 @@ class RoutingViewModel(QObject):
         self._group_editor.retranslate()
         self._transfer.retranslate()
         self._warp.retranslate()
+        self._vpngate.retranslate()
 
     # -- loading -----------------------------------------------------------------------------
     @Slot()
@@ -501,12 +504,16 @@ class RoutingViewModel(QObject):
     def warp_account(self) -> WarpAccount | None:
         return self._routing.warp
 
+    def vpngate_list(self) -> ServerList:
+        return self._routing.vpngate
+
     def routes_with_plan(self) -> bool:
         return self._routing.mode == MODE_PLAN
 
     def tunnel_running(self, running: bool) -> None:
-        """The overview saw the tunnel start or stop; the WARP exit may have waited for it."""
+        """The overview saw the tunnel start or stop; the exits may have waited for it."""
         self._warp.set_running(running)
+        self._vpngate.set_running(running)
 
     def adopt(self, routing: Routing) -> None:
         """Take up what a library action outside the plan changed, such as the WARP account:
@@ -975,6 +982,10 @@ class RoutingViewModel(QObject):
     def warp(self) -> WarpExit:
         return self._warp
 
+    @Property(VpnGateExit, constant=True)
+    def vpngate(self) -> VpnGateExit:
+        return self._vpngate
+
     def put_plan(self, plan: Plan, done: Callable[[], None], failed: Callable[[str], None]) -> None:
         """For the exit dialog: a change of the plan's exits, shown at once; a refusal puts
         the stored plan back and goes to ``failed``."""
@@ -1091,6 +1102,7 @@ class RoutingViewModel(QObject):
         quoted = self.tr("「{name}」")
         parts = []
         via = plans.warp_exit(self._plan()).via == self._removing_group
+        vpngate_via = plans.vpngate_exit(self._plan()).via == self._removing_group
         if rules:
             names = "".join(quoted.format(name=n) for n in rules)
             parts.append(
@@ -1101,6 +1113,8 @@ class RoutingViewModel(QObject):
             parts.append(self.tr("策略组{names}里不再包含它。").format(names=names))
         if via:
             parts.append(self.tr("WARP 出口经由它，删除后改经「节点选择」。"))
+        if vpngate_via:
+            parts.append(self.tr("VPN Gate 出口经由它，删除后改经「节点选择」。"))
         return "".join(parts) or self.tr("没有规则或策略组引用它。")
 
     @Slot()
@@ -1130,6 +1144,9 @@ class RoutingViewModel(QObject):
         warp = plans.warp_exit(plan)
         if warp.via == group.id:
             removed = plans.with_warp_exit(removed, replace(warp, via=plans.PROXY))
+        vpngate = plans.vpngate_exit(plan)
+        if vpngate.via == group.id:
+            removed = plans.with_vpngate_exit(removed, replace(vpngate, via=plans.PROXY))
         status = self.tr("已删除「{name}」").format(name=group.name)
         action = self.tr("撤销删除「{name}」").format(name=group.name)
         self._commit(removed, undo=(status, action, plan))

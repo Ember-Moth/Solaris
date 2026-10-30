@@ -12,8 +12,9 @@ A domain is a suffix match as written, ``=`` makes it a full match and ``~`` a k
 category converted from a subscription's ``GEOIP`` rule without ``no-resolve`` keeps
 ``"no_resolve": false``; the ones the dialog adds never resolve names.
 
-Besides the plan's groups, a target may be DIRECT, REJECT, the WARP exit (``egress:warp``,
-docs/exits.md §7.1) or a mesh outbound (``mesh:<profile id>/<name>``, docs/mesh.md §3).
+Besides the plan's groups, a target may be DIRECT, REJECT, a chained exit (``egress:warp``,
+``egress:vpngate``; docs/exits.md §7.1) or a mesh outbound (``mesh:<profile id>/<name>``,
+docs/mesh.md §3).
 """
 
 from __future__ import annotations
@@ -42,6 +43,11 @@ GROUP_TYPES = ("select", "url-test", "fallback", "load-balance")
 FULL_PREFIX = "="
 KEYWORD_PREFIX = "~"
 WARP = "egress:warp"  # the WARP exit as a target
+VPNGATE = "egress:vpngate"  # the VPN Gate exit as a target
+# How the VPN Gate exit shares out the sites (docs/exits.md §5.3): each site hashed to one
+# server, or every site on the first server that works.
+VPNGATE_MODES = ("per-site", "single")
+VPNGATE_MAX_COUNT = 10  # servers at most, to spare the volunteers
 MESH_PREFIX = "mesh:"
 # What every tailnet uses (docs/mesh.md §5): its CGNAT and ULA ranges and MagicDNS's domain.
 TAILSCALE_RANGES = ("100.64.0.0/10", "fd7a:115c:a1e0::/48")
@@ -107,6 +113,57 @@ def warp_exit(plan: Plan | None) -> WarpExit:
 def with_warp_exit(plan: Plan, warp: WarpExit) -> Plan:
     egress = dict(plan.egress) if isinstance(plan.egress, dict) else {}
     egress["warp"] = {"enabled": warp.enabled, "via": warp.via}
+    return replace(plan, egress=egress)
+
+
+@dataclass(frozen=True)
+class VpnGateExit:
+    """The VPN Gate exit in a plan (docs/exits.md §5.2): whether its rules may use it, the
+    group its connections go out through, and which of the list's servers it takes: the
+    best ``count`` in ``countries``. The list itself belongs to the device."""
+
+    enabled: bool = False
+    via: str = PROXY
+    countries: tuple[str, ...] = ("JP",)
+    count: int = 5
+    mode: str = VPNGATE_MODES[0]
+
+
+def vpngate_exit(plan: Plan | None) -> VpnGateExit:
+    egress = plan.egress if plan is not None and isinstance(plan.egress, dict) else {}
+    stored = egress.get("vpngate")
+    return _vpngate_from(stored) if isinstance(stored, dict) else VpnGateExit()
+
+
+def _vpngate_from(stored: dict[str, Any], enabled: bool | None = None) -> VpnGateExit:
+    default = VpnGateExit()
+    countries = stored.get("countries")
+    if isinstance(countries, list):
+        codes = tuple(str(c).upper() for c in countries if isinstance(c, str) and len(c) == 2)
+    else:
+        codes = default.countries
+    count = stored.get("count")
+    if not isinstance(count, int) or isinstance(count, bool):
+        count = default.count
+    mode = stored.get("mode")
+    return VpnGateExit(
+        bool(stored.get("enabled")) if enabled is None else enabled,
+        str(stored.get("via") or PROXY),
+        codes,
+        min(max(count, 1), VPNGATE_MAX_COUNT),
+        mode if mode in VPNGATE_MODES else default.mode,
+    )
+
+
+def with_vpngate_exit(plan: Plan, vpngate: VpnGateExit) -> Plan:
+    egress = dict(plan.egress) if isinstance(plan.egress, dict) else {}
+    egress["vpngate"] = {
+        "enabled": vpngate.enabled,
+        "via": vpngate.via,
+        "countries": list(vpngate.countries),
+        "count": vpngate.count,
+        "mode": vpngate.mode,
+    }
     return replace(plan, egress=egress)
 
 
@@ -206,9 +263,20 @@ def plan_json(plan: Plan, locale: str) -> str:
         "rules": rules,
         "fallback": plan.fallback,
     }
+    egress: dict[str, Any] = {}
     warp = warp_exit(plan)
     if warp.enabled:
-        document["egress"] = {"warp": {"via": warp.via}}
+        egress["warp"] = {"via": warp.via}
+    vpngate = vpngate_exit(plan)
+    if vpngate.enabled:
+        egress["vpngate"] = {
+            "via": vpngate.via,
+            "countries": list(vpngate.countries),
+            "count": vpngate.count,
+            "mode": vpngate.mode,
+        }
+    if egress:
+        document["egress"] = egress
     return json.dumps(document, ensure_ascii=False, separators=(",", ":"))
 
 
@@ -267,6 +335,9 @@ def plan_from_json(text: str, plan_id: str, name: str) -> Plan:
     warp = (document.get("egress") or {}).get("warp")
     if isinstance(warp, dict):
         converted = with_warp_exit(converted, WarpExit(True, str(warp.get("via") or PROXY)))
+    vpngate = (document.get("egress") or {}).get("vpngate")
+    if isinstance(vpngate, dict):
+        converted = with_vpngate_exit(converted, _vpngate_from(vpngate, enabled=True))
     return converted
 
 

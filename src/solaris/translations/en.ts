@@ -2082,6 +2082,10 @@ prepend-rules:
         <translation>Settings…</translation>
     </message>
     <message>
+        <source>立即刷新</source>
+        <translation>Refresh now</translation>
+    </message>
+    <message>
         <source>导入方案</source>
         <translation>Import plan</translation>
     </message>
@@ -2350,6 +2354,10 @@ prepend-rules:
         <translation>The WARP exit goes out through it; it goes through “Proxy” afterwards. </translation>
     </message>
     <message>
+        <source>VPN Gate 出口经由它，删除后改经「节点选择」。</source>
+        <translation>The VPN Gate exit goes out through it; it goes through “Proxy” afterwards. </translation>
+    </message>
+    <message>
         <source>没有规则或策略组引用它。</source>
         <translation>No rule or group uses it.</translation>
     </message>
@@ -2440,6 +2448,10 @@ prepend-rules:
     <message>
         <source>WARP 出口</source>
         <translation>WARP exit</translation>
+    </message>
+    <message>
+        <source>VPN Gate 出口</source>
+        <translation>VPN Gate exit</translation>
     </message>
     <message>
         <source>不可用，已拒绝连接</source>
@@ -3040,6 +3052,154 @@ Protocol v{protocol}</translation>
     <message>
         <source>已用 %1%</source>
         <translation>%1% used</translation>
+    </message>
+</context>
+<context>
+    <name>VpnGateDialog</name>
+    <message>
+        <source>换一个 IP 访问网站，不保护隐私：服务器由志愿者提供，他们能看到你访问的网站，并保留两周日志。请勿用于大流量下载和视频。</source>
+        <translation>Gives sites a different IP address; it does not protect privacy. Volunteers run the servers: they can see the sites you visit and keep logs for two weeks. Please avoid large downloads and video.</translation>
+    </message>
+    <message>
+        <source>启用</source>
+        <translation>Enabled</translation>
+    </message>
+    <message>
+        <source>启用 VPN Gate 出口</source>
+        <translation>Enable the VPN Gate exit</translation>
+    </message>
+    <message>
+        <source>经由</source>
+        <translation>Via</translation>
+    </message>
+    <message>
+        <source>服务器数量</source>
+        <translation>Servers</translation>
+    </message>
+    <message>
+        <source>国家</source>
+        <translation>Countries</translation>
+    </message>
+    <message>
+        <source>一台服务器失效后，分到它的网站可能换到另一个国家的服务器上</source>
+        <translation>When a server fails, the sites it served may move to a server in another country</translation>
+    </message>
+    <message>
+        <source>分配方式</source>
+        <translation>Sharing</translation>
+    </message>
+    <message>
+        <source>服务器</source>
+        <translation>Servers</translation>
+    </message>
+    <message>
+        <source>立即刷新</source>
+        <translation>Refresh now</translation>
+    </message>
+    <message>
+        <source>在用的服务器</source>
+        <translation>Servers in use</translation>
+    </message>
+    <message>
+        <source>%1，%2，延迟 %3</source>
+        <translation>%1, %2, delay %3</translation>
+    </message>
+    <message>
+        <source>完成</source>
+        <translation>Done</translation>
+    </message>
+</context>
+<context>
+    <name>VpnGateExit</name>
+    <message>
+        <source>按网站分配</source>
+        <translation>Per site</translation>
+    </message>
+    <message>
+        <source>同一网站总走同一台，网站看到的 IP 不变</source>
+        <translation>Each site always uses the same server, so it sees the same IP</translation>
+    </message>
+    <message>
+        <source>只用一台</source>
+        <translation>One at a time</translation>
+    </message>
+    <message>
+        <source>所有网站走同一台，失效后换下一台</source>
+        <translation>All sites use one server; the next takes over when it fails</translation>
+    </message>
+    <message>
+        <source>、</source>
+        <translation>, </translation>
+    </message>
+    <message>
+        <source>{via}，暂经节点选择</source>
+        <translation>{via}, through Proxy for now</translation>
+    </message>
+    <message>
+        <source>未选国家</source>
+        <translation>No country</translation>
+    </message>
+    <message>
+        <source>经由 {via} · {countries}</source>
+        <translation>Via {via} · {countries}</translation>
+    </message>
+    <message>
+        <source>未启用</source>
+        <translation>Off</translation>
+    </message>
+    <message>
+        <source>正在获取…</source>
+        <translation>Fetching…</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 台</source>
+        <translation>
+            <numerusform>%n server</numerusform>
+            <numerusform>%n servers</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>连接后获取</source>
+        <translation>Fetched once connected</translation>
+    </message>
+    <message>
+        <source>不可用</source>
+        <translation>Unavailable</translation>
+    </message>
+    <message>
+        <source>正在获取服务器列表…</source>
+        <translation>Fetching the server list…</translation>
+    </message>
+    <message numerus="yes">
+        <source>在用 %n 台服务器</source>
+        <translation>
+            <numerusform>%n server in use</numerusform>
+            <numerusform>%n servers in use</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>没有在用的服务器</source>
+        <translation>No servers in use</translation>
+    </message>
+    <message>
+        <source>经节点连接 VPN Gate</source>
+        <translation>Connecting to VPN Gate through the node</translation>
+    </message>
+    <message>
+        <source>还没有获取服务器列表</source>
+        <translation>The server list has not been fetched</translation>
+    </message>
+    <message>
+        <source>连接后经节点获取服务器列表</source>
+        <translation>The server list is fetched through the node once connected</translation>
+    </message>
+    <message>
+        <source>列表更新于 {ago}</source>
+        <translation>List updated {ago}</translation>
+    </message>
+    <message>
+        <source>所选国家暂无可用的服务器</source>
+        <translation>No servers available in the chosen countries</translation>
     </message>
 </context>
 <context>
