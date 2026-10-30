@@ -466,6 +466,10 @@ class GroupEditor(QObject):
         """Where the preview and the pool's nodes come from while no core answers."""
         return "" if self._routing.core_available() else self.tr("连接后显示")
 
+    def core_changed(self) -> None:
+        """A core started or stopped answering: the note at once, the preview once it can."""
+        self._changed()
+
     def _changed(self) -> None:
         """A condition changed: the form at once, the preview once it settles."""
         self.changed.emit()

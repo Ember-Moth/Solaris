@@ -328,7 +328,7 @@ class ProfilesViewModel(QObject):
             if profile.id in self._list.update_failed and not updating
             else "",
             inPool=profile.in_pool,
-            hasRules=self._routing.has_rules(profile.id) is not False,
+            hasRules=self._routing.has_rules(profile) is not False,
         )
 
     def _note(self, profile: Profile) -> str:

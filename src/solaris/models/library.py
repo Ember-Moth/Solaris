@@ -157,10 +157,9 @@ class Routing:
             iter(self.plans), None
         )
 
-    def has_rules(self, profile_id: str) -> bool | None:
-        """Whether the profile brings rules; None while it has not been read."""
-        inspection = self.inspections.get(profile_id)
-        return None if inspection is None else inspection.has_rules
+    def has_rules(self, profile: Profile) -> bool | None:
+        """Whether the profile brings rules; None until a core read it."""
+        return _has_rules(profile, self.inspections)
 
 
 @dataclass(frozen=True)
@@ -332,7 +331,7 @@ class ProfileLibrary:
             (
                 p
                 for p in profiles.profiles
-                if p.id != exclude and self._inspections.get(p.id, _UNKNOWN).has_rules
+                if p.id != exclude and _has_rules(p, self._inspections) is not False
             ),
             None,
         )
@@ -375,6 +374,7 @@ class ProfileLibrary:
             await asyncio.to_thread(self._store.write_config, profile.id, text)
             await self._save(self._list.put(replace(profile, proxy_count=None, unread=True)))
             return self._list
+        profile = replace(profile, has_rules=inspection.has_rules)
         if profile.proxy_count is None:
             profile = replace(profile, proxy_count=len(inspection.nodes))
         updated = self._list.put(profile)
@@ -469,14 +469,20 @@ class ProfileLibrary:
         *,
         reload: bool = True,
     ) -> None:
-        """Store a profile's new text; None for ``inspection`` stores it unread."""
+        """Store a profile's new text; None for ``inspection`` stores it unread, keeping the
+        text a core read last for when it refuses the new one at connect."""
         # The profile may have been removed while it downloaded.
         profile = self._list.get(profile_id)
         if inspection is None:
             unread = replace(
-                profile, updated_at=self._clock(), usage=usage, proxy_count=None, unread=True
+                profile,
+                updated_at=self._clock(),
+                usage=usage,
+                proxy_count=None,
+                has_rules=None,
+                unread=True,
             )
-            await asyncio.to_thread(self._store.write_config, profile_id, text)
+            await asyncio.to_thread(self._store.write_config, profile_id, text, keep_read=True)
             self._inspections.pop(profile_id, None)
             await self._save(self._list.put(unread))
             if profile.in_pool:
@@ -488,6 +494,7 @@ class ProfileLibrary:
             updated_at=self._clock(),
             usage=usage,
             proxy_count=len(inspection.nodes) if count is None else count,
+            has_rules=inspection.has_rules,
             unread=False,
         )
         updated = self._list.put(refreshed)
@@ -520,9 +527,9 @@ class ProfileLibrary:
         async with self._lock:
             if profile_id == self._list.active and self._state.mode == MODE_PROFILE:
                 return self._list
-            self._list.get(profile_id)
+            profile = self._list.get(profile_id)
             await self._inspect_missing()
-            if self._inspections.get(profile_id, _UNKNOWN).has_rules is False:
+            if _has_rules(profile, self._inspections) is False:
                 raise ProfileError("no_rules", "this profile has nodes only")
             text = await asyncio.to_thread(self._store.read_config, profile_id)
             config = TunnelConfig(text, await self._overrides(profile_id))
@@ -632,7 +639,7 @@ class ProfileLibrary:
                 target = self._list.get(profile_id)
                 await self._inspect_missing()
                 reloads = self._state.mode == MODE_PROFILE and target.id == self._list.active
-                if self._inspections.get(target.id, _UNKNOWN).has_rules is not False:
+                if _has_rules(target, self._inspections) is not False:
                     overrides = await self._overrides(target.id, own_text=text)
                     config_text = await asyncio.to_thread(self._store.read_config, target.id)
                     await self._check(TunnelConfig(config_text, overrides))
@@ -697,7 +704,7 @@ class ProfileLibrary:
             if mode == MODE_PROFILE:
                 await self._inspect_missing()
                 active = self._list.active_profile()
-                if active is None or self._inspections.get(active.id, _UNKNOWN).has_rules is False:
+                if active is None or _has_rules(active, self._inspections) is False:
                     active = self._first_with_rules(self._list)
                 if active is None:
                     raise ProfileError("no_rules", "no profile has rules of its own")
@@ -1215,41 +1222,51 @@ class ProfileLibrary:
             if config.composition is not None:
                 self._report = report
 
+    async def _read_stored(self, profile_id: str) -> tuple[str, SourceInspection]:
+        text = await asyncio.to_thread(self._store.read_config, profile_id)
+        inspection = await self._read(text, profile_id)
+        if inspection is None:
+            raise HostError("not_running", "no core answers")
+        return text, inspection
+
     async def _read_unread(self) -> None:
         """Have the core read the profiles stored while none could, and settle what their
-        import would have: the routing mode, the profile whose rules are used. One the core
-        refuses stays unread and shows as a failed update; raises when Start would run it."""
+        import would have: the routing mode, the profile whose rules are used. When the core
+        refuses an update, the text it read before stays, as after any failed update; a
+        profile without one stays unread. Either shows as a failed update. Raises when the
+        profile Start would run stays unread."""
         refused: dict[str, Exception] = {}
         mode = self._state.mode
         updated = self._list
         for profile in [p for p in self._list.profiles if p.unread]:
-            text = await asyncio.to_thread(self._store.read_config, profile.id)
             try:
-                inspection = await self._read(text, profile.id)
+                text, inspection = await self._read_stored(profile.id)
             except HostError as error:
                 if error.code != "invalid_config":
                     raise
-                refused[profile.id] = error
                 self._mark_failed(profile.id, self._clock())
-                continue
-            if inspection is None:
-                raise HostError("not_running", "no core answers")
+                if not await asyncio.to_thread(self._store.fall_back, profile.id):
+                    refused[profile.id] = error
+                    continue
+                text, inspection = await self._read_stored(profile.id)
+            else:
+                self._mark_failed(profile.id, None)
             count = count_proxies(text)
             nodes = len(inspection.nodes) if count is None else count
-            updated = updated.put(replace(profile, proxy_count=nodes, unread=False))
+            read = replace(profile, proxy_count=nodes, has_rules=inspection.has_rules, unread=False)
+            updated = updated.put(read)
             self._inspections[profile.id] = inspection
-            self._mark_failed(profile.id, None)
             if updated.active is None and inspection.has_rules:
                 updated = replace(updated, active=profile.id)
             if mode is None:  # the first import picks the routing (routing.md §5.1)
                 mode = MODE_PROFILE if inspection.has_rules else MODE_PLAN
-        active = updated.active
-        if (
-            mode == MODE_PROFILE
-            and self._inspections.get(active or "", _UNKNOWN).has_rules is False
+        active = updated.active_profile()
+        if mode == MODE_PROFILE and (
+            active is None or _has_rules(active, self._inspections) is False
         ):
-            # Picked while unread, and it has nodes only.
-            successor = self._first_with_rules(updated)
+            # Picked while unread, and it has nodes only: the earliest read one with rules.
+            read = replace(updated, profiles=tuple(p for p in updated.profiles if not p.unread))
+            successor = self._first_with_rules(read)
             updated = replace(updated, active=successor.id if successor else None)
             mode = MODE_PROFILE if successor else MODE_PLAN
         await self._save(updated)
@@ -1378,8 +1395,11 @@ class ProfileLibrary:
         self._list = replace(profiles, update_failed=frozenset(self._failed))
 
 
-# A profile not read yet: it may bring rules.
-_UNKNOWN = SourceInspection((), True, 0, 0)
+def _has_rules(profile: Profile, inspections: Mapping[str, SourceInspection]) -> bool | None:
+    """Whether the profile brings rules, as the core read it this run or when it was stored;
+    None until a core read it."""
+    inspection = inspections.get(profile.id)
+    return profile.has_rules if inspection is None else inspection.has_rules
 
 
 def _via_name(report: CompositionReport, via: str, exit_id: str) -> str:

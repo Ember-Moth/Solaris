@@ -304,8 +304,9 @@ def test_using_a_profiles_rules_needs_some(tmp_path: Path) -> None:
     with pytest.raises(ProfileError, match="no_rules"):
         run(lambda: scene.library.activate("sample-b"))
     routing = run(scene.library.inspect_all)
-    assert routing.has_rules("sample-a")
-    assert routing.has_rules("sample-b") is False
+    profiles = run(scene.library.current)
+    assert routing.has_rules(profiles.get("sample-a"))
+    assert routing.has_rules(profiles.get("sample-b")) is False
 
 
 def test_the_plan_uses_the_ui_locale(tmp_path: Path) -> None:

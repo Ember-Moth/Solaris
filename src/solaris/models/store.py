@@ -90,9 +90,22 @@ class ProfileStore:
             raise ProfileError("config_missing", f"no config stored for {profile_id}")
         return row[0]
 
-    def write_config(self, profile_id: str, text: str) -> None:
+    def write_config(self, profile_id: str, text: str, *, keep_read: bool = False) -> None:
+        """Store a profile's config. ``keep_read`` keeps the text a core read last, for
+        fall_back, when this one is stored unread (D27)."""
         with _stored(), self.database.transaction() as connection:
-            write_config(connection, profile_id, text, self.database.clock())
+            write_config(connection, profile_id, text, self.database.clock(), keep_read=keep_read)
+
+    def fall_back(self, profile_id: str) -> bool:
+        """Put back the text a core read before an unread one the core then refused; False
+        when there is none, as for a profile imported unread."""
+        with _stored(), self.database.transaction() as connection:
+            cursor = connection.execute(
+                "UPDATE profile_contents SET yaml = read_yaml, read_yaml = NULL, updated_at = ? "
+                "WHERE profile_id = ? AND read_yaml IS NOT NULL",
+                (self.database.clock(), profile_id),
+            )
+        return cursor.rowcount > 0
 
     def delete_config(self, profile_id: str) -> None:
         """Delete a profile's config and its override."""
@@ -132,7 +145,8 @@ def load_profiles(connection: sqlite3.Connection) -> ProfileList:
     rows = connection.execute(
         """
         SELECT p.id, p.name, p.kind, p.url, p.path, p.auto_update_hours, p.in_pool,
-               c.fetched_at, c.upload, c.download, c.total, c.expire, c.proxy_count, c.unread,
+               c.fetched_at, c.upload, c.download, c.total, c.expire, c.proxy_count,
+               c.has_rules, c.unread,
                o.scope IS NOT NULL AS has_override
         FROM profiles AS p
         LEFT JOIN profile_contents AS c ON c.profile_id = p.id
@@ -169,12 +183,14 @@ def _profile(row: sqlite3.Row) -> Profile:
         proxy_count=row["proxy_count"],
         has_override=bool(row["has_override"]),
         in_pool=bool(row["in_pool"]),
+        has_rules=None if row["has_rules"] is None else bool(row["has_rules"]),
         unread=bool(row["unread"]),
     )
 
 
 def save_profiles(connection: sqlite3.Connection, profiles: ProfileList, now: float) -> None:
-    """Store the list; what came with a profile's config is stored only with the config."""
+    """Store the list; what came with a profile's config is stored only with the config. A
+    profile read by a core no longer needs the text read before it."""
     columns = ("id", "name", "kind", "url", "path", "auto_update_hours", "in_pool", "position")
     rows = [
         (p.id, p.name, p.kind, p.url, p.path, p.auto_update_hours, int(p.in_pool), position)
@@ -187,14 +203,17 @@ def save_profiles(connection: sqlite3.Connection, profiles: ProfileList, now: fl
             profile.updated_at,
             *((usage.upload, usage.download, usage.total, usage.expire) if usage else [None] * 4),
             profile.proxy_count,
+            None if profile.has_rules is None else int(profile.has_rules),
             int(profile.unread),
         )
         connection.execute(
             "UPDATE profile_contents SET fetched_at = ?, upload = ?, download = ?, total = ?, "
-            "expire = ?, proxy_count = ?, unread = ?, updated_at = ? WHERE profile_id = ? AND "
-            "(fetched_at, upload, download, total, expire, proxy_count, unread) "
-            "IS NOT (?, ?, ?, ?, ?, ?, ?)",
-            (*fetched, now, profile.id, *fetched),
+            "expire = ?, proxy_count = ?, has_rules = ?, unread = ?, "
+            "read_yaml = CASE WHEN ? THEN read_yaml END, updated_at = ? "
+            "WHERE profile_id = ? AND "
+            "(fetched_at, upload, download, total, expire, proxy_count, has_rules, unread) "
+            "IS NOT (?, ?, ?, ?, ?, ?, ?, ?)",
+            (*fetched, int(profile.unread), now, profile.id, *fetched),
         )
     connection.execute(
         "UPDATE routing_state SET profile_id = ?, updated_at = ? WHERE profile_id IS NOT ?",
@@ -202,10 +221,14 @@ def save_profiles(connection: sqlite3.Connection, profiles: ProfileList, now: fl
     )
 
 
-def write_config(connection: sqlite3.Connection, profile_id: str, text: str, now: float) -> None:
+def write_config(
+    connection: sqlite3.Connection, profile_id: str, text: str, now: float, *, keep_read: bool
+) -> None:
+    # The text a core read last: the stored one, unless that waits unread itself.
+    read = "CASE WHEN unread THEN read_yaml ELSE yaml END" if keep_read else "NULL"
     connection.execute(
         "INSERT INTO profile_contents (profile_id, yaml, updated_at) VALUES (?, ?, ?) "
-        "ON CONFLICT (profile_id) DO UPDATE SET yaml = excluded.yaml, "
+        f"ON CONFLICT (profile_id) DO UPDATE SET read_yaml = {read}, yaml = excluded.yaml, "
         "updated_at = excluded.updated_at",
         (profile_id, text, now),
     )
