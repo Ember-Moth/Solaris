@@ -772,6 +772,22 @@ class SimulatedHost:
             for name, group in self._groups.items()
         ]
 
+    async def list_rules(self) -> list[Rule]:
+        if not self._running:
+            return []
+        if self.report is not None:
+            return list(self.report.rules)
+        rules = []
+        for line in (self.effective or {}).get("rules") or []:
+            parts = [part.strip() for part in str(line).split(",")]
+            if parts[-1] == "no-resolve":
+                parts.pop()
+            if parts[0] == "MATCH":
+                rules.append(Rule("MATCH", "", parts[1], ""))
+            else:
+                rules.append(Rule(parts[0], ",".join(parts[1:-1]), parts[-1], ""))
+        return rules
+
     async def select_proxy(self, group: str, proxy: str) -> None:
         target = self._groups.get(group)
         if target is None or target.type != "Selector":

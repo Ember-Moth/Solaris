@@ -237,6 +237,10 @@ class ServiceHost:
         response = await self._call(pb.Request(list_groups=pb.ListGroupsRequest()))
         return [_group(g) for g in response.list_groups.groups]
 
+    async def list_rules(self) -> list[Rule]:
+        response = await self._call(pb.Request(list_rules=pb.ListRulesRequest()))
+        return [Rule(r.type, r.payload, r.proxy, r.entry_id) for r in response.list_rules.rules]
+
     async def select_proxy(self, group: str, proxy: str) -> None:
         request = pb.Request(select_proxy=pb.SelectProxyRequest(group=group, proxy=proxy))
         await self._call(request)

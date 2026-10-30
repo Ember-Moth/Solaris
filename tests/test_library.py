@@ -20,7 +20,10 @@ from tests.support.simulated import (
 )
 
 NOW = 1_800_000_000.0
-OTHER_CONFIG = "proxies:\n  - {name: 东京, type: ss, server: a.example.net, port: 1}\n"
+OTHER_CONFIG = (
+    "proxies:\n  - {name: 东京, type: ss, server: a.example.net, port: 1}\n"
+    "rules:\n  - MATCH,DIRECT\n"
+)
 
 
 class Scene:
@@ -222,34 +225,27 @@ def test_failed_automatic_update_waits_before_retrying(tmp_path: Path) -> None:
 
 def test_removing_profiles(tmp_path: Path) -> None:
     scene = Scene(tmp_path)
-    with pytest.raises(ProfileError) as raised:
-        run(lambda: scene.library.remove("sample-a"))
-    assert raised.value.code == "profile_in_use"
-
     profiles = run(lambda: scene.library.remove("sample-b"))
     assert [p.id for p in profiles.profiles] == ["sample-a", "sample-c"]
     with pytest.raises(ProfileError, match="config_missing"):
         scene.store.read_config("sample-b")
 
-    async def remove_active_when_stopped() -> None:
-        await scene.host.stop()
-        profiles = await scene.library.remove("sample-a")
-        assert profiles.active == "sample-c"
-
-    run(remove_active_when_stopped)
+    # The profile in use goes as well: the earliest other one with rules takes over, and the
+    # running tunnel reloads with it first (routing.md §5.1).
+    profiles = run(lambda: scene.library.remove("sample-a"))
+    assert profiles.active == "sample-c"
+    assert scene.host.reloads == 1
+    assert scene.host.config is not None
+    assert scene.host.config.config_yaml == SAMPLE_CONFIG
     assert scene.store.load().active == "sample-c"
 
 
 def test_removal_states_what_removing_does(tmp_path: Path) -> None:
     scene = Scene(tmp_path)
-    other = run(lambda: scene.library.removal("sample-b"))
-    assert (other.profile.id, other.active, other.successor) == ("sample-b", False, None)
-    with pytest.raises(ProfileError) as raised:
-        run(lambda: scene.library.removal("sample-a"))  # in use by the running tunnel
-    assert raised.value.code == "profile_in_use"
 
-    async def stopped() -> None:
-        await scene.host.stop()
+    async def scenario() -> None:
+        other = await scene.library.removal("sample-b")
+        assert (other.profile.id, other.active, other.successor) == ("sample-b", False, None)
         active = await scene.library.removal("sample-a")
         assert active.active
         assert active.successor is not None
@@ -259,7 +255,7 @@ def test_removal_states_what_removing_does(tmp_path: Path) -> None:
         last = await scene.library.removal("sample-a")
         assert (last.active, last.successor) == (True, None)
 
-    run(stopped)
+    run(scenario)
 
 
 def test_start_tunnel_uses_the_active_profile(tmp_path: Path) -> None:
