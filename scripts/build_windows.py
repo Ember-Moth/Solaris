@@ -46,6 +46,7 @@ PACKAGE = ROOT / "package" / "windows"
 ENTRY = ROOT / "package" / "entry.py"
 CORE = ROOT / "src" / "core"
 INSTALLER_SCRIPT = PACKAGE / "installer.nsi"
+ICON = ROOT / "package" / "icons" / "solaris.ico"  # scripts/gen_icons.py
 SETUP_SCRIPT = PACKAGE / "setup.ps1"
 
 APP_NAME = "Solaris"
@@ -129,7 +130,7 @@ def build_ui(version: str) -> Path:
         # The Nuitka plugin pulls in the QtWidgets binding for QtQuick; the UI never imports it.
         "--nofollow-import-to=PySide6.QtWidgets",
         "--windows-console-mode=disable",
-        f"--windows-icon-from-ico={ROOT / 'package' / 'icons' / 'solaris.ico'}",
+        f"--windows-icon-from-ico={ICON}",
         f"--output-filename={Path(CLIENT).stem}",
         f"--product-name={APP_NAME}",
         f"--file-description={APP_NAME}",
@@ -244,6 +245,7 @@ def build_installer(directory: Path, version: str, makensis: Path, output: Path)
         "APP_VERSION": version,
         "OUTPUT_FILE": installer,
         "SETUP_SCRIPT": SETUP_SCRIPT,
+        "APP_ICON": ICON,
         "UNINSTALL_FILES": files,
     }
     wrapper = work / "installer.nsi"
