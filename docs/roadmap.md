@@ -386,7 +386,7 @@ PacketTunnel 系统扩展骨架、`scripts/build_apple.py`（签名与不签名�
 | D20 | fd 模式的 `dns.fake-ip-range` 固定为 `198.18.0.1/16`（TUN 地址由它得出）；用户关掉 `ipv6` 时，进入隧道的 IPv6 流量被丢弃 | architecture.md §3.1 |
 | D21 | 链式出口只在"我的方案"下提供；出口不可用时，指向它的规则拒绝连接，不改走普通代理 | exits.md 第 1 节 |
 | D22 | WARP 出口放在内核：mihomo 的 MASQUE 或 WireGuard 出站，`dialer-proxy` 经用户的节点，默认 MASQUE over HTTP/2；内核经节点注册账户，账户存系统凭据库、不进备份；首发前做（M9） | exits.md 第 3 节 |
-| D25 | VPN Gate 作为第三种链式出口（"隐私出口"随之改名"链式出口"）：经节点拉列表，只用 TCP 的 OpenVPN 服务器，按国家和评分挑选，故障转移；定位是换 IP 和住宅 IP，不宣传隐私；排在 M9 之后，开工前先核实使用条款 | exits.md 第 5 节 |
+| D25 | VPN Gate 作为第三种链式出口（"隐私出口"随之改名"链式出口"）：经节点拉列表，只用 TCP 的 OpenVPN 服务器，按国家和评分挑选；默认负载均衡组按网站分配服务器并跳过失效的，也可选只用一台；定位是换 IP 和住宅 IP，不宣传隐私；排在 M9 之后，开工前先核实使用条款 | exits.md 第 5 节 |
 | D24 | 保留 Tailscale、ZeroTier、EasyTier 出站；它们不进节点池和任何策略组，作为"组网"出站单独列出、供规则引用；只用作出站，安全项关闭 EasyTier 对外提供出口和子网的选项 | mesh.md |
 | D23 | Tor 出口用 arti-client，经 pyo3 运行在界面进程；首发后作为实验功能（M10）；退出界面后 Tor 不可用，连接被拒绝 | exits.md 第 4 节 |
 
