@@ -93,16 +93,18 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
   `auto-detect-interface`、`strict-route`），清零 `redir-port` 和 `tproxy-port`，并把全部入站限制在回环地址
   （见第 11 节）。`RunOptions` 请求 TUN 时返回 `ErrUnsupported`。
 - **自管模式**按 `RunOptions.tun_enabled` 写 `tun.enable`，强制 `auto-route`、`auto-detect-interface`、
-  `strict-route` 为 true，`auto-redirect` 为 false，`file-descriptor` 为 0；保留用户的栈、设备名、MTU 和排除项。
+  `strict-route` 为 true，`auto-redirect` 为 false，`file-descriptor` 为 0；保留用户的设备名、MTU 和排除项。栈取
+  `RunOptions.tun_stack`（设置页的"TUN 协议栈"，D3），没有指定时保留用户的。
   TUN 打开时同时打开 mihomo DNS，因为 dns-hijack 要交给它解析。`allow_lan` 为 false 时，入站同样限制在回环地址。
 - **fd 模式**（`engine.Options.TunFD` 是宿主的 utun 描述符）：TUN 总是开着，因为扩展只在隧道连接时运行；
   关闭 `auto-route`、`auto-redirect`、`auto-detect-interface`、`strict-route`，`dns-mode` 设为 `disabled`，
   路由和系统 DNS 都由宿主设置；去掉 `device`，接口由描述符决定。TUN 的网络是 `engine.FDNetwork`，也就是
   mihomo 的默认值：mihomo 从 fake-ip 段取 TUN 的 IPv4 地址（段首地址的 /30），所以 `dns.fake-ip-range` 固定为
   `198.18.0.1/16`，得到 198.18.0.1/30；IPv6 是 fdfe:dcba:9876::1/126，MTU 9000。mihomo 总会劫持 TUN 地址的下一个
-  地址（198.18.0.2:53），宿主把它设为系统的 DNS 服务器（6.2 节）。栈默认 gVisor（构建不带 `with_gvisor` 时为
-  mips），用户设了就保留；扩展开启了 `includeAllNetworks` 时（D19，由扩展在 attach 时告诉 engine），`system` 和
-  `mixed` 换成 gVisor 并记一条日志（3.4 节）。打开 mihomo DNS；`allow_lan` 为 false 时，入站同样限制在回环地址。
+  地址（198.18.0.2:53），宿主把它设为系统的 DNS 服务器（6.2 节）。栈取 `RunOptions.tun_stack`，没有指定时用
+  配置里的，配置也没写时默认 gVisor（构建不带 `with_gvisor` 时为 mips）；扩展开启了 `includeAllNetworks` 时（D19，
+  扩展在 attach 时告诉 engine，即 `engine.Options.IncludeAllNetworks`），不论栈来自哪里，`system` 和 `mixed` 都
+  换成这个默认栈，并记一条警告日志（3.4 节），解析后再核对一次，留下这两种栈就拒绝。打开 mihomo DNS；`allow_lan` 为 false 时，入站同样限制在回环地址。
   准入最后核对 TUN 的地址和 MTU。用户关掉 `ipv6`，或者系统没有全局单播 IPv6 地址时，mihomo 不给 TUN 配 IPv6
   地址；扩展的 utun 自带 fdfe:dcba:9876::1，所以在扩展里只有前一种情况。这时宿主仍把 IPv6 路由进隧道，这部分
   流量被丢弃。
@@ -118,6 +120,8 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
 - "限制在回环地址"包括：`allow-lan: false`、`bind-address: 127.0.0.1`；`listeners` 的 `listen`、`tunnels` 的
   监听地址、`dns.listen`、`tuic-server.listen`、`ss-config` 和 `vmess-config` 的地址都改为 `127.0.0.1`，端口不变。
 - `RunOptions.mixed_port` 非 0 时替换配置里的 `mixed-port`。
+- `RunOptions.tun_stack` 在覆写之后写进 `tun.stack`，所以配置和覆写都改不动用户在设置页选的栈；无 TUN 模式下
+  TUN 不开，忽略它。
 
 ### 3.2 engine 的职责
 
@@ -220,10 +224,13 @@ gVisor 栈。M1 的实测数据如下（v1.19.33，Go 1.27.3，`-trimpath -ldfla
 - 体积大头是 easytier 出站（约 10.6 MiB）和 tailscale 出站（约 9.9 MiB）。tailscale 出站只在 `with_gvisor`
   构建里编入，所以单独加 `no_tailscale` 没有效果；gVisor 栈本身约 3.8 MiB。
 - TUN 栈：`system` 和 `mips`（mihomo 的默认栈）总是可用；`gvisor` 和 `mixed` 需要 `with_gvisor`，否则要到创建
-  TUN 时才报错，所以准入流水线在缺少该标签时直接以 `invalid_config` 拒绝这两种栈。
+  TUN 时才报错，所以准入流水线在缺少该标签时直接以 `invalid_config` 拒绝这两种栈，不论它来自配置、覆写还是
+  `RunOptions.tun_stack`。用户在设置页的"TUN 协议栈"里选（D3，ui.md §8），默认"跟随配置"；两个平台各自的
+  默认值等实测后再定。
 - macOS NE 开启 `includeAllNetworks` 时，`system` 和 `mixed` 栈不能工作，只剩 `mips` 和 `gvisor`。sing-tun 有
   对应的检查（`StackOptions.IncludeAllNetworks`），但 mihomo 不传这个选项，所以由 engine 在 fd 模式下把这两种栈
-  换成 gVisor（3.1 节）。`includeAllNetworks` 默认关闭，用户可以在设置页打开（D19，ui.md §8）。
+  换成 gVisor（3.1 节）。`includeAllNetworks` 默认关闭，用户可以在设置页打开（D19，ui.md §8），下次连接时生效；
+  设置页同时把这两种栈置灰，已选的改成 gVisor。CI 的 fd 模式测试对这两种栈再各跑一次打开它的情形。
 - 系统扩展的可执行文件（Release，`with_gvisor`）是 73.3 MiB，`xcodebuild build` 不裁剪符号；`strip -x` 后
   61.3 MiB，与上表的服务相当。裁剪放在组装 .app 一步。
 - 各标签组合在两个平台上都能编译。真实 TUN 下，四种栈在 Linux 的自管模式里都能建立 TUN 并转发流量
@@ -325,7 +332,8 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
   `RunOptions`（`Validate` 没有），经过 3.2 节的准入流水线。配置来源是 oneof：订阅原文 `config_yaml`，或拼装
   来源 `composition`（节点池的订阅、信息节点表达式、方案 JSON，routing.md 8.1、8.5 节）。用 `composition` 时
   三个方法返回 `CompositionReport`，用 `config_yaml` 时返回 Empty。
-  `mixed_port` 超过 65535 时返回 `invalid_request`。
+  `mixed_port` 超过 65535、`tun_stack` 不是已知的值时返回 `invalid_request`。`RunOptions` 不带
+  `includeAllNetworks`：它属于 macOS 的 VPN 配置，连接时才生效，由扩展在 attach 时告诉 engine（6.2 节）。
 - `ListRules` 的 `Rule.entry_id` 和连接快照的 `Connection.rule_entry_id` 是运行中的规则来自哪个规则条目
   （兜底是 `fallback`）；订阅自带的规则和覆写插入的规则为空。
 - `InspectSource`、`ListGeoCategories` 只读，不需要内核在运行，两种宿主都提供。`InspectSource` 读不了订阅时
@@ -469,9 +477,9 @@ Solaris.app/Contents/
 - 需要 Developer ID 签名、公证，以及 `packet-tunnel-provider-systemextension` entitlement。可执行文件叫
   `SolarisUI`，因为卷不区分大小写，`MacOS/solaris/` 是 Python 包的数据目录。
 - 管理库用 `OSSystemExtensionRequest` 激活扩展（用户需在系统设置中批准；包内的扩展总是替换其他构建激活的
-  扩展）、配置 `NETunnelProviderManager`、启停隧道、查询状态、收发 provider message。配置时按设置写
-  `includeAllNetworks`（D19，默认关闭）；打开它时同时设 `excludeLocalNetworks`，局域网流量（打印机、AirDrop、
-  Bonjour）照旧不进隧道。C 接口是
+  扩展）、配置 `NETunnelProviderManager`、启停隧道、查询状态、收发 provider message。配置和启动时按设置写
+  `includeAllNetworks`（D19，默认关闭；`MacExtensionHost` 取自 `RunOptions.include_all_networks`）；打开它时同时设 `excludeLocalNetworks`，局域网流量（打印机、AirDrop、
+  Bonjour）照旧不进隧道。隧道连着时不改这两项：扩展只在 attach 时读一次，所以改动下次连接时生效。C 接口是
   `apple/Manager/SolarisManager.h`：调用阻塞到完成或超时，要在后台线程调用；本库交出的字符串和缓冲区由
   调用方用 `solaris_manager_free` 释放。
 - hypervpn-desktop 的 `src/packet-engine/native/macos/SystemNetworkExtension/` 和它的 NE 管理库可以作为参考。
@@ -611,6 +619,7 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
     同一个 job 还跑 fd 模式的测试（`tun_fd_linux_test.go`）：测试扮演扩展，自己建 TUN、配上 `FDNetwork` 的地址和
     到服务的路由，把描述符交给 fd 模式的 engine，检查流量经过内核、TUN 的 DNS 地址由 mihomo 应答、TUN 设置
     不变时 Reload 沿用副本，并数 `/dev/net/tun` 的描述符：运行时两个，Stop 和 Close 后只剩宿主的一个。
+    `system` 和 `mixed` 栈再以 `IncludeAllNetworks` 跑一次，确认 mihomo 换用默认栈后流量照常（D19）。
 - **端到端测试**（`tests/e2e`，标记 `e2e`）：界面连真实的开发服务。每个测试起一个开发服务子进程，用
   `ServiceHost`、临时数据目录和真实的 ViewModel 组装界面，离屏加载 QML，通过 ViewModel 的槽操作，再用
   `curl -x` 经混合端口访问本机的 HTTP 服务；配置里的节点是本机的 HTTP 代理，它们记下经过的请求，所以能看出

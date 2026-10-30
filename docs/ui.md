@@ -31,11 +31,11 @@
 | --- | --- |
 | `config_yaml` | 配置原文，即 `ProfileStore` 里存的 YAML |
 | `overrides` | 覆写的 YAML 原文，按应用顺序排列：先全局覆写，再这份配置自己的覆写；没有设置的不放进来。语义见第 4 节 |
-| `options` | `RunOptions`：`tun_enabled`、`system_proxy_enabled`、`mixed_port`（0 表示沿用配置）、`allow_lan`。`validate` 不使用 |
+| `options` | `RunOptions`：`tun_enabled`、`system_proxy_enabled`、`mixed_port`（0 表示沿用配置）、`allow_lan`、`tun_stack`（空串表示沿用配置）、`include_all_networks`。`validate` 不使用。`include_all_networks` 不进控制协议，只有 `MacExtensionHost` 在启动隧道时把它写进 VPN 配置（architecture.md §6.1） |
 
-- **Start** 的四项都取自设置（第 8 节）：TUN 和系统代理是用户在开关上的选择，端口和局域网连接是设置页的值。
-- **Reload** 用 `GetStatus` 报告的 TUN 和系统代理状态，所以切换配置或订阅更新都不会改变隧道的这两项；端口和
-  局域网连接取自设置。
+- **Start** 的各项都取自设置（第 8 节）：TUN 和系统代理是用户在开关上的选择，其余是设置页的值。
+- **Reload** 用 `GetStatus` 报告的 TUN 和系统代理状态，所以切换配置或订阅更新都不会改变隧道的这两项；端口、
+  局域网连接和 TUN 协议栈取自设置。
 - 错误码：配置被拒绝时为 `invalid_config`（`message` 是 mihomo 的原始错误，界面显示在「配置无效：」之后）；
   未运行时 Reload 返回 `not_running`；运行中 Start 返回 `already_running`；端口打不开（例如混合端口被其他程序
   占用）时为 `apply_failed`，`message` 是系统的监听错误，界面显示在「配置未能生效：」之后，Reload 失败时隧道
@@ -332,19 +332,26 @@ TUN 与系统代理开关、托盘和关闭窗口的行为都只依赖这个接�
 | `system_proxy` | 布尔 | `false` | 本机 | 概览页的系统代理开关：下一次连接是否设置系统代理 |
 | `mixed_port` | 1024–65535 | 7890 | 本机 | 混合端口，总是覆盖配置里的 `mixed-port` |
 | `allow_lan` | 布尔 | `false` | 本机 | 允许局域网连接（architecture.md §8"局域网暴露"） |
+| `tun_stack` | `profile`、`system`、`mips`、`gvisor`、`mixed` | `profile` | 本机 | "TUN 协议栈"（D3）：`profile` 是"跟随配置"，用配置里的 `tun.stack`；其余写进 `RunOptions.tun_stack`，盖过配置和覆写（architecture.md §3.1、§3.4）。各平台的默认值等实测后再定 |
+| `include_all_networks` | 布尔 | `false` | 本机 | 仅 macOS（D19）："包含所有网络"，把系统默认绕开隧道的流量也送进隧道，局域网流量除外。写进 VPN 配置的 `includeAllNetworks` 和 `excludeLocalNetworks`，下次连接时生效；打开后 TUN 协议栈不能用 `system` 和 `mixed`（architecture.md §3.4） |
 | `warp_protocol` | `masque-h2`、`masque-h3`、`wireguard` | `masque-h2` | 本机 | WARP 出口的协议，在分流页的出口设置对话框里改，设置页不列出。账户只有一种协议的密钥，改了协议就为它换密钥（exits.md 3.1、3.2 节） |
 | `tor_enabled` | 布尔 | `false` | 本机 | M10：设置页"实验功能"里的"Tor 出口"（exits.md 第 4 节） |
 | `update_check` | 布尔 | `true` | 同步 | 自动检查更新：启动 30 秒后检查一次，之后按 `update_check_hours` 定期检查（release.md 第 2 节） |
 | `update_check_hours` | `24`、`72`、`168` | `24` | 同步 | 自动检查的间隔：每天、每 3 天、每周 |
-| `include_all_networks` | 布尔 | `false` | 本机 | 仅 macOS，M5 实现（D19）："包含所有网络"，把系统默认绕开隧道的流量也送进隧道。写进 VPN 配置的 `includeAllNetworks`，下次连接时生效；打开后 TUN 协议栈不能用 `system` 和 `mixed`，设置页把这两项置灰，已选的改成 gVisor（architecture.md §3.4） |
 
-- **映射到 `RunOptions`**（第 1 节）：Start 用 `Settings.run_options()` 的四项；Reload 的 TUN 和系统代理取自
-  `GetStatus`，端口和局域网连接取自设置。
+- **映射到 `RunOptions`**（第 1 节）：Start 用 `Settings.run_options()` 的各项（`tun_stack` 为 `profile` 时传空串）；
+  Reload 的 TUN 和系统代理取自 `GetStatus`，其余取自设置。
   - **TUN 与系统代理**：开关在概览页，设置页显示同一个 ViewModel 的同一对开关，所以两页总是一致。隧道运行时，
     显示内核报告的状态，拨动开关先改变隧道（TUN 是带新 `RunOptions` 的 Reload，系统代理是
     `SetSystemProxy`），宿主接受后才记入设置；隧道停止时，显示设置里的选择，拨动只改设置，下一次连接生效。
-  - **端口与局域网连接**：隧道运行时先带新值 Reload，成功后才写入设置；内核拒绝（如端口被占用，
-    `apply_failed`）时保留原值，错误写在对应的行下。隧道停止时直接写入。
+  - **端口、局域网连接与 TUN 协议栈**：隧道运行时先带新值 Reload，成功后才写入设置；内核拒绝（如端口被占用，
+    `apply_failed`；内核不带 `with_gvisor` 时选了 gVisor 或 Mixed，`invalid_config`）时保留原值，错误写在对应的
+    行下。隧道停止时直接写入。
+  - **TUN 协议栈**在"接管方式"分组里 TUN 模式的下一行，是下拉框：跟随配置、System、Mips、gVisor、Mixed，栈名用
+    mihomo 的写法，不翻译。
+  - **包含所有网络**是它下面的开关，只在 macOS 上显示，说明写着「系统默认绕开隧道的流量也进入隧道，下次连接时
+    生效」。打开它只写设置，不动运行中的隧道；打开时 TUN 协议栈若是 System 或 Mixed，就和设置一起改成 gVisor，
+    这一步像改栈一样先带新值 Reload。打开期间下拉框里的 System、Mixed 不可选，注记「包含所有网络时不可用」。
   - **开发模式**：开发服务对开启 TUN 或系统代理返回 `unsupported_method`（architecture.md §11）。`ProfileLibrary` 把它换成
     `tun_unsupported`、`system_proxy_unsupported` 或两者都有的 `tun_and_system_proxy_unsupported`，界面在概览页
     标题栏和设置页开关下方显示「开发模式不支持 TUN 模式」等提示，设置不改。
