@@ -348,7 +348,8 @@ mihomo 自带三种组网出站：`tailscale`、`zerotier`、`easytier`。它们
   派发。
 - 界面：表、凭据（假的 keyring 后端）、备份、拼装进 `Composition`、视图模型和对话框（模拟宿主给出各种状态）。
 
-**手动验收**（用户自己的账户，经开发服务 `scripts/dev.py`，不建 TUN；步骤写在 PR 里）：
+**手动验收**（用户自己的账户，经开发服务 `scripts/dev.py`，不建 TUN；步骤写在 PR 里）。开发服务按发布版本的标签
+`with_gvisor` 构建，否则 mihomo 拒绝 Tailscale 出站：
 
 1. Tailscale，浏览器登录：添加 → 浏览器打开登录页 → 登录后行变成"在线"，地址是 `100.x` → "添加常用规则" →
    经混合端口访问 tailnet 里一台机器的 `100.x` 地址和 MagicDNS 名称 → tailnet 管理页里出现这台设备。
