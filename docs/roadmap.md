@@ -3,7 +3,7 @@
 本文规划从现在到首个可发布版本的工作：现在做到了哪里、接下来按什么顺序做、每个里程碑怎样算完成、哪些决定要在
 什么时候做出。各部分的设计见 [文档一览](#8-文档一览)。每完成一个阶段更新本文。
 
-最近一次整理：2026-10-30，M5 第二步（fd 模式）合并、隐私出口设计完成后。
+最近一次整理：2026-10-30，定下阶段 D 的三轮计划后。
 
 ## 1. 当前进度
 
@@ -104,17 +104,28 @@ B1、B2 的结果与遗留：
 | C1 | M8a 界面部分 | 订阅页简化、分流页、添加规则对话框、服务清单、地区表、默认模板、立即生效与撤销（routing.md 第 4、5 节）。依赖 B1、B2 | 与 C2 并行 |
 | C2 | M7 Google Drive 备份 | 快照、提供方接口、OAuth 登录、设置页"备份与同步"、恢复。前提是 Google Cloud 项目和 OAuth 客户端已建 | 与 C1 并行 |
 
-### 阶段 D：进阶与平台
+### 阶段 D：首发前的功能（分三轮）
 
-- **M8b**：完整的策略组编辑器、规则测试、导入导出、查看生成的配置。
-- **M5 macOS NetworkExtension**：前提是 Apple Developer 账号、NE entitlement 和单独的测试 Mac。完成后接着做 M7 的 iCloud 部分。
-- **M4**：如果阶段 B 时还没有 Windows 测试环境，就放在这里做。
-- **M9 WARP 出口**：内核（注册、拼装）和界面两部分，改动的文件不重叠，可以并行；需要一个真实节点实测
-  （[privacy.md](privacy.md) 第 9 节）。
+**第一轮**（2026-10-30 开始）：三个会话并行，改动的文件互不重叠。每个会话先开 PR，CI 全绿后由主会话合并。
 
-### 阶段 E：M6 发布准备
+| 工作 | 内容 | 前提 |
+| --- | --- | --- |
+| M8b 分流进阶 | `PreviewGroup`、`MatchRule`、`ConvertToPlan`、`ExportPlan`（协议字段 51–54）；策略组编辑器的全部条件与实时预览、规则测试、搜索与按目标筛选、以此创建方案、导入导出、查看生成的配置。本轮只有它改控制协议 | 无 |
+| M5 收尾 | `MacExtensionHost`；把 Nuitka 产物、管理库和系统扩展组装成 `Solaris.app`；扩展的 GEO 数据；签名与公证的发布工作流（手动触发，经 `release` 环境审批）。不安装、不激活系统扩展，实测留到第三轮 | 无 |
+| M6 先行项 | 检查更新与下载（D11）、诊断信息导出、第三方许可证清单、一键导入链接的处理（D6；系统注册随打包） | 无 |
 
-命名、签名、发布 CI、诊断、许可合规，见第 3 节。
+**第二轮**（第一轮合并后）：
+
+- **M9 WARP 出口**：内核（注册、`RegisterWarp`、拼装）和界面两个会话并行。放在第二轮，是因为它和 M8b 都改拼装、
+  控制协议和分流页（[privacy.md](privacy.md) 第 9 节）。
+- **M7 备份的本地部分**：快照的导出、导入与合并，`BackupProvider` 接口，本地目录提供方。Google Cloud 项目建好后
+  接上 Google Drive（C2）。
+
+**第三轮**（等环境）：
+
+- **M4 Windows 产品化**（含 B3）：需要 Windows 虚拟机。
+- **M5 实测**：系统扩展审批、utun、四种栈、D8、`includeAllNetworks`；之后做 M7 的 iCloud 部分。需要测试 Mac。
+- **M6 收尾与首发**：Windows 签名方案、发布全流程。
 
 ### 首发之后
 
@@ -124,10 +135,14 @@ B1、B2 的结果与遗留：
 
 | 事项 | 最晚何时 | 用途 |
 | --- | --- | --- |
-| Windows 测试机或虚拟机 | B3 开始前 | M4 的安装、wintun、DNS 泄漏测试 |
-| Google Cloud 项目与"桌面应用"类型的 OAuth 客户端 | C2 开始前（同意屏幕审核要时间，越早越好） | Google Drive 备份 |
-| Developer ID Application 证书、两份 Developer ID 描述文件、公证 API Key、单独的测试 Mac（App ID、App Group、iCloud 容器已建好，见 apple/README.md） | 阶段 D 的 M5 开始前 | macOS 系统扩展、iCloud |
+| 单独的测试 Mac 或 macOS 虚拟机 | 第一轮的 M5 收尾合并后 | 系统扩展实测、D8、`includeAllNetworks`、iCloud |
+| 一个只有 TCP 的真实节点 | 第二轮 M9 验收 | 验证 WARP 出口的 MASQUE over HTTP/2 |
+| Google Cloud 项目与"桌面应用"类型的 OAuth 客户端 | 第二轮（同意屏幕审核要时间，越早越好） | Google Drive 备份 |
+| Windows 测试机或虚拟机 | 第三轮 M4 开始前 | M4 的安装、wintun、DNS 泄漏测试 |
+| Windows 代码签名方案 | 第三轮 M6 | Authenticode 签名、服务对客户端的签名校验 |
 | D5b、D8 | 见第 5 节 | — |
+
+Apple 的签名材料（证书、两份描述文件、公证 API Key）已齐，见 apple/README.md。
 
 ## 3. 里程碑
 
