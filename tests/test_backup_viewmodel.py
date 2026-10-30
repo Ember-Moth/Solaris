@@ -150,19 +150,19 @@ def set_up(machine: Machine, served: Subscriptions, tmp_path: Path) -> None:
     """Two subscriptions and a local file, overrides, the default plan with a rule of the
     user's in use, and synced settings."""
     library = machine.vms.library
-    machine.call(library.import_url(served.url("airport"), "机场"))
-    machine.call(library.import_url(served.url("nodes"), "节点", auto_update=False))
+    machine.call(library.profiles.import_url(served.url("airport"), "机场"))
+    machine.call(library.profiles.import_url(served.url("nodes"), "节点", auto_update=False))
     local = tmp_path / "home.yaml"
     local.write_bytes(LOCAL_CONFIG.encode())  # write_text would turn \n into \r\n on Windows
-    machine.call(library.import_file(local))
-    machine.call(library.save_override(None, "mode: rule\n"))
+    machine.call(library.profiles.import_file(local))
+    machine.call(library.profiles.save_override(None, "mode: rule\n"))
     profiles = machine.call(library.current())
-    machine.call(library.save_override(profiles.profiles[1].id, "ipv6: false\n"))
-    routing = machine.call(library.set_mode(MODE_PLAN))
+    machine.call(library.profiles.save_override(profiles.profiles[1].id, "ipv6: false\n"))
+    routing = machine.call(library.plans.set_mode(MODE_PLAN))
     plan = routing.plan()
     assert plan is not None
     rule = PlanRule("r-home", "domain", {"items": ["home.example.net"]}, "DIRECT")
-    machine.call(library.put_plan(replace(plan, rules=(rule, *plan.rules))))
+    machine.call(library.plans.put_plan(replace(plan, rules=(rule, *plan.rules))))
     machine.vms.settings_store.update(appearance="dark", update_check_hours=72, mixed_port=7999)
 
 
@@ -267,7 +267,7 @@ def test_restore_asks_on_a_machine_with_profiles(
 
     second = Machine(tmp_path / "second", clock)
     machines.append(second)
-    second.call(second.vms.library.import_url(served.url("airport"), "本机的订阅"))
+    second.call(second.vms.library.profiles.import_url(served.url("airport"), "本机的订阅"))
     asked: list[bool] = []
     second.backup.restoreRequested.connect(lambda: asked.append(True))
 
@@ -312,18 +312,18 @@ def test_merge_keeps_the_later_changes(
     lib1, lib2 = first.vms.library, second.vms.library
     clock.now += 60
     nodes = first.call(lib1.current()).profiles[1]
-    first.call(lib1.set_auto_update(nodes.id, True))
+    first.call(lib1.profiles.set_auto_update(nodes.id, True))
     plan = first.call(lib1.routing()).plan()
     assert plan is not None
     rule = replace(plan.rules[0], target="REJECT")
-    first.call(lib1.put_plan(replace(plan, rules=(rule, *plan.rules[1:]))))
+    first.call(lib1.plans.put_plan(replace(plan, rules=(rule, *plan.rules[1:]))))
     first.vms.settings_store.update(appearance="light")
     clock.now += 60
     plan = second.call(lib2.routing()).plan()
     assert plan is not None
     rule = replace(plan.rules[0], target="proxy")
-    second.call(lib2.put_plan(replace(plan, rules=(rule, *plan.rules[1:]))))
-    second.call(lib2.save_override(None, "mode: rule\nlog-level: info\n"))
+    second.call(lib2.plans.put_plan(replace(plan, rules=(rule, *plan.rules[1:]))))
+    second.call(lib2.profiles.save_override(None, "mode: rule\nlog-level: info\n"))
     export(qtbot, second, tmp_path / "second.json")
 
     clock.now += 60
@@ -409,7 +409,7 @@ def test_icloud_backs_up_when_turned_on_and_after_changes(
     assert len(icloud.records) == 1
 
     # A change goes up once it has settled.
-    machine.call(machine.vms.library.save_override(None, "mode: global\n"))
+    machine.call(machine.vms.library.profiles.save_override(None, "mode: global\n"))
     settle(qtbot, machine, lambda: len(icloud.records) == 2)
     # The upload landed; its time is recorded once the call returns, so wait for that
     # before moving the clock, or the backup takes the later time.

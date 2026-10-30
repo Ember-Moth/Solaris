@@ -107,11 +107,11 @@ def test_every_request_carries_the_overrides(tmp_path: Path) -> None:
     scene.host.validate = record  # type: ignore[method-assign]
 
     async def scenario() -> None:
-        await scene.library.import_url("https://new.example.com/s")
-        await scene.library.update("sample-b")
-        await scene.library.activate("sample-b")
+        await scene.library.profiles.import_url("https://new.example.com/s")
+        await scene.library.profiles.update("sample-b")
+        await scene.library.profiles.activate("sample-b")
         await scene.host.stop()
-        await scene.library.start_tunnel()
+        await scene.library.tunnel.start()
 
     run(scenario)
     # A new profile has only the global override; a stored one has its own as well.
@@ -129,7 +129,7 @@ def test_a_rejected_override_is_not_stored(tmp_path: Path) -> None:
     scene = Scene(tmp_path)
     for target in ("sample-b", None):
         with pytest.raises(HostError) as raised:
-            run(lambda target=target: scene.library.save_override(target, "proxies: []\n"))
+            run(lambda target=target: scene.library.profiles.save_override(target, "proxies: []\n"))
         assert raised.value.code == "invalid_config"  # the group names proxies it removed
         assert scene.store.read_override(target) == ""
     profiles = run(scene.library.current)
@@ -142,15 +142,15 @@ def test_saving_reloads_only_the_profile_in_use(tmp_path: Path) -> None:
     scene = Scene(tmp_path)
 
     # Another profile's override does not touch the running tunnel.
-    profiles = run(lambda: scene.library.save_override("sample-b", "mode: direct\n"))
+    profiles = run(lambda: scene.library.profiles.save_override("sample-b", "mode: direct\n"))
     assert profiles.get("sample-b").has_override
     assert scene.store.read_override("sample-b") == "mode: direct\n"
     assert scene.host.reloads == 0
 
     # The active profile's override and the global one reload it, keeping TUN on.
-    run(lambda: scene.library.save_override("sample-a", "log-level: debug\n"))
+    run(lambda: scene.library.profiles.save_override("sample-a", "log-level: debug\n"))
     assert scene.host.reloads == 1
-    profiles = run(lambda: scene.library.save_override(None, "mode: global\n"))
+    profiles = run(lambda: scene.library.profiles.save_override(None, "mode: global\n"))
     assert profiles.has_global_override
     assert scene.host.reloads == 2
     assert scene.host.config is not None
@@ -160,7 +160,7 @@ def test_saving_reloads_only_the_profile_in_use(tmp_path: Path) -> None:
     # A stopped tunnel is not reloaded.
     async def stopped() -> None:
         await scene.host.stop()
-        await scene.library.save_override(None, "mode: rule\n")
+        await scene.library.profiles.save_override(None, "mode: rule\n")
 
     run(stopped)
     assert scene.host.reloads == 2
@@ -168,30 +168,30 @@ def test_saving_reloads_only_the_profile_in_use(tmp_path: Path) -> None:
 
 def test_blank_text_removes_an_override(tmp_path: Path) -> None:
     scene = Scene(tmp_path)
-    run(lambda: scene.library.save_override("sample-a", "mode: direct\n"))
-    profiles = run(lambda: scene.library.save_override("sample-a", "  \n"))
+    run(lambda: scene.library.profiles.save_override("sample-a", "mode: direct\n"))
+    profiles = run(lambda: scene.library.profiles.save_override("sample-a", "  \n"))
     assert not profiles.get("sample-a").has_override
     assert scene.store.read_override("sample-a") == ""
-    assert run(lambda: scene.library.read_override("sample-a")) == ""
+    assert run(lambda: scene.library.profiles.read_override("sample-a")) == ""
 
 
 def test_the_global_override_is_checked_with_the_active_profile(tmp_path: Path) -> None:
     scene = Scene(tmp_path)
     scene.store.write_config("sample-a", OTHER_CONFIG)
     # OTHER_CONFIG has no proxy-groups to prepend to, which is fine; it has a proxy.
-    run(lambda: scene.library.save_override(None, "prepend-proxy-groups: []\n"))
+    run(lambda: scene.library.profiles.save_override(None, "prepend-proxy-groups: []\n"))
     assert scene.host.config is not None
     assert scene.host.config.config_yaml == OTHER_CONFIG
 
     empty = Scene(tmp_path / "empty", seeded=False)
     with pytest.raises(ProfileError) as raised:
-        run(lambda: empty.library.save_override(None, "mode: global\n"))
+        run(lambda: empty.library.profiles.save_override(None, "mode: global\n"))
     assert raised.value.code == "no_profile"
 
 
 def test_removing_a_profile_removes_its_override(tmp_path: Path) -> None:
     scene = Scene(tmp_path)
-    run(lambda: scene.library.save_override("sample-b", "mode: direct\n"))
-    run(lambda: scene.library.remove("sample-b"))
+    run(lambda: scene.library.profiles.save_override("sample-b", "mode: direct\n"))
+    run(lambda: scene.library.profiles.remove("sample-b"))
     assert scene.store.read_override("sample-b") == ""
     assert scene.store.read_config("sample-a") == SAMPLE_CONFIG

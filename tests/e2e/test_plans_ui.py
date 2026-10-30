@@ -195,7 +195,7 @@ def local_tests(app: App, health: WebServer) -> None:
         for code in ("HK", "JP", "US")
     ]
     done: list[Routing] = []
-    runner.submit(library.put_plan(replace(plan, groups=tuple(groups))), done.append)
+    runner.submit(library.plans.put_plan(replace(plan, groups=tuple(groups))), done.append)
     app.until(lambda: done)
     app.view_models.routing.reload()
 
@@ -296,13 +296,13 @@ def test_the_rule_test_agrees_with_connections(app: App) -> None:
     # The .test domains resolve to this machine, so DIRECT reaches the local server.
     saved: list[object] = []
     override = "hosts:\n  '+.test': 127.0.0.1\n"
-    runner.submit(library.save_override(None, override), saved.append)
+    runner.submit(library.profiles.save_override(None, override), saved.append)
     app.until(lambda: saved)
     with WebServer("health") as health, WebServer("sample") as sample:
         plan = library.routing_snapshot().plan()
         assert plan is not None
         done: list[Routing] = []
-        runner.submit(library.put_plan(sample_plan(plan, source, health)), done.append)
+        runner.submit(library.plans.put_plan(sample_plan(plan, source, health)), done.append)
         app.until(lambda: done)
         routing.reload()
         app.connect()

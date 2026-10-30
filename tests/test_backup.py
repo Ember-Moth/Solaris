@@ -589,9 +589,9 @@ def test_an_update_that_ends_during_a_restore_does_not_undo_it(tmp_path: Path) -
         time.sleep(0.2)
 
     async def scenario() -> ProfileList:
-        update = asyncio.create_task(library.update("sample-a"))
+        update = asyncio.create_task(library.profiles.update("sample-a"))
         await asyncio.sleep(0.05)  # downloading
-        restored = await library.restore(write)
+        restored = await library.profiles.restore(write)
         with pytest.raises(ProfileError):
             await update  # sample-a is gone with the restore
         return restored

@@ -408,7 +408,7 @@ def test_removal_mentions_the_override(qtbot: QtBot, view_models: ViewModels) ->
 def test_a_failed_update_is_a_warning_of_its_own(qtbot: QtBot, view_models: ViewModels) -> None:
     """The view shows it in the warning colour after the rest of the line."""
     profiles = view_models.profiles
-    fetcher = view_models.library._fetcher
+    fetcher = view_models.library.profiles._fetcher
     assert isinstance(fetcher, SimulatedFetcher)
     fetcher.error = ProfileError("http_error", "HTTP 503")
     profiles.updateProfile("sample-a")

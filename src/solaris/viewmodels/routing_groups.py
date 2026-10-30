@@ -223,7 +223,7 @@ class GroupEditor(QObject):
             self._delays = delays
             self.previewChanged.emit()
 
-        self._runner.submit(self._library.node_delays(), delays_read, lambda _: None)
+        self._runner.submit(self._library.plans.node_delays(), delays_read, lambda _: None)
 
     # -- the form ----------------------------------------------------------------------------
     @Property(str, notify=changed)
@@ -501,7 +501,7 @@ class GroupEditor(QObject):
 
         # The name counts only when the group is saved; the preview should not wait for one.
         draft = replace(self._draft(), name=self._id)
-        self._runner.submit(self._library.preview_group(plan, draft), shown, failed)
+        self._runner.submit(self._library.plans.preview_group(plan, draft), shown, failed)
 
     def _sync_preview(self) -> None:
         preview = self._preview

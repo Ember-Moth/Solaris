@@ -88,13 +88,13 @@ class PlanTransfer(QObject):
         profile_id = self._routing.active_profile_id()
         name = self._routing.active_profile_name()
         if profile_id:
-            self._convert(self._library.convert_profile(profile_id), name)
+            self._convert(self._library.plans.convert_profile(profile_id), name)
 
     @Slot(str)
     def importFile(self, file_url: str) -> None:
         """Convert the mihomo configuration a FileDialog chose; it passes a file:// URL."""
         path = Path(QUrl(file_url).toLocalFile() or file_url)
-        self._convert(self._library.convert_file(path), path.stem)
+        self._convert(self._library.plans.convert_file(path), path.stem)
 
     def _convert(self, conversion: Coroutine[Any, Any, PlanConversion], source: str) -> None:
         self._busy = True
@@ -236,7 +236,7 @@ class PlanTransfer(QObject):
             self._error = failure_text(error)
             self.changed.emit()
 
-        self._runner.submit(self._library.export_plan(plan, kind), ready, failed)
+        self._runner.submit(self._library.plans.export_plan(plan, kind), ready, failed)
 
     @Property(str, notify=changed)
     def yaml(self) -> str:

@@ -21,6 +21,12 @@
   - `MacExtensionHost`：启停和控制消息都通过 ctypes 调用管理库，请求映射沿用 `ServiceHost`（apple/README.md）。
 
   测试和 `scripts/preview.py` 用 `tests/support/simulated.py` 里的模拟宿主。
+- **配置库** `ProfileLibrary`（`models/library/`）让订阅、分流和运行中的隧道保持一致，ViewModel 只经它改动这些。
+  各部分共用一个核心（`core.py`：存储、宿主、一把 `asyncio.Lock`，以及读订阅、拼装、校验和重载这几步），每部分管
+  一件事：`profiles`（导入、更新、使用和删除订阅，覆写，恢复备份）、`plans`（分流方式、方案、节点池设置和编辑器要
+  内核回答的查询）、`exits`（WARP 账户和 VPN Gate 列表）、`networks`（应用内添加的组网）、`tunnel`（连接时的
+  顺序，D27；运行中改设置）。改动状态的公开方法在整个改动期间持锁，核心和各部分的内部方法在锁里运行、不再取锁；
+  下载、注册这类耗时的请求在锁外。
 
 ## 1. 宿主接口里的配置
 
@@ -123,7 +129,7 @@
   存储。当前配置还空着时，第一份带规则的订阅成为当前配置（第 9 节）。
 - **没有内核能读时**（D27）：macOS 的内核只在隧道连接时运行（`TunnelHost.core_available` 为假）。这时导入只把
   原文写入存储，标为未读（`unread`）：没有节点数，是否带规则未知，订阅行写「连接后读取」。手动更新同样存为未读，
-  但内核上次读过的原文留在 `read_yaml`；自动更新等到有内核时再做。连接时 `start_tunnel` 先 `prepare_start` 让
+  但内核上次读过的原文留在 `read_yaml`；自动更新等到有内核时再做。连接时 `tunnel.start` 先 `prepare_start` 让
   隧道起来、扩展能回答，再按列表顺序读未读的订阅（`inspect_source`，带规则的再 `validate`），补上导入本该定下的
   （分流方式、当前配置），然后才 `Start`。内核拒绝更新来的原文时，退回 `read_yaml` 里上次读过的，和更新失败
   一样记为「更新失败」；导入的没有可退回的，仍是未读，"我的方案"拼装时不带它们，下次连接再读。正要使用的那份
@@ -523,21 +529,21 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   - "订阅自带"且这份订阅正在运行时，用 `list_groups` 和 `list_rules` 只读列出它的策略组和规则；不在运行时
     写出 `inspect_source` 给的数量。
   - **规则测试**：测试框的文字由 `plans.match_target` 读成主机和端口，停顿 0.4 秒或回车后交给
-    `ProfileLibrary.match_rule`：用显示的方案（含未提交的移动）、节点池和全局覆写拼成 `TunnelConfig`，调用宿主的
+    `ProfileLibrary.plans.match_rule`：用显示的方案（含未提交的移动）、节点池和全局覆写拼成 `TunnelConfig`，调用宿主的
     `match_rule`。结果的条目 id 标出命中的行（`RuleRow.hit`，兜底是 `fallbackHit`），方案每次改动生效后用同一段
     文字重测。
   - **搜索与按目标筛选**只影响显示：`RuleRow` 仍按完整列表算 `first` / `last`，所以菜单里的上移、下移照常；
     `filtering` 为真时 QML 禁用拖动手柄。
   - **自建策略组**：`customGroups` 列出方案里的自建组，说明写"类型 · 节点数、其他成员数、直连 / 拒绝"，节点数取
     报告里的 `node_count`。编辑器是 `GroupEditor`（`viewmodels/routing_groups.py`）：条件改动停止 0.25 秒后经
-    `ProfileLibrary.preview_group` 调用 `PreviewGroup`（组名临时用 id，名称不影响预览），延迟取自运行中内核的
+    `ProfileLibrary.plans.preview_group` 调用 `PreviewGroup`（组名临时用 id，名称不影响预览），延迟取自运行中内核的
     `list_groups`。保存走 `RoutingViewModel.put_group`：编辑的组保持位置，新组排在最后，内核拒绝时对话框不关闭。
     删除前列出引用它的规则条目、兜底和其他组（routing.md §5.5），确认后这些规则改走节点选择、其他组去掉它，
     可以撤销。
   - **转换与导出**是 `PlanTransfer`（`viewmodels/routing_transfer.py`）：`convert_profile` / `convert_file`
     调用 `ConvertToPlan`，摘要对话框确认后用 `plans.plan_from_json` 把内核写的方案 JSON 读成 `Plan`（条目的
     `items` 还原成界面的 `content`：域名加 `=`、`~` 前缀，IP 段带 `no_resolve`，分类的 GEOIP 没有 `no-resolve`
-    时记 `"no_resolve": false`），再由 `ProfileLibrary.add_plan` 校验、存储，勾选"创建后改用"时切到"我的方案"
+    时记 `"no_resolve": false`），再由 `ProfileLibrary.plans.add_plan` 校验、存储，勾选"创建后改用"时切到"我的方案"
     并使用它。导出和"查看生成的配置"调用 `export_plan`（`EXPORT_SHARE` / `EXPORT_GENERATED`，后者带运行中的或
     设置里的 `RunOptions`），只读显示；复制进剪贴板，另存为写 UTF-8 文件。
 - **目标下拉框**（规则对话框和"其他流量"，`routing_text.target_options`）：节点选择、自动选择 → 有节点的地区 →
@@ -562,7 +568,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
     方案（`plans.egress`，与其他改动一样先校验再存储），协议改的是本机设置 `warp_protocol`。
   - 打开开关时还没有账户就注册；有账户时改协议就为它换密钥。"注册""重新注册"按钮在账户一栏，重新注册是换一个
     新设备。删除账户在账户一栏的"更多"菜单里，先确认，只删本机保存的副本。
-  - 注册经 `ProfileLibrary.register_warp`：经由组按报告里的组名传给宿主（没有成员时传节点选择），网络请求不占
+  - 注册经 `ProfileLibrary.exits.register_warp`：经由组按报告里的组名传给宿主（没有成员时传节点选择），网络请求不占
     配置库的锁；账户存进凭据库后，在用的方案重新拼装并重载。隧道没在运行（或在用"订阅自带"）时记下这次请求，
     状态写"连接后注册"；概览页看到隧道开始运行时（`RoutingViewModel.tunnel_running`）补做，协议在断开时改过的也在
     这时换密钥。这个请求只在界面进程的内存里，退出界面就不再等。
@@ -578,7 +584,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
     勾选在用的国家，点一项加上或去掉，带服务器数，至少留一个；复选框只用于提交时生效的表单，所以不用它们；选了
     几个国家时提示失效后可能换到别国的服务器）、分配方式（按网站分配 / 只用一台），都立即改方案；最后是服务器一栏：在用几台、列表更新于何时（或失败的原因）、"立即刷新"，以及在用
     的服务器（国家 · 主机名、运营者、最近一次延迟），超过五台时在框里滚动。
-  - 列表经 `ProfileLibrary.refresh_vpngate` 获取：与注册 WARP 一样经由组按报告里的组名传给宿主，网络请求不占配置库
+  - 列表经 `ProfileLibrary.exits.refresh_vpngate` 获取：与注册 WARP 一样经由组按报告里的组名传给宿主，网络请求不占配置库
     的锁，隧道没在运行时记下请求，状态写"连接后获取"，连接后补做。列表、在用的服务器（按组里的顺序）和一小时内
     失效的服务器存在本机 `state` 表的 `vpngate` 一行（`models/vpngate.py`），不进备份。`vpngate.pick` 在方案的国家
     里按 Score 取前 N 台：仍可用的服务器留在原位，空出的位置按分数补上。拼装时只给打开了出口的方案带上服务器

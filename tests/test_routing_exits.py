@@ -491,7 +491,7 @@ def test_a_failed_server_gives_up_its_position(qtbot: QtBot, planned: ViewModels
         exit_._tick()
     assert len(picked(host)) == 2  # the two left in Japan
     assert len(host.vpngate_calls) == 1
-    library._clock = lambda: now + 11 * 60
+    library._core.clock = lambda: now + 11 * 60
     renamed = (replace(s, host_name=s.host_name + "2") for s in VPNGATE_SERVERS)
     host.vpngate_servers = (*VPNGATE_SERVERS, *renamed)
     for name in picked(host):
