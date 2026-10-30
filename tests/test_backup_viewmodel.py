@@ -729,7 +729,7 @@ def test_google_drive_signs_in_backs_up_and_signs_out(
     assert (target.provider, target.account) == ("google_drive", "user@example.com")
     assert TOKEN_KEY in machine.credentials.secrets
 
-    machine.call(machine.vms.library.save_override(None, "mode: global\n"))
+    machine.call(machine.vms.library.profiles.save_override(None, "mode: global\n"))
     settle(qtbot, machine, lambda: len(google.snapshots()) == 2)
     google.failures["upload"] = (403, {"error": {"errors": [{"reason": "storageQuotaExceeded"}]}})
     backup.backUpNow()
@@ -844,7 +844,7 @@ def test_icloud_and_google_drive_together(
     sign_in(qtbot, first)
     assert (len(icloud.records), len(google.snapshots())) == (1, 1)
 
-    first.call(first.vms.library.save_override(None, "mode: global\n"))
+    first.call(first.vms.library.profiles.save_override(None, "mode: global\n"))
     settle(qtbot, first, lambda: len(icloud.records) == len(google.snapshots()) == 2)
     backup.backUpNow()
     assert prop(backup, "icloudStatus") == prop(backup, "googleStatus") == "正在备份…"
