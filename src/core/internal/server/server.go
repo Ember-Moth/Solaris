@@ -47,13 +47,14 @@ func Serve(ctx context.Context, listener net.Listener, verify peer.Verifier, han
 	}
 }
 
-func serveConn(ctx context.Context, conn net.Conn, verify peer.Verifier, handler Handler, logger *slog.Logger) {
-	defer conn.Close()
-	caller, err := verify(conn)
+func serveConn(ctx context.Context, accepted net.Conn, verify peer.Verifier, handler Handler, logger *slog.Logger) {
+	conn, caller, err := verify(accepted)
 	if err != nil {
+		accepted.Close()
 		logger.Warn("rejected control client", "error", err)
 		return
 	}
+	defer conn.Close()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	context.AfterFunc(ctx, func() { conn.Close() })

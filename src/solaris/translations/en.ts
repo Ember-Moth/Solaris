@@ -1157,8 +1157,16 @@ prepend-rules:
         <translation>Connection failed</translation>
     </message>
     <message>
+        <source>其他用户正在使用</source>
+        <translation>In use by another user</translation>
+    </message>
+    <message>
         <source>未连接</source>
         <translation>Not connected</translation>
+    </message>
+    <message>
+        <source>另一位用户已连接，对方断开后才能在这里连接</source>
+        <translation>Another user is connected; you can connect once they disconnect</translation>
     </message>
     <message>
         <source>隧道未运行</source>

@@ -3,7 +3,7 @@ from collections.abc import Awaitable, Callable
 
 import pytest
 
-from solaris.host.base import HostError, HostInfo, RunOptions, TunnelConfig
+from solaris.host.base import HostError, HostInfo, HostStatus, RunOptions, TunnelConfig
 from solaris.host.client import ControlClient
 from solaris.host.service import ServiceHost
 from solaris.host.transport import Opener, Streams
@@ -352,3 +352,101 @@ def test_service_host_subscribes_to_logs_again_for_another_level() -> None:
     asyncio.run(scenario())
     assert subscribed == [pb.LOG_LEVEL_INFO, pb.LOG_LEVEL_DEBUG]
     assert unsubscribed == [1]
+
+
+def _not_ours(code: str) -> control_pb2.Response:
+    return control_pb2.Response(error=control_pb2.Error(code=code, message=code))
+
+
+def test_service_host_claims_before_acting_but_not_to_read(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A free service answers not_claimed (docs/architecture.md §5.4). Reads answer as for a
+    stopped core; anything else claims it, waits out the restart a new owner needs, and
+    goes again."""
+    pb = control_pb2
+    monkeypatch.setattr("solaris.host.service.CLAIM_RETRY_S", 0.01)
+    claims = 0
+    seen: list[str] = []
+
+    async def answer(request: control_pb2.Request) -> control_pb2.Response:
+        nonlocal claims
+        method = request.WhichOneof("method") or ""
+        seen.append(method)
+        if method == "claim":
+            claims += 1
+            if claims == 1:
+                return _not_ours("service_restarting")
+            return pb.Response(empty=pb.Empty())
+        if claims < 2:
+            return _not_ours("not_claimed")
+        return pb.Response(empty=pb.Empty())
+
+    async def scenario() -> None:
+        server, opener = await serve(answer)
+        async with server:
+            host = ServiceHost(opener)
+            try:
+                stopped = HostStatus("stopped", "rule", 0, 0, 0, False, False)
+                assert await host.get_status() == stopped
+                assert await host.list_groups() == []
+                assert await host.list_rules() == []
+                assert await host.poll_traffic() == []
+                assert await host.poll_connections() == []
+                assert await host.poll_logs("info") == []
+                assert (await host.list_geo_categories()).geosite.bundled
+                await host.stop()
+                await host.close_all_connections()
+                assert "claim" not in seen
+                assert await host.validate(TunnelConfig("mixed-port: 7890\n")) is None
+                assert seen[-4:] == ["validate", "claim", "claim", "validate"]
+            finally:
+                await host.close()
+
+    asyncio.run(scenario())
+
+
+def test_service_host_leaves_another_users_tunnel_alone() -> None:
+    seen: list[str] = []
+
+    async def answer(request: control_pb2.Request) -> control_pb2.Response:
+        seen.append(request.WhichOneof("method") or "")
+        return _not_ours("owned_by_other_user")
+
+    async def scenario() -> None:
+        server, opener = await serve(answer)
+        async with server:
+            host = ServiceHost(opener)
+            try:
+                for action in (host.get_status(), host.validate(TunnelConfig("a: 1\n"))):
+                    with pytest.raises(HostError) as raised:
+                        await action
+                    assert raised.value.code == "owned_by_other_user"
+            finally:
+                await host.close()
+
+    asyncio.run(scenario())
+    assert "claim" not in seen
+
+
+def test_service_host_gives_up_on_a_restart_that_does_not_end(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("solaris.host.service.CLAIM_RETRY_S", 0.01)
+    monkeypatch.setattr("solaris.host.service.CLAIM_TIMEOUT_S", 0.1)
+
+    async def answer(_: control_pb2.Request) -> control_pb2.Response:
+        return _not_ours("service_restarting")
+
+    async def scenario() -> None:
+        server, opener = await serve(answer)
+        async with server:
+            host = ServiceHost(opener)
+            try:
+                await host.claim()
+            finally:
+                await host.close()
+
+    with pytest.raises(HostError) as raised:
+        asyncio.run(scenario())
+    assert raised.value.code == "service_restarting"

@@ -125,10 +125,7 @@ func newEngine(options Options) (*Engine, error) {
 	if err := checkPathSandbox(home); err != nil {
 		return nil, err
 	}
-	coreOnce.Do(func() {
-		coreVerStr = moduleVersion()
-		C.Version = coreVerStr
-	})
+	Version()
 	engine := &Engine{
 		tunMode:            options.Tun,
 		home:               home,
@@ -163,6 +160,16 @@ func checkPathSandbox(home string) error {
 		return errors.New("mihomo's path sandbox rejects its own home directory")
 	}
 	return nil
+}
+
+// Version is mihomo's version. The Windows service answers GetInfo with it before it has an
+// owner, and so an Engine (docs/architecture.md §5.4).
+func Version() string {
+	coreOnce.Do(func() {
+		coreVerStr = moduleVersion()
+		C.Version = coreVerStr
+	})
+	return coreVerStr
 }
 
 func moduleVersion() string {
