@@ -13,7 +13,8 @@
 - **不在本文范围内**：
   - Windows 服务在 `C:\ProgramData\Solaris\` 下保存的运行副本（architecture.md §5.1），它只用于开机恢复；
   - mihomo 自己的 provider 缓存和 `cache.db`；
-  - 链式出口的 WARP 账户（系统凭据库）和 Tor 数据目录，都只在本机，不进备份（[exits.md](exits.md) 第 8 节）。
+  - 链式出口的 WARP 账户（系统凭据库）、VPN Gate 服务器列表（`state` 表）和 Tor 数据目录，都只在本机，不进备份
+    （[exits.md](exits.md) 第 8 节）。
 - **读写方**：数据库只由界面进程以当前用户身份读写。服务和系统扩展都不访问它，它们从宿主请求里拿到配置。
 
 ## 2. 本地数据库
@@ -35,7 +36,7 @@
 | `overrides` | `scope`（`global` 或某个 `profile_id`）、YAML 原文、`updated_at`、`deleted_at` |
 | `routing_state`、`plans`、`plan_groups`、`plan_rules` | 分流方式、当前使用的配置、节点池设置、分流方案及其策略组和规则条目，字段见 routing.md 第 9 节 |
 | `settings` | `key`、`value`（JSON）、`scope`（`synced` / `local`）、`updated_at`。每个设置项属于哪个 scope，由 `models/settings.py` 里字段的元数据决定（ui.md §8） |
-| `state` | 只属于本机的状态（`key`、`value`（JSON）、`updated_at`）：每个备份目标上次上传的快照摘要（`backup_digest:<目标 id>`） |
+| `state` | 只属于本机的状态（`key`、`value`（JSON）、`updated_at`）：每个备份目标上次上传的快照摘要（`backup_digest:<目标 id>`）；VPN Gate 出口的服务器列表、在用的服务器和近一小时失效的服务器（`vpngate`，exits.md 5.2 节） |
 | `backup_targets` | 已开启的备份目标：`id`、提供方、显示用的账户名、上次成功备份的时间、上次的错误、`created_at`、`updated_at`、`deleted_at`。不存令牌（见 4 节） |
 
 当前使用的配置存在 `routing_state` 里，作为"订阅自带"时用的配置（routing.md 第 9 节），不在 `state` 里。

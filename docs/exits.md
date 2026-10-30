@@ -4,8 +4,8 @@
 才到达目标网站。决策是 [roadmap.md](roadmap.md) 的 D21、D22、D23、D25，实施计划是 M9（WARP）、M10（Tor）和
 M12（VPN Gate）。叫"链式出口"而不是"隐私出口"，因为 VPN Gate 的用途是换 IP，不是隐私。
 
-状态：WARP 出口已实现，3.2、3.3、7.1、7.2 节按内核的实现写成，界面见 ui.md 第 9 节；只对本机的假服务器和模拟宿主
-验证过，真实节点的验收未做（第 10 节）。Tor、VPN Gate 未实现。原型在
+状态：WARP 出口和 VPN Gate 出口已实现，3.2、3.3、5.1 到 5.3、7.1、7.2 节按实现写成（与原设计不同处写"实现"），
+界面见 ui.md 第 9 节；都只对本机的假服务器和模拟宿主验证过，真实节点的验收未做（第 10 节）。Tor 未实现。原型在
 Claude Design 画布上（WARP 与 Tor；VPN Gate 还没画）。
 
 ## 1. 目标与边界
@@ -79,6 +79,11 @@ Claude Design 画布上（WARP 与 Tor；VPN Gate 还没画）。
 | 说明 | "Cloudflare 能看到访问的网站，代理节点看不到" | "只隐藏 IP，不等于匿名；速度较慢；只支持 TCP；部分网站会拦截 Tor" | "服务器由志愿者提供，他们能看到你访问的网站，并保留两周日志。请勿用于大流量下载和视频" |
 
 WARP 的开关、"经由"和 VPN Gate 的国家、数量属于方案（随方案进入备份）；协议、账户和 Tor 开关属于本机。
+
+**实现**（VPN Gate，ui.md 第 9 节）：对话框同样没有保存按钮。开关、经由、服务器数量、国家、分配方式都直接改方案。
+国家是一组复选框，列出列表里有的国家和服务器数，至少留一个；选了几个国家时提示"一台服务器失效后，分到它的网站
+可能换到另一个国家的服务器上"。状态一栏写在用几台、列表更新于何时，下面列出在用的服务器（国家 · 主机名、运营者、
+最近一次延迟），操作只有"立即刷新"。说明一句写明只换 IP、不保护隐私，其余同上表。
 
 **实现**（WARP，ui.md 第 9 节）：对话框里的开关、经由和协议都立即生效，没有保存按钮，只有"完成"。账户一栏写
 "已注册"和注册日期、设备 id 的前 8 位，或"未注册"和注册的方式，注册失败时写原因；按钮是"注册"或"重新注册"
@@ -320,22 +325,39 @@ listeners:
   越南 6、俄罗斯 5、美国 4，其余零散。
 - mihomo v1.19.33 自带 `openvpn` 出站，支持 TCP 和 UDP、AES-CBC 加 SHA1（`transport/openvpn` 有专门的测试）、
   `comp-lzo`、`tls-auth`，并支持 `dialer-proxy`。不需要新的协议实现。
+- **使用条款**（2026-10-30 核实，M12 开工前）：网站没有单独的使用条款页。首页在服务器列表旁写着"You can use CSV
+  List to make your own VPN Gate client app"（日文页同义），概述页写"Anyone online can hook up to any VPN servers on
+  the list"，FAQ 写"You can connect to any of servers on the list"。唯一的禁止是不得把列表用作审查防火墙的封锁名单。
+  反滥用政策说明服务器和项目都记连接日志（含来源 IP 和访问的主机名），应执法机关等的正当要求披露，没有限制客户端
+  或经代理连接；服务器的 OpenVPN 配置里本身就留着 `http-proxy` 一项。首页还说明列表只公开一部分是为了防 DoS，
+  所以自动获取限制在每小时一次（5.2 节）。
+- **实现**：项目自己的服务器（主机名 `public-vpn-*`）的运营者一栏写着"Daiyuu Nobori_ Japan. Academic Use Only."，
+  内核把运营者或留言写了"academic use only"的服务器都排除在外。同日的取样是 96 台，77 台 TCP、19 台 UDP，其中这样
+  标注的 15 台都是 TCP，剩下可用的 62 台：日本 27、韩国 28、俄罗斯 4，其余零散。
 
 ### 5.2 选择与刷新
 
 - **拉列表**：新方法 `ListVpnGate`（7.2 节）由内核经"经由"组拉取。这样 VPN Gate 看不到用户的 IP，在国内也连得上。
   内核解析 CSV 和配置，返回服务器（主机名、IP、国家、Score、延迟、速度、会话数、运行时长、运营者、协议、端口）
   和转换好的出站参数。
+  - 实现：`internal/vpngate` 按表头的列名读 CSV，同一主机名只取第一行，按 Score 从高到低排序，最多 500 台；下载
+    最多等 60 秒。只认得表头之外的行都读不出来时是错误（"not a server list"），读得出来但一台都用不了时返回空列表。
 - **只取 TCP 服务器**：TCP 只要求节点能转发 TCP，任何节点都能当跳板。UDP 服务器默认不用。
 - **挑选**：在方案选定的国家里按 Score 从高到低取前 N 台（默认 5，最多 10）；连不上的服务器在本机记一小时，期间
   跳过。
+  - 实现：挑选在界面（`models/vpngate.py` 的 `pick`），内核只用 `Composition` 带来的服务器。
 - **刷新时机**：界面每小时调用一次 `ListVpnGate`；另外读出口组的成员状态（`GetGroup`），能用的服务器不到一半时
   立即刷新。挑出的服务器变了就 Reload，已有连接不断开。
+  - 实现：隧道运行时每两分钟检查一次：列表超过一小时就重新获取，否则用 `ListGroups` 读这些服务器最近一次的延迟
+    （0 是失败）。失败的记一小时并让出位置；能用的不到一半时重新获取，但离上次获取不到十分钟时不取，免得失效的
+    服务器多时反复下载。"立即刷新"不受这个限制。打开出口、隧道开始运行时，列表超过一小时也重新获取。
 - **刷新时保持位置**：服务器按在组里的位置分配网站（5.3 节）。刷新时，仍然可用的服务器留在原位，新服务器只填补
   空出来的位置，已经分好的网站不会整体重新分配。
 - **多个国家**：一台服务器失效后，分到它的网站可能换到另一个国家的服务器上。不想这样就只选一个国家，设置对话框
   里写明这一点。
 - 列表只缓存在本机，不进备份。
+  - 实现：存在数据库的 `state` 表（`vpngate` 一行），连同在用的服务器（按组里的顺序）和一小时内失效的服务器；读不
+    出来时当作没有列表。
 
 ### 5.3 拼装
 
@@ -363,11 +385,48 @@ listeners:
   `<ca>`、`<cert>`、`<key>`、`<tls-auth>`、`key-direction`），其余忽略，取不全就跳过这台服务器。
 - 组名"VPN Gate 出口"是保留名称，与另外两个出口相同。
 
+**实现**（`internal/compose/egress.go`、`internal/vpngate`）：
+
+```yaml
+proxies:
+  - name: VPN Gate JP vpn381472650   # "VPN Gate"、国家代码、列表里的主机名
+    type: openvpn
+    server: 203.0.113.11              # 配置里第一个 remote，必须是公网 IP
+    port: 443
+    proto: tcp
+    cipher: AES-128-CBC
+    data-ciphers: [AES-128-CBC]
+    auth: SHA1
+    ca: <PEM>
+    cert: <PEM>
+    key: <PEM>
+    handshake-timeout: 15             # 握手在后台继续，不随一次延迟测试的 5 秒超时中断
+    ping: 10
+    ping-restart: 60                  # 隧道断了自己重连
+    udp: true
+    remote-dns-resolve: true          # 域名在隧道里解析：网站按出口所在国家解析，节点看不到查询
+    dns: [1.1.1.1, 8.8.8.8]
+    dialer-proxy: <经由组的名称>
+proxy-groups:
+  - {name: VPN Gate 出口, type: load-balance, strategy: consistent-hashing,   # 只用一台时 type: fallback
+     proxies: [...], interval: 120, timeout: 5000, max-failed-times: 2, lazy: true}   # 方案有 test_url 时带 url
+```
+
+- 读配置时还读 `data-ciphers` 和 `dev`；`dev` 不是 tun、`proto` 不是 TCP、要 `auth-user-pass` 或 `tls-crypt`、
+  `remote` 是域名或私有地址、内嵌文件不全的服务器都跳过。最后用钉住的 mihomo 自己的检查（`ClientConfig.Prepare`）
+  过一遍，它不接受的也跳过，所以一台坏服务器不会让整份配置失败。
+- 出口的组排在方案的组之后，不在报告的组列表里；服务器的出站写在顶层 `proxies`，不进任何 provider，只在这个组里。
+  服务器名称在节点取名之前占用，重名的节点按 routing.md 8.1 节加后缀。同一主机名出现两次、缺出站参数是
+  `invalid_config`（`vpngate: ...`）。
+- 只有服务器、没有规则指向出口时不生成；经由组没有成员时改走节点选择，警告 `via_empty`（条目 id `egress:vpngate`）。
+- 分享导出写出口的名称；`ConvertToPlan` 把"VPN Gate 出口""VPN Gate exit"读回 `egress:vpngate`。
+- engine 的 `TestVpnGateExitIsWhatMihomoBuilds` 让 mihomo 实际构建 `ListVpnGate` 读出的配置生成的出站和两种组。
+
 ### 5.4 风险
 
 | 风险 | 应对 |
 | --- | --- |
-| 使用条款：是否允许第三方客户端批量拉取列表、用作代理出口，尚未核实 | M12 开工前先核实；不允许就不做 |
+| 使用条款 | 已核实（5.1 节）：网站邀请用 CSV 列表做自己的客户端；排除标注"Academic Use Only"的项目自有服务器；自动获取每小时一次 |
 | 志愿者能看到访问的网站和明文内容；服务器保留两周日志 | 只宣传"换 IP"，不说隐私；设置对话框写明 |
 | 大流量压在志愿者的家庭宽带上 | 对话框提示"请勿用于大流量下载和视频"；"其他流量"选它时再提示一次 |
 | 服务器随时上下线，速度不稳 | 负载均衡组跳过失效的服务器；快速的健康检查；每小时刷新，能用的不到一半时立即刷新 |
@@ -378,9 +437,11 @@ listeners:
 
 - **分流页·策略组**：内置、地区、自建、组网之后加"链式出口"一节，最多三行，每行写出口名称、经由、状态
   （"已就绪"、"正在连接 Tor 网络 45%"、"未注册"、"日本 3 台"、"不可用：…"）。点行打开 2 节的设置对话框。
-  - 实现：只有 WARP 一行，没有延迟测试。说明写"经由 组名 · 协议"，经由组没有成员时写"组名，暂经节点选择"。状态是
-    "未启用"、"正在注册…"、"已就绪"、"未注册"、"连接后注册"，注册失败时为 `warning` 色的"不可用"，原因写在对话框
-    里。"更多"菜单是"设置…"和"注册"（有账户时为"重新注册"）。
+  - 实现：WARP 和 VPN Gate 两行，没有延迟测试。WARP 的说明写"经由 组名 · 协议"，经由组没有成员时写"组名，暂经
+    节点选择"。状态是"未启用"、"正在注册…"、"已就绪"、"未注册"、"连接后注册"，注册失败时为 `warning` 色的
+    "不可用"，原因写在对话框里。"更多"菜单是"设置…"和"注册"（有账户时为"重新注册"）。
+  - 实现：VPN Gate 的说明写"经由 组名 · 国家"；状态是"未启用"、"正在获取…"、"日本 5 台"（几个国家时只写台数）、
+    "连接后获取"，没有在用的服务器时为 `warning` 色的"不可用"。"更多"菜单是"设置…"和"立即刷新"。
 - **添加规则对话框**：目标下拉框是节点选择、自动选择、分隔线、各地区、分隔线、自建策略组、分隔线、各组网出站
   （[mesh.md](mesh.md)）、分隔线、WARP 出口、Tor 出口、VPN Gate 出口、分隔线、直连、拒绝。未启用的出口不可选，
   注明"未启用"。
@@ -396,10 +457,10 @@ listeners:
 
 ### 7.1 `Composition` 与方案 JSON
 
-WARP 部分已实现：`control.proto` 的 `Egress`、`WarpAccount`、`RegisterWarp`，Python 侧是 `host/base.py` 的
-`Egress`、`WarpAccount` 和 `TunnelHost.register_warp`；方案 JSON 的 `egress.warp.via` 和目标 `egress:warp`。
-Tor 和 VPN Gate 的字段号 2、3 已预留；`egress.tor`、`egress.vpngate` 现在写了也被忽略，目标 `egress:tor`、
-`egress:vpngate` 是 `invalid_config`（未知目标），随 M10、M12 加入。
+WARP 和 VPN Gate 部分已实现：`control.proto` 的 `Egress`（`warp` 1、`vpn_gate` 3）、`WarpAccount`、`VpnGateServer`、
+`OpenVpnOptions`、`RegisterWarp`、`ListVpnGate`，Python 侧是 `host/base.py` 的同名类型和 `TunnelHost.register_warp`、
+`TunnelHost.list_vpngate`；方案 JSON 的 `egress.warp`、`egress.vpngate` 和目标 `egress:warp`、`egress:vpngate`。
+Tor 的字段号 2 已预留；`egress.tor` 现在写了也被忽略，目标 `egress:tor` 是 `invalid_config`（未知目标），随 M10 加入。
 
 - `Composition` 新增 `egress`：
   - `warp`：账户（3.2 节的各项）和协议；
@@ -416,6 +477,9 @@ Tor 和 VPN Gate 的字段号 2、3 已预留；`egress.tor`、`egress.vpngate` 
 
   `via` 是策略组 id（内置组、`region:代码` 或自建组），默认 `proxy`；`DIRECT` 等内置出站、`region:*`、不存在的
   组是 `invalid_config`。VPN Gate 的 `mode` 是 `per-site`（按网站分配，默认）或 `single`（只用一台）。
+  - 实现：VPN Gate 也只在方案打开出口时写 `egress.vpngate`，关着时界面不带服务器。`count` 超出 0 到 10、`countries`
+    不是大写的两位代码、`mode` 不认识是 `invalid_config`。界面存在 `plans.egress` 的是
+    `{"vpngate": {"enabled": true, "via": "proxy", "countries": ["JP"], "count": 5, "mode": "per-site"}}`。
   WARP 的开关不进方案 JSON：方案打开了 WARP 出口才写 `egress.warp`，关着时界面也不在 `Composition` 里带账户，
   指向它的规则照样按 D21 拒绝连接。界面把开关和经由一起存在 `plans.egress` 列：
   `{"warp": {"enabled": true, "via": "proxy"}}`。
@@ -428,7 +492,7 @@ Tor 和 VPN Gate 的字段号 2、3 已预留；`egress.tor`、`egress.vpngate` 
 | 方法 | 作用 |
 | --- | --- |
 | `RegisterWarp` | 请求带经由组名、协议，以及可选的已有账户（只有设备 id 和 token）。不带已有账户就注册新设备；带了就为这台设备换密钥。返回完整账户。需要内核在运行，否则 `not_running`。已实现 |
-| `ListVpnGate` | 请求带经由组名。经它拉取 VPN Gate 列表，返回服务器和转换好的 `openvpn` 出站参数（5.2 节）。需要内核在运行 |
+| `ListVpnGate` | 请求带经由组名。经它拉取 VPN Gate 列表，返回服务器和转换好的 `openvpn` 出站参数（5.2 节）。需要内核在运行，否则 `not_running`。已实现 |
 
 - 字段号：`RegisterWarp` 用 55，`ListVpnGate` 用 56（51 到 54 是 M8b 的四个方法）。
 - `RegisterWarp` 的请求：经由组名必填；设备 id 和 token 要么都有、要么都没有；协议是已知的值（不填为 MASQUE
@@ -436,6 +500,11 @@ Tor 和 VPN Gate 的字段号 2、3 已预留；`egress.tor`、`egress.vpngate` 
   是实际用的协议，`registered_at_unix_ms` 取 Cloudflare 记的设备创建时间。
 - 两种宿主都提供；模拟宿主返回一个固定的假账户。
 - 实现放在 `src/core/internal/warp`。HTTP 客户端的连接经 `proxydialer.NewByName(经由组, tunnel)` 发出，超时 30 秒。
+- `ListVpnGate` 的请求只有经由组名，必填，运行中的配置里没有这个名称是 `invalid_request`。它和 `RegisterWarp` 一样
+  不占操作锁。下载经同样的拨号器发出，计入连接统计，超时 60 秒；VPN Gate 返回非 2xx 时是 `operation_failed`
+  （`retryable`），`message` 是 `VPN Gate answered <状态>: <正文>`，正文最多 512 字节。界面这一次调用最多等 75 秒
+  （其他调用是 15 秒）。模拟宿主返回十台虚构的服务器。实现在 `src/core/internal/vpngate`，测试只对本机的假列表
+  （`vpngatetest` 按接口的格式写 CSV），CI 从不访问 VPN Gate。
 
 ## 8. 存储与备份
 
@@ -445,7 +514,7 @@ Tor 和 VPN Gate 的字段号 2、3 已预留；`egress.tor`、`egress.vpngate` 
 | WARP 账户 | 系统凭据库 | 否，新设备重新注册 |
 | `warp_protocol`、`tor_enabled` | `settings`，本机范围 | 否 |
 | Tor 状态与目录缓存 | 用户数据目录下的 `tor/` | 否 |
-| VPN Gate 服务器列表 | 本机缓存 | 否 |
+| VPN Gate 服务器列表 | 本机缓存（数据库的 `state` 表） | 否 |
 
 恢复到新设备后，方案里指向链式出口的规则先按 D21 拒绝连接；WARP 出口行显示 `warning` 色的"未注册"，从"更多"
 菜单或设置对话框注册。
@@ -460,8 +529,9 @@ Tor 和 VPN Gate 的字段号 2、3 已预留；`egress.tor`、`egress.vpngate` 
 - 连接页对 `dialer-proxy` 链路的显示，以及注册时经由组的那条连接。
 - `solaris_tor` 的体积，界面进程增加的内存，经节点首次连上 Tor 网络的时间，按目标主机隔离线路的开销。
 - macOS：系统扩展与界面进程互连回环端口，包括开启 `includeAllNetworks` 时。
-- VPN Gate：使用条款是否允许本用法；服务器是否接受来自机房 IP 的连接；经节点的 TCP 服务器实际吞吐；
-  转换后的配置在 mihomo 的 `openvpn` 出站上能否全部连通。
+- VPN Gate：服务器是否接受来自机房 IP 的连接；经节点的 TCP 服务器实际吞吐；转换后的配置在 mihomo 的 `openvpn`
+  出站上能否全部连通（证书、`data-ciphers` 的协商）；隧道里的 DNS（1.1.1.1、8.8.8.8）能否用；`consistent-hashing`
+  实际按主域名分配；换掉一台服务器的 Reload 是否打断走其他服务器的连接；连接页怎样显示 `dialer-proxy` 的链路。
 
 ## 10. 分期与验收
 
@@ -498,10 +568,11 @@ Tor 和 VPN Gate 的字段号 2、3 已预留；`egress.tor`、`egress.vpngate` 
 4. 退出界面后，同一规则的连接被拒绝；
 5. 抓包确认 arti 没有直连流量。
 
-**M12 VPN Gate 出口**（M9 之后；开工前先核实使用条款）
+**M12 VPN Gate 出口**（M9 之后；使用条款已在开工前核实，5.1 节）
 
-- 内核：`ListVpnGate`、配置转换、拼装 `egress:vpngate`；
-- 界面：链式出口一节的第三行、设置对话框（国家、数量、刷新）、定时刷新、大流量提示。
+- 内核：`ListVpnGate`、配置转换、拼装 `egress:vpngate`；已实现。
+- 界面：链式出口一节的第三行、设置对话框（国家、数量、刷新）、定时刷新、大流量提示；已实现（Tor 未做，所以现在
+  是第二行）。
 
 验收：
 1. 经一个真实节点打开 VPN Gate 出口，选日本，"ifconfig.me → VPN Gate 出口"返回日本的 IP，而不是节点 IP；
@@ -509,3 +580,16 @@ Tor 和 VPN Gate 的字段号 2、3 已预留；`egress.tor`、`egress.vpngate` 
 3. 让一台服务器连不上：两次连接失败、健康检查完成后，分到它的网站换到别的服务器，其他网站的 IP 不变；能用的
    不到一半时自动刷新列表；
 4. 列表为空时，同一规则的连接被拒绝。
+
+做法：用开发服务做，不建 TUN（`uv run python scripts/dev.py --data ~/md-dev`）。导入含一个真实节点的订阅，切到
+"我的方案"并连接，在节点选择里选中它；在分流页"链式出口"打开 VPN Gate 出口，国家只选日本，等状态变成"日本 N 台"
+（对话框的服务器一栏列出在用的服务器）；加一条 `ifconfig.me` 的域名规则，目标"VPN Gate 出口"。然后经混合端口访问：
+`curl -x http://127.0.0.1:<混合端口> https://ifconfig.me` 应是一个日本的 IP，与节点直接出去的地址不同，也不在节点
+的地区；`curl -x … https://ipinfo.io/json` 可看国家和运营商。
+- 第 2 项：对几个不同的网站（例如 `ifconfig.me`、`api.ipify.org`、`icanhazip.com`，都加进同一条规则）各访问几次，
+  比较返回的 IP；连接页看每条连接走的是哪台服务器。
+- 第 3 项：在代理页的"VPN Gate 出口"组里看哪台服务器分到了 `ifconfig.me`，用本机防火墙或把那台的 IP 加一条
+  `IP-CIDR,<IP>/32,REJECT` 覆写让它连不上；两分钟内对话框里它被换掉，`ifconfig.me` 换了 IP，其他网站不变。
+- 第 4 项：换一个新的数据目录（`--data ~/md-dev2`），新建一个只含"拒绝"的自建组，把经由设成它再打开出口：列表
+  取不到，对话框写出原因，规则行显示"不可用，已拒绝连接"，同一条命令失败。关掉出口时也一样。
+同时记下第 9 节的待验证项。
