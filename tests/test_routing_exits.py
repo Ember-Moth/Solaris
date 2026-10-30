@@ -476,8 +476,8 @@ def test_a_failed_server_gives_up_its_position(qtbot: QtBot, planned: ViewModels
     first = picked(host)
     reloads = host.reloads
     host.fail_vpngate(first[1])
-    exit_._tick()  # the two-minute check
-    qtbot.waitUntil(lambda: picked(host) != first)
+    with qtbot.waitSignal(routing.applied):
+        exit_._tick()  # the two-minute check
     # Only its position changes hands; the sites hashed to the others keep their servers.
     assert picked(host) == [first[0], JP_HOSTS[5], *first[2:]]
     assert host.reloads == reloads + 1
@@ -487,17 +487,19 @@ def test_a_failed_server_gives_up_its_position(qtbot: QtBot, planned: ViewModels
     now = library.now()
     for name in picked(host)[:3]:
         host.fail_vpngate(name)
-    exit_._tick()
-    qtbot.waitUntil(lambda: len(picked(host)) == 2)  # the two left in Japan
+    with qtbot.waitSignal(routing.applied):
+        exit_._tick()
+    assert len(picked(host)) == 2  # the two left in Japan
     assert len(host.vpngate_calls) == 1
     library._clock = lambda: now + 11 * 60
     renamed = (replace(s, host_name=s.host_name + "2") for s in VPNGATE_SERVERS)
     host.vpngate_servers = (*VPNGATE_SERVERS, *renamed)
     for name in picked(host):
         host.fail_vpngate(name)
-    exit_._tick()
-    qtbot.waitUntil(lambda: len(host.vpngate_calls) == 2)
-    qtbot.waitUntil(lambda: len(picked(host)) == 5)
+    with qtbot.waitSignal(routing.applied):
+        exit_._tick()
+    assert len(host.vpngate_calls) == 2
+    assert len(picked(host)) == 5
     assert all(h.endswith("2") for h in picked(host))
 
 
