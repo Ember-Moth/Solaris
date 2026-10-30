@@ -59,29 +59,42 @@ def ui_locale(language: str, system: QLocale | None = None) -> QLocale:
     return system if system.language() == default.language() else default
 
 
+# Catalogs for text of Qt's own that its catalogs do not translate yet, such as the text
+# fields' context menu (QtQuick.Controls.impl's CutAction and the like), by UI language.
+QT_CATALOGS = {"zh": "qtquick_zh_CN"}
+
+
 class Translations:
-    """Installs one language's translator and default locale on the application.
+    """Installs one language's translators and default locale on the application: the UI's
+    catalog, and ``QT_CATALOGS`` for Qt's own text.
 
     ``apply`` can run again to switch languages. A switch while the UI is up also needs
     ``QQmlEngine.retranslate()`` and the ViewModels to re-emit their text properties."""
 
     def __init__(self, app: QCoreApplication) -> None:
         self._app = app
-        self._translator: QTranslator | None = None
+        self._translators: list[QTranslator] = []
         self.language = SOURCE_LANGUAGE
 
     def apply(self, language: str) -> None:
         if language not in LANGUAGES:
             raise ValueError(f"unsupported language: {language!r}")
-        if self._translator is not None:
-            self._app.removeTranslator(self._translator)
-            self._translator = None
-        if language != SOURCE_LANGUAGE:
+        self.remove()
+        names = [] if language == SOURCE_LANGUAGE else [language]
+        if language in QT_CATALOGS:
+            names.append(QT_CATALOGS[language])
+        for name in names:
             translator = QTranslator(self._app)
-            catalog = TRANSLATIONS_DIR / f"{language}.qm"
+            catalog = TRANSLATIONS_DIR / f"{name}.qm"
             if not translator.load(str(catalog)):
-                raise FileNotFoundError(f"cannot load {catalog}; run scripts/gen_i18n.py")
+                raise FileNotFoundError(f"cannot load {catalog}; see docs/ui.md §5")
             self._app.installTranslator(translator)
-            self._translator = translator
+            self._translators.append(translator)
         QLocale.setDefault(ui_locale(language))
         self.language = language
+
+    def remove(self) -> None:
+        """Uninstall the translators this object installed."""
+        for translator in self._translators:
+            self._app.removeTranslator(translator)
+        self._translators = []

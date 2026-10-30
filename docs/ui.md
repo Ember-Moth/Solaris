@@ -212,8 +212,17 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 - **`.qm` 提交进仓库**（与 Theme.qml 一样），从源码运行和预览不需要额外步骤。Nuitka 打包时，
   `package/entry.py` 里的 `nuitka-project` 选项把 `translations/*.qm` 复制到 `mihomo_desktop/translations/`，
   `i18n.py` 按包内路径加载；找不到 `.qm` 时启动报错，而不是静默显示中文。
-- Qt 控件自带的文案（如输入框右键菜单的 Cut / Copy / Paste）不在本项目的目录里。Qt 自带的 zh_CN 目录尚未
-  收录这些新文案，中文界面下它们仍显示英文。
+- **Qt 自带的文案**：输入框和编辑框的右键菜单（撤销、重做、剪切、复制、粘贴、删除、全选）来自 Qt 自己的 QML，
+  `QtQuick.Controls.impl` 的 `UndoAction`、`CutAction` 等文件里的 `qsTr`，所以翻译上下文就是这些文件名。Qt 附带的
+  zh_CN 目录（PySide6 6.12）还没有这些条目，本项目在 `translations/qtquick_zh_CN.ts` 里补上中文，中文界面下由
+  `Translations` 一并加载（`i18n.QT_CATALOGS`）；英文界面就是 Qt 的原文，不需要目录。
+  - 这个目录不在 `gen_i18n.py` 的流程里（lupdate 扫不到 Qt 的源码），改动后用
+    `pyside6-lrelease -nounfinished -silent src/mihomo_desktop/translations/qtquick_zh_CN.ts -qm src/mihomo_desktop/translations/qtquick_zh_CN.qm`
+    编译；`.qm` 同样提交进仓库，打包时随 `translations/*.qm` 一起复制。
+  - `tests/test_qt_translations.py` 核对：每个条目都是 Qt 那个文件里的 `qsTr` 原文，Basic 样式的菜单正好用这几个
+    Action（升级 Qt 后有变化就失败）；`.qm` 与 `.ts` 一致；在中文和英文界面下实际创建这些 Action，读出的文字分别是
+    中文和 Qt 的英文原文。
+  - 其他 Qt 自带的文案（如系统文件对话框）由操作系统提供，跟随系统语言。
 
 ## 6. 外观
 

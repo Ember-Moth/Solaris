@@ -278,7 +278,7 @@ def test_language_switches_while_running(qtbot: QtBot, loaded: Loaded) -> None:
         assert view_models.profiles.property("summary") == "3 份订阅"
     finally:
         view_models.settings.languageChanged.disconnect(switch)
-        translations.apply("zh")
+        translations.remove()
     assert loaded.warnings == []
 
 
