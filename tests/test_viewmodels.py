@@ -153,7 +153,7 @@ def test_profiles_page_lists_the_samples(qtbot: QtBot, view_models: ViewModels) 
     assert prop(profiles, "summary") == "3 份订阅"
     a, b, c = rows(profiles)
     assert (a.name, a.active, b.active) == ("示例订阅 A", True, False)
-    # The seeded store is an earlier version's: it keeps routing with A's own rules.
+    # A's own rules route the traffic.
     assert (a.note, b.note) == ("规则使用中", "")
     assert a.source == "订阅 · sub.example.com · 9 个节点"
     assert (a.usage, a.expiry, a.updated) == ("38.2 / 200 GB", "2026-12-31", "2 小时前")

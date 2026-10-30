@@ -136,16 +136,6 @@ def test_a_first_import_with_rules_routes_with_them(tmp_path: Path) -> None:
     assert scene.host.reloads == 0  # the new subscription only joins the pool
 
 
-def test_an_upgraded_store_keeps_its_profile_in_use(tmp_path: Path) -> None:
-    """A store from before routing modes routes with its profile's own rules; one without a
-    profile waits for the first import (routing.md §5.1)."""
-    seeded = Scene(tmp_path / "seeded", seeded=True)
-    assert seeded.state().mode == MODE_PROFILE
-    assert run(seeded.library.routing).state.profile_id == "sample-a"
-    empty = Scene(tmp_path / "empty")
-    assert empty.state().mode is None
-
-
 def test_switching_modes_reloads_what_each_runs(tmp_path: Path) -> None:
     """A plan's composition takes the global override only; a profile's rules take its own
     as well (routing.md §5.6)."""

@@ -185,12 +185,8 @@ class ProfileLibrary:
         self._failed: dict[str, float] = {}  # profile id -> time of the failed update
         self._inspections: dict[str, SourceInspection] = {}
         self._report: CompositionReport | None = None
-        state = self._routing_store.state()
-        if state.mode is None and self._list.active is not None:
-            # Upgraded from a version before routing modes: keep running the profile in use
-            # with its own rules (routing.md §5.1). Without one, the first import decides.
-            state = self._routing_store.update_state(mode=MODE_PROFILE)
-        self._state = state
+        # None until the first import picks the mode (routing.md §5.1).
+        self._state = self._routing_store.state()
         self._plans = self._routing_store.plans()
 
     def snapshot(self) -> ProfileList:

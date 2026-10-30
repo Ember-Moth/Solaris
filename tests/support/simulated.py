@@ -58,6 +58,7 @@ from mihomo_desktop.models.profiles import (
     Usage,
     count_proxies,
 )
+from mihomo_desktop.models.routing import MODE_PROFILE, RoutingStore
 from mihomo_desktop.models.store import ProfileStore
 from mihomo_desktop.models.subscription import Download
 
@@ -1034,7 +1035,8 @@ class SimulatedFetcher:
 
 
 def seed_profiles(store: ProfileStore, now: float) -> ProfileList:
-    """The prototype's three profiles, with "示例订阅 A" in use."""
+    """The prototype's three profiles, with "示例订阅 A" in use: its own rules route, as the
+    first import of a profile with rules decides (docs/routing.md §5.1)."""
     local = store.directory / "config.yaml"
     local.parent.mkdir(parents=True, exist_ok=True)
     local.write_text(SAMPLE_CONFIG, encoding="utf-8")
@@ -1073,4 +1075,5 @@ def seed_profiles(store: ProfileStore, now: float) -> ProfileList:
         store.write_config(profile.id, SAMPLE_CONFIG)
     seeded = ProfileList(profiles, "sample-a")
     store.save(seeded)
+    RoutingStore(store.database).update_state(mode=MODE_PROFILE)
     return seeded
