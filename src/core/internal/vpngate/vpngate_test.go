@@ -2,13 +2,18 @@ package vpngate
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"slices"
 	"strings"
 	"testing"
 
+	"google.golang.org/protobuf/proto"
+
+	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 	"github.com/Ember-Moth/Solaris/src/core/internal/vpngate/vpngatetest"
 )
 
@@ -16,35 +21,35 @@ import (
 func sample() []byte {
 	config := vpngatetest.Config
 	return vpngatetest.List(
-		vpngatetest.Server{Host: "vpn100", IP: "203.0.113.10", Score: 100, Country: "JP", Operator: "DESKTOP-1's owner"},
-		vpngatetest.Server{Host: "vpn300", IP: "203.0.113.30", Score: 300, Country: "kr", Operator: "PC's owner"},
-		vpngatetest.Server{Host: "vpn200", IP: "198.51.100.20", Score: 200, Country: "JP",
-			Config: config("198.51.100.20", 995, "comp-lzo")},
+		vpngatetest.Server{Host: "vpn100", IP: "150.95.10.10", Score: 100, Country: "JP", Operator: "DESKTOP-1's owner"},
+		vpngatetest.Server{Host: "vpn300", IP: "150.95.10.30", Score: 300, Country: "kr", Operator: "PC's owner"},
+		vpngatetest.Server{Host: "vpn200", IP: "150.95.20.20", Score: 200, Country: "JP",
+			Config: config("150.95.20.20", 995, "comp-lzo")},
 		// Left out: UDP, the project's own servers, a private or named remote, a server that
 		// wants a password or tls-crypt, TAP, a configuration that is not base64, a second row
 		// for the same host, a country that is not a code, a host that cannot be a name.
-		vpngatetest.Server{Host: "udp", IP: "203.0.113.40", Score: 900, Country: "JP",
-			Config: strings.Replace(config("203.0.113.40", 1195), "proto tcp", "proto udp", 1)},
-		vpngatetest.Server{Host: "public-vpn-84", IP: "203.0.113.84", Score: 9000, Country: "JP",
+		vpngatetest.Server{Host: "udp", IP: "150.95.10.40", Score: 900, Country: "JP",
+			Config: strings.Replace(config("150.95.10.40", 1195), "proto tcp", "proto udp", 1)},
+		vpngatetest.Server{Host: "public-vpn-84", IP: "150.95.10.84", Score: 9000, Country: "JP",
 			Operator: "Daiyuu Nobori_ Japan. Academic Use Only."},
 		vpngatetest.Server{Host: "private", IP: "192.168.1.2", Score: 900, Country: "JP"},
-		vpngatetest.Server{Host: "named", IP: "203.0.113.41", Score: 900, Country: "JP", Config: config("vpn.example", 443)},
-		vpngatetest.Server{Host: "password", IP: "203.0.113.42", Score: 900, Country: "JP",
-			Config: config("203.0.113.42", 443, "auth-user-pass")},
-		vpngatetest.Server{Host: "crypt", IP: "203.0.113.43", Score: 900, Country: "JP",
-			Config: config("203.0.113.43", 443, "<tls-crypt>", "x", "</tls-crypt>")},
-		vpngatetest.Server{Host: "tap", IP: "203.0.113.44", Score: 900, Country: "JP",
-			Config: strings.Replace(config("203.0.113.44", 443), "dev tun", "dev tap", 1)},
-		vpngatetest.Server{Host: "vpn100", IP: "203.0.113.11", Score: 50, Country: "JP"},
-		vpngatetest.Server{Host: "nowhere", IP: "203.0.113.45", Score: 900, Country: "JPN"},
-		vpngatetest.Server{Host: "a,b", IP: "203.0.113.46", Score: 900, Country: "JP"},
+		vpngatetest.Server{Host: "named", IP: "150.95.10.41", Score: 900, Country: "JP", Config: config("vpn.example", 443)},
+		vpngatetest.Server{Host: "password", IP: "150.95.10.42", Score: 900, Country: "JP",
+			Config: config("150.95.10.42", 443, "auth-user-pass")},
+		vpngatetest.Server{Host: "crypt", IP: "150.95.10.43", Score: 900, Country: "JP",
+			Config: config("150.95.10.43", 443, "<tls-crypt>", "x", "</tls-crypt>")},
+		vpngatetest.Server{Host: "tap", IP: "150.95.10.44", Score: 900, Country: "JP",
+			Config: strings.Replace(config("150.95.10.44", 443), "dev tun", "dev tap", 1)},
+		vpngatetest.Server{Host: "vpn100", IP: "150.95.10.11", Score: 50, Country: "JP"},
+		vpngatetest.Server{Host: "nowhere", IP: "150.95.10.45", Score: 900, Country: "JPN"},
+		vpngatetest.Server{Host: "a,b", IP: "150.95.10.46", Score: 900, Country: "JP"},
 	)
 }
 
 func TestParseKeepsTheUsableTCPServers(t *testing.T) {
 	data := sample()
 	// A row whose configuration is not base64.
-	data = []byte(strings.Replace(string(data), "*\r\n", "broken,203.0.113.47,900,1,1,Japan,JP,1,1,1,1,2weeks,,,%%%\r\n*\r\n", 1))
+	data = []byte(strings.Replace(string(data), "*\r\n", "broken,150.95.10.47,900,1,1,Japan,JP,1,1,1,1,2weeks,,,%%%\r\n*\r\n", 1))
 	servers, err := Parse(data)
 	if err != nil {
 		t.Fatal(err)
@@ -57,13 +62,13 @@ func TestParseKeepsTheUsableTCPServers(t *testing.T) {
 		t.Fatalf("servers = %v, want %v", hosts, want)
 	}
 	first := servers[0]
-	if first.GetCountry() != "KR" || first.GetIp() != "203.0.113.30" || first.GetScore() != 300 ||
+	if first.GetCountry() != "KR" || first.GetIp() != "150.95.10.30" || first.GetScore() != 300 ||
 		first.GetPingMs() != 12 || first.GetSpeedBps() != 84012345 || first.GetSessions() != 7 ||
 		first.GetUptimeMs() != 123456789 || first.GetOperator() != "PC's owner" {
 		t.Fatalf("first = %v", first)
 	}
 	options := servers[1].GetOpenvpn()
-	if options.GetServer() != "198.51.100.20" || options.GetPort() != 995 || options.GetProto() != "tcp" ||
+	if options.GetServer() != "150.95.20.20" || options.GetPort() != 995 || options.GetProto() != "tcp" ||
 		options.GetCipher() != "AES-128-CBC" || !slices.Equal(options.GetDataCiphers(), []string{"AES-128-CBC"}) ||
 		options.GetAuth() != "SHA1" || options.GetCompLzo() != "yes" {
 		t.Fatalf("options = %v", options)
@@ -94,7 +99,7 @@ func TestParseRefusesWhatIsNotAList(t *testing.T) {
 func TestConvertTakesOnlyKnownOptions(t *testing.T) {
 	key := "<tls-auth>\n-----BEGIN OpenVPN Static key V1-----\n" + strings.Repeat("ab", 256) +
 		"\n-----END OpenVPN Static key V1-----\n</tls-auth>"
-	options, err := Convert(vpngatetest.Config("2a00:1450:4001::5", 443, "remote 203.0.113.9 443", "key-direction 1",
+	options, err := Convert(vpngatetest.Config("2a00:1450:4001::5", 443, "remote 150.95.10.9 443", "key-direction 1",
 		"script-security 2", "up /bin/sh", key))
 	if err != nil {
 		t.Fatal(err)
@@ -105,13 +110,13 @@ func TestConvertTakesOnlyKnownOptions(t *testing.T) {
 		t.Fatalf("options = %v", options)
 	}
 	for _, broken := range []string{
-		strings.Replace(vpngatetest.Config("203.0.113.9", 443), "<key>", "", 1),
-		strings.Replace(vpngatetest.Config("203.0.113.9", 443), "</key>", "", 1),
-		vpngatetest.Config("203.0.113.9", 0),
+		strings.Replace(vpngatetest.Config("150.95.10.9", 443), "<key>", "", 1),
+		strings.Replace(vpngatetest.Config("150.95.10.9", 443), "</key>", "", 1),
+		vpngatetest.Config("150.95.10.9", 0),
 		vpngatetest.Config("127.0.0.1", 443),
 		vpngatetest.Config("fd00::5", 443),
-		strings.Replace(vpngatetest.Config("203.0.113.9", 443), "cipher AES-128-CBC", "cipher BF-CBC", 1),
-		strings.Replace(vpngatetest.Config("203.0.113.9", 443), "remote 203.0.113.9 443", "", 1),
+		strings.Replace(vpngatetest.Config("150.95.10.9", 443), "cipher AES-128-CBC", "cipher BF-CBC", 1),
+		strings.Replace(vpngatetest.Config("150.95.10.9", 443), "remote 150.95.10.9 443", "", 1),
 	} {
 		if options, err := Convert(broken); err == nil {
 			t.Errorf("converted %v from\n%s", options, broken)
@@ -152,5 +157,107 @@ func TestListDownloadsThroughTheDialer(t *testing.T) {
 	busy := fakeList(t, http.StatusServiceUnavailable, []byte("busy\n"))
 	if _, err := List(context.Background(), client, busy); err == nil || err.Error() != "VPN Gate answered 503 Service Unavailable: busy" {
 		t.Fatalf("a refusal: %v", err)
+	}
+}
+
+// padded is a configuration whose key block has padding after its PEM block: mihomo only
+// decodes the first block, so the padding would pass its check.
+func padded(remote string, size int) string {
+	line := strings.Repeat("A", 64) + "\r\n"
+	return strings.Replace(vpngatetest.Config(remote, 443), "</key>", strings.Repeat(line, size/len(line))+"</key>", 1)
+}
+
+// The servers stay well inside a response frame, whatever the list holds: a configuration
+// is at most 64 KiB, and the best servers are kept up to MaxAnswer.
+func TestTheAnswerFitsAResponseFrame(t *testing.T) {
+	if _, err := Convert(padded("150.95.10.1", 70<<10)); err == nil {
+		t.Fatal("a configuration over 64 KiB was taken")
+	}
+	var rows []vpngatetest.Server
+	for i := range 120 {
+		rows = append(rows, vpngatetest.Server{
+			Host: fmt.Sprintf("vpn%03d", i), IP: fmt.Sprintf("150.95.10.%d", i+1), Score: int64(1000 - i),
+			Country: "JP", Config: padded(fmt.Sprintf("150.95.10.%d", i+1), 60<<10),
+		})
+	}
+	rows = append(rows, vpngatetest.Server{Host: "huge", IP: "150.95.11.1", Score: 5000, Country: "JP",
+		Config: padded("150.95.11.1", 1<<20)})
+	servers, err := Parse(vpngatetest.List(rows...))
+	if err != nil {
+		t.Fatal(err)
+	}
+	size := proto.Size(&controlpb.Response{Result: &controlpb.Response_ListVpnGate{
+		ListVpnGate: &controlpb.ListVpnGateResponse{Servers: servers},
+	}})
+	if len(servers) == 0 || len(servers) >= 120 || size > MaxAnswer || servers[0].GetHostName() != "vpn000" {
+		t.Fatalf("%d servers in %d bytes, first %s", len(servers), size, servers[0].GetHostName())
+	}
+	if last := servers[len(servers)-1].GetHostName(); last != fmt.Sprintf("vpn%03d", len(servers)-1) {
+		t.Fatalf("not the best ones: the last is %s", last)
+	}
+}
+
+// The IP column is an address, written the usual way.
+func TestTheIPColumnIsAnAddress(t *testing.T) {
+	servers, err := Parse(vpngatetest.List(
+		vpngatetest.Server{Host: "mapped", IP: "::ffff:150.95.10.3", Score: 3, Country: "JP", Config: vpngatetest.Config("150.95.10.3", 443)},
+		vpngatetest.Server{Host: "word", IP: "not-an-ip", Score: 2, Country: "JP", Config: vpngatetest.Config("150.95.10.4", 443)},
+		vpngatetest.Server{Host: "none", IP: "", Score: 1, Country: "JP", Config: vpngatetest.Config("150.95.10.5", 443)},
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(servers) != 1 || servers[0].GetIp() != "150.95.10.3" {
+		t.Fatalf("servers = %v", servers)
+	}
+}
+
+// Only an address on the Internet is a remote: none of the special-purpose ranges.
+func TestPublicLeavesOutTheSpecialRanges(t *testing.T) {
+	for text, want := range map[string]bool{
+		"150.95.10.1": true, "219.100.37.218": true, "2a00:1450:4001::5": true, "::ffff:150.95.10.1": true,
+		"0.1.2.3": false, "10.1.2.3": false, "100.64.0.1": false, "100.127.255.254": false, "127.0.0.1": false,
+		"169.254.1.1": false, "172.16.0.1": false, "192.0.0.9": false, "192.0.2.1": false, "192.88.99.1": false,
+		"192.168.1.1": false, "198.18.0.1": false, "198.19.255.254": false, "198.51.100.1": false,
+		"203.0.113.1": false, "224.0.0.1": false, "240.0.0.1": false, "255.255.255.255": false,
+		"::": false, "::1": false, "::150.95.10.1": false, "64:ff9b::a00:1": false, "100::1": false,
+		"2001::1": false, "2001:db8::1": false, "2002:a00:1::1": false, "3fff::1": false, "5f00::1": false,
+		"fd00::1": false, "fe80::1": false, "ff02::1": false, "4000::1": false,
+	} {
+		if got := public(netip.MustParseAddr(text)); got != want {
+			t.Errorf("public(%s) = %v", text, got)
+		}
+		if _, err := Convert(vpngatetest.Config(text, 443)); (err == nil) != want {
+			t.Errorf("Convert with remote %s: %v", text, err)
+		}
+	}
+}
+
+// The academic-use-only note is found however the operator spells or pads it, in the name
+// and in the message.
+func TestAcademicUseOnlyIsFoundAsWritten(t *testing.T) {
+	long := strings.Repeat("Volunteer server for everyone ", 10)
+	var rows []vpngatetest.Server
+	for i, note := range [][2]string{
+		{"Daiyuu Nobori_ Japan. Academic\tUse Only.", ""},
+		{"ACADEMIC_USE_ONLY", ""},
+		{long + "academic use only", ""},
+		{"lab", "for academic  use only, please"},
+		{"lab", "Academic-Use-Only"},
+	} {
+		rows = append(rows, vpngatetest.Server{Host: fmt.Sprintf("vpn%d", i), IP: fmt.Sprintf("150.95.10.%d", i+1),
+			Score: 1, Country: "JP", Operator: note[0], Message: note[1]})
+	}
+	rows = append(rows, vpngatetest.Server{Host: "open", IP: "150.95.10.9", Score: 1, Country: "JP",
+		Operator: long, Message: "academic research, any use"})
+	servers, err := Parse(vpngatetest.List(rows...))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(servers) != 1 || servers[0].GetHostName() != "open" {
+		t.Fatalf("servers = %v", servers)
+	}
+	if name := servers[0].GetOperator(); len([]rune(name)) != maxOperator {
+		t.Fatalf("the operator's name is %d runes", len([]rune(name)))
 	}
 }

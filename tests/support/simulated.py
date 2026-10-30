@@ -1327,8 +1327,12 @@ class SimulatedHost:
         # A fixed made-up list; the real one comes from VPN Gate (docs/exits.md §5.2).
         if not self._running:
             raise HostError("not_running", "the core is not running")
-        groups = _names((self.effective or {}).get("proxy-groups"))
-        if self.effective is not None and via not in groups:
+        # Like the core, any outbound of the running configuration will do: a group, a node
+        # or a built-in one such as DIRECT.
+        effective = self.effective or {}
+        known = BUILT_IN_PROXIES | set(_names(effective.get("proxy-groups")))
+        known |= set(_names(effective.get("proxies")))
+        if self.effective is not None and via not in known:
             raise HostError("invalid_request", f"no group {via!r} in the running configuration")
         self.vpngate_calls.append(via)
         if self.vpngate_error is not None:

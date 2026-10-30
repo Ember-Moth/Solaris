@@ -3,7 +3,9 @@
 package vpngatetest
 
 import (
+	"bytes"
 	"encoding/base64"
+	"encoding/csv"
 	"fmt"
 	"strings"
 )
@@ -65,23 +67,26 @@ type Server struct {
 	Config   string // the OpenVPN configuration; Config(IP, 443) when empty
 }
 
-// List is the list's CSV, with its first and last lines, as the API writes it.
+// List is the list's CSV, with its first and last lines, as the API writes it; a field with
+// a comma or a quote is quoted.
 func List(servers ...Server) []byte {
-	lines := []string{
-		"*vpn_servers",
-		"#HostName,IP,Score,Ping,Speed,CountryLong,CountryShort,NumVpnSessions,Uptime,TotalUsers,TotalTraffic,LogType,Operator,Message,OpenVPN_ConfigData_Base64",
-	}
+	var out bytes.Buffer
+	out.WriteString("*vpn_servers\r\n")
+	out.WriteString("#HostName,IP,Score,Ping,Speed,CountryLong,CountryShort,NumVpnSessions,Uptime,TotalUsers,TotalTraffic,LogType,Operator,Message,OpenVPN_ConfigData_Base64\r\n")
+	rows := csv.NewWriter(&out)
+	rows.UseCRLF = true
 	for _, s := range servers {
 		config := s.Config
 		if config == "" {
 			config = Config(s.IP, 443)
 		}
-		lines = append(lines, strings.Join([]string{
+		_ = rows.Write([]string{
 			s.Host, s.IP, fmt.Sprint(s.Score), "12", "84012345", "Country " + s.Country, s.Country,
 			"7", "123456789", "4567", "8901234567", "2weeks", s.Operator, s.Message,
 			base64.StdEncoding.EncodeToString([]byte(config)),
-		}, ","))
+		})
 	}
-	lines = append(lines, "*")
-	return []byte(strings.Join(lines, "\r\n") + "\r\n")
+	rows.Flush()
+	out.WriteString("*\r\n")
+	return out.Bytes()
 }

@@ -23,8 +23,8 @@ func fakeVpnGateList(t *testing.T) *atomic.Int32 {
 	t.Helper()
 	var calls atomic.Int32
 	list := vpngatetest.List(
-		vpngatetest.Server{Host: "vpn1", IP: "203.0.113.1", Score: 200, Country: "JP"},
-		vpngatetest.Server{Host: "vpn2", IP: "203.0.113.2", Score: 100, Country: "KR"},
+		vpngatetest.Server{Host: "vpn1", IP: "150.95.10.1", Score: 200, Country: "JP"},
+		vpngatetest.Server{Host: "vpn2", IP: "150.95.10.2", Score: 100, Country: "KR"},
 	)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
@@ -85,7 +85,7 @@ const vpnGateRulePlan = `{"version": 1, "rules": [
 func TestVpnGateExitIsWhatMihomoBuilds(t *testing.T) {
 	var servers []*controlpb.VpnGateServer
 	for i, host := range []string{"vpn1", "vpn2"} {
-		options, err := vpngate.Convert(vpngatetest.Config(fmt.Sprintf("203.0.113.%d", i+1), 443+i))
+		options, err := vpngate.Convert(vpngatetest.Config(fmt.Sprintf("150.95.10.%d", i+1), 443+i))
 		if err != nil {
 			t.Fatal(err)
 		}
