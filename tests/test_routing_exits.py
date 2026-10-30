@@ -444,6 +444,14 @@ def test_vpngate_waits_for_the_connection(qtbot: QtBot, planned: ViewModels) -> 
     exit_ = vpngate(routing)
     overview.toggleConnection()
     qtbot.waitUntil(lambda: not prop(overview, "connected"))
+    # Turned off, the exit never fetches the list, however often the tunnel starts.
+    overview.toggleConnection()
+    qtbot.waitUntil(lambda: prop(overview, "connected"))
+    exit_._tick()
+    qtbot.wait(50)
+    assert host.vpngate_calls == []
+    overview.toggleConnection()
+    qtbot.waitUntil(lambda: not prop(overview, "connected"))
     with qtbot.waitSignal(routing.applied):
         exit_.setActive(True)
     assert (prop(exit_, "status"), prop(exit_, "statusTone")) == ("连接后获取", "muted")
