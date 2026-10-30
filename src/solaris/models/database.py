@@ -62,7 +62,8 @@ CREATE TABLE profiles (
 ) STRICT;
 
 -- A cache of this machine: the config as last downloaded or imported, and what came with it.
--- No foreign key: the config is written before the profile row that names it.
+-- No foreign key: the config is written before the profile row that names it. unread: stored
+-- while no core could read it; the core reads it at the next connect (D27).
 CREATE TABLE profile_contents (
     profile_id TEXT PRIMARY KEY,
     yaml TEXT NOT NULL,
@@ -72,6 +73,7 @@ CREATE TABLE profile_contents (
     total INTEGER,
     expire INTEGER,
     proxy_count INTEGER,
+    unread INTEGER NOT NULL DEFAULT 0,
     updated_at REAL NOT NULL
 ) STRICT;
 

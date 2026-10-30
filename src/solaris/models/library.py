@@ -14,6 +14,11 @@ one that joins the node pool of the plan in use must leave a composition the hos
 The first import picks the routing mode (§5.1): the profile's own rules when it has some,
 otherwise the default plan.
 
+While no core can answer (macOS with the tunnel down, D27), nothing is read or validated: a
+profile imported then is stored unread, and changes to the routing are stored unchecked. At
+the next connect the tunnel comes up first, the core reads the unread profiles, the import
+settles what it would have, and Start validates the rest.
+
 Every change to the routing is validated, then stored, then reloaded into a running tunnel
 (§5.4). Switching profiles or updating the one in use reloads it in place, with the TUN and
 system proxy state the host reports, so neither is interrupted.
@@ -30,6 +35,7 @@ with a switch or a plan edit.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import time
 import uuid
@@ -237,6 +243,12 @@ class ProfileLibrary:
             self._warp,
         )
 
+    @property
+    def core_available(self) -> bool:
+        """A core can answer now (TunnelHost.core_available): on macOS, only while the
+        tunnel is connected."""
+        return self._host.core_available
+
     # -- reading profiles as the core does ---------------------------------------------------
     def _info_filter(self) -> str:
         pattern = self._state.info_pattern
@@ -253,14 +265,34 @@ class ProfileLibrary:
         return self._routing()
 
     async def _inspect_missing(self) -> None:
+        if not self._host.core_available:
+            return
         for profile in self._list.profiles:
-            if profile.id in self._inspections:
+            if profile.id in self._inspections or profile.unread:
                 continue
             try:
                 text = await asyncio.to_thread(self._store.read_config, profile.id)
                 self._inspections[profile.id] = await self._inspect(text)
             except HostError, ProfileError:
                 continue
+
+    async def _read(self, text: str, profile_id: str | None) -> SourceInspection | None:
+        """Have the core read a profile's text: whether it brings rules, and with rules,
+        that they run as a configuration of their own with the overrides of ``profile_id``
+        (None for a new profile). None while no core can answer."""
+        if not self._host.core_available:
+            return None
+        inspection = await self._inspect(text)
+        if inspection.has_rules:
+            await self._host.validate(TunnelConfig(text, await self._overrides(profile_id)))
+        return inspection
+
+    async def _check(self, config: TunnelConfig) -> CompositionReport | None:
+        """Have the core validate ``config``; its report for a composition. While no core can
+        answer, nothing is checked: Start validates the configuration at the next connect."""
+        if not self._host.core_available:
+            return None
+        return await self._host.validate(config)
 
     def _first_with_rules(self, profiles: ProfileList, exclude: str = "") -> Profile | None:
         """The earliest imported profile with rules of its own (routing.md §5.1)."""
@@ -305,9 +337,12 @@ class ProfileLibrary:
             return await self._add(profile, text)
 
     async def _add(self, profile: Profile, text: str) -> ProfileList:
-        inspection = await self._inspect(text)
-        if inspection.has_rules:
-            await self._host.validate(TunnelConfig(text, await self._overrides(None)))
+        inspection = await self._read(text, None)
+        if inspection is None:
+            # Read at the next connect, which settles the rest (_read_unread).
+            await asyncio.to_thread(self._store.write_config, profile.id, text)
+            await self._save(self._list.put(replace(profile, proxy_count=None, unread=True)))
+            return self._list
         if profile.proxy_count is None:
             profile = replace(profile, proxy_count=len(inspection.nodes))
         updated = self._list.put(profile)
@@ -357,7 +392,10 @@ class ProfileLibrary:
 
     async def update_due(self) -> ProfileList:
         """Update every subscription whose interval has passed. A failure shows in
-        ``ProfileList.update_failed`` and is retried later instead of raised."""
+        ``ProfileList.update_failed`` and is retried later instead of raised. They wait while
+        no core can read them."""
+        if not self._host.core_available:
+            return self._list
         now = self._clock()
         for profile in [p for p in self._list.profiles if self._due(p, now)]:
             try:
@@ -378,35 +416,47 @@ class ProfileLibrary:
             return False
         return now - profile.updated_at >= profile.auto_update_hours * 3600
 
-    async def _fetch_again(self, profile: Profile) -> tuple[str, Usage | None, SourceInspection]:
-        """The profile's new text, read by the host; downloads run outside the lock."""
+    async def _fetch_again(
+        self, profile: Profile
+    ) -> tuple[str, Usage | None, SourceInspection | None]:
+        """The profile's new text, read by the host, or unread while no core can read it;
+        downloads run outside the lock."""
         if profile.is_subscription:
             download = await self._fetcher.fetch(profile.url)
             text, usage = decode_config(download.body), download.usage
         else:
             text, usage = await asyncio.to_thread(read_config_file, Path(profile.path)), None
-        inspection = await self._inspect(text)
-        if inspection.has_rules:
-            await self._host.validate(TunnelConfig(text, await self._overrides(profile.id)))
-        return text, usage, inspection
+        return text, usage, await self._read(text, profile.id)
 
     async def _commit_update(
         self,
         profile_id: str,
         text: str,
         usage: Usage | None,
-        inspection: SourceInspection,
+        inspection: SourceInspection | None,
         *,
         reload: bool = True,
     ) -> None:
+        """Store a profile's new text; None for ``inspection`` stores it unread."""
         # The profile may have been removed while it downloaded.
         profile = self._list.get(profile_id)
+        if inspection is None:
+            unread = replace(
+                profile, updated_at=self._clock(), usage=usage, proxy_count=None, unread=True
+            )
+            await asyncio.to_thread(self._store.write_config, profile_id, text)
+            self._inspections.pop(profile_id, None)
+            await self._save(self._list.put(unread))
+            if profile.in_pool:
+                self._report = None  # the pool lost its nodes until they are read
+            return
         count = count_proxies(text)
         refreshed = replace(
             profile,
             updated_at=self._clock(),
             usage=usage,
             proxy_count=len(inspection.nodes) if count is None else count,
+            unread=False,
         )
         updated = self._list.put(refreshed)
         pooled = self._state.mode == MODE_PLAN and profile.in_pool
@@ -517,7 +567,7 @@ class ProfileLibrary:
                 config = TunnelConfig(
                     overrides=await self._global_override(), composition=composition
                 )
-                report = await self._host.validate(config)
+                report = await self._check(config)
                 await self._reload_config_if_running(config)
             await self._save(remaining)
             self._report = report
@@ -545,7 +595,7 @@ class ProfileLibrary:
                 config = await self._current_config(global_text=text)
                 if config is None:
                     raise ProfileError("no_profile", "import a profile first")
-                await self._host.validate(config)
+                await self._check(config)
             else:
                 target = self._list.get(profile_id)
                 await self._inspect_missing()
@@ -553,7 +603,7 @@ class ProfileLibrary:
                 if self._inspections.get(target.id, _UNKNOWN).has_rules is not False:
                     overrides = await self._overrides(target.id, own_text=text)
                     config_text = await asyncio.to_thread(self._store.read_config, target.id)
-                    await self._host.validate(TunnelConfig(config_text, overrides))
+                    await self._check(TunnelConfig(config_text, overrides))
             await asyncio.to_thread(self._store.write_override, profile_id, text)
             present = bool(text.strip())
             if profile_id is None:
@@ -588,10 +638,7 @@ class ProfileLibrary:
                     text, usage, inspection = await self._fetch_again(profile)
                 else:
                     text, usage = await asyncio.to_thread(self._store.read_config, profile.id), None
-                    inspection = await self._inspect(text)
-                    if inspection.has_rules:
-                        config = TunnelConfig(text, await self._overrides(profile.id))
-                        await self._host.validate(config)
+                    inspection = await self._read(text, profile.id)
                 async with self._lock:
                     await self._commit_update(profile.id, text, usage, inspection, reload=False)
             except Exception:
@@ -684,7 +731,7 @@ class ProfileLibrary:
             info = DEFAULT_INFO_PATTERN if pattern is None else pattern
             plan = self._current_plan()
             composition = await self._composition(plan, self._list, info=info)
-            report = await self._host.validate(
+            report = await self._check(
                 TunnelConfig(overrides=await self._global_override(), composition=composition)
             )
             self._state = await asyncio.to_thread(
@@ -865,7 +912,7 @@ class ProfileLibrary:
             routing = current and self._state.mode == MODE_PLAN
         composition = await self._composition(plan, self._list, info=self._info_filter())
         config = TunnelConfig(overrides=await self._global_override(), composition=composition)
-        report = await self._host.validate(config)
+        report = await self._check(config)
         await asyncio.to_thread(self._routing_store.put_plan, plan)
         self._plans = await asyncio.to_thread(self._routing_store.plans)
         if current:
@@ -881,7 +928,7 @@ class ProfileLibrary:
         texts: Mapping[str, str] | None = None,
     ) -> CompositionReport | None:
         composition = await self._composition(plan, profiles, texts=texts, info=self._info_filter())
-        return await self._host.validate(
+        return await self._check(
             TunnelConfig(overrides=await self._global_override(), composition=composition)
         )
 
@@ -897,8 +944,8 @@ class ProfileLibrary:
         for stored configs."""
         sources = []
         for profile in profiles.profiles:
-            if not profile.in_pool:
-                continue
+            if not profile.in_pool or (profile.unread and profile.id not in (texts or {})):
+                continue  # an unread profile brings its nodes once the core read it
             text = (texts or {}).get(profile.id)
             if text is None:
                 try:
@@ -917,16 +964,77 @@ class ProfileLibrary:
 
     # -- tunnel ------------------------------------------------------------------------------
     async def start_tunnel(self) -> None:
-        """Start the routing in use with the settings' run options."""
+        """Start the routing in use with the settings' run options. Profiles stored while no
+        core could read them are read first, with the tunnel up for Start (D27); when that
+        or Start fails, the tunnel goes down again."""
         async with self._lock:
             options = self._settings().run_options()
-            config = await self._current_config(options=options)
-            if config is None:
-                raise ProfileError("no_profile", "import a profile first")
-            with _naming_switches(options):
-                report = await self._host.start(config)
+            prepared = any(p.unread for p in self._list.profiles)
+            if prepared:
+                await self._host.prepare_start(options)
+            try:
+                if prepared:
+                    await self._read_unread()
+                config = await self._current_config(options=options)
+                if config is None:
+                    raise ProfileError("no_profile", "import a profile first")
+                with _naming_switches(options):
+                    report = await self._host.start(config)
+            except BaseException:
+                if prepared:
+                    with contextlib.suppress(HostError):
+                        await self._host.stop()
+                raise
             if config.composition is not None:
                 self._report = report
+
+    async def _read_unread(self) -> None:
+        """Have the core read the profiles stored while none could, and settle what their
+        import would have: the routing mode, the profile whose rules are used. One the core
+        refuses stays unread and shows as a failed update; raises when Start would run it."""
+        refused: dict[str, Exception] = {}
+        mode = self._state.mode
+        updated = self._list
+        for profile in [p for p in self._list.profiles if p.unread]:
+            text = await asyncio.to_thread(self._store.read_config, profile.id)
+            try:
+                inspection = await self._read(text, profile.id)
+            except HostError as error:
+                if error.code != "invalid_config":
+                    raise
+                refused[profile.id] = error
+                self._mark_failed(profile.id, self._clock())
+                continue
+            if inspection is None:
+                raise HostError("not_running", "no core answers")
+            count = count_proxies(text)
+            nodes = len(inspection.nodes) if count is None else count
+            updated = updated.put(replace(profile, proxy_count=nodes, unread=False))
+            self._inspections[profile.id] = inspection
+            self._mark_failed(profile.id, None)
+            if updated.active is None and inspection.has_rules:
+                updated = replace(updated, active=profile.id)
+            if mode is None:  # the first import picks the routing (routing.md §5.1)
+                mode = MODE_PROFILE if inspection.has_rules else MODE_PLAN
+        active = updated.active
+        if (
+            mode == MODE_PROFILE
+            and self._inspections.get(active or "", _UNKNOWN).has_rules is False
+        ):
+            # Picked while unread, and it has nodes only.
+            successor = self._first_with_rules(updated)
+            updated = replace(updated, active=successor.id if successor else None)
+            mode = MODE_PROFILE if successor else MODE_PLAN
+        await self._save(updated)
+        self._report = None  # the pool may have more nodes
+        if mode is not None and mode != self._state.mode:
+            plan = (self._current_plan() or plans.default_plan()) if mode == MODE_PLAN else None
+            await self._store_mode(mode, plan)
+        in_use = self._list.active if self._state.mode == MODE_PROFILE else None
+        if in_use in refused:
+            raise refused[in_use]
+        if self._state.mode is None and refused:
+            raise next(iter(refused.values()))
 
     async def set_tun(self, enabled: bool) -> None:
         """Reload the running tunnel with TUN on or off; a stopped one starts with the
@@ -999,7 +1107,7 @@ class ProfileLibrary:
         """Reload a running tunnel with ``config``, or have a stopped one's host validate it:
         either way the core accepted it before anything is stored."""
         if await self._running() is None:
-            await self._host.validate(config)
+            await self._check(config)
         else:
             await self._reload_config_if_running(config)
 

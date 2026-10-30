@@ -237,10 +237,12 @@ mihomo home 在扩展容器的 `Application Support/Solaris/core`，`startTunnel
 - **启动**：本次运行第一次连接时 `activate`（要用户批准时报 `extension_needs_approval`，需要重启时报
   `extension_needs_reboot`），再 `start`（`include_all_networks` 取自 `RunOptions.include_all_networks`，即设置页的
   "包含所有网络"），然后 `send(Start)`；内核拒绝配置时把隧道停掉，不让流量进入没有内核的
-  隧道。**停止**：`stop`，扩展 detach 时停止内核。关闭宿主不动隧道。
+  隧道。有断开时存下的未读订阅时，`prepare_start` 先做 `activate` 和 `start`，界面读完这些订阅（`InspectSource`、
+  `Validate`）再发 `Start`（D27，ui.md 第 3 节）；其间流量停在没有配置的隧道里。**停止**：`stop`，扩展 detach 时停止内核。关闭宿主不动隧道。
 - **隧道未连接**（`NOT_CONNECTED`、`NOT_CONFIGURED`，或扩展回答没有 attach）：`get_status` 按隧道状态报
   stopped / starting / stopping，`get_info` 用 Info.plist 里的内核版本，列表和轮询返回空，GEO 分类用安装包的清单，
-  其余需要内核的方法报 `not_running`；订阅随扩展一起消失，之后重新订阅。
+  其余需要内核的方法报 `not_running`；订阅随扩展一起消失，之后重新订阅。`core_available` 在扩展回答后为真，
+  得到 `NOT_CONNECTED` 等结果后为假，界面据此隐藏要内核的部分。
 - 其他结果：`TIMED_OUT` → `timeout`；`send` 的 `FAILED` → `connection_closed`，启停的 `FAILED` → `tunnel_failed`。
 - 选宿主：打包的 app 里（`Contents/Frameworks` 有管理库）用 `MacExtensionHost`，除非设了
   `SOLARIS_DEV_SOCKET`；从源码运行时照旧用开发服务。
@@ -249,13 +251,12 @@ mihomo home 在扩展容器的 `Application Support/Solaris/core`，`startTunnel
 
 ## 尚未完成
 
-- **隧道未连接时的校验和读取订阅**：扩展只在隧道连接时运行，`Validate` 和 `InspectSource` 这时得到
-  `not_running`，界面在断开时导入订阅会失败。需要决定做法（roadmap 的 D27），例如把 Go 内核的无 TUN 只读部分也链进管理库。
 - **最低系统版本**：PySide6 6.12.0 让 app 要求 macOS 26（见“组装 Solaris.app”，roadmap 的 D28）。
 - **测试 Mac 上的实测**：激活、批准、连接；utun 描述符的查找、四种栈经过 utun 的流量、DNS 劫持、断开与
   重连后描述符的归属；provider message 的大小上限（D8）；app 在 hardened runtime 下的启动；`includeAllNetworks`：
   打开后系统默认绕开隧道的流量确实进入隧道、局域网流量不进，扩展自己（mihomo 的出站）的流量不被卷回隧道，
-  `mips` 和 `gvisor` 栈都能工作，保存配置时系统是否再次请用户允许。
+  `mips` 和 `gvisor` 栈都能工作，保存配置时系统是否再次请用户允许；断开时导入订阅后连接，`Start` 之前读订阅
+  花多久。
 - **发布工作流**还没有运行过（要在 `release` Environment 里批准）；公证结果未知。
 - 批准扩展、需要重启等新错误码的界面文案；卸载前停用扩展（`deactivationRequest`）、扩展说明文字的
   本地化。

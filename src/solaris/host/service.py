@@ -235,6 +235,8 @@ def _connection(c: pb.Connection) -> Connection:
 
 
 class ServiceHost:
+    core_available = True  # the service runs while the tunnel is stopped
+
     def __init__(self, opener: Opener) -> None:
         self._opener = opener
         self._client: ControlClient | None = None
@@ -310,6 +312,9 @@ class ServiceHost:
             tun_enabled=status.tun_enabled,
             system_proxy_enabled=status.system_proxy_enabled,
         )
+
+    async def prepare_start(self, options: RunOptions) -> None:
+        pass
 
     async def validate(self, config: TunnelConfig) -> CompositionReport | None:
         request = _with_source(pb.ValidateRequest(overrides=list(config.overrides)), config)

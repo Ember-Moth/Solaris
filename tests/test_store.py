@@ -72,10 +72,13 @@ def test_what_came_with_a_config_is_stored_with_it(tmp_path: Path) -> None:
     store.write_config("a1", "proxies: []\n")
     store.save(ProfileList((SUBSCRIPTION,), "a1"))
     assert store.load().get("a1") == SUBSCRIPTION
-    columns = "profile_id, fetched_at, upload, download, total, expire, proxy_count"
+    columns = "profile_id, fetched_at, upload, download, total, expire, proxy_count, unread"
     assert rows(tmp_path, "profile_contents", columns) == {
-        "a1": (1_790_000_000.0, 1, 2, 300, 1_800_000_000, 48)
+        "a1": (1_790_000_000.0, 1, 2, 300, 1_800_000_000, 48, 0)
     }
+    # Stored while no core could read it (D27), until one did.
+    store.save(ProfileList((replace(SUBSCRIPTION, proxy_count=None, unread=True),), "a1"))
+    assert store.load().get("a1").unread
 
 
 def test_records_change_only_when_their_values_do(tmp_path: Path) -> None:

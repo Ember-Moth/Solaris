@@ -15,6 +15,7 @@ MenuItem {
     readonly property int separatorSpace: separatorBefore ? 2 * Theme.space1 + 1 : 0
 
     implicitHeight: Theme.controlSm + separatorSpace
+    height: visible ? implicitHeight : 0  // a hidden item leaves no gap in the menu
     leftPadding: Theme.space2 + 14 + Theme.space2
     rightPadding: Theme.space2
     topPadding: separatorSpace

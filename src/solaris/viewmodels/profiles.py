@@ -332,6 +332,8 @@ class ProfilesViewModel(QObject):
         )
 
     def _note(self, profile: Profile) -> str:
+        if profile.unread:
+            return self.tr("连接后读取")
         if self._routing.mode == MODE_PROFILE and profile.id == self._list.active:
             return self.tr("规则使用中")
         if self._routing.mode == MODE_PLAN and not profile.in_pool:

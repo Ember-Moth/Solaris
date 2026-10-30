@@ -48,7 +48,7 @@
 | 表 | 内容 |
 | --- | --- |
 | `profiles` | `id`、`name`、`kind`（`subscription` / `file`）、`in_pool`（是否加入节点池）、`url`、`path`（本地文件配置的原路径）、`auto_update_hours`、`position`、`created_at`、`updated_at`、`deleted_at` |
-| `profile_contents` | `profile_id`、配置 YAML 原文、`fetched_at`、用量（upload / download / total / expire）、`proxy_count`、`updated_at`。这是本机缓存，订阅下载的内容不进入备份 |
+| `profile_contents` | `profile_id`、配置 YAML 原文、`fetched_at`、用量（upload / download / total / expire）、`proxy_count`、`unread`（存下时没有内核能读，连接时再读，ui.md 第 3 节）、`updated_at`。这是本机缓存，订阅下载的内容不进入备份 |
 | `overrides` | `scope`（`global` 或某个 `profile_id`）、YAML 原文、`updated_at`、`deleted_at` |
 | `routing_state`、`plans`、`plan_groups`、`plan_rules` | 分流方式、当前使用的配置、节点池设置、分流方案及其策略组和规则条目，字段见 routing.md 第 9 节 |
 | `settings` | `key`、`value`（JSON）、`updated_at`。每个设置项的范围（`synced` / `local`）由 `models/settings.py` 里字段的元数据决定（ui.md §8），不存进表里 |
@@ -134,7 +134,8 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
 - 写入由 `ProfileLibrary.restore(write)` 在它的锁里执行，所以订阅的自动更新不会拿旧的列表覆盖恢复的数据。写完后
   它重新读取配置、分流和方案，再逐份检查：订阅重新下载，本地文件配置用快照里的原文，和导入时一样经
   `inspect_source`，带规则的再经 `validate`，"我的方案"节点池里的还要和方案一起拼装校验。失败的配置保留，记为
-  "更新失败"，在订阅页标出；还没下载到原文的订阅不给节点池提供节点。当前配置不在了时，按第一份带规则的配置接替。
+  "更新失败"，在订阅页标出；还没下载到原文的订阅不给节点池提供节点。没有内核能读时（macOS 隧道未连接）原文存为
+  未读，连接时再读。当前配置不在了时，按第一份带规则的配置接替。
   最后，隧道在运行就按恢复后的分流重新加载；重新加载失败时，数据仍是恢复后的，界面说明隧道没有切换。设置存储
   随后 `reload()`，各页重新读取。
 

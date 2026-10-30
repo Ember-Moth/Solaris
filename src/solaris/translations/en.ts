@@ -821,6 +821,10 @@
         <translation>{nodes}, {others}</translation>
     </message>
     <message>
+        <source>连接后显示</source>
+        <translation>Shown once connected</translation>
+    </message>
+    <message>
         <source>全部地区组</source>
         <translation>All region groups</translation>
     </message>
@@ -1598,6 +1602,10 @@ prepend-rules:
         <translation>Update failed</translation>
     </message>
     <message>
+        <source>连接后读取</source>
+        <translation>Read once connected</translation>
+    </message>
+    <message>
         <source>规则使用中</source>
         <translation>Rules in use</translation>
     </message>
@@ -1988,6 +1996,10 @@ prepend-rules:
     <message>
         <source>输入域名或 IP 测试</source>
         <translation>Test a domain or IP</translation>
+    </message>
+    <message>
+        <source>连接后可测试域名或 IP</source>
+        <translation>Connect to test a domain or IP</translation>
     </message>
     <message>
         <source>测试域名或 IP</source>

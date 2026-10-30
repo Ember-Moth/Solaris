@@ -132,7 +132,7 @@ def load_profiles(connection: sqlite3.Connection) -> ProfileList:
     rows = connection.execute(
         """
         SELECT p.id, p.name, p.kind, p.url, p.path, p.auto_update_hours, p.in_pool,
-               c.fetched_at, c.upload, c.download, c.total, c.expire, c.proxy_count,
+               c.fetched_at, c.upload, c.download, c.total, c.expire, c.proxy_count, c.unread,
                o.scope IS NOT NULL AS has_override
         FROM profiles AS p
         LEFT JOIN profile_contents AS c ON c.profile_id = p.id
@@ -169,6 +169,7 @@ def _profile(row: sqlite3.Row) -> Profile:
         proxy_count=row["proxy_count"],
         has_override=bool(row["has_override"]),
         in_pool=bool(row["in_pool"]),
+        unread=bool(row["unread"]),
     )
 
 
@@ -186,11 +187,13 @@ def save_profiles(connection: sqlite3.Connection, profiles: ProfileList, now: fl
             profile.updated_at,
             *((usage.upload, usage.download, usage.total, usage.expire) if usage else [None] * 4),
             profile.proxy_count,
+            int(profile.unread),
         )
         connection.execute(
             "UPDATE profile_contents SET fetched_at = ?, upload = ?, download = ?, total = ?, "
-            "expire = ?, proxy_count = ?, updated_at = ? WHERE profile_id = ? AND "
-            "(fetched_at, upload, download, total, expire, proxy_count) IS NOT (?, ?, ?, ?, ?, ?)",
+            "expire = ?, proxy_count = ?, unread = ?, updated_at = ? WHERE profile_id = ? AND "
+            "(fetched_at, upload, download, total, expire, proxy_count, unread) "
+            "IS NOT (?, ?, ?, ?, ?, ?, ?)",
             (*fetched, now, profile.id, *fetched),
         )
     connection.execute(
