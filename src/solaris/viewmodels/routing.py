@@ -161,6 +161,7 @@ class RoutingViewModel(QObject):
         self._library = library
         self._runner = runner
         self._core = library.core_available
+        self._running = False  # as the overview last saw the tunnel
         self._routing: Routing = library.routing_snapshot()
         self._list: ProfileList = library.snapshot()
         self._draft: Plan | None = None  # shown, not stored yet
@@ -410,12 +411,13 @@ class RoutingViewModel(QObject):
         options = []
         for profile in self._list.profiles:
             inspection = self._routing.inspections.get(profile.id)
-            if inspection is None:
-                note, enabled = "", True
-            elif inspection.has_rules:
+            has_rules = self._routing.has_rules(profile)
+            if has_rules is False:
+                note, enabled = self.tr("只有节点"), False
+            elif inspection is not None and has_rules:
                 note, enabled = self.tr("%n 条规则", "", inspection.rule_count), True
             else:
-                note, enabled = self.tr("只有节点"), False
+                note, enabled = "", True
             options.append(
                 {"value": profile.id, "label": profile.name, "note": note, "enabled": enabled}
             )
@@ -428,7 +430,7 @@ class RoutingViewModel(QObject):
     @Property(bool, notify=changed)
     def hasRulesProfile(self) -> bool:
         """Some profile brings rules, or may: one not read yet counts."""
-        return any(self._routing.has_rules(p.id) is not False for p in self._list.profiles)
+        return any(self._routing.has_rules(p) is not False for p in self._list.profiles)
 
     @Property(bool, notify=changed)
     def hasProfiles(self) -> bool:
@@ -533,19 +535,22 @@ class RoutingViewModel(QObject):
     def tunnel_running(self, running: bool) -> None:
         """The overview saw the tunnel start or stop; the exits may have waited for it,
         and the mesh networks have a status from now on.
-        On macOS a core answers only while the tunnel runs: the page reads what it shows
-        again, and the subscriptions page what the connection read (D27)."""
+        On macOS a core answers only while the tunnel runs, and a connection first reads
+        what was stored while none could (D27). The tunnel runs once that is stored: then the
+        page reads what it shows again, and the subscriptions page what the connection read."""
         self._warp.set_running(running)
         self._vpngate.set_running(running)
         self._mesh_networks.set_running(running)
         core = self._library.core_available
-        if core == self._core:
+        if (running, core) == (self._running, self._core):
             return
-        self._core = core
-        self._test_timer.stop()
-        self._test, self._test_error = None, ""
+        self._running, self._core = running, core
+        if not core:
+            self._test_timer.stop()
+            self._test, self._test_error = None, ""
         self.changed.emit()
         self.testChanged.emit()
+        self._group_editor.core_changed()
         self.routingChanged.emit()
         self.refresh()
 

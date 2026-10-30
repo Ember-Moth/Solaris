@@ -371,8 +371,10 @@ def test_without_a_core_the_page_leaves_out_what_needs_one(
     profiles.importUrl("https://new.example.com/sub", "新订阅", True)
     qtbot.waitUntil(lambda: len(rows(profiles, "model")) == 4)
     assert rows(profiles, "model")[3].note == "连接后读取"
-    overview.toggleConnection()
+    with qtbot.waitSignal(groups.changed):  # an open dialog drops its note
+        overview.toggleConnection()
     qtbot.waitUntil(lambda: prop(routing, "coreAvailable"))
+    assert prop(groups, "coreNote") == ""
     qtbot.waitUntil(lambda: rows(profiles, "model")[3].note == "")
     assert host.prepared == 1
 

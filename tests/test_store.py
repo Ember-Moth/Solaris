@@ -79,6 +79,28 @@ def test_what_came_with_a_config_is_stored_with_it(tmp_path: Path) -> None:
     # Stored while no core could read it (D27), until one did.
     store.save(ProfileList((replace(SUBSCRIPTION, proxy_count=None, unread=True),), "a1"))
     assert store.load().get("a1").unread
+    read = replace(SUBSCRIPTION, has_rules=False)
+    store.save(ProfileList((read,), "a1"))
+    assert store.load().get("a1") == read
+
+
+def test_an_unread_update_keeps_the_text_a_core_read(tmp_path: Path) -> None:
+    store = ProfileStore(tmp_path)
+    store.write_config("a1", "proxies: []\n# read\n")
+    store.save(ProfileList((replace(SUBSCRIPTION, has_rules=False),), "a1"))
+    assert not store.fall_back("a1")  # nothing waits
+    unread = replace(SUBSCRIPTION, unread=True)
+    for text in ("# first\n", "# second\n"):
+        store.write_config("a1", text, keep_read=True)
+        store.save(ProfileList((unread,), "a1"))
+    assert store.read_config("a1") == "# second\n"
+    assert store.fall_back("a1")
+    assert store.read_config("a1") == "proxies: []\n# read\n"
+    # Read at last: nothing to fall back to any more.
+    store.write_config("a1", "# third\n", keep_read=True)
+    store.save(ProfileList((unread,), "a1"))
+    store.save(ProfileList((SUBSCRIPTION,), "a1"))
+    assert not store.fall_back("a1")
 
 
 def test_records_change_only_when_their_values_do(tmp_path: Path) -> None:
