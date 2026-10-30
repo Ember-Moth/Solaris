@@ -1,12 +1,14 @@
 # 发布与更新
 
-本文描述 M6 里界面这一侧的四件事：检查更新与下载（决策 D11）、诊断信息导出、第三方许可证清单、订阅一键导入
-（决策 D6）。签名与公证的发布工作流见 [apple/README.md](../apple/README.md)（M5），Windows 安装器见
-[architecture.md](architecture.md) 第 9 节（M4）。界面放在设置页的「关于」分组（[ui.md](ui.md) 第 8 节）。
+本文描述发布物和创建 Release 的工作流（第 1 节），以及 M6 里界面这一侧的四件事：检查更新与下载（决策 D11）、
+诊断信息导出、第三方许可证清单、订阅一键导入（决策 D6）。macOS 的签名与公证见 [apple/README.md](../apple/README.md)
+（M5），Windows 安装器见 [architecture.md](architecture.md) 第 9 节（M4）。界面放在设置页的「关于」分组
+（[ui.md](ui.md) 第 8 节）。面向用户的材料：README 的"下载与安装"、[PRIVACY.md](../PRIVACY.md) 和发布说明的模板
+`.github/release-notes.md`。
 
-状态：四项都已实现。现在还没有任何 Release，检查更新只用本机的假服务器测过；Windows
-的签名方案未定，签名者是一个占位常量，Windows 安装包暂不签名；`solaris:` 和 `clash:` 两个 scheme 由打包向系统
-注册（macOS 的 Info.plist，Windows 安装器写在 HKLM，第 6 节）；许可证清单还缺的几项见第 5 节。
+状态：都已实现。现在还没有任何 Release，发布工作流没有运行过，检查更新只用本机的假服务器测过。首发的 Windows
+安装包不签名（D29），更新时只核对校验和（第 3 节）；签名以后再加入。`solaris:` 和 `clash:` 两个 scheme 由打包向
+系统注册（macOS 的 Info.plist，Windows 安装器写在 HKLM，第 6 节）。
 
 ## 1. 发布物
 
@@ -16,15 +18,39 @@
 | 项目 | 约定 |
 | --- | --- |
 | 标签 | `v<版本>`，版本即 `pyproject.toml` 的 `version`，形如 `0.2.0`（三段数字）。预发布和草稿不提供给更新 |
+| 标题与说明 | `Solaris <版本>`；说明取自 `.github/release-notes.md`，`{{version}}` 换成版本，"更新内容"在草稿里手写 |
 | macOS 安装包 | `Solaris-<版本>-macos-arm64.dmg`：内含 `Solaris.app`；磁盘映像用 Developer ID（Team `GY9ZKZMAZA`）签名、公证并 staple |
-| Windows 安装包 | `Solaris-<版本>-windows-x64-setup.exe`：NSIS 安装器（architecture.md 第 9 节），Authenticode 签名。签名方案定下之前发布工作流产出的安装包不签名，更新时会在第 3 节第 4 步被拒 |
-| 校验和 | `SHA256SUMS`：`sha256sum` 的输出格式，每行 `<64 位小写十六进制>  <文件名>`，覆盖本次发布的每个安装包 |
-| 源代码 | `Solaris-<版本>-source.tar.gz`：本仓库在这个标签的代码，加上 `go mod vendor` 得到的全部 Go 依赖（第 4 节） |
+| Windows 安装包 | `Solaris-<版本>-windows-x64-setup.exe`：NSIS 安装器（architecture.md 第 9 节）。首发不签名（D29），更新时只核对校验和（第 3 节第 4 步）；签名以后改为 Authenticode 签名 |
+| 校验和 | `SHA256SUMS`：`sha256sum` 的输出格式，每行 `<64 位小写十六进制>  <文件名>`，覆盖本次发布的其他每个文件 |
+| 源代码 | `Solaris-<版本>-source.tar.gz`：本仓库在这个标签的代码，加上 `go mod vendor` 得到的全部 Go 依赖（第 5 节） |
 
-现在的发布工作流（`.github/workflows/release.yml`）只产出两个安装包和各自的 `.sha256`，存为 workflow artifact；
-创建 Release、`SHA256SUMS` 和源代码包在 M6 收尾时加入。
+Release 上只有这四个文件。只做 Windows x64 和 macOS arm64（D2）。其他平台、其他架构的界面不提供
+下载，「检查更新」照常显示有没有新版本。
 
-只做 Windows x64 和 macOS arm64（D2）。其他平台、其他架构的界面不提供下载，「检查更新」照常显示有没有新版本。
+### 1.1 发布工作流
+
+`.github/workflows/release.yml` 在推送 `v*` 标签时运行（也可以手动运行，但只有标签才创建 Release）。每个 job 都在
+`release` Environment 里，由它的审批人批准后才开始：先批准两个构建 job，它们成功后再批准创建 Release 的 job。
+
+1. **macOS**、**Windows** 两个 job 构建、签名（Windows 暂不签名）、公证安装包，Windows 的安装包还在 runner 上装一遍、
+   升级、卸载（architecture.md 第 10 节）。产物连同各自的 `.sha256` 存为 workflow artifact。
+2. **release** job（只对标签运行，`contents: write`）：
+   - 确认标签是 `v<pyproject.toml 的版本>`，版本是三段数字（界面只认这种，第 2 节）；
+   - 取回两个 artifact，用构建 job 写的 `.sha256` 核对两个安装包；`.sha256` 文件不上传；
+   - 源代码包：`git archive` 取出标签的代码，在 `src/core` 里 `go mod vendor`，再以 `GOPROXY=off` 用 vendor 的依赖
+     构建一次 Windows 服务，确认不联网也能构建；打包时文件按名称排序、属主为 root、时间取标签所在提交的时间、gzip 不写
+     时间戳，同一个标签得到同样的包；
+   - 用 `sha256sum` 为两个安装包和源代码包写 `SHA256SUMS`；
+   - `gh release create --draft --verify-tag` 创建**草稿**，上传这四个文件。同一个标签已有 Release 时这一步失败，要先
+     删掉旧的草稿再重新运行。
+
+**为什么是草稿**：界面检查更新用的 `releases/latest` 跳过草稿，Release 一旦发布，所有装了 Solaris 的机器就会看到它。
+审批发生在构建之前，审批人那时还看不到产物；本机又不能运行组装好的 app。所以由人从草稿下载两个安装包，在真机上
+装一遍，在草稿里写"更新内容"，确认无误后再发布，发布时保留"Set as the latest release"。草稿有错可以直接删掉重来。
+
+**发布说明**：模板 `.github/release-notes.md` 写下载、两个平台的安装提示（Windows 未签名、SmartScreen 与"未知发布者"；
+macOS 允许系统扩展和 VPN 配置）、源代码与许可、隐私说明的链接。GitHub 把正文里的换行原样显示，所以模板的段落不折行；
+除 `{{version}}` 以外不能有别的 `{{` 占位，否则这一步失败。
 
 ## 2. 检查更新
 
@@ -66,15 +92,21 @@
 
      不挂载磁盘映像去单独验证里面的 `.app`：映像的签名封住了整个映像的内容，公证时 Apple 已扫描过里面的
      代码，用户首次打开 App 时 Gatekeeper 还会再检查一次。挂载会在 Finder 里留下一个卷，也多一个失败点。
-   - **Windows**：经 ctypes 调用 `WinVerifyTrust`（`WINTRUST_ACTION_GENERIC_VERIFY_V2`，整条证书链检查吊销，
-     不弹任何界面），通过后用 `WTHelperProvDataFromStateData` 取出签名者证书，`CertGetNameStringW` 读出它的
-     显示名，必须等于 `signature.WINDOWS_SIGNER`。签名方案还没定（roadmap 的首发清单），这个常量先是占位值；
-     证书定下来以后改成证书的主题名。在那之前任何安装包都会因签名者不符被拒绝，这是有意的。
+   - **Windows**：看构建有没有配置签名者 `signature.WINDOWS_SIGNER`。
+     - **没有**（现在，D29：首发不签名，这个常量是空字符串）：不检查签名（`signature.ChecksumOnly`）。第 2、3 步
+       已经确认安装包的 SHA-256 与同一个 Release 的 `SHA256SUMS` 一致，这就是全部的校验，所以安装包的可信程度等于
+       GitHub 上这个 Release 的可信程度：能改 Release 文件的人也能改 `SHA256SUMS`。标题行不显示"正在校验签名…"，
+       确认框写明安装包未签名（第 5 步）。这样的构建遇到签了名的安装包也照常接受。
+     - **有**（签名以后）：经 ctypes 调用 `WinVerifyTrust`（`WINTRUST_ACTION_GENERIC_VERIFY_V2`，整条证书链检查
+       吊销，不弹任何界面），通过后用 `WTHelperProvDataFromStateData` 取出签名者证书，`CertGetNameStringW` 读出它的
+       显示名，必须等于 `WINDOWS_SIGNER`。签名的那个版本把常量填成证书的显示名，与 `product.WindowsSigner` 相同；
+       从此这个版本只接受这个签名者签的安装包，未签名的会被拒绝。
    - 其他平台没有安装包，不会走到这一步。
 5. **确认安装**：校验通过后按钮变成「打开安装包…」。点它先弹普通确认框「打开 Solaris 0.2.0 的安装包？」，
    正文写明接下来发生什么：
-   - macOS：「会在访达中打开磁盘映像，把 Solaris 拖到"应用程序"文件夹完成升级。替换前先退出界面，隧道继续运行。」
-   - Windows：「安装器会请求管理员权限，并在升级前关闭界面。」
+   - macOS：「将打开磁盘映像，把 Solaris 拖到“应用程序”文件夹即可升级。」
+   - Windows：「安装器会请求管理员权限，并在升级前关闭界面。」没有校验签名时（第 4 步），前面再加一句「安装包未签名，
+     Windows 会提示“未知发布者”。」，因为 UAC 的确认框会这样写。
 
    确认后再算一次哈希（文件在用户可写的目录里），对上了才用系统打开它：macOS 由 Finder 挂载映像，Windows 由
    ShellExecute 运行安装器、弹出 UAC。界面从不静默安装，也不自己替换文件；升级本身由安装器和 Finder 完成
@@ -91,7 +123,7 @@
 | `checksum_mismatch` | 「下载的文件与校验和不符」 |
 | `download_failed` | 「下载失败：…」 |
 | `signature_invalid` | 「安装包的签名无效：…」，细节是 codesign、spctl 或 WinVerifyTrust 的原话 |
-| `signer_mismatch` | 「安装包不是由 Solaris 的开发者签名的」 |
+| `signer_mismatch` | 「安装包不是由 Solaris 的开发者签名的」；Windows 上只在配置了签名者的构建里出现 |
 
 ## 4. 诊断信息
 
@@ -131,8 +163,8 @@
 
 | 类别 | 来源 |
 | --- | --- |
-| Python | 从 `solaris` 的 `Requires-Dist` 递归求出的运行时依赖（protobuf、PySide6 及其拆分出的包、shiboken6），读安装的包元数据和 `.dist-info` 里的许可证文件；再加上 CPython 自身（Nuitka 把解释器打进包里），全文取自解释器目录的 `LICENSE.txt` |
-| Go | `go list -deps` 列出 Windows 服务（`./service`，`GOOS=windows`）和 macOS 扩展的 Go 库（`./apple`，`GOOS=darwin`）实际链接的模块，标签 `with_gvisor`，含 mihomo；许可证文件取自模块缓存里模块的根目录，根目录没有时取被链接的包所在目录。另加 Go 标准库（`$GOROOT/LICENSE`） |
+| Python | 从 `solaris` 的 `Requires-Dist` 递归求出的运行时依赖（protobuf、PySide6 及其拆分出的包、shiboken6、keyring 等），读安装的包元数据和 `.dist-info` 里的许可证文件；再加上 CPython 自身（Nuitka 把解释器打进包里）和它的构建链接进解释器的第三方库，见下文 |
+| Go | `go list -deps` 列出 Windows 服务（`./service`，`GOOS=windows`）和 macOS 扩展的 Go 库（`./apple`，`GOOS=darwin`）实际链接的模块，标签 `with_gvisor`，含 mihomo；许可证文件取自模块缓存里模块的根目录，根目录没有时取被链接的包所在目录。另加 Go 标准库（`$GOROOT/LICENSE`），以及 sing-tun 嵌入 Windows 服务的 `wintun.dll`，见下文 |
 | Qt | Qt 6.12.0 本身（LGPL-3.0-only，全文在 `package/licenses/LGPL-3.0-only.txt`），以及随附的 Qt 模块（Core、GUI、Network、Qml、Quick、Quick Controls、Image Formats）里的第三方代码。后者来自 Qt 文档的《Third-Party Code Used in Qt》和各组件的说明页，由 `--qt-docs <Qt 文档目录>` 读取后存成 `package/licenses/qt.json`，平时生成时直接用它；升级 Qt 时用新版本的文档重新生成 |
 | 字体 | `ui/fonts/` 下的 Inter 和 JetBrains Mono，版本读自字体文件的 name 表，全文是各自的 `OFL.txt` |
 
@@ -143,12 +175,34 @@
   写明，而不是写"未知"。Qt 文档里的许可证名称按 `QT_LICENSE_NAMES` 换成 SPDX。
 - **现有的特例**：`github.com/metacubex/chacha` 的许可证文件在子目录里（MIT）；`github.com/rasky/go-lzo`
   （mihomo 的 OpenVPN 传输引入）只附 GPL-2.0 全文，它说明自己沿用 LZO 的许可证，而 LZO 是"GPL 第 2 版或任何
-  更新的版本"，所以记为 `GPL-2.0-or-later`，可以与 GPL-3.0 的代码合并发布。本机没有 Qt Image Formats 的文档，
-  它的 libtiff 和 libwebp 两项只写了名称、许可证和 Qt 在线文档的地址，没有全文；界面不用 TIFF 和 WebP，打包时
-  可以不带这两个插件。CPython 自带的第三方库（OpenSSL、SQLite、libffi 等）还没有逐项列出，只附了 CPython 的
-  `LICENSE.txt`。这几项在首发前补齐（M6 收尾）。
+  更新的版本"，所以记为 `GPL-2.0-or-later`，可以与 GPL-3.0 的代码合并发布。
+- **CPython 带的库**：uv 安装的 Python 是 python-build-standalone 的构建（现在是 3.14.7，发布日期 20260901），它把
+  一些第三方库链接进解释器：macOS 上静态链接进 `libpython`，Windows 上是 `DLLs\` 里的 DLL 和 `.pyd`。
+  `package/licenses/cpython.json` 逐个列出，每项写库的名称、版本、SPDX、用它的 CPython 模块、平台和全文，清单里
+  的名称形如 `OpenSSL (CPython _ssl, _hashlib)`：
+  - 两个平台：OpenSSL 3.5.8（`_ssl`、`_hashlib`）、SQLite 3.53.1（`_sqlite3`）、bzip2 1.0.8（`_bz2`）、XZ Utils 5.8.3
+    的 liblzma（`_lzma`）、Zstandard 1.5.7（`_zstd`）、mpdecimal 4.0.0（`_decimal`）；
+  - 两个平台版本不同，各列一项：libffi（`_ctypes`，macOS 3.4.8，Windows 3.4.7）、Expat（`pyexpat`，macOS 2.8.4，
+    Windows 用 CPython 源码自带的 2.8.2）；
+  - 只在一个平台：libuuid 1.0.3（`_uuid`，macOS）、zlib-ng 2.2.4（`zlib`、`binascii`，Windows）。
+
+  不列的：macOS 自带的 zlib、libedit、ncurses（系统库，不随包分发），Tcl/Tk（只有 `_tkinter` 用，界面不导入，
+  Nuitka 不打包）。CPython 一项除了 `LICENSE.txt`，还附上同一版本 `Doc/license.rst` 的"Licenses and
+  Acknowledgements for Incorporated Software"一节（mimalloc、HACL\*、Mersenne Twister 等编进解释器的代码），去掉了
+  reStructuredText 的标记。版本和模块取自那次构建 full 包里的 `PYTHON.json` 和 `licenses/`，核对过 `libpython` 的
+  符号和 Windows 的 `DLLs\`；全文取自各库在这个版本的上游源码（找不到时用 `licenses/` 里的）。这个文件手工维护：
+  脚本发现当前 Python 的版本与它不同就报错，升级 Python 时照上面的办法重做。
+- **Wintun**：sing-tun 用 `go:embed` 把 `wintun.dll` 0.14.1 嵌进 Windows 服务，用 memmod 加载。这个 DLL 不是 sing-tun
+  的 GPL 代码，而是 WireGuard LLC 的预编译文件，有自己的许可证（Prebuilt Binaries License），全文从
+  `wintun-0.14.1.zip` 取出，存在 `package/licenses/wintun.txt`，记为 `LicenseRef-Wintun-Prebuilt-Binaries`。它允许
+  随"只通过 `wintun.h` 的接口使用它的软件"一起分发，sing-tun 正是这样用的。脚本核对嵌入的 amd64 DLL 的 SHA-256
+  （与官方 zip 里的相同），sing-tun 换了 DLL 就报错，要重新核对许可证。
+- **Qt Image Formats**：本机没有它的文档，libtiff 4.7.2 和 libwebp 1.6.0 两项的全文按 Qt 文档的写法（`qt_attribution.json`
+  的 `Copyright` 加上 `LicenseFile`）取自 qtimageformats v6.12.0 的源码，直接写在 `qt.json` 里。`--qt-docs`
+  重新生成时，文档里没有的组件保留 `qt.json` 里同版本的全文。界面不用 TIFF 和 WebP，打包时可以不带这两个插件。
 - **`--check`** 重新生成并与提交的文件比较，需要 Go 和下载好的模块缓存。`tests/test_licenses.py` 不需要 Go：
-  它核对清单里 Python 组件的版本与当前环境一致、Go 模块的版本与 `go.mod` 一致、每项都有全文，所以升级依赖后
+  它核对清单里 Python 组件的版本与当前环境一致、Go 模块的版本与 `go.mod` 一致、每项都有全文、`cpython.json`
+  与清单里的 CPython 同一版本且每个库都写了模块和平台、Wintun 一项在、Qt 的组件都有全文，所以升级依赖后
   忘了重新生成会失败。
 - **源代码**：GPL-3.0 要求随二进制提供对应的源代码。每个 Release 附带第 1 节的源代码包（含 vendor 的 Go 依赖，
   也就包括 mihomo）；Qt 和 PySide6 的源代码在 download.qt.io 的同一版本下。NOTICES 的开头写明这两处。
@@ -193,10 +247,12 @@
 
 - `tests/test_update.py`：本机起一个假的 GitHub（`tests/support/releases.py`，`http.server`，回环地址），覆盖有新
   版本、已是最新、还没有发布、标签无法识别、HTTP 错误、没有本机安装包、没有校验和、哈希不符、大小与声明不符、
-  取消下载、签名被拒、签名者不符、打开前文件被换；签名校验用替身。macOS 上另用系统自带的 App 真实运行
-  `codesign`，确认 Team ID 不符时被拒；Windows 上真实调用 `WinVerifyTrust`，未签名的文件被拒，找得到带内嵌签名的
-  程序（如 PowerShell 7）时确认签名者不符被拒。
-- `tests/test_about.py`：「关于」分组的各个状态与按钮、自动检查的计时与设置项、确认后才打开安装包；诊断 zip
+  取消下载、签名被拒、签名者不符、打开前文件被换；签名校验用替身。Windows 的两种构建都测：没有签名者时不校验
+  签名、仍要求 `SHA256SUMS` 里有这个文件且哈希一致、结果标为未签名；配置了签名者时未签名的安装包被拒。macOS 上
+  另用系统自带的 App 真实运行 `codesign`，确认 Team ID 不符时被拒；Windows 上真实调用 `WinVerifyTrust`，未签名的
+  文件被拒，找得到带内嵌签名的程序（如 PowerShell 7）时确认签名者不符被拒。
+- `tests/test_about.py`：「关于」分组的各个状态与按钮、自动检查的计时与设置项、确认后才打开安装包、未签名的
+  Windows 安装包在确认框里写明未签名和"未知发布者"；诊断 zip
   的内容，订阅链接、名称、路径、覆写原文和方案内容不出现在任何文件里，设置项全部归了类；许可证列表与搜索。
 - `tests/test_licenses.py`：见第 5 节。
 - `tests/test_links.py`：两种 scheme 的解析和拒绝；第二个界面把链接转交给第一个；`QFileOpenEvent`；打开订阅页、

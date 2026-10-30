@@ -2,7 +2,8 @@
 
 macOS asks ``codesign`` and ``spctl`` about the disk image and checks its Team ID; Windows
 asks ``WinVerifyTrust`` about the installer and checks the signer's name. Both block: run
-them on a worker thread.
+them on a worker thread. Until Windows signing exists (D29) no signer is configured, and a
+Windows installer is trusted by its checksum alone.
 """
 
 from __future__ import annotations
@@ -18,9 +19,10 @@ from typing import Protocol
 from solaris.update.releases import UpdateError
 
 APPLE_TEAM_ID = "GY9ZKZMAZA"  # apple/README.md
-# A placeholder until the Windows signing plan is decided (roadmap M6): the subject name of
-# the Authenticode certificate goes here. Until then every installer fails as signer_mismatch.
-WINDOWS_SIGNER = "Ember Moth"
+# The display name of the Authenticode certificate that signs the Windows installer. Empty
+# while releases are unsigned (D29): the installer is then trusted by its SHA-256 in the
+# release's SHA256SUMS alone. Once signing exists this takes product.WindowsSigner's value.
+WINDOWS_SIGNER = ""
 
 CODESIGN = "/usr/bin/codesign"
 SPCTL = "/usr/sbin/spctl"
@@ -30,6 +32,11 @@ _TEAM = re.compile(r"^TeamIdentifier=(.*)$", re.MULTILINE)
 
 
 class Verifier(Protocol):
+    @property
+    def signed(self) -> bool:
+        """False when nothing but the release's checksum vouches for the installer."""
+        ...
+
     def verify(self, path: Path) -> None:
         """Return when ``path`` is signed by the expected developer; raise UpdateError
         (``signature_invalid`` or ``signer_mismatch``) otherwise."""
@@ -59,6 +66,8 @@ class MacVerifier:
     """A notarized disk image signed by ``team_id``. The image's signature seals its whole
     contents, so the app inside is not checked separately; Gatekeeper checks it again when
     it is first opened."""
+
+    signed = True
 
     def __init__(self, team_id: str = APPLE_TEAM_ID, run: Runner = run_tool) -> None:
         self._team_id = team_id
@@ -152,7 +161,9 @@ class WindowsVerifier:
     """An Authenticode signature that Windows trusts, checked for revocation along the whole
     chain, whose signer's display name is ``signer``."""
 
-    def __init__(self, signer: str = WINDOWS_SIGNER) -> None:
+    signed = True
+
+    def __init__(self, signer: str) -> None:
         self._signer = signer
 
     def verify(self, path: Path) -> None:
@@ -228,10 +239,21 @@ def trusted_signer(path: Path) -> str:
         verify(_INVALID_HANDLE_VALUE, ctypes.byref(action), ctypes.byref(data))
 
 
-def default_verifier(system: str = sys.platform) -> Verifier | None:
+class ChecksumOnly:
+    """An unsigned Windows installer, for builds without a signer (D29). The download has
+    already matched its SHA-256 with the release's SHA256SUMS; nothing else vouches for it,
+    so the confirmation says it is unsigned."""
+
+    signed = False
+
+    def verify(self, path: Path) -> None:
+        pass
+
+
+def default_verifier(system: str = sys.platform, signer: str = WINDOWS_SIGNER) -> Verifier | None:
     """None where no installer is built (docs/release.md §1)."""
     if system == "darwin":
         return MacVerifier()
     if system == "win32":
-        return WindowsVerifier()
+        return WindowsVerifier(signer) if signer else ChecksumOnly()
     return None

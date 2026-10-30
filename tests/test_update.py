@@ -27,14 +27,17 @@ from solaris.update.signature import (
     APPLE_TEAM_ID,
     CODESIGN,
     SPCTL,
+    ChecksumOnly,
     MacVerifier,
     WindowsVerifier,
+    default_verifier,
     trusted_signer,
 )
 from solaris.update.updater import Updater
 from tests.support.releases import FakeGitHub, FakeVerifier, fake_github
 
 MAC_DMG = "Solaris-0.2.0-macos-arm64.dmg"
+SIGNER = "Ember Moth"  # a Windows signer, for the signed path
 WINDOWS_EXE = "Solaris-0.2.0-windows-x64-setup.exe"
 BODY = b"installer " * 100_000  # a little under 1 MB: several chunks
 
@@ -200,6 +203,7 @@ def test_download_checks_the_sum_then_the_signature(github: FakeGitHub, tmp_path
     )
     assert downloaded.path == tmp_path / "updates" / MAC_DMG
     assert downloaded.path.read_bytes() == BODY
+    assert downloaded.signed
     assert verifier.seen == [downloaded.path]
     assert order == ["verifying"]
     assert seen[-1] == (len(BODY), len(BODY))
@@ -213,6 +217,75 @@ def test_windows_downloads_its_installer(github: FakeGitHub, tmp_path: Path) -> 
     downloaded = update.download(update.check())
     assert downloaded.path.name == WINDOWS_EXE
     assert downloaded.path.read_bytes().startswith(b"MZ")
+
+
+def windows_updater(github: FakeGitHub, tmp_path: Path, signer: str) -> Updater:
+    return Updater(
+        tmp_path,
+        ReleaseSource(github.latest_url),
+        default_verifier("win32", signer),
+        current="0.1.0",
+        system="win32",
+        machine="AMD64",
+    )
+
+
+def test_the_verifier_per_platform_and_signer() -> None:
+    assert isinstance(default_verifier("darwin"), MacVerifier)
+    assert isinstance(default_verifier("darwin", ""), MacVerifier)
+    assert isinstance(default_verifier("win32", SIGNER), WindowsVerifier)
+    assert isinstance(default_verifier("win32", ""), ChecksumOnly)
+    assert default_verifier("linux") is None
+    assert [v.signed for v in (MacVerifier(), WindowsVerifier(SIGNER), ChecksumOnly())] == [
+        True,
+        True,
+        False,
+    ]
+
+
+def test_without_a_windows_signer_the_checksum_vouches(github: FakeGitHub, tmp_path: Path) -> None:
+    # A build without a signer (D29) takes an unsigned installer whose SHA-256 is the one
+    # in the release's SHA256SUMS, and says it is unsigned.
+    update = windows_updater(github, tmp_path, "")
+    order: list[str] = []
+    downloaded = update.download(update.check(), verifying=lambda: order.append("verifying"))
+    assert downloaded.path.read_bytes() == b"MZ" + BODY
+    assert not downloaded.signed
+    assert order == []  # no signature to check
+    assert update.ready(downloaded) == downloaded.path
+    downloaded.path.write_bytes(b"MZ swapped")
+    with pytest.raises(UpdateError) as caught:
+        update.ready(downloaded)
+    assert caught.value.code == "checksum_mismatch"
+
+
+@pytest.mark.parametrize("sums", ["missing", "without it", "wrong"])
+def test_without_a_windows_signer_the_checksum_is_required(
+    github: FakeGitHub, tmp_path: Path, sums: str
+) -> None:
+    if sums == "missing":
+        del github.files[CHECKSUMS_NAME]
+    elif sums == "without it":
+        github.add_checksums(MAC_DMG)
+    else:
+        github.add_checksums(MAC_DMG, WINDOWS_EXE, wrong=WINDOWS_EXE)
+    update = windows_updater(github, tmp_path, "")
+    with pytest.raises(UpdateError) as caught:
+        update.download(update.check())
+    assert caught.value.code == ("checksum_mismatch" if sums == "wrong" else "checksum_missing")
+    assert not update.directory.exists() or list(update.directory.iterdir()) == []
+
+
+def test_with_a_windows_signer_an_unsigned_installer_is_refused(
+    github: FakeGitHub, tmp_path: Path
+) -> None:
+    # The signed path for later: the fake installer carries no signature (and off Windows
+    # there is no WinVerifyTrust), so it is refused after its checksum matched.
+    update = windows_updater(github, tmp_path, SIGNER)
+    with pytest.raises(UpdateError) as caught:
+        update.download(update.check())
+    assert caught.value.code == "signature_invalid"
+    assert list(update.directory.iterdir()) == []
 
 
 def test_download_clears_earlier_ones(github: FakeGitHub, tmp_path: Path) -> None:
@@ -385,7 +458,7 @@ def test_windows_verifier_rejects_an_unsigned_file(tmp_path: Path) -> None:
     unsigned = tmp_path / "unsigned.exe"
     unsigned.write_bytes(b"MZ" + bytes(1024))
     with pytest.raises(UpdateError) as caught:
-        WindowsVerifier().verify(unsigned)
+        WindowsVerifier(SIGNER).verify(unsigned)
     assert caught.value.code == "signature_invalid"
     assert caught.value.message.startswith("0x800")
 
@@ -412,6 +485,6 @@ def test_windows_verifier_names_the_signer() -> None:
     signer = trusted_signer(program)
     assert signer
     with pytest.raises(UpdateError) as caught:
-        WindowsVerifier().verify(program)
+        WindowsVerifier(SIGNER).verify(program)
     assert (caught.value.code, caught.value.message) == ("signer_mismatch", signer)
     WindowsVerifier(signer=signer).verify(program)

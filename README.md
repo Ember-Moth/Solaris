@@ -7,6 +7,26 @@ LocalSystem 服务里，macOS 上运行在 NetworkExtension 系统扩展里，�
 两个平台都还没有真机实测，也还没有发布。进度和下一步见 [docs/roadmap.md](docs/roadmap.md)。产品名、应用名都是 Solaris，产品标识集中在
 `src/core/internal/product/product.go` 与 `src/solaris/product.py`。
 
+## 下载与安装
+
+安装包在 [GitHub Releases](https://github.com/Ember-Moth/Solaris/releases)，只提供下面两种：
+
+| 系统 | 文件 |
+| --- | --- |
+| Windows 10 / 11，64 位 | `Solaris-<版本>-windows-x64-setup.exe` |
+| macOS 26 及以上，Apple 芯片 | `Solaris-<版本>-macos-arm64.dmg` |
+
+每个版本附带 `SHA256SUMS`，可以用它核对下载的文件。
+
+- **Windows**：安装包暂未签名。从浏览器下载后打开时，SmartScreen 可能提示"Windows 已保护你的电脑"，点"更多信息"再点
+  "仍要运行"。安装器会请求管理员权限，确认框里的发布者显示为"未知"。安装位置固定为 `C:\Program Files\Solaris`，
+  同时安装一个系统服务，关闭界面后连接继续运行。在"设置 › 应用"里卸载，卸载时可以选择是否删除订阅、设置和日志。
+- **macOS**：打开磁盘映像，把 Solaris 拖到"应用程序"文件夹。第一次连接时，系统会先提示 Solaris 想要启用系统扩展，
+  到"系统设置 › 通用 › 登录项与扩展"里允许；再询问是否允许添加 VPN 配置，点"允许"。磁盘映像经过 Apple 公证。
+- **更新**：设置页"关于"里检查更新，下载安装包并核对校验和（macOS 还核对签名），经你确认后打开安装包完成升级。
+
+会离开本机的数据见 [PRIVACY.md](PRIVACY.md)。
+
 ## 文档
 
 | 文档 | 内容 |
@@ -18,7 +38,8 @@ LocalSystem 服务里，macOS 上运行在 NetworkExtension 系统扩展里，�
 | [docs/routing.md](docs/routing.md) | 自定义分流 |
 | [docs/exits.md](docs/exits.md) | 链式出口：经用户节点的 WARP（已实现）、Tor 与 VPN Gate（计划中） |
 | [docs/mesh.md](docs/mesh.md) | 组网出站：Tailscale、ZeroTier、EasyTier（应用内组网计划中） |
-| [docs/release.md](docs/release.md) | 发布与更新：检查更新、诊断导出、第三方许可证、一键导入 |
+| [docs/release.md](docs/release.md) | 发布与更新：发布工作流、检查更新、诊断导出、第三方许可证、一键导入 |
+| [PRIVACY.md](PRIVACY.md) | 隐私说明：会离开本机的数据、备份与诊断信息 |
 | [DESIGN.md](DESIGN.md) | 视觉规范与文案规则 |
 
 ## 目录

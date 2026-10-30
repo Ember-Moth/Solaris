@@ -6,14 +6,16 @@
 
 Inputs: the installed Python packages, the Go modules the Windows service and the macOS
 extension link (``go list``, which needs the module cache), ``package/licenses/`` (Qt's
-third-party code, read once from Qt's documentation, and the LGPL text) and the bundled
-fonts. Outputs, committed like Theme.qml: ``src/solaris/licenses/third_party.json`` for the
-settings page and ``THIRD_PARTY_NOTICES.txt`` with every text.
+third-party code, read once from Qt's documentation; the libraries CPython's build bundles;
+Wintun's license; the LGPL text) and the bundled fonts. Outputs, committed like Theme.qml:
+``src/solaris/licenses/third_party.json`` for the settings page and
+``THIRD_PARTY_NOTICES.txt`` with every text.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import html
 import json
 import os
@@ -35,6 +37,8 @@ ROOT = Path(__file__).resolve().parents[1]
 CORE = ROOT / "src" / "core"
 INPUTS = ROOT / "package" / "licenses"
 QT_INPUT = INPUTS / "qt.json"
+CPYTHON_INPUT = INPUTS / "cpython.json"
+WINTUN_LICENSE = INPUTS / "wintun.txt"
 LGPL = INPUTS / "LGPL-3.0-only.txt"
 OUTPUT = ROOT / "src" / "solaris" / "licenses"
 MANIFEST = OUTPUT / "third_party.json"
@@ -48,6 +52,12 @@ GO_TARGETS = (
     ({"GOOS": "darwin", "GOARCH": "arm64", "CGO_ENABLED": "1"}, "./apple"),
 )
 GO_TAGS = "with_gvisor"
+# sing-tun embeds Wintun's prebuilt DLL, which comes under its own license, kept in
+# WINTUN_LICENSE from wintun-0.14.1.zip. Another DLL means checking that license again.
+WINTUN_PACKAGE = ("github.com/metacubex/sing-tun", "internal/wintun")
+WINTUN_DLL = "amd64/wintun.dll"
+WINTUN_SHA256 = "e5da8447dc2c320edc0fc52fa01885c103de8c118481f683643cacc3220dafce"
+WINTUN_VERSION = "0.14.1"
 
 # PySide6 names these, but the UI never imports them, so Nuitka leaves them out.
 NOT_SHIPPED = {"pyside6-webengine", "pyside6-pdf"}
@@ -101,6 +111,8 @@ QT_MODULES = (
     "qt-quick-controls",
     "qt-image-formats",
 )
+# What a component says when neither the documentation nor QT_INPUT has its texts.
+QT_DOCS_ONLY = "The copyright and license of {} are in Qt's documentation: {}"
 # Third-party code of those modules that only Linux, Android or X11 builds contain.
 QT_NOT_SHIPPED = re.compile(r"Android|XCB|X Server")
 
@@ -237,26 +249,44 @@ def python_entries() -> list[Entry]:
         entries.append(
             Entry(metadata["Name"], dist.version, license_, "python", _python_url(dist), texts)
         )
-    entries.append(_cpython())
-    return entries
+    return entries + _cpython()
 
 
-def _cpython() -> Entry:
-    """Nuitka bundles the interpreter itself."""
+def _cpython() -> list[Entry]:
+    """Nuitka bundles the interpreter itself, with the libraries its build links into it
+    (python-build-standalone, as uv installs it). CPython's own license comes from the
+    interpreter; the code incorporated in CPython and the libraries, per module and
+    platform, from CPYTHON_INPUT."""
+    data = json.loads(CPYTHON_INPUT.read_text(encoding="utf-8"))
+    version = platform.python_version()
+    if data["python_version"] != version:
+        raise SystemExit(
+            f"cpython.json describes Python {data['python_version']} but this is {version};"
+            " update it from that build's PYTHON.json and licenses/ (docs/release.md §5)"
+        )
     base = Path(sys.base_prefix)
     stdlib = f"python{sys.version_info[0]}.{sys.version_info[1]}"
     candidates = (base / "LICENSE.txt", base / "lib" / stdlib / "LICENSE.txt")
     path = next((p for p in candidates if p.is_file()), None)
     if path is None:
         raise SystemExit(f"no LICENSE.txt under {base}")
-    return Entry(
-        "CPython",
-        platform.python_version(),
-        "PSF-2.0",
-        "python",
-        "https://www.python.org/",
-        (_read(path),),
-    )
+    texts = (_read(path), data["incorporated"])
+    entries = [Entry("CPython", version, "PSF-2.0", "python", "https://www.python.org/", texts)]
+    for item in data["libraries"]:
+        where = ", ".join(item["modules"])
+        if len(item["platforms"]) == 1:
+            where += f", {item['platforms'][0]}"
+        entries.append(
+            Entry(
+                f"{item['name']} (CPython {where})",
+                item["version"],
+                item["license"],
+                "python",
+                item["url"],
+                tuple(item["texts"]),
+            )
+        )
+    return entries
 
 
 # -- Go --------------------------------------------------------------------------------------
@@ -346,6 +376,8 @@ def go_entries() -> list[Entry]:
         entries.append(
             Entry(module.path, module.version, license_, "go", _go_url(module.path), texts)
         )
+        if module.path == WINTUN_PACKAGE[0]:
+            entries += _wintun(module)
     version = _go("env", "GOVERSION").strip()
     goroot = Path(_go("env", "GOROOT").strip())
     # Homebrew moves LICENSE out of GOROOT, one level up.
@@ -355,6 +387,28 @@ def go_entries() -> list[Entry]:
         Entry("Go standard library", version, "BSD-3-Clause", "go", "https://go.dev/", texts)
     )
     return entries
+
+
+def _wintun(module: _Module) -> list[Entry]:
+    """The Wintun DLL that sing-tun embeds, when the Windows service links that package."""
+    package = module.root / WINTUN_PACKAGE[1]
+    if package not in module.packages:
+        return []
+    digest = hashlib.sha256((package / WINTUN_DLL).read_bytes()).hexdigest()
+    if digest != WINTUN_SHA256:
+        raise SystemExit(
+            f"{module.path} embeds another {WINTUN_DLL} ({digest}); check Wintun's license again"
+        )
+    return [
+        Entry(
+            f"Wintun (wintun.dll in {module.path})",
+            WINTUN_VERSION,
+            "LicenseRef-Wintun-Prebuilt-Binaries",
+            "go",
+            "https://www.wintun.net/",
+            (_read(WINTUN_LICENSE),),
+        )
+    ]
 
 
 # -- Qt --------------------------------------------------------------------------------------
@@ -393,7 +447,12 @@ def _pre_blocks(page: str) -> list[str]:
 
 def read_qt_docs(docs: Path) -> dict[str, object]:
     """Qt's third-party code in the modules that ship, from the documentation of the Qt
-    version PySide6 is built on."""
+    version PySide6 is built on. A component whose page is missing keeps the texts that
+    QT_INPUT has for the same version (added by hand from Qt's sources)."""
+    stored = {}
+    if QT_INPUT.is_file():
+        for item in json.loads(QT_INPUT.read_text(encoding="utf-8"))["components"]:
+            stored[item["name"], item["version"]] = item
     page = (docs / "qtdoc" / "licenses-used-in-qt.html").read_text(encoding="utf-8")
     title = re.search(r"Qt (\d+\.\d+\.\d+) Reference Documentation", page)
     if title is None:
@@ -415,14 +474,18 @@ def read_qt_docs(docs: Path) -> dict[str, object]:
             name, _, version = label.partition(", version ")
             online = f"https://doc.qt.io/qt-6/{Path(href).name}"
             page_path = docs / href
+            known = stored.get((f"{name} ({module})", version))
             if page_path.is_file():
                 attribution = page_path.read_text(encoding="utf-8")
                 homepage = re.search(r'<a href="([^"]+)">Project Homepage</a>', attribution)
                 text = "\n\n".join(_pre_blocks(attribution))
+            elif known is not None and known["texts"] != [QT_DOCS_ONLY.format(label, online)]:
+                components.append(known)
+                continue
             else:  # a module whose documentation is not installed
                 print(f"warning: no {href}; pointing to {online}", file=sys.stderr)
                 homepage = None
-                text = f"The copyright and license of {label} are in Qt's documentation: {online}"
+                text = QT_DOCS_ONLY.format(label, online)
             components.append(
                 {
                     "name": f"{name} ({module})",

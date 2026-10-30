@@ -158,13 +158,22 @@ def test_update_from_check_to_install(
     assert prop(about, "updateState") == "ready"
 
 
+@pytest.mark.parametrize("signed", [True, False])
 def test_windows_says_what_its_installer_does(
-    qtbot: QtBot, built: ViewModels, github: FakeGitHub, tmp_path: Path
+    qtbot: QtBot, built: ViewModels, github: FakeGitHub, tmp_path: Path, signed: bool
 ) -> None:
-    about = about_for(built, updater_for(github, tmp_path, system="win32", machine="AMD64"))
+    verifier = FakeVerifier(signed=signed)
+    update = updater_for(github, tmp_path, verifier, system="win32", machine="AMD64")
+    about = about_for(built, update)
     about.checkForUpdates()
     settle(qtbot, about, "available")
-    assert "管理员权限" in prop(about, "installMessage")
+    about.runUpdateAction()
+    settle(qtbot, about, "ready")
+    message = prop(about, "installMessage")
+    assert "管理员权限" in message
+    # An unsigned installer (D29) says so, and what Windows shows for it.
+    assert ("安装包未签名" in message) is not signed
+    assert ("未知发布者" in message) is not signed
 
 
 def test_already_current(

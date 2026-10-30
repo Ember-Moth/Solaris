@@ -22,8 +22,9 @@ const (
 var FrameMagic = [4]byte{'S', 'L', 'R', 'S'}
 
 // WindowsSigner is the Authenticode signer of release builds, the display name of the
-// certificate. It is a placeholder until the Windows signing plan is decided (roadmap M6);
-// src/solaris/update/signature.py's WINDOWS_SIGNER holds the same value.
+// certificate. It is a placeholder until Windows signing exists: the first releases are
+// unsigned (D29) and do not set SignedRelease. Signing then sets
+// src/solaris/update/signature.py's WINDOWS_SIGNER, empty until then, to the same value.
 const WindowsSigner = "Ember Moth"
 
 // Version is set at link time with -ldflags "-X <module>/internal/product.Version=<version>".

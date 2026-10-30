@@ -48,6 +48,10 @@
         <translation>The installer wasn’t signed by the Solaris developers</translation>
     </message>
     <message>
+        <source>安装包未签名，Windows 会提示“未知发布者”。安装器会请求管理员权限，并在升级前关闭界面。</source>
+        <translation>The installer isn’t signed, so Windows will say it’s from an unknown publisher. It asks for administrator permission and closes the app before it upgrades.</translation>
+    </message>
+    <message>
         <source>Python 依赖</source>
         <translation>Python packages</translation>
     </message>
