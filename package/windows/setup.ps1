@@ -86,7 +86,7 @@ function Install-SolarisService {
     } else {
         Invoke-Sc "create $ServiceName binPath= $binary type= own start= auto obj= LocalSystem DisplayName= Solaris"
     }
-    Invoke-Sc "description $ServiceName `"Runs the Solaris tunnel. Stopping it disconnects Solaris.`""
+    Invoke-Sc "description $ServiceName `"Keeps Solaris connected while its window is closed. Stopping it disconnects Solaris.`""
     # Restart after 5, 15 and 60 seconds (docs/architecture.md section 5.2), also when the
     # service stops with an error rather than crashing; a day without failures resets that.
     Invoke-Sc "failure $ServiceName reset= 86400 actions= restart/5000/restart/15000/restart/60000"

@@ -81,12 +81,10 @@ LangString StartingService ${LANG_ENGLISH} "Starting the ${PRODUCT} service…"
 LangString StartingService ${LANG_SIMPCHINESE} "正在启动 ${PRODUCT} 服务…"
 LangString RemovingService ${LANG_ENGLISH} "Removing the ${PRODUCT} service…"
 LangString RemovingService ${LANG_SIMPCHINESE} "正在移除 ${PRODUCT} 服务…"
-LangString ProgramSection ${LANG_ENGLISH} "${PRODUCT} and its service"
-LangString ProgramSection ${LANG_SIMPCHINESE} "${PRODUCT} 及其服务"
 LangString DataSection ${LANG_ENGLISH} "Subscriptions, settings and logs"
 LangString DataSection ${LANG_SIMPCHINESE} "订阅、设置和日志"
-LangString KeepData ${LANG_ENGLISH} "Your subscriptions, settings and logs stay unless you check them below, so that installing ${PRODUCT} again restores them."
-LangString KeepData ${LANG_SIMPCHINESE} "除非在下面勾选，订阅、设置和日志都会保留，重新安装 ${PRODUCT} 后可以继续使用。"
+LangString KeepData ${LANG_ENGLISH} "Your subscriptions, settings and logs are kept unless you select them below."
+LangString KeepData ${LANG_SIMPCHINESE} "订阅、设置和日志默认保留，在下面勾选后一并删除。"
 
 VIProductVersion "${APP_VERSION}.0"
 VIAddVersionKey /LANG=${LANG_ENGLISH} "ProductName" "${PRODUCT}"
@@ -106,7 +104,7 @@ VIAddVersionKey /LANG=${LANG_ENGLISH} "LegalCopyright" "GPL-3.0-only"
   Abort
 !macroend
 
-; Runs one of setup.ps1's operations; it prints why it failed.
+; Runs one of setup.ps1's operations; it prints why it failed, which the message shows as it is.
 !macro Setup OPERATION
   nsExec::ExecToStack /TIMEOUT=180000 '"${POWERSHELL}" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\setup.ps1" -Operation ${OPERATION} -InstallDirectory "$INSTDIR"'
   Pop $0
@@ -115,7 +113,7 @@ VIAddVersionKey /LANG=${LANG_ENGLISH} "LegalCopyright" "GPL-3.0-only"
     DetailPrint "$1"
   ${EndIf}
   ${If} $0 != 0
-    !insertmacro Fail "$(SetupFailed)$\r$\n$\r$\n${OPERATION}: $1" 1603
+    !insertmacro Fail "$(SetupFailed)$\r$\n$\r$\n$1" 1603
   ${EndIf}
 !macroend
 
@@ -213,7 +211,7 @@ Function un.RemoveFiles
   !include "${UNINSTALL_FILES}"
 FunctionEnd
 
-Section "!un.$(ProgramSection)" UninstallProgram
+Section "!un.${PRODUCT}" UninstallProgram
   SectionIn RO
   ${If} $UpgradeCall == 1
     ; The installer has closed the UI and stopped the service; the service, the login items
