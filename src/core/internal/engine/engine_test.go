@@ -19,6 +19,7 @@ import (
 
 	C "github.com/metacubex/mihomo/constant"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 )
 
@@ -50,8 +51,8 @@ func listening(port int) bool {
 }
 
 func TestOnlyOneEnginePerProcess(t *testing.T) {
-	openEngine(t, TunNone)
-	if _, err := New(Options{HomeDir: testHome, Tun: TunNone}); err == nil {
+	openEngine(t, admission.TunNone)
+	if _, err := New(Options{HomeDir: testHome, Tun: admission.TunNone}); err == nil {
 		t.Fatal("a second engine opened")
 	}
 }
@@ -60,7 +61,7 @@ func TestOnlyOneEnginePerProcess(t *testing.T) {
 // dependencies only from Go 1.27 on, which go.mod's toolchain line asks for; an older
 // toolchain leaves mihomo's placeholder, 1.10.0.
 func TestCoreVersionIsTheMihomoInGoMod(t *testing.T) {
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	want := requiredVersion(t, mihomoModule)
 	if got := engine.CoreVersion(); got != want || C.Version != want {
 		t.Fatalf("core version %q, mihomo's own %q; go.mod requires %s", got, C.Version, want)
@@ -88,7 +89,7 @@ func requiredVersion(t *testing.T, module string) string {
 }
 
 func TestStartProxiesTrafficAndStopClosesThePort(t *testing.T) {
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	server := target(t)
 	port := freePort(t)
 	if _, err := engine.Start(directProfile(port, server.URL+"/generate_204")); err != nil {
@@ -131,7 +132,7 @@ func TestStartProxiesTrafficAndStopClosesThePort(t *testing.T) {
 }
 
 func TestReloadMovesThePort(t *testing.T) {
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	server := target(t)
 	first, second := freePort(t), freePort(t)
 	if _, err := engine.Start(directProfile(first, server.URL)); err != nil {
@@ -153,7 +154,7 @@ func TestReloadMovesThePort(t *testing.T) {
 }
 
 func TestStartFailsWhenThePortIsTaken(t *testing.T) {
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	taken, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -176,7 +177,7 @@ func TestStartFailsWhenThePortIsTaken(t *testing.T) {
 // A Reload to a taken port fails with the reason and leaves the core on its old port;
 // mihomo alone would close the old port first.
 func TestReloadToATakenPortKeepsTheOldOne(t *testing.T) {
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	server := target(t)
 	port := freePort(t)
 	if _, err := engine.Start(directProfile(port, server.URL)); err != nil {
@@ -214,7 +215,7 @@ func TestEveryRuleTypeHasItsKeyword(t *testing.T) {
 
 // A proxy whose test failed reads 0; one never tested has no delay.
 func TestFailedTestsTellFromUntested(t *testing.T) {
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	server := target(t)
 	source := fmt.Sprintf(`mixed-port: %d
 proxies:
@@ -224,7 +225,7 @@ proxy-groups:
 rules:
   - MATCH,PROXY
 `, freePort(t), freePort(t), server.URL+"/generate_204")
-	if _, err := engine.Start(Profile{Config: []byte(source)}); err != nil {
+	if _, err := engine.Start(admission.Profile{Config: []byte(source)}); err != nil {
 		t.Fatal(err)
 	}
 	defer engine.Stop()
@@ -254,7 +255,7 @@ func isListenError(err error) bool {
 }
 
 func TestQueriesAndOperations(t *testing.T) {
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	server := target(t)
 	port := freePort(t)
 	testURL := server.URL + "/generate_204"
@@ -381,7 +382,7 @@ func TestQueriesAndOperations(t *testing.T) {
 }
 
 func TestWatchLogsSeesParseErrors(t *testing.T) {
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	var mu sync.Mutex
 	var lines []string
 	stop := engine.WatchLogs(func(entry *controlpb.LogEntry) {
@@ -412,7 +413,7 @@ func TestStartStopDoesNotLeak(t *testing.T) {
 	if testing.Short() {
 		t.Skip("50 start/stop cycles")
 	}
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	server := target(t)
 	port := freePort(t)
 	profile := directProfile(port, server.URL+"/generate_204")

@@ -12,6 +12,7 @@ import (
 
 	C "github.com/metacubex/mihomo/constant"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/compose"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 )
@@ -52,7 +53,7 @@ func warpDevice(t *testing.T, protocol controlpb.WarpProtocol) *controlpb.WarpAc
 	return account
 }
 
-func ruleTexts(admitted *admission) []string {
+func ruleTexts(admitted *admittedConfig) []string {
 	var rules []string
 	for _, rule := range admitted.cfg.Rules {
 		rules = append(rules, ruleKeyword(rule.RuleType().String())+","+rule.Payload()+","+rule.Adapter())
@@ -73,7 +74,7 @@ func TestWarpExitIsAnOutboundMihomoBuilds(t *testing.T) {
 	} {
 		composed := composition(warpRulePlan)
 		composed.Warp = warpDevice(t, protocol)
-		admitted, err := admitProfile(Profile{Composition: composed}, TunNone)
+		admitted, err := admitProfile(admission.Profile{Composition: composed}, noTUN)
 		if err != nil {
 			t.Fatalf("%v: %v", protocol, err)
 		}
@@ -90,7 +91,7 @@ func TestWarpExitIsAnOutboundMihomoBuilds(t *testing.T) {
 	}
 
 	// Without a device the rule rejects; the configuration still runs.
-	admitted, err := admitProfile(Profile{Composition: composition(warpRulePlan)}, TunNone)
+	admitted, err := admitProfile(admission.Profile{Composition: composition(warpRulePlan)}, noTUN)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +126,7 @@ func TestMeshOutboundsInAComposition(t *testing.T) {
 		{"id": "lab", "items": [{"type": "IP-CIDR", "value": "10.144.0.0/16", "no_resolve": true}], "target": "mesh:m/实验室"},
 		{"id": "gone", "items": [{"type": "DOMAIN-SUFFIX", "value": "gone.internal"}], "target": "mesh:m/没了"}]}`)
 	composed.Sources = append(composed.Sources, compose.Source{ID: "m", Name: "M", YAML: []byte(meshNodes)})
-	admitted, err := admitProfile(Profile{Composition: composed}, TunNone)
+	admitted, err := admitProfile(admission.Profile{Composition: composed}, noTUN)
 	if err != nil {
 		t.Fatal(err)
 	}

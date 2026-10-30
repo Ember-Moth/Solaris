@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/compose"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 )
@@ -22,12 +23,12 @@ const cheapPlan = `{"version": 1, "groups": [
 
 // The editor's preview lists the members mihomo's group gets (docs/routing.md §10).
 func TestPreviewMatchesTheComposedGroup(t *testing.T) {
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	preview, err := engine.PreviewGroup(*composition(cheapPlan), "cheap")
 	if err != nil {
 		t.Fatal(err)
 	}
-	admitted, err := admitProfile(Profile{Composition: composition(cheapPlan)}, TunNone)
+	admitted, err := admitProfile(admission.Profile{Composition: composition(cheapPlan)}, noTUN)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,8 +61,8 @@ const matchPlan = `{"version": 1, "groups": [{"id": "pass", "kind": "custom", "n
 	"fallback": "proxy"}`
 
 func TestMatchRuleOnADraft(t *testing.T) {
-	engine := openEngine(t, TunNone)
-	draft := &Profile{
+	engine := openEngine(t, admission.TunNone)
+	draft := &admission.Profile{
 		Composition: composition(matchPlan),
 		Overrides:   [][]byte{[]byte("prepend-rules: ['DOMAIN,blocked.example,REJECT']\n")},
 	}
@@ -101,7 +102,7 @@ func TestMatchRuleOnADraft(t *testing.T) {
 			t.Errorf("host %q: %v", host, err)
 		}
 	}
-	nothing := &Profile{Config: []byte("proxies: []\nrules: ['DOMAIN,only.example,DIRECT']\n")}
+	nothing := &admission.Profile{Config: []byte("proxies: []\nrules: ['DOMAIN,only.example,DIRECT']\n")}
 	if matched, err := engine.MatchRule(MatchRequest{Draft: nothing, Host: "else.example"}); err != nil ||
 		matched.GetMatched() || !slices.Equal(matched.GetChain(), []string{"DIRECT"}) {
 		t.Errorf("no rule matched: %v, %v", matched, err)
@@ -110,7 +111,7 @@ func TestMatchRuleOnADraft(t *testing.T) {
 
 // The rule test says what an actual connection matches, down to the node (docs/routing.md §10).
 func TestMatchRuleAgreesWithConnections(t *testing.T) {
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	server, release := slowTarget(t)
 	port := freePort(t)
 	address := server.Listener.Addr().String()
@@ -118,7 +119,7 @@ func TestMatchRuleAgreesWithConnections(t *testing.T) {
 	plan := fmt.Sprintf(`{"version": 1, "test_url": %q, "rules": [
 		{"id": "web", "items": [{"type": "DST-PORT", "value": %q}], "target": "region:JP"}],
 		"fallback": "DIRECT"}`, server.URL+"/generate_204", serverPort)
-	profile := Profile{Composition: composition(plan), Options: RunOptions{MixedPort: uint16(port)}}
+	profile := admission.Profile{Composition: composition(plan), Options: admission.RunOptions{MixedPort: uint16(port)}}
 	if _, err := engine.Start(profile); err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +172,7 @@ func TestMatchRuleAgreesWithConnections(t *testing.T) {
 }
 
 func TestConvertToPlanKnowsTheCategories(t *testing.T) {
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	converted, err := engine.ConvertToPlan([]byte("rules:\n  - GEOSITE,telegram,DIRECT\n  - GEOSITE,netflix,DIRECT\n"), compose.Conversion{})
 	if err != nil {
 		t.Fatal(err)
@@ -186,14 +187,14 @@ func TestConvertToPlanKnowsTheCategories(t *testing.T) {
 }
 
 func TestExportPlan(t *testing.T) {
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	withSecret := composition(cheapPlan)
 	withSecret.Sources = append(withSecret.Sources, compose.Source{ID: "c", Name: "C",
 		YAML: []byte("proxies:\n  - {name: 日本 09, type: ss, server: c.example, port: 9, cipher: aes-128-gcm, password: hunter2}\n")})
-	profile := Profile{
+	profile := admission.Profile{
 		Composition: withSecret,
 		Overrides:   [][]byte{[]byte("prepend-rules: ['DOMAIN,blocked.example,REJECT']\nexternal-controller: 127.0.0.1:9090\n")},
-		Options:     RunOptions{MixedPort: 17891, TUN: true},
+		Options:     admission.RunOptions{MixedPort: 17891, TUN: true},
 	}
 	generated, err := engine.ExportPlan(profile, controlpb.ExportFormat_EXPORT_FORMAT_GENERATED)
 	if err != nil {
@@ -215,7 +216,7 @@ func TestExportPlan(t *testing.T) {
 	if err != nil || !strings.HasPrefix(string(shared), "proxy-groups:\n") || strings.Contains(string(shared), "blocked.example") {
 		t.Fatalf("shared = %s, %v", shared, err)
 	}
-	if _, err := engine.ExportPlan(Profile{Config: []byte("mode: rule\n")}, 0); !errors.Is(err, ErrInvalidArgument) {
+	if _, err := engine.ExportPlan(admission.Profile{Config: []byte("mode: rule\n")}, 0); !errors.Is(err, ErrInvalidArgument) {
 		t.Fatalf("a profile's own YAML: %v", err)
 	}
 }

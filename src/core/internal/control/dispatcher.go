@@ -12,6 +12,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/compose"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
@@ -54,9 +55,9 @@ var (
 type Engine interface {
 	CoreVersion() string
 	State() controlpb.RunState
-	Validate(engine.Profile) (*controlpb.CompositionReport, error)
-	Start(engine.Profile) (*controlpb.CompositionReport, error)
-	Reload(engine.Profile) (*controlpb.CompositionReport, error)
+	Validate(admission.Profile) (*controlpb.CompositionReport, error)
+	Start(admission.Profile) (*controlpb.CompositionReport, error)
+	Reload(admission.Profile) (*controlpb.CompositionReport, error)
 	Stop() error
 	Status() *controlpb.GetStatusResponse
 	SetMode(controlpb.Mode) error
@@ -80,7 +81,7 @@ type Engine interface {
 	PreviewGroup(composition compose.Composition, groupID string) (*controlpb.PreviewGroupResponse, error)
 	MatchRule(engine.MatchRequest) (*controlpb.MatchRuleResponse, error)
 	ConvertToPlan(source []byte, options compose.Conversion) (*controlpb.ConvertToPlanResponse, error)
-	ExportPlan(profile engine.Profile, format controlpb.ExportFormat) ([]byte, error)
+	ExportPlan(profile admission.Profile, format controlpb.ExportFormat) ([]byte, error)
 	RegisterWarp(ctx context.Context, via string, request warp.Request) (*controlpb.WarpAccount, error)
 	ListVpnGate(ctx context.Context, via string) ([]*controlpb.VpnGateServer, error)
 	MeshStatus(ctx context.Context) ([]*controlpb.MeshStatus, error)
@@ -216,7 +217,7 @@ func (d *Dispatcher) hostMethod(request *controlpb.Request) *controlpb.Response 
 	switch method := request.Method.(type) {
 	case *controlpb.Request_Validate:
 		validate := method.Validate
-		profile := engine.Profile{
+		profile := admission.Profile{
 			Config:      []byte(validate.GetConfigYaml()),
 			Composition: composition(validate.GetComposition()),
 			Overrides:   overrides(validate.GetOverrides()),
@@ -365,17 +366,17 @@ func overrides(sources []string) [][]byte {
 	return out
 }
 
-func (d *Dispatcher) profile(configYAML string, source *controlpb.Composition, overrideYAML []string, options *controlpb.RunOptions) (engine.Profile, *controlpb.Response) {
+func (d *Dispatcher) profile(configYAML string, source *controlpb.Composition, overrideYAML []string, options *controlpb.RunOptions) (admission.Profile, *controlpb.Response) {
 	run, response := runOptions(options)
 	if response != nil {
-		return engine.Profile{}, response
+		return admission.Profile{}, response
 	}
 	if options.GetSystemProxyEnabled() {
 		if response := d.systemProxyServed(); response != nil {
-			return engine.Profile{}, response
+			return admission.Profile{}, response
 		}
 	}
-	return engine.Profile{
+	return admission.Profile{
 		Config:      []byte(configYAML),
 		Composition: composition(source),
 		Overrides:   overrides(overrideYAML),
@@ -392,15 +393,15 @@ var tunStacks = map[controlpb.TunStack]string{
 	controlpb.TunStack_TUN_STACK_MIXED:       "mixed",
 }
 
-func runOptions(options *controlpb.RunOptions) (engine.RunOptions, *controlpb.Response) {
+func runOptions(options *controlpb.RunOptions) (admission.RunOptions, *controlpb.Response) {
 	if options.GetMixedPort() > 0xffff {
-		return engine.RunOptions{}, failure(CodeInvalidRequest, "mixed_port must be a TCP port")
+		return admission.RunOptions{}, failure(CodeInvalidRequest, "mixed_port must be a TCP port")
 	}
 	stack, ok := tunStacks[options.GetTunStack()]
 	if !ok {
-		return engine.RunOptions{}, failure(CodeInvalidRequest, "unknown TUN stack")
+		return admission.RunOptions{}, failure(CodeInvalidRequest, "unknown TUN stack")
 	}
-	return engine.RunOptions{
+	return admission.RunOptions{
 		TUN:       options.GetTunEnabled(),
 		MixedPort: uint16(options.GetMixedPort()),
 		AllowLAN:  options.GetAllowLan(),
@@ -685,12 +686,12 @@ func (d *Dispatcher) matchRule(match *controlpb.MatchRuleRequest) *controlpb.Res
 
 // draftProfile is a configuration the routing methods build on the side; unlike profile,
 // it never touches the system proxy.
-func (d *Dispatcher) draftProfile(configYAML string, source *controlpb.Composition, overrideYAML []string, options *controlpb.RunOptions) (engine.Profile, *controlpb.Response) {
+func (d *Dispatcher) draftProfile(configYAML string, source *controlpb.Composition, overrideYAML []string, options *controlpb.RunOptions) (admission.Profile, *controlpb.Response) {
 	run, response := runOptions(options)
 	if response != nil {
-		return engine.Profile{}, response
+		return admission.Profile{}, response
 	}
-	return engine.Profile{
+	return admission.Profile{
 		Config:      []byte(configYAML),
 		Composition: composition(source),
 		Overrides:   overrides(overrideYAML),

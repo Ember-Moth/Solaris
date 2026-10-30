@@ -20,6 +20,7 @@ import (
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/mgr"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/control"
 	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
 	"github.com/Ember-Moth/Solaris/src/core/internal/owner"
@@ -111,7 +112,7 @@ func serve(ctx context.Context, sessions <-chan sessionEvent, restart func()) er
 	// A service with no owner yet has no engine: it answers GetInfo and Claim only.
 	var core control.Engine
 	if home != "" {
-		opened, err := engine.New(engine.Options{HomeDir: home, Tun: engine.TunOwned})
+		opened, err := engine.New(engine.Options{HomeDir: home, Tun: admission.TunOwned})
 		if err != nil {
 			logger.Error("open the engine", "home", home, "error", err)
 			return err

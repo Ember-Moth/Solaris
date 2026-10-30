@@ -11,6 +11,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
 	"github.com/Ember-Moth/Solaris/src/core/internal/geodata/geodatatest"
@@ -28,7 +29,7 @@ func TestMain(m *testing.M) {
 		err = geodatatest.Write(home)
 	}
 	if err == nil {
-		core, err = engine.New(engine.Options{HomeDir: home, Tun: engine.TunNone})
+		core, err = engine.New(engine.Options{HomeDir: home, Tun: admission.TunNone})
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

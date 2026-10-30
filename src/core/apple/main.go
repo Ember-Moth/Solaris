@@ -18,7 +18,7 @@ import (
 	"github.com/Ember-Moth/Solaris/src/core/internal/frame"
 )
 
-// solaris_tunnel_network describes the tunnel's network (engine.FDNetwork) as JSON for
+// solaris_tunnel_network describes the tunnel's network (admission.FDNetwork) as JSON for
 // the extension's network settings. The caller releases the buffer with solaris_free.
 //
 //export solaris_tunnel_network

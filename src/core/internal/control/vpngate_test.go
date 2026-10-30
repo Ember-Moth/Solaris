@@ -7,19 +7,19 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
-	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
 )
 
 // vpnGateEngine lists fixed servers and keeps what it was asked.
 type vpnGateEngine struct {
 	unlinked
-	profile *engine.Profile
+	profile *admission.Profile
 	via     string
 	err     error
 }
 
-func (e *vpnGateEngine) Validate(profile engine.Profile) (*controlpb.CompositionReport, error) {
+func (e *vpnGateEngine) Validate(profile admission.Profile) (*controlpb.CompositionReport, error) {
 	e.profile = &profile
 	return &controlpb.CompositionReport{}, nil
 }

@@ -121,7 +121,7 @@ type meshRun struct {
 // adoptMesh prepares the configuration's mesh outbounds before it is applied: an outbound
 // whose settings are the ones running takes over the running outbound, and the one mihomo
 // parsed for it closes before it ever starts.
-func (e *Engine) adoptMesh(admitted *admission) *meshRun {
+func (e *Engine) adoptMesh(admitted *admittedConfig) *meshRun {
 	order, fingerprints := meshFingerprints(admitted.doc)
 	ids := map[string]string{}
 	networks := map[string]bool{} // the composition's own networks, which have no source

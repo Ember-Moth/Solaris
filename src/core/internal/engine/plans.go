@@ -12,10 +12,19 @@ import (
 	"github.com/metacubex/mihomo/listener"
 	T "github.com/metacubex/mihomo/tunnel"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/compose"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
-	"github.com/Ember-Moth/Solaris/src/core/internal/geodata"
 )
+
+// InspectSource describes a subscription for the UI; it needs no running core.
+func (e *Engine) InspectSource(source []byte, infoFilter string) (*controlpb.InspectSourceResponse, error) {
+	inspection, err := compose.Inspect(source, infoFilter)
+	if err != nil {
+		return nil, invalidConfig(err)
+	}
+	return inspection, nil
+}
 
 // The routing editor's methods (docs/routing.md §8.2, §8.3). They only read: a draft is
 // built on the side as Validate builds it and never applied, so none of them needs a
@@ -41,22 +50,9 @@ func (e *Engine) ConvertToPlan(source []byte, options compose.Conversion) (*cont
 	return converted, nil
 }
 
-// categories are the GEO data's categories, or nil lists, which check nothing, for a kind
-// the home has no data of.
-func (e *Engine) categories() compose.Categories {
-	var categories compose.Categories
-	if sites, err := geodata.Categories(C.Path.GeoSite()); err == nil && len(sites.Names) != 0 {
-		categories.Geosite = sites.Names
-	}
-	if ips, err := geodata.Categories(C.Path.GeoIP()); err == nil && len(ips.Names) != 0 {
-		categories.Geoip = ips.Names
-	}
-	return categories
-}
-
 // ExportPlan writes a plan as YAML: proxy-groups and rules to share, or the whole
 // configuration the core would run with profile.
-func (e *Engine) ExportPlan(profile Profile, format controlpb.ExportFormat) ([]byte, error) {
+func (e *Engine) ExportPlan(profile admission.Profile, format controlpb.ExportFormat) ([]byte, error) {
 	if profile.Composition == nil {
 		return nil, fmt.Errorf("%w: export_plan needs a composition", ErrInvalidArgument)
 	}
@@ -68,7 +64,7 @@ func (e *Engine) ExportPlan(profile Profile, format controlpb.ExportFormat) ([]b
 		}
 		return exported, nil
 	case controlpb.ExportFormat_EXPORT_FORMAT_GENERATED:
-		if e.tunMode == TunNone {
+		if e.tunMode == admission.TunNone {
 			// The configuration shows the host's way of running it, which never has a TUN.
 			profile.Options.TUN = false
 		}
@@ -118,7 +114,7 @@ func reduceNodes(doc map[string]any) {
 }
 
 // draft runs a configuration through the admission pipeline, as Validate does.
-func (e *Engine) draft(profile Profile) (*admission, error) {
+func (e *Engine) draft(profile admission.Profile) (*admittedConfig, error) {
 	e.lifecycle.Lock()
 	defer e.lifecycle.Unlock()
 	if err := e.checkOpen(); err != nil {
@@ -130,7 +126,7 @@ func (e *Engine) draft(profile Profile) (*admission, error) {
 // MatchRequest is a connection to test: to Host, a domain or an IP address, on Port.
 type MatchRequest struct {
 	// Draft is the configuration to match against; nil for the running one.
-	Draft *Profile
+	Draft *admission.Profile
 	Host  string
 	Port  uint16
 	UDP   bool

@@ -5,7 +5,7 @@ import SolarisCore
 /// control dispatcher. Swift only forwards bytes; Go decodes the Request, checks its size and
 /// encodes the Response.
 enum Core {
-  /// The tunnel's network as Go defines it (engine.FDNetwork).
+  /// The tunnel's network as Go defines it (admission.FDNetwork).
   static func network() throws -> TunnelNetwork {
     var length = 0
     guard let buffer = solaris_tunnel_network(&length) else {

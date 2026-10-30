@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/compose"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
@@ -21,7 +22,7 @@ import (
 // was asked, so the vectors stay independent of mihomo and the region table.
 type vectorEngine struct {
 	unlinked
-	profile    *engine.Profile
+	profile    *admission.Profile
 	inspected  string
 	infoFilter string
 	preview    *compose.Composition
@@ -29,7 +30,7 @@ type vectorEngine struct {
 	match      *engine.MatchRequest
 	converted  string
 	conversion compose.Conversion
-	exported   *engine.Profile
+	exported   *admission.Profile
 	format     controlpb.ExportFormat
 }
 
@@ -65,12 +66,12 @@ func (e *vectorEngine) ConvertToPlan(source []byte, options compose.Conversion) 
 	}, nil
 }
 
-func (e *vectorEngine) ExportPlan(profile engine.Profile, format controlpb.ExportFormat) ([]byte, error) {
+func (e *vectorEngine) ExportPlan(profile admission.Profile, format controlpb.ExportFormat) ([]byte, error) {
 	e.exported, e.format = &profile, format
 	return []byte("proxy-groups: []\n"), nil
 }
 
-func (e *vectorEngine) Validate(profile engine.Profile) (*controlpb.CompositionReport, error) {
+func (e *vectorEngine) Validate(profile admission.Profile) (*controlpb.CompositionReport, error) {
 	e.profile = &profile
 	return &controlpb.CompositionReport{
 		Warnings: []*controlpb.CompositionWarning{{EntryId: "tg", Reason: "region_empty", Target: "region:US"}},

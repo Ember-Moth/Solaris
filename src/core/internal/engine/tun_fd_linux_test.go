@@ -3,9 +3,9 @@
 package engine
 
 // The fd-mode test plays the macOS extension on Linux: it creates a TUN, gives it the
-// network FDNetwork names, routes the target into it and hands the descriptor to an
-// engine in fd mode. Like the owned-TUN test it compiles only with -tags tuntest, runs
-// only with SOLARIS_TUN_TEST=1 and refuses the host's namespace (tun_linux_test.go).
+// network admission.FDNetwork names, routes the target into it and hands the descriptor
+// to an engine in fd mode. Like the owned-TUN test it compiles only with -tags tuntest,
+// runs only with SOLARIS_TUN_TEST=1 and refuses the host's namespace (tun_linux_test.go).
 
 import (
 	"context"
@@ -20,9 +20,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/metacubex/mihomo/constant/features"
 	"github.com/metacubex/mihomo/listener"
 	"golang.org/x/sys/unix"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 )
 
@@ -44,7 +46,8 @@ func TestFDTUN(t *testing.T) {
 	}
 	for _, stack := range stacks {
 		t.Run(stack, func(t *testing.T) { fdTUN(t, stack, target, outbound) })
-		if breaksAllNetworks(stack) {
+		// The stacks NetworkExtension breaks once the tunnel includes all networks (D19).
+		if stack == "system" || stack == "mixed" {
 			t.Run(stack+" including all networks", func(t *testing.T) { fdTUNAllNetworks(t, stack, target, outbound) })
 		}
 	}
@@ -57,7 +60,7 @@ func fdTUN(t *testing.T, stack, target, outbound string) {
 	}
 	host := hostTUNDevice(t, address.Hostname())
 
-	engine, err := New(Options{HomeDir: testHome, Tun: TunFD, TunFD: host})
+	engine, err := New(Options{HomeDir: testHome, Tun: admission.TunFD, TunFD: host})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,8 +83,8 @@ func fdTUN(t *testing.T, stack, target, outbound string) {
 
 	// mihomo's own dials leave through the link to the server, as the extension's bypass
 	// its tunnel; the hosts entry answers the query that the TUN's DNS address receives.
-	source := func(hijack string) Profile {
-		return Profile{Config: []byte(fmt.Sprintf(`mode: rule
+	source := func(hijack string) admission.Profile {
+		return admission.Profile{Config: []byte(fmt.Sprintf(`mode: rule
 log-level: debug
 interface-name: %s
 proxies: []
@@ -150,29 +153,33 @@ func fdTUNAllNetworks(t *testing.T, stack, target, outbound string) {
 		t.Fatal(err)
 	}
 	host := hostTUNDevice(t, address.Hostname())
-	engine, err := New(Options{HomeDir: testHome, Tun: TunFD, TunFD: host, IncludeAllNetworks: true})
+	engine, err := New(Options{HomeDir: testHome, Tun: admission.TunFD, TunFD: host, IncludeAllNetworks: true})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer engine.Close()
-	profile := Profile{Config: []byte(fmt.Sprintf(`mode: rule
+	profile := admission.Profile{Config: []byte(fmt.Sprintf(`mode: rule
 interface-name: %s
 proxies: []
 rules: ['MATCH,DIRECT']
 dns: {nameserver: ['udp://127.0.0.1:1'], enhanced-mode: redir-host}
-`, outbound)), Options: RunOptions{Stack: stack}}
+`, outbound)), Options: admission.RunOptions{Stack: stack}}
 	if _, err := engine.Start(profile); err != nil {
 		t.Fatalf("Start in fd mode: %v", err)
 	}
-	if got := strings.ToLower(listener.LastTunConf.Stack.String()); got != defaultFDStack() {
-		t.Fatalf("mihomo runs the %s stack, want %s", got, defaultFDStack())
+	want := "mips"
+	if features.WithGVisor {
+		want = "gvisor"
+	}
+	if got := strings.ToLower(listener.LastTunConf.Stack.String()); got != want {
+		t.Fatalf("mihomo runs the %s stack, want %s", got, want)
 	}
 	throughTUN(t, engine, target)
 }
 
-// hostTUNDevice does what the extension and NetworkExtension do: a TUN with FDNetwork's
-// addresses and a route that sends the target into it. The descriptor is closed, and the
-// TUN removed, when the test ends.
+// hostTUNDevice does what the extension and NetworkExtension do: a TUN with
+// admission.FDNetwork's addresses and a route that sends the target into it. The
+// descriptor is closed, and the TUN removed, when the test ends.
 func hostTUNDevice(t *testing.T, targetHost string) int {
 	t.Helper()
 	fd, err := unix.Open("/dev/net/tun", unix.O_RDWR|unix.O_CLOEXEC, 0)
@@ -192,8 +199,8 @@ func hostTUNDevice(t *testing.T, targetHost string) int {
 		t.Fatal(err)
 	}
 	for _, args := range [][]string{
-		{"addr", "add", FDNetwork.Inet4.String(), "dev", fdDevice},
-		{"link", "set", fdDevice, "mtu", fmt.Sprint(FDNetwork.MTU), "up"},
+		{"addr", "add", admission.FDNetwork.Inet4.String(), "dev", fdDevice},
+		{"link", "set", fdDevice, "mtu", fmt.Sprint(admission.FDNetwork.MTU), "up"},
 		{"route", "add", targetHost + "/32", "dev", fdDevice},
 	} {
 		if output, err := exec.Command("ip", args...).CombinedOutput(); err != nil {
@@ -252,7 +259,7 @@ func throughTUN(t *testing.T, engine *Engine, target string) {
 // lookupThroughTUN asks the address the extension makes the system's resolver.
 func lookupThroughTUN(t *testing.T, name string) []string {
 	t.Helper()
-	server := net.JoinHostPort(FDNetwork.DNSServer().String(), "53")
+	server := net.JoinHostPort(admission.FDNetwork.DNSServer().String(), "53")
 	resolver := &net.Resolver{PreferGo: true, Dial: func(ctx context.Context, _, _ string) (net.Conn, error) {
 		var dialer net.Dialer
 		return dialer.DialContext(ctx, "udp", server)

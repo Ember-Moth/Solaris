@@ -9,6 +9,8 @@ import (
 	C "github.com/metacubex/mihomo/constant"
 	LC "github.com/metacubex/mihomo/listener/config"
 	"golang.org/x/sys/unix"
+
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 )
 
 // These tests stand pipes in for the TUN: none of them opens a TUN or touches the
@@ -36,7 +38,7 @@ func fdTun(mtu uint32) LC.Tun {
 	return LC.Tun{
 		Enable:       true,
 		Stack:        C.TunMips,
-		Inet4Address: []netip.Prefix{FDNetwork.Inet4},
+		Inet4Address: []netip.Prefix{admission.FDNetwork.Inet4},
 		MTU:          mtu,
 	}
 }
@@ -45,7 +47,7 @@ func TestHostTUNRefusesADescriptorThatIsNotATUN(t *testing.T) {
 	if _, err := newHostTUN(pipe(t)); err == nil {
 		t.Fatal("a pipe passed for the TUN")
 	}
-	if _, err := New(Options{HomeDir: testHome, Tun: TunFD, TunFD: pipe(t)}); err == nil {
+	if _, err := New(Options{HomeDir: testHome, Tun: admission.TunFD, TunFD: pipe(t)}); err == nil {
 		t.Fatal("the engine opened in fd mode on a pipe")
 	}
 }
@@ -54,7 +56,7 @@ func TestHostTUNKeepsTheDuplicateWhileTheSettingsHold(t *testing.T) {
 	host := &hostTUN{fd: pipe(t), name: "utun-test"}
 	t.Cleanup(func() { _ = unix.Close(host.dup) })
 
-	first := fdTun(FDNetwork.MTU)
+	first := fdTun(admission.FDNetwork.MTU)
 	if err := host.prepare(&first, LC.Tun{}); err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +67,7 @@ func TestHostTUNKeepsTheDuplicateWhileTheSettingsHold(t *testing.T) {
 	running := first
 	running.Sort()
 
-	same := fdTun(FDNetwork.MTU)
+	same := fdTun(admission.FDNetwork.MTU)
 	if err := host.prepare(&same, running); err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +88,7 @@ func TestHostTUNKeepsTheDuplicateWhileTheSettingsHold(t *testing.T) {
 
 func TestHostTUNSettleLeavesOtherFilesAlone(t *testing.T) {
 	host := &hostTUN{fd: pipe(t), name: "utun-test"}
-	tun := fdTun(FDNetwork.MTU)
+	tun := fdTun(admission.FDNetwork.MTU)
 	if err := host.prepare(&tun, LC.Tun{}); err != nil {
 		t.Fatal(err)
 	}

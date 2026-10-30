@@ -13,6 +13,7 @@ import (
 
 	C "github.com/metacubex/mihomo/constant"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 	"github.com/Ember-Moth/Solaris/src/core/internal/vpngate"
 	"github.com/Ember-Moth/Solaris/src/core/internal/vpngate/vpngatetest"
@@ -39,7 +40,7 @@ func fakeVpnGateList(t *testing.T) *atomic.Int32 {
 
 // The list goes out through the group it names: a group that rejects stops it.
 func TestListVpnGateGoesThroughTheGroup(t *testing.T) {
-	engine := openEngine(t, TunNone)
+	engine := openEngine(t, admission.TunNone)
 	calls := fakeVpnGateList(t)
 	if _, err := engine.ListVpnGate(context.Background(), "VIA"); !errors.Is(err, ErrNotRunning) {
 		t.Fatalf("a stopped core: %v", err)
@@ -54,7 +55,7 @@ proxy-groups:
 rules:
   - MATCH,VIA
 `, freePort(t))
-	if _, err := engine.Start(Profile{Config: []byte(source)}); err != nil {
+	if _, err := engine.Start(admission.Profile{Config: []byte(source)}); err != nil {
 		t.Fatal(err)
 	}
 	defer engine.Stop()
@@ -94,7 +95,7 @@ func TestVpnGateExitIsWhatMihomoBuilds(t *testing.T) {
 	for mode, want := range map[string]C.AdapterType{"per-site": C.LoadBalance, "single": C.Fallback} {
 		composed := composition(fmt.Sprintf(vpnGateRulePlan, mode))
 		composed.VpnGate = servers
-		admitted, err := admitProfile(Profile{Composition: composed}, TunNone)
+		admitted, err := admitProfile(admission.Profile{Composition: composed}, noTUN)
 		if err != nil {
 			t.Fatalf("%s: %v", mode, err)
 		}
@@ -119,7 +120,7 @@ func TestVpnGateExitIsWhatMihomoBuilds(t *testing.T) {
 	}
 
 	// Without servers the rule rejects; the configuration still runs.
-	admitted, err := admitProfile(Profile{Composition: composition(fmt.Sprintf(vpnGateRulePlan, "per-site"))}, TunNone)
+	admitted, err := admitProfile(admission.Profile{Composition: composition(fmt.Sprintf(vpnGateRulePlan, "per-site"))}, noTUN)
 	if err != nil {
 		t.Fatal(err)
 	}
