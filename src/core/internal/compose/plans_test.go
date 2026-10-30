@@ -258,9 +258,9 @@ func TestConvert(t *testing.T) {
 		"低倍率": `{"nodes":[{"source":"sub","name":"日本 02 0.1x"},{"source":"sub","name":"香港 01"}]}`,
 		// The region's own group name is taken.
 		"🇭🇰 香港 2": `{"nodes":[{"source":"sub","name":"香港 01"}]}`,
-		"Netflix":  fmt.Sprintf(`{"others":["proxy",%q,"DIRECT"]}`, id("香港节点")),
-		"美国":       `{"name":{"mode":"regex","pattern":"(?i)美国|US"},"exclude":{"mode":"regex","pattern":"0\\.1x"}}`,
-		"全部":       `{"all":true}`,
+		"Netflix": fmt.Sprintf(`{"others":["proxy",%q,"DIRECT"]}`, id("香港节点")),
+		"美国":      `{"name":{"mode":"regex","pattern":"(?i)美国|US"},"exclude":{"mode":"regex","pattern":"0\\.1x"}}`,
+		"全部":      `{"all":true}`,
 		// A group never lists itself.
 		"苹果": `{"others":["DIRECT","proxy"]}`,
 	} {
