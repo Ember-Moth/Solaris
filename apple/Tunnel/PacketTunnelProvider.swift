@@ -2,48 +2,84 @@ import Foundation
 import NetworkExtension
 import os
 
-/// Sets up the tunnel and hands control messages to the Go dispatcher (docs/architecture.md §6.2).
+/// Sets up the tunnel, runs the Go core on its utun and hands control messages to the Go
+/// dispatcher (docs/architecture.md §6.2).
 final class PacketTunnelProvider: NEPacketTunnelProvider {
   /// Messages are dispatched off the provider's callbacks. The dispatcher serializes the methods
   /// that change state and lets queries run in parallel, so the queue is concurrent.
   private let messages = DispatchQueue(
     label: "dev.tschen.solaris.tunnel.messages", attributes: .concurrent)
+  /// Attaching in startTunnel and detaching in stopTunnel run here, in that order.
+  private let lifecycle = DispatchQueue(label: "dev.tschen.solaris.tunnel.lifecycle")
+  /// Set by stopTunnel, so that a start still waiting for its network settings does not
+  /// attach afterwards. Read and written on `lifecycle` only.
+  private var stopping = false
 
   override func startTunnel(
     options: [String: NSObject]?, completionHandler: @escaping (Error?) -> Void
   ) {
     // The engine's configuration arrives later through Start and Reload messages, not in
     // `options` (docs/roadmap.md D7).
-    setTunnelNetworkSettings(TunnelAddresses.settings()) { error in
-      if let error {
-        logger.error("network settings failed: \(error.localizedDescription, privacy: .public)")
-        completionHandler(error)
-        return
-      }
-      guard let tunnel = TunnelDescriptor.find() else {
-        completionHandler(TunnelError("Could not find the tunnel's utun descriptor"))
-        return
-      }
-      logger.info("tunnel on \(tunnel.interfaceName, privacy: .public), fd \(tunnel.fileDescriptor)")
-      // TODO(M5): hand tunnel.fileDescriptor to the engine's fd mode (engine.TunFD) through a new
-      // export from src/core/apple, so that the dispatcher runs Start and Reload on it. Until Go
-      // has it, nothing reads the tunnel, so refuse to connect rather than drop all traffic.
-      completionHandler(TunnelError("The engine's fd mode is not implemented yet"))
+    let network: TunnelNetwork
+    do {
+      network = try Core.network()
+    } catch {
+      completionHandler(error)
+      return
     }
+    setTunnelNetworkSettings(network.settings()) { error in
+      self.lifecycle.async {
+        completionHandler(self.attach(after: error))
+      }
+    }
+  }
+
+  /// Hands the utun to the Go core once NetworkExtension has set up the network.
+  private func attach(after settingsError: Error?) -> Error? {
+    if let settingsError {
+      logger.error("network settings failed: \(settingsError.localizedDescription, privacy: .public)")
+      return settingsError
+    }
+    guard !stopping else { return TunnelError("The tunnel stopped while it was starting") }
+    // NetworkExtension opens the utun only now, and NEPacketTunnelProvider does not expose
+    // its descriptor.
+    guard let tunnel = TunnelDescriptor.find() else {
+      return TunnelError("Could not find the tunnel's utun descriptor")
+    }
+    do {
+      try Core.attach(tunnel.fileDescriptor, home: try Self.coreHome())
+    } catch {
+      logger.error("attaching the core failed: \(error.localizedDescription, privacy: .public)")
+      return error
+    }
+    logger.info("core attached to \(tunnel.interfaceName, privacy: .public), fd \(tunnel.fileDescriptor)")
+    return nil
   }
 
   override func stopTunnel(
     with reason: NEProviderStopReason, completionHandler: @escaping () -> Void
   ) {
     logger.info("stopping, reason \(reason.rawValue)")
-    // TODO(M5): stop the engine once startTunnel starts it.
-    completionHandler()
+    lifecycle.async {
+      self.stopping = true
+      // Go stops the core and closes its duplicates of the descriptor before
+      // NetworkExtension, after the completion handler, closes the descriptor itself.
+      Core.detach()
+      completionHandler()
+    }
   }
 
   override func handleAppMessage(_ messageData: Data, completionHandler: ((Data?) -> Void)?) {
     messages.async {
-      completionHandler?(ControlDispatcher.handle(messageData))
+      completionHandler?(Core.handle(messageData))
     }
+  }
+
+  /// mihomo's home, in the extension's container; Go creates it.
+  private static func coreHome() throws -> URL {
+    try FileManager.default.url(
+      for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true
+    ).appendingPathComponent("Solaris/core", isDirectory: true)
   }
 }
 
