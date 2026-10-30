@@ -33,6 +33,10 @@ class RunOptions:
     mixed_port: int = 0  # 0 keeps the profile's own port
     allow_lan: bool = False
     tun_stack: str = ""  # one of TUN_STACKS; "" keeps the profile's own
+    # macOS only (D19): the tunnel includes all networks. Not in the protocol: MacExtensionHost
+    # writes it into the VPN configuration as it brings the tunnel up, and the extension tells
+    # the core.
+    include_all_networks: bool = False
 
 
 @dataclass(frozen=True)

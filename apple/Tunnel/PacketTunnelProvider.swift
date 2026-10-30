@@ -50,13 +50,20 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     guard let resources = Bundle.main.resourceURL else {
       return TunnelError("The extension has no resource directory")
     }
+    // The VPN configuration's setting (D19): with it, the core cannot run the system or mixed
+    // stack and runs gVisor instead.
+    let includeAllNetworks = protocolConfiguration.includeAllNetworks
     do {
-      try Core.attach(tunnel.fileDescriptor, home: try Self.coreHome(), resources: resources)
+      try Core.attach(
+        tunnel.fileDescriptor, home: try Self.coreHome(), resources: resources,
+        includeAllNetworks: includeAllNetworks)
     } catch {
       logger.error("attaching the core failed: \(error.localizedDescription, privacy: .public)")
       return error
     }
-    logger.info("core attached to \(tunnel.interfaceName, privacy: .public), fd \(tunnel.fileDescriptor)")
+    logger.info(
+      "core attached to \(tunnel.interfaceName, privacy: .public), fd \(tunnel.fileDescriptor), includeAllNetworks \(includeAllNetworks)"
+    )
     return nil
   }
 

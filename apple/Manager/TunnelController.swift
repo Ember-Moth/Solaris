@@ -19,16 +19,18 @@ final class TunnelController {
   private let cacheLock = NSLock()
   private var cached: NETunnelProviderManager?
 
-  func configure() throws {
-    try lifecycle.withLock { _ = try configured() }
+  func configure(includeAllNetworks: Bool) throws {
+    try lifecycle.withLock { _ = try configured(includeAllNetworks: includeAllNetworks) }
   }
 
-  func start(timeout: TimeInterval) throws {
+  func start(timeout: TimeInterval, includeAllNetworks: Bool) throws {
     let deadline = Date(timeIntervalSinceNow: timeout)
     try lifecycle.withLock {
-      let connection = try configured().connection
+      var connection = try configured(includeAllNetworks: includeAllNetworks).connection
       if connection.status == .disconnecting {
         try waitUntilDown(connection, StatusChanges(connection), before: deadline)
+        // Down now, so the configuration takes the setting before the tunnel connects again.
+        connection = try configured(includeAllNetworks: includeAllNetworks).connection
       }
       if connection.status == .connected { return }
       let changes = StatusChanges(connection)
@@ -96,12 +98,17 @@ final class TunnelController {
   }
 
   /// The configuration, created or repaired and saved when it is missing, disabled (another VPN
-  /// took over) or points elsewhere. Callers hold `lifecycle`.
-  private func configured() throws -> NETunnelProviderManager {
+  /// took over) or points elsewhere, or when it includes all networks or not other than asked
+  /// (D19). A tunnel that is up keeps the setting it connected with: the extension reads it once,
+  /// as it attaches the core, so a change takes effect on the next connection. Callers hold
+  /// `lifecycle`.
+  private func configured(includeAllNetworks: Bool) throws -> NETunnelProviderManager {
     let manager = try load() ?? NETunnelProviderManager()
+    let current = manager.protocolConfiguration as? NETunnelProviderProtocol
+    let down = [.disconnected, .invalid].contains(manager.connection.status)
     if manager.isEnabled, manager.localizedDescription == configurationName,
-      (manager.protocolConfiguration as? NETunnelProviderProtocol)?.providerBundleIdentifier
-        == tunnelBundleIdentifier
+      current?.providerBundleIdentifier == tunnelBundleIdentifier,
+      current?.includeAllNetworks == includeAllNetworks || !down
     {
       return manager
     }
@@ -109,10 +116,14 @@ final class TunnelController {
     tunnelProtocol.providerBundleIdentifier = tunnelBundleIdentifier
     // Shown as the server in System Settings; the extension does not read it.
     tunnelProtocol.serverAddress = configurationName
+    // Traffic that bypasses the tunnel by default enters it too, except the local network's:
+    // printers, AirDrop and Bonjour keep working.
+    tunnelProtocol.includeAllNetworks = includeAllNetworks
+    tunnelProtocol.excludeLocalNetworks = includeAllNetworks
     manager.protocolConfiguration = tunnelProtocol
     manager.localizedDescription = configurationName
     manager.isEnabled = true
-    logger.info("saving the VPN configuration")
+    logger.info("saving the VPN configuration, includeAllNetworks \(includeAllNetworks)")
     try waitForCompletion("save the VPN configuration") { done in
       manager.saveToPreferences { done($0.map { .failure($0) } ?? .success(())) }
     }

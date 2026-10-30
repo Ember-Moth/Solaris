@@ -13,16 +13,19 @@ public func solarisManagerActivate(
 
 @_cdecl("solaris_manager_configure")
 public func solarisManagerConfigure(
-  _ error: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
+  _ includeAllNetworks: Bool, _ error: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> Int32 {
-  run(error) { try TunnelController.shared.configure() }
+  run(error) { try TunnelController.shared.configure(includeAllNetworks: includeAllNetworks) }
 }
 
 @_cdecl("solaris_manager_start")
 public func solarisManagerStart(
-  _ timeout: Double, _ error: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
+  _ timeout: Double, _ includeAllNetworks: Bool,
+  _ error: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> Int32 {
-  run(error) { try TunnelController.shared.start(timeout: timeout) }
+  run(error) {
+    try TunnelController.shared.start(timeout: timeout, includeAllNetworks: includeAllNetworks)
+  }
 }
 
 @_cdecl("solaris_manager_stop")
