@@ -57,7 +57,7 @@ mihomo 自带三种组网出站：`tailscale`、`zerotier`、`easytier`。它们
 | 出站 | 强制 | 原因 |
 | --- | --- | --- |
 | `easytier` | `enable-exit-node: false`，`proxy-networks` 清空，`mapped-listeners` 清空 | 前两项会让组网里的其他设备把本机当作出口、访问本机所在的子网；后一项向外公布监听地址 |
-| `easytier` | `listeners`：待定（第 8 节） | 它在所有网卡上接受对等点的连接 |
+| `easytier` | `listeners` 删掉，`no-listener: true` | 写了 `listeners` 或 `no-listener: false` 时，它在这些地址上（后者是所有网卡的 `tcp://0.0.0.0:11010`）接受对等点的连接。这样一来没有 `peers` 的 EasyTier 出站无效：mihomo 要求不监听时写 `peers` |
 | `tailscale` | 无需改动 | 第一版只用作出站：`exit-node` 是使用别人的出口，不是提供出口 |
 | `zerotier` | 无需改动 | 只加入网络；`primary-port` 等是打洞用的 UDP 端口 |
 
@@ -69,15 +69,15 @@ mihomo 自带三种组网出站：`tailscale`、`zerotier`、`easytier`。它们
 **实现**（`internal/engine/mesh.go`，安全项的最后一步）：
 
 - 顶层 `proxies` 和每个 proxy-provider 的 `payload` 里，类型为 `easytier` 的出站：删掉 `proxy-networks`、
-  `mapped-listeners`，`enable-exit-node` 写成 false。
+  `mapped-listeners`、`listeners`，`enable-exit-node` 写成 false，`no-listener` 写成 true。
 - 远程（`http`、`file`）provider 的内容在应用之后才下载，流水线看不到；provider 自己的 `override-expr` 还可以把
   任何出站改成 `easytier` 并打开这些选项。所以这类 provider，以及带 `override-expr` 的内联 provider，在
-  `override.override-expr` 末尾追加三条表达式，例如
+  `override.override-expr` 末尾追加五条表达式，例如
   `(select(.type == "easytier") | .enable-exit-node) = false`。mihomo 对 provider 读到的每个出站按顺序执行
   这些表达式，追加的最后执行；`exclude-type` 在表达式之前判断，挡不住改类型，所以不用它。测试用 mihomo 自己的
   表达式求值器核对结果。
 - 强制项改写后在报告里给出警告 `mesh_restricted`：`entry_id` 是出站的 `mesh:` id（覆写加进来的出站没有 id，
-  用它的名称），`target` 是被关闭的选项名，每项一条。只有原来打开的选项才有警告；远程 provider 里的出站改写时
+  用它的名称），`target` 是被关闭的选项名，每项一条（`no-listener` 原来写了 false 时也算一条）。只有原来打开的选项才有警告；远程 provider 里的出站改写时
   内核看不到，没有警告。用 `config_yaml` 时没有报告，也就没有警告，但改写照样生效。
 
 ## 5. 界面
@@ -126,7 +126,8 @@ mihomo 自带三种组网出站：`tailscale`、`zerotier`、`easytier`。它们
   `network-name` / `network-secret`，开发服务这边分别用 ① 默认 `listeners`、② `listeners: []` 加 `peers`、
   ③ `listeners` 只写 `127.0.0.1` 的地址加 `peers` 三种写法，看对端的 `easytier-cli peer` 里连接类型是 p2p 还是
   经中继，以及经组网出站访问对端的延迟；同时用 `lsof -i` 看 ① 在哪些地址上监听。②③ 能打洞就把 `listeners`
-  强制成 ② 或 ③。注意 v1.19.33 只有写了 `listeners` 或 `no-listener: false` 时才监听，① 其实不监听（`component/easytier/toml.go` 的 `listeners()`）；应用内的 EasyTier 网络写 `no-listener: true`（10.3 节）。
+  强制成 ② 或 ③。注意 v1.19.33 只有写了 `listeners` 或 `no-listener: false` 时才监听，① 其实不监听（`component/easytier/toml.go` 的 `listeners()`）。
+  现在第 4 节已经对所有 EasyTier 出站强制 ②（删掉 `listeners`、`no-listener: true`）；实测要看的只剩 ② 能不能打洞。
 - 订阅自带的配置用 `proxy-providers` 引入的远程列表里有组网出站时，mihomo 如何处理。
 - Tailscale 的 MagicDNS 名称在 fake-ip 下能否解析：出站拿到的是域名，要由 tsnet 解析。
 - 在国内，Tailscale 的控制面和 DERP 中继可能连不上；是否需要让组网出站经由某个策略组（`dialer-proxy`）连接。
@@ -254,16 +255,19 @@ mihomo 自带三种组网出站：`tailscale`、`zerotier`、`easytier`。它们
 
 ### 10.4 运行：启动、重新加载与状态目录
 
-内核在 Start、Reload 应用配置之后（`internal/engine/mesh_run.go`）：
+内核在 Start、Reload 时（`internal/engine/mesh_run.go`）：
 
-- **立即启动**运行中配置顶层 `proxies` 里的每个组网出站（订阅带来的也一样），不等第一个连接：每个在自己的
-  goroutine 里调用一次出站的 `DialContext`，带一个已取消的 context。三者的 `ensureStarted` 都先启动、再等待，
-  所以这一调用只启动，不建立连接；返回的错误不是 context 取消时记下来，作为状态的 `error`。这样状态里马上有
-  登录链接、ZeroTier 节点 ID 等。provider 里的组网出站仍按 mihomo 的默认，第一个连接时才启动。
+- **立即启动应用内的网络**（`Composition.mesh` 的，报告里没有来源订阅的那些），不等第一个连接：应用配置之后，
+  每个在自己的 goroutine 里调用一次出站的 `DialContext`，带一个已取消的 context。三者的 `ensureStarted` 都先启动、
+  再等待，所以这一调用只启动，不建立连接；返回的错误不是 context 取消时记下来，作为状态的 `error`。这样状态里
+  马上有登录链接、ZeroTier 节点 ID 等。
+- **订阅和"订阅自带"配置里的组网出站**，以及 provider 里的，仍按 mihomo 的默认，第一个连接时才启动：用户没有
+  要求它们加入网络，订阅也不可信。它们启动前的状态是 `STARTING`。
 - **配置没变的出站沿用**：重新加载时，名称相同、生成的映射（按键排序的 JSON）也相同的组网出站，把正在运行的
   出站放进新解析出来的 `adapter.Proxy`（它的 `ProxyAdapter` 字段是导出的），新解析出的那个还没启动就关闭。
   GLOBAL 和覆写加进来的 `include-all` 组拿的都是这个 `Proxy`，所以都经正在运行的出站；正在经它的连接（例如 SSH）
-  不断。改了的、删了的旧出站在应用后立即关闭，不等 GC，然后才启动改过的那个。
+  不断。改了的、删了的旧出站在 `hub.ApplyConfig` **之前**关闭，不等 GC：配置一应用，就可能有连接启动新的那个，
+  旧的不能还占着同一个状态目录。
 - 构造时注册的 DNS 客户端（10.1 节）在沿用时随新解析出的那个一起注销，`tailscale://名称` 的 nameserver 要等下次
   设置改变才回来；拼装出的配置不用它。
 - **停止**时关闭全部组网出站。
@@ -302,9 +306,9 @@ mihomo 自带三种组网出站：`tailscale`、`zerotier`、`easytier`。它们
 ### 10.6 安全项
 
 - 网络只用作出站：Tailscale 不写 `exit-node`（那是用别人的出口，第一版不提供）；EasyTier 写 `no-listener: true`、
-  `enable-exit-node: false`，不写 `proxy-networks`、`mapped-listeners`（第 4 节的强制项在之后照样执行）；ZeroTier
-  没有提供服务的选项。v1.19.33 的 EasyTier 默认不监听，`no-listener: true` 把这一点写死，覆写改不了的部分由第 4 节
-  保证。
+  `enable-exit-node: false`，不写 `proxy-networks`、`mapped-listeners`、`listeners`；第 4 节对所有 EasyTier 出站
+  强制同样的几项，覆写和订阅都改不了。ZeroTier 没有提供服务的选项。
+- 订阅带来的组网出站不提前启动（10.4 节）：不可信的订阅不能让内核一启动就加入它指定的网络。
 - 状态目录是相对 home 的 `mesh/<id>`，id 只有字母、数字、`-`、`_`，越不出 home；mihomo 的 `IsSafePath` 是兜底。
   清理只删 `<home>/mesh/` 下的直接子目录。
 - 登录链接由内核从 tsnet 或 zerotier-go 取得，**由界面在用户的浏览器里打开**，内核不打开任何东西。界面只打开

@@ -1044,13 +1044,18 @@ class ProfileLibrary:
 
     async def remove_network(self, network_id: str) -> Routing:
         """Remove a mesh network with its secrets; its rules reject their connections from
-        now on, and the core removes its state at the next start or reload."""
+        now on, and the core removes its state at the next start or reload. The network
+        leaves the tunnel even while the credential store cannot be written: its secret
+        stays behind there, and the log says so."""
         async with self._lock:
             await asyncio.to_thread(self._mesh_store.delete, network_id)
             self._networks = await asyncio.to_thread(self._mesh_store.networks)
-            stored = await self._network_secrets()
-            stored.pop(network_id, None)
-            await asyncio.to_thread(self._mesh_secrets.delete, network_id)
+            if self._secrets is not None:
+                self._secrets.pop(network_id, None)
+            try:
+                await asyncio.to_thread(self._mesh_secrets.delete, network_id)
+            except CredentialError as error:
+                _log.warning("cannot delete a mesh network's secrets: %s", error.message)
             await self._recompose()
             return self._routing()
 

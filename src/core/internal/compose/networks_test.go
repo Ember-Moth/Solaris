@@ -125,6 +125,7 @@ func TestNetworkNamesComeBeforeTheNodes(t *testing.T) {
 		&controlpb.MeshNetwork{Id: "ts2", Name: "家里", Network: &controlpb.MeshNetwork_Tailscale{Tailscale: &controlpb.TailscaleNetwork{}}},
 		&controlpb.MeshNetwork{Id: "ts3", Name: "香港 01", Network: &controlpb.MeshNetwork_Tailscale{Tailscale: &controlpb.TailscaleNetwork{}}},
 		&controlpb.MeshNetwork{Id: "ts4", Name: "WARP 出口", Network: &controlpb.MeshNetwork_Tailscale{Tailscale: &controlpb.TailscaleNetwork{}}},
+		&controlpb.MeshNetwork{Id: "zt2", Name: "公司", Network: &controlpb.MeshNetwork_Zerotier{Zerotier: &controlpb.ZeroTierNetwork{NetworkId: "8056c2e21c000002"}}},
 	)
 	result, err := composeNetworks(t, plan, networks)
 	if err != nil {
@@ -139,6 +140,7 @@ func TestNetworkNamesComeBeforeTheNodes(t *testing.T) {
 		"mesh:ts2": "家里 · Tailscale", // an earlier network has it
 		"mesh:ts3": "香港 01",          // the node gives way
 		"mesh:ts4": "WARP 出口 · Tailscale",
+		"mesh:zt2": "公司 · ZeroTier 2", // and the name with its type too
 	} {
 		if names[id] != want {
 			t.Errorf("%s is named %q, want %q", id, names[id], want)

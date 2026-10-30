@@ -412,19 +412,13 @@ def compose(composition: Composition) -> tuple[dict[str, Any], CompositionReport
     proxies: list[dict[str, Any]] = []
     mesh: list[MeshOutbound] = []
     mesh_proxies: list[dict[str, Any]] = []
-    taken = set(BUILT_IN_PROXIES)
-    # The networks the user added take their names before the nodes (docs/mesh.md §10.3);
-    # the custom groups and the WARP exit before them.
-    taken |= {str(g.get("name")) for g in plan.get("groups") or [] if g.get("kind") == "custom"}
-    taken |= {"节点选择", "自动选择", *WARP_NAMES.values()}
+    taken = _reserved(plan, composition)
+    # The networks the user added take their names before the nodes (docs/mesh.md §10.3).
     vias: dict[str, str] = {}
     for network in composition.mesh:
         outbound = _network_outbound(network)
         kind = ADAPTER_TYPES[network.kind]
-        name = network.name
-        if name in taken:
-            name = f"{network.name} · {kind}"
-        taken.add(name)
+        name = _unique(network.name, kind, taken)
         mesh.append(MeshOutbound(f"mesh:{network.id}", name, kind, ""))
         mesh_proxies.append({**outbound, "name": name})
         if network.via:
@@ -434,15 +428,13 @@ def compose(composition: Composition) -> tuple[dict[str, Any], CompositionReport
             original = proxy["name"]
             kind = ADAPTER_TYPES.get(str(proxy.get("type")), str(proxy.get("type")))
             if str(proxy.get("type")) in MESH_TYPES:
-                name = f"{original} · {source.name}" if original in taken else original
-                taken.add(name)
+                name = _unique(original, source.name, taken)
                 mesh.append(MeshOutbound(f"mesh:{source.id}/{original}", name, kind, source.id))
                 mesh_proxies.append({**proxy, "name": name})
                 continue
             if info is not None and info.search(original):
                 continue
-            name = f"{original} · {source.name}" if original in taken else original
-            taken.add(name)
+            name = _unique(original, source.name, taken)
             nodes.append(PoolNode(name, original, source.id, kind, region_of(original)))
             proxies.append({**proxy, "name": name})
     proxy_name, auto_name = "节点选择", "自动选择"
@@ -1040,6 +1032,39 @@ OCCASIONAL_LOG = (
     ("error", "[Provider] rule-set geosite-cn pull error: 403 Forbidden", 1 / 60),
 )
 LOG_BUFFER = 1024  # the service's buffer for one log subscription
+
+
+# The built-in groups' names by the plan's locale, as the core gives them.
+BUILTIN_NAMES = {"zh": ("节点选择", "自动选择"), "en": ("Proxy", "Auto")}
+
+
+def _reserved(plan: dict[str, Any], composition: Composition) -> set[str]:
+    """The names the core takes before any network or node (compose.go's groupNames):
+    mihomo's own, the exits' and the VPN Gate servers', the built-in groups', every region's
+    whether it has nodes or not, and the custom groups'. The simulation names its groups in
+    Chinese whatever the locale, so those names are taken too."""
+    locale = "en" if plan.get("locale") == "en" else "zh"
+    taken = set(BUILT_IN_PROXIES)
+    taken |= {WARP_NAMES[locale], VPNGATE_NAMES[locale]}
+    taken |= {f"VPN Gate {s.country} {s.host_name}" for s in composition.egress.vpngate}
+    taken |= {*BUILTIN_NAMES[locale], *BUILTIN_NAMES["zh"]}
+    taken |= {f"{flag} {name}" for _, flag, name, _ in SIMULATED_REGIONS} | {"🌐 其他地区"}
+    taken |= {str(g.get("name")) for g in plan.get("groups") or [] if g.get("kind") == "custom"}
+    return taken
+
+
+def _unique(name: str, suffix: str, taken: set[str]) -> str:
+    """The name, or with " · " and the suffix when it is taken, and a number if that is
+    taken too, as the core does it; the result is taken from then on."""
+    unique = name
+    if unique in taken:
+        unique = f"{name} · {suffix}"
+        number = 2
+        while unique in taken:
+            unique = f"{name} · {suffix} {number}"
+            number += 1
+    taken.add(unique)
+    return unique
 
 
 def _network_outbound(network: MeshNetwork) -> dict[str, Any]:
