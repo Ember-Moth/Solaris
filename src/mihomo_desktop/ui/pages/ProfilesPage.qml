@@ -15,11 +15,10 @@ ScrollView {
     property int overrideFocusReason: Qt.OtherFocusReason
     property string removingId  // the profile whose removal was confirmed
 
-    readonly property int tableMinWidth: 760
-    readonly property int usageWidth: 180
+    readonly property int tableMinWidth: 680
+    readonly property int usageWidth: 170
     readonly property int expiryWidth: 110
-    readonly property int updatedWidth: 100
-    readonly property int actionsWidth: 120
+    readonly property int updatedWidth: 110
 
     function openImport() {
         importOpen = true
@@ -50,10 +49,10 @@ ScrollView {
         if (row.profileId !== removingId)
             return
         removingId = ""
-        const next = profileRepeater.count > 0 ? rowAt(index) : linkButton
+        const next = profileRepeater.count > 0 ? rowAt(index).moreButton : linkButton
         if (removeDialog.visible)
             removeDialog.returnFocusTo = next
-        else if (row.activeFocus)
+        else if (row.moreButton.activeFocus)
             next.forceActiveFocus(removeDialog.returnFocusReason)
     }
 
@@ -104,7 +103,7 @@ ScrollView {
             Layout.topMargin: Theme.pageTop
             Layout.leftMargin: Theme.pageX
             Layout.rightMargin: Theme.pageX
-            title: qsTr("配置")
+            title: qsTr("订阅")
             detail: page.profiles.summary
             detailColor: page.profiles.hasError ? Theme.danger : Theme.textMuted
 
@@ -243,7 +242,7 @@ ScrollView {
             spacing: Theme.space2
 
             SectionLabel {
-                text: qsTr("全部配置")
+                text: qsTr("全部订阅")
             }
 
             Group {
@@ -261,7 +260,7 @@ ScrollView {
                     boundsBehavior: Flickable.StopAtBounds
                     clip: true
                     Accessible.role: Accessible.List
-                    Accessible.name: qsTr("全部配置")
+                    Accessible.name: qsTr("全部订阅")
 
                     ScrollBar.horizontal: ScrollBar {
                         id: horizontalBar
@@ -288,10 +287,6 @@ ScrollView {
                                 anchors.leftMargin: Theme.space4
                                 anchors.rightMargin: Theme.space4
                                 spacing: Theme.space3
-
-                                Item {
-                                    implicitWidth: 18
-                                }
 
                                 UiText {
                                     Layout.fillWidth: true
@@ -322,7 +317,7 @@ ScrollView {
                                 }
 
                                 Item {
-                                    implicitWidth: page.actionsWidth
+                                    implicitWidth: 28 - Theme.space1
                                 }
                             }
                         }
@@ -341,7 +336,7 @@ ScrollView {
 
                             AccessibleText {
                                 Layout.fillWidth: true
-                                text: qsTr("尚未导入配置")
+                                text: qsTr("尚未导入订阅")
                                 role: Theme.type.bodySm
                                 color: Theme.textMuted
                             }
@@ -387,14 +382,14 @@ ScrollView {
                         }
                     }
 
-                    // The global override is checked against the active profile, so it
-                    // needs one.
+                    // The global override is checked with the routing in use, so it needs
+                    // something to route with.
                     AppButton {
                         id: globalOverrideButton
 
                         variant: "compact"
                         text: qsTr("编辑")
-                        enabled: page.profiles.hasActive
+                        enabled: page.profiles.canEditGlobalOverride
                         Accessible.name: qsTr("编辑全局覆写")
                         onClicked: {
                             page.overrideTrigger = globalOverrideButton
@@ -407,15 +402,17 @@ ScrollView {
         }
     }
 
-    // One profile: a radio row that uses it, with its update button and its menu.
-    component ProfileRow: AbstractButton {
+    // One subscription: its name and where it comes from, with its state in the caption
+    // (docs/routing.md §4.2); its menu holds what can be done with it. The menu button is the
+    // row's Tab stop, and the arrows move between the rows' buttons.
+    component ProfileRow: Item {
         id: profileRow
 
         required property int index
         required property string profileId
         required property string name
         required property string source
-        required property bool active
+        required property string note
         required property string usage
         required property bool hasQuota
         required property real usedFraction
@@ -427,26 +424,38 @@ ScrollView {
         required property string refreshLabel
         required property bool isSubscription
         required property bool autoUpdate
+        required property bool inPool
+        required property bool hasRules
+        readonly property alias moreButton: moreButton
 
         Layout.fillWidth: true
         implicitHeight: Theme.rowDouble
-        leftPadding: Theme.space4
-        rightPadding: Theme.space4
-        checked: active  // what screen readers hear; clicking does not toggle it
-        Accessible.role: Accessible.RadioButton
+        Accessible.role: Accessible.ListItem
         Accessible.name: name
-        Accessible.description: qsTr("%1。用量 %2，到期 %3，更新 %4").arg(source).arg(usage).arg(expiry).arg(updated)
-        onClicked: page.profiles.use(profileId)
-        // The arrows move between the rows; Space uses the focused one.
-        Keys.onUpPressed: page.rowAt(index - 1).forceActiveFocus(Qt.TabFocusReason)
-        Keys.onDownPressed: page.rowAt(index + 1).forceActiveFocus(Qt.TabFocusReason)
+        Accessible.description: qsTr("%1。用量 %2，到期 %3，更新 %4").arg(note ? qsTr("%1 · %2").arg(source).arg(note) : source).arg(usage).arg(expiry).arg(updated)
 
-        contentItem: RowLayout {
-            spacing: Theme.space3
+        Rectangle {
+            anchors.fill: parent
+            bottomLeftRadius: profileRow.index === profileRepeater.count - 1 ? Theme.radiusMd - 1 : 0
+            bottomRightRadius: bottomLeftRadius
+            color: hover.hovered ? Theme.surfaceSubtle : "transparent"
 
-            RadioMark {
-                checked: profileRow.active
+            Rectangle {
+                width: parent.width
+                height: 1
+                color: Theme.divider
             }
+        }
+
+        HoverHandler {
+            id: hover
+        }
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: Theme.space4
+            anchors.rightMargin: Theme.space3
+            spacing: Theme.space3
 
             ColumnLayout {
                 Layout.fillWidth: true
@@ -455,16 +464,35 @@ ScrollView {
                 UiText {
                     Layout.fillWidth: true
                     text: profileRow.name
-                    role: profileRow.active ? Theme.type.bodyMdStrong : Theme.type.labelMd
+                    role: Theme.type.labelMd
                     elide: Text.ElideRight
                 }
 
-                UiText {
+                RowLayout {
                     Layout.fillWidth: true
-                    text: profileRow.source
-                    role: Theme.type.caption
-                    color: Theme.textMuted
-                    elide: Text.ElideRight
+                    spacing: 0
+
+                    UiText {
+                        Layout.preferredWidth: Math.ceil(implicitWidth)
+                        Layout.maximumWidth: Math.ceil(implicitWidth)
+                        Layout.fillWidth: true
+                        text: profileRow.source
+                        role: Theme.type.caption
+                        color: Theme.textMuted
+                        elide: Text.ElideRight
+                    }
+
+                    UiText {
+                        visible: profileRow.note !== ""
+                        text: qsTr(" · %1").arg(profileRow.note)
+                        role: Theme.type.caption
+                        color: Theme.textSecondary
+                    }
+
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 0
+                    }
                 }
             }
 
@@ -505,48 +533,14 @@ ScrollView {
                 elide: Text.ElideRight
             }
 
-            RowLayout {
-                Layout.fillWidth: false
-                Layout.preferredWidth: page.actionsWidth
-                spacing: 6
+            IconButton {
+                id: moreButton
 
-                Item {
-                    Layout.fillWidth: true
-                }
-
-                AppButton {
-                    variant: "compact"
-                    text: profileRow.updating ? qsTr("更新中…") : profileRow.refreshLabel
-                    enabled: !profileRow.updating
-                    Accessible.name: text + " " + profileRow.name
-                    onClicked: page.profiles.updateProfile(profileRow.profileId)
-                }
-
-                IconButton {
-                    id: moreButton
-
-                    iconName: "more"
-                    accessibleName: qsTr("%1 的更多操作").arg(profileRow.name)
-                    onClicked: profileMenu.openFor(profileRow, moreButton)
-                }
-            }
-        }
-
-        background: Rectangle {
-            bottomLeftRadius: profileRow.index === profileRepeater.count - 1 ? Theme.radiusMd - 1 : 0
-            bottomRightRadius: bottomLeftRadius
-            color: profileRow.active ? Theme.surfaceSelected : profileRow.hovered ? Theme.surfaceSubtle : "transparent"
-
-            Rectangle {
-                width: parent.width
-                height: 1
-                color: Theme.divider
-            }
-
-            FocusRing {
-                anchors.margins: 1
-                targetRadius: 4
-                visible: profileRow.visualFocus
+                iconName: "more"
+                accessibleName: qsTr("%1 的更多操作").arg(profileRow.name)
+                onClicked: profileMenu.openFor(profileRow, moreButton)
+                Keys.onUpPressed: page.rowAt(profileRow.index - 1).moreButton.forceActiveFocus(Qt.TabFocusReason)
+                Keys.onDownPressed: page.rowAt(profileRow.index + 1).moreButton.forceActiveFocus(Qt.TabFocusReason)
             }
         }
     }
@@ -557,13 +551,27 @@ ScrollView {
         // What the items act on, copied when the menu opens: the row may go meanwhile.
         property string profileId
         property bool isSubscription
+        property bool updating
+        property string refreshLabel
+        property bool inPool
+        property bool hasRules
 
         function openFor(row: ProfileRow, anchor: Item) {
             profileId = row.profileId
             isSubscription = row.isSubscription
+            updating = row.updating
+            refreshLabel = row.refreshLabel
+            inPool = row.inPool
+            hasRules = row.hasRules
             // Triggering toggles `checked` itself, so it is set here rather than bound.
             autoUpdateItem.checked = row.autoUpdate
             openBelow(anchor)
+        }
+
+        AppMenuItem {
+            text: profileMenu.refreshLabel
+            enabled: !profileMenu.updating
+            onTriggered: page.profiles.updateProfile(profileMenu.profileId)
         }
 
         AppMenuItem {
@@ -588,6 +596,18 @@ ScrollView {
                 page.overrideFocusReason = profileMenu.triggerFocusReason
                 page.profiles.editOverride(profileMenu.profileId)
             }
+        }
+
+        // A link item: it goes to the routing page (DESIGN.md "链接型菜单项").
+        AppMenuItem {
+            text: qsTr("使用它的规则")
+            enabled: profileMenu.hasRules
+            onTriggered: page.profiles.useRules(profileMenu.profileId)
+        }
+
+        AppMenuItem {
+            text: profileMenu.inPool ? qsTr("不加入节点池") : qsTr("加入节点池")
+            onTriggered: page.profiles.setInPool(profileMenu.profileId, !profileMenu.inPool)
         }
 
         AppMenuSeparator {}
@@ -622,7 +642,7 @@ ScrollView {
     FileDialog {
         id: fileDialog
 
-        title: qsTr("导入配置文件")
+        title: qsTr("导入订阅文件")
         nameFilters: [qsTr("YAML 配置 (*.yaml *.yml)"), qsTr("所有文件 (*)")]
         onAccepted: page.profiles.importFile(selectedFile.toString())
     }

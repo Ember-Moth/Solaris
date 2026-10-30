@@ -14,6 +14,7 @@ ApplicationWindow {
     required property OverviewViewModel overviewViewModel
     required property ProxiesViewModel proxiesViewModel
     required property ProfilesViewModel profilesViewModel
+    required property RoutingViewModel routingViewModel
     required property Appearance appearance
     required property ConnectionsViewModel connectionsViewModel
     required property LogsViewModel logsViewModel
@@ -111,7 +112,7 @@ ApplicationWindow {
             Layout.fillHeight: true
             Layout.preferredWidth: Theme.sidebarWidth
             shell: window.shellViewModel
-            profiles: window.profilesViewModel
+            routing: window.routingViewModel
         }
 
         StackLayout {
@@ -122,6 +123,7 @@ ApplicationWindow {
             OverviewPage {
                 overview: window.overviewViewModel
                 profiles: window.profilesViewModel
+                routing: window.routingViewModel
                 shell: window.shellViewModel
             }
 
@@ -131,6 +133,11 @@ ApplicationWindow {
 
             ProfilesPage {
                 profiles: window.profilesViewModel
+            }
+
+            RoutingPage {
+                routing: window.routingViewModel
+                shell: window.shellViewModel
             }
 
             ConnectionsPage {

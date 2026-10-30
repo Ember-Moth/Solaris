@@ -28,7 +28,7 @@ def test_main_window_loads_without_qml_warnings(qtbot: QtBot, loaded: Loaded, la
     view_models.shell.setPage("proxies")
     qtbot.waitUntil(lambda: view_models.proxies.property("currentGroup") != "")
     view_models.shell.setPage("profiles")
-    view_models.profiles.use("sample-b")
+    view_models.profiles.useRules("sample-b")
     qtbot.waitUntil(lambda: view_models.profiles.property("activeName") == "示例订阅 B")
     view_models.shell.setPage("connections")
     qtbot.waitUntil(lambda: view_models.connections.property("total") > 0)
@@ -41,8 +41,11 @@ def test_main_window_loads_without_qml_warnings(qtbot: QtBot, loaded: Loaded, la
 
 # The dialog's buttons and the profile count, in each language.
 DIALOG_TEXT = [
-    ("zh", {"cancel": "取消", "delete": "删除", "3": "3 个配置", "2": "2 个配置"}),
-    ("en", {"cancel": "Cancel", "delete": "Delete", "3": "3 profiles", "2": "2 profiles"}),
+    ("zh", {"cancel": "取消", "delete": "删除", "3": "3 份订阅", "2": "2 份订阅"}),
+    (
+        "en",
+        {"cancel": "Cancel", "delete": "Delete", "3": "3 subscriptions", "2": "2 subscriptions"},
+    ),
 ]
 
 
@@ -265,14 +268,14 @@ def test_language_switches_while_running(qtbot: QtBot, loaded: Loaded) -> None:
             "Direct",
         ]
         assert view_models.proxies.property("sortOptions")[0]["label"] == "Default"
-        assert view_models.profiles.property("summary") == "3 profiles"
+        assert view_models.profiles.property("summary") == "3 subscriptions"
         assert view_models.profiles.property("autoUpdateLabel") == "Update every 12 hours"
         assert view_models.settings.property("languageOptions")[0]["label"] == "System"
 
         view_models.settings.setLanguage("zh")
         qtbot.waitUntil(lambda: "出站" in texts(content))
         assert "Outbound" not in texts(content)
-        assert view_models.profiles.property("summary") == "3 个配置"
+        assert view_models.profiles.property("summary") == "3 份订阅"
     finally:
         view_models.settings.languageChanged.disconnect(switch)
         translations.apply("zh")
@@ -299,3 +302,33 @@ def test_tray_icon_compiles(qtbot: QtBot) -> None:
     engine = QQmlApplicationEngine()
     component = QQmlComponent(engine, QUrl.fromLocalFile(str(TRAY_QML)))
     assert component.isReady(), component.errorString()
+
+
+@pytest.mark.parametrize("appearance", ["light", "dark"], indirect=True)
+@pytest.mark.parametrize("loaded", ["zh", "en"], indirect=True)
+def test_routing_page_loads_without_qml_warnings(qtbot: QtBot, loaded: Loaded) -> None:
+    """Both routing modes, both tabs and the add-rule dialog's kinds (docs/routing.md §4.3)."""
+    view_models = loaded.view_models
+    routing = view_models.routing
+    qtbot.waitUntil(lambda: view_models.overview.property("connected"))
+    view_models.shell.setPage("routing")
+    qtbot.waitUntil(lambda: routing.property("profileRunning"))
+    with qtbot.waitSignal(routing.routingChanged):
+        routing.setMode("plan")
+    qtbot.waitUntil(lambda: len(routing.property("rules").rows) == 6)
+    page = loaded.item(lambda i: i.metaObject().className().startswith("RoutingPage"))
+    page.setProperty("tab", "groups")
+    qtbot.wait(50)
+    page.setProperty("tab", "rules")
+    editor = routing._editor
+    with qtbot.waitSignal(editor.opened):
+        editor.openAdd()
+    for kind in ("category", "domain", "ip", "service"):
+        editor.setKind(kind)
+        qtbot.wait(20)
+    loaded.key(qtbot, Qt.Key.Key_Escape)
+    with qtbot.waitSignal(routing.routingChanged):
+        routing.setMode("profile")
+    view_models.shell.setPage("proxies")
+    qtbot.waitUntil(lambda: view_models.proxies.property("currentGroup") != "")
+    assert loaded.warnings == []

@@ -12,11 +12,12 @@ from pytestqt.qtbot import QtBot
 
 from tests.support.window import Loaded, accessible, find, find_all, kind
 
-PAGES = ["overview", "proxies", "profiles", "connections", "logs", "settings"]
+PAGES = ["overview", "proxies", "profiles", "routing", "connections", "logs", "settings"]
 PAGE_TYPES = {
     "overview": "OverviewPage",
     "proxies": "ProxiesPage",
     "profiles": "ProfilesPage",
+    "routing": "RoutingPage",
     "connections": "ConnectionsPage",
     "logs": "LogsPage",
     "settings": "SettingsPage",
@@ -37,6 +38,8 @@ def show_page(qtbot: QtBot, loaded: Loaded, page: str) -> QQuickItem:
         qtbot.waitUntil(lambda: view_models.connections.property("total") > 0)
     if page == "logs":
         qtbot.waitUntil(lambda: view_models.logs.property("count") > 0)
+    if page == "routing":
+        qtbot.waitUntil(lambda: view_models.routing.property("profileRunning"))
     qtbot.wait(100)
     return loaded.item(lambda i: kind(i) == PAGE_TYPES[page])
 
@@ -90,6 +93,31 @@ def test_tab_reaches_every_control_with_a_name_and_a_ring(
 
 
 @pytest.mark.usefixtures("screen_reader")
+@pytest.mark.parametrize("loaded", ["zh", "en"], indirect=True)
+def test_my_plan_is_reached_by_tab_with_names_and_rings(qtbot: QtBot, loaded: Loaded) -> None:
+    """The plan side of the routing page: the rules, their boxes, names and menus."""
+    routing = loaded.view_models.routing
+    content = show_page(qtbot, loaded, "routing")
+    with qtbot.waitSignal(routing.routingChanged):
+        routing.setMode("plan")
+    qtbot.waitUntil(lambda: len(routing.property("rules").rows) == 6)
+    qtbot.wait(100)
+    stops = tab_cycle(qtbot, loaded, nav_item(loaded, "routing"))
+    controls = find_all(content, lambda i: i.activeFocusOnTab() and i.isEnabled())
+    assert [describe(c) for c in controls if c not in stops] == []
+    for stop in stops:
+        stop.forceActiveFocus(Qt.FocusReason.TabFocusReason)
+        qtbot.wait(10)
+        info = accessible(stop)
+        assert info.name.strip(), f"{describe(stop)} has no accessible name"
+        assert loaded.focus_ring(stop) is not None, f"{describe(stop)} shows no focus ring"
+        assert loaded.on_screen(stop), f"{describe(stop)} is scrolled out of view"
+    names = [accessible(stop).name for stop in stops]
+    assert names.count("启用「OpenAI」" if "启用「广告」" in names else "Enable “OpenAI”") == 1
+    assert loaded.warnings == []
+
+
+@pytest.mark.usefixtures("screen_reader")
 def test_custom_controls_tell_their_role_and_state(qtbot: QtBot, loaded: Loaded) -> None:
     content = show_page(qtbot, loaded, "overview")
 
@@ -135,8 +163,8 @@ def test_rows_and_menus_are_read_out(qtbot: QtBot, loaded: Loaded) -> None:
     content = show_page(qtbot, loaded, "profiles")
     rows = find_all(content, lambda i: kind(i) == "ProfileRow")
     first = accessible(rows[0])
-    assert (first.role, first.name, first.checked) == (Role.RadioButton, "示例订阅 A", True)
-    assert first.description.startswith("订阅 · sub.example.com")
+    assert (first.role, first.name) == (Role.ListItem, "示例订阅 A")
+    assert first.description.startswith("订阅 · sub.example.com · 9 个节点 · 规则使用中。")
     assert "2026-12-31" in first.description
 
     more = find(rows[1], lambda i: kind(i) == "IconButton")
@@ -146,12 +174,15 @@ def test_rows_and_menus_are_read_out(qtbot: QtBot, loaded: Loaded) -> None:
     items = loaded.overlay_items(lambda i: kind(i) == "AppMenuItem")
     names = [(accessible(i).role, accessible(i).name) for i in items]
     assert names == [
+        (Role.MenuItem, "更新"),
         (Role.MenuItem, "每 12 小时自动更新"),
         (Role.MenuItem, "复制订阅链接"),
         (Role.MenuItem, "编辑覆写…"),
+        (Role.MenuItem, "使用它的规则"),
+        (Role.MenuItem, "不加入节点池"),
         (Role.MenuItem, "删除"),
     ]
-    assert not accessible(items[0]).checked  # 示例订阅 B is updated by hand
+    assert not accessible(items[1]).checked  # 示例订阅 B is updated by hand
     loaded.key(qtbot, Qt.Key.Key_Escape)
 
     content = show_page(qtbot, loaded, "connections")
@@ -178,8 +209,8 @@ def test_keyboard_alone_imports_uses_and_deletes_a_profile(qtbot: QtBot, loaded:
                 return loaded.focused()
         raise AssertionError(f"Tab never reached {text!r}")
 
-    # The sidebar first: Space opens the profiles page.
-    tab_to("配置")
+    # The sidebar first: Space opens the subscriptions page.
+    tab_to("订阅")
     loaded.key(qtbot, Qt.Key.Key_Space)
     assert view_models.shell.property("currentPage") == "profiles"
 
@@ -196,46 +227,41 @@ def test_keyboard_alone_imports_uses_and_deletes_a_profile(qtbot: QtBot, loaded:
     qtbot.waitUntil(lambda: loaded.focused() is link_button)
     assert link_button.property("visualFocus")
 
-    # Into the table: the arrows move between the rows and Space uses the focused one.
+    # Into the list: each row's menu button is a stop, and the arrows move between them.
     loaded.key(qtbot, Qt.Key.Key_Tab)
-    assert loaded.focused().property("name") == "示例订阅 A"
+    assert accessible_name(loaded.focused()) == "示例订阅 A 的更多操作"
     for _ in range(3):
         loaded.key(qtbot, Qt.Key.Key_Down, wait=10)
-    row = loaded.focused()
-    assert row.property("name") == "键盘订阅"
-    with qtbot.waitSignal(profiles.applied):
-        loaded.key(qtbot, Qt.Key.Key_Space)
-    assert profiles.property("activeName") == "键盘订阅"
-    assert loaded.focused() is row  # the table updated in place
-
-    # The profile in use cannot go while the tunnel runs: disconnect on the overview.
-    tab_to("概览", key=Qt.Key.Key_Backtab)
-    loaded.key(qtbot, Qt.Key.Key_Space)
-    tab_to("断开")
-    loaded.key(qtbot, Qt.Key.Key_Space)
-    qtbot.waitUntil(lambda: not view_models.overview.property("connected"))
-    tab_to("配置", key=Qt.Key.Key_Backtab)
-    loaded.key(qtbot, Qt.Key.Key_Space)
-
-    # Its menu: the arrows reach 删除 and Enter runs it; the confirmation starts on 取消.
-    for _ in range(40):
-        loaded.key(qtbot, Qt.Key.Key_Tab, wait=10)
-        if accessible_name(loaded.focused()) == "键盘订阅 的更多操作":
-            break
     more = loaded.focused()
-    assert kind(more) == "IconButton"
+    assert accessible_name(more) == "键盘订阅 的更多操作"
+
+    # 使用它的规则 routes with its rules and goes to the routing page.
     loaded.key(qtbot, Qt.Key.Key_Space)
-    for _ in range(4):
+    for _ in range(5):
+        loaded.key(qtbot, Qt.Key.Key_Down, wait=10)
+    with qtbot.waitSignal(profiles.applied):
+        loaded.key(qtbot, Qt.Key.Key_Return, wait=0)
+    assert view_models.shell.property("currentPage") == "routing"
+    assert profiles.property("activeName") == "键盘订阅"
+
+    # Back to the list: its menu reaches 删除 and Enter runs it; the confirmation starts on
+    # 取消. The rules in use go to the earliest other subscription with rules.
+    view_models.shell.setPage("profiles")
+    qtbot.wait(200)  # the menu fades out
+    more.forceActiveFocus(Qt.FocusReason.TabFocusReason)
+    loaded.key(qtbot, Qt.Key.Key_Space)
+    for _ in range(7):
         loaded.key(qtbot, Qt.Key.Key_Down, wait=10)
     loaded.key(qtbot, Qt.Key.Key_Return)
     qtbot.waitUntil(lambda: loaded.focused_text() == "取消")
     loaded.key(qtbot, Qt.Key.Key_Tab)
     assert loaded.focused_text() == "删除"
     loaded.key(qtbot, Qt.Key.Key_Return)
-    qtbot.waitUntil(lambda: profiles.property("summary") == "3 个配置")
+    qtbot.waitUntil(lambda: profiles.property("summary") == "3 份订阅")
+    assert profiles.property("activeName") == "示例订阅 A"
 
     # It was the last row: the focus goes to the row above, with its ring.
-    qtbot.waitUntil(lambda: loaded.focused().property("name") == "本地配置")
+    qtbot.waitUntil(lambda: accessible_name(loaded.focused()) == "本地配置 的更多操作")
     assert loaded.focused().property("visualFocus")
     assert loaded.warnings == []
 
@@ -266,18 +292,18 @@ def open_menu_item(qtbot: QtBot, loaded: Loaded, more: QQuickItem, downs: int) -
 def test_deleting_a_row_focuses_the_one_that_takes_its_place(qtbot: QtBot, loaded: Loaded) -> None:
     profiles = loaded.view_models.profiles
     show_page(qtbot, loaded, "profiles")
-    open_menu_item(qtbot, loaded, more_button(loaded, "示例订阅 B"), 4)  # 删除
+    open_menu_item(qtbot, loaded, more_button(loaded, "示例订阅 B"), 7)  # 删除
     qtbot.waitUntil(lambda: loaded.focused_text() == "取消")
     loaded.key(qtbot, Qt.Key.Key_Tab)
     loaded.key(qtbot, Qt.Key.Key_Return)
-    qtbot.waitUntil(lambda: profiles.property("summary") == "2 个配置")
-    qtbot.waitUntil(lambda: loaded.focused().property("name") == "本地配置")
-    assert kind(loaded.focused()) == "ProfileRow"
+    qtbot.waitUntil(lambda: profiles.property("summary") == "2 份订阅")
+    qtbot.waitUntil(lambda: accessible_name(loaded.focused()) == "本地配置 的更多操作")
+    assert kind(loaded.focused()) == "IconButton"
     assert loaded.focused().property("visualFocus")
 
     # Cancelling leaves the focus where the menu was opened.
     more = more_button(loaded, "本地配置")
-    open_menu_item(qtbot, loaded, more, 2)  # 删除: a local file has two items fewer
+    open_menu_item(qtbot, loaded, more, 5)  # 删除: a local file has two items fewer
     qtbot.waitUntil(lambda: loaded.focused_text() == "取消")
     loaded.key(qtbot, Qt.Key.Key_Escape)
     assert loaded.focused() is more
@@ -291,7 +317,7 @@ def test_saving_an_override_returns_to_the_rows_more_button(qtbot: QtBot, loaded
     more = more_button(loaded, "示例订阅 B")
 
     def edit() -> None:
-        open_menu_item(qtbot, loaded, more, 3)  # 编辑覆写…
+        open_menu_item(qtbot, loaded, more, 4)  # 编辑覆写…
         qtbot.waitUntil(lambda: kind(loaded.focused()).startswith("TextArea"))
 
     # Esc cancels from inside the editor.
@@ -313,15 +339,11 @@ def test_saving_an_override_returns_to_the_rows_more_button(qtbot: QtBot, loaded
 def test_lists_keep_the_focus_while_they_update(qtbot: QtBot, loaded: Loaded) -> None:
     view_models = loaded.view_models
     show_page(qtbot, loaded, "profiles")
-    row = find(
-        loaded.item(lambda i: kind(i) == "ProfilesPage"),
-        lambda i: kind(i) == "ProfileRow" and i.property("name") == "示例订阅 B",
-    )
-    assert row is not None
-    row.forceActiveFocus(Qt.FocusReason.TabFocusReason)
+    more = more_button(loaded, "示例订阅 B")
+    more.forceActiveFocus(Qt.FocusReason.TabFocusReason)
     view_models.profiles.updateProfile("sample-b")  # rewrites the row twice
     qtbot.waitUntil(lambda: not view_models.profiles.property("model").rows[1].updating)
-    assert loaded.focused() is row
+    assert loaded.focused() is more
 
     # Selecting a node from the keyboard: the core confirms it and the list updates in place.
     page = show_page(qtbot, loaded, "proxies")

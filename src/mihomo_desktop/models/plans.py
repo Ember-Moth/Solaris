@@ -21,8 +21,9 @@ from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from typing import Any
 
-from PySide6.QtCore import QCoreApplication, QLocale
+from PySide6.QtCore import QCoreApplication
 
+from mihomo_desktop.i18n import current_language
 from mihomo_desktop.models import services
 from mihomo_desktop.models.regions import region_id
 from mihomo_desktop.models.routing import DIRECT, REJECT, Plan, PlanGroup, PlanRule
@@ -40,7 +41,7 @@ _DOMAIN = re.compile(r"[\w-]+(\.[\w-]+)*", re.UNICODE)
 
 def ui_locale() -> str:
     """The plan's locale (routing.md §8.5): the UI's language names the generated groups."""
-    return "zh" if QLocale().language() == QLocale.Language.Chinese else "en"
+    return current_language()
 
 
 def new_id(prefix: str) -> str:

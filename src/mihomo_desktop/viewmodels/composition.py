@@ -20,6 +20,7 @@ from mihomo_desktop.viewmodels.logs import LogsViewModel
 from mihomo_desktop.viewmodels.overview import OverviewViewModel
 from mihomo_desktop.viewmodels.profiles import ProfilesViewModel
 from mihomo_desktop.viewmodels.proxies import ProxiesViewModel
+from mihomo_desktop.viewmodels.routing import RoutingViewModel
 from mihomo_desktop.viewmodels.settings import SettingsViewModel
 from mihomo_desktop.viewmodels.shell import ShellViewModel
 
@@ -34,6 +35,7 @@ class ViewModels:
     overview: OverviewViewModel
     proxies: ProxiesViewModel
     profiles: ProfilesViewModel
+    routing: RoutingViewModel
     connections: ConnectionsViewModel
     logs: LogsViewModel
     settings: SettingsViewModel
@@ -47,6 +49,7 @@ class ViewModels:
             "overviewViewModel": self.overview,
             "proxiesViewModel": self.proxies,
             "profilesViewModel": self.profiles,
+            "routingViewModel": self.routing,
             "connectionsViewModel": self.connections,
             "logsViewModel": self.logs,
             "appearance": self.appearance,
@@ -60,6 +63,7 @@ class ViewModels:
         self.overview.start()
         self.proxies.refresh()
         self.profiles.start()
+        self.routing.refresh()
         self.logs.start()
         self.settings.start()
         self.desktop.start()
@@ -70,6 +74,7 @@ class ViewModels:
         self.overview.retranslate()
         self.proxies.retranslate()
         self.profiles.retranslate()
+        self.routing.retranslate()
         self.connections.retranslate()
         self.logs.retranslate()
         self.settings.retranslate()
@@ -106,6 +111,7 @@ def compose(
     overview = OverviewViewModel(host, library, runner, settings_store)
     proxies = ProxiesViewModel(host, runner)
     profiles = ProfilesViewModel(library, runner, clock)
+    routing = RoutingViewModel(library, runner)
     connections = ConnectionsViewModel(host, runner)
     logs = LogsViewModel(host, runner)
     settings_page = SettingsViewModel(
@@ -118,6 +124,8 @@ def compose(
     def page_shown() -> None:
         if shell.currentPage == "proxies":
             proxies.refresh()
+        elif shell.currentPage == "routing":
+            routing.refresh()
         elif shell.currentPage == "settings":
             settings_page.refreshInfo()
             settings_page.refreshLoginItem()
@@ -127,6 +135,19 @@ def compose(
     proxies.selectionApplied.connect(overview.refreshGroups)
     profiles.applied.connect(overview.refreshGroups)
     profiles.applied.connect(proxies.refresh)
+    # One page's change of the pool or the routing shows on the other (routing.md §4.2).
+    profiles.routingChanged.connect(routing.reload)
+    profiles.routingRequested.connect(lambda: shell.setPage("routing"))
+    routing.routingChanged.connect(profiles.reload)
+    routing.applied.connect(overview.refreshGroups)
+    routing.applied.connect(proxies.refresh)
+
+    def routing_shown() -> None:
+        proxies.set_pool(*routing.pool_sources())
+        connections.set_entry_names(routing.entry_names())
+
+    routing.changed.connect(routing_shown)
+    routing_shown()
     appearance = appearance or Appearance(settings_store.current.appearance)
 
     def appearance_stored(before: Settings, after: Settings) -> None:
@@ -143,6 +164,7 @@ def compose(
         overview,
         proxies,
         profiles,
+        routing,
         connections,
         logs,
         settings_page,

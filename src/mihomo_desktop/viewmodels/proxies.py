@@ -1,4 +1,7 @@
-"""Proxies ViewModel: groups, the nodes of the chosen group, selection and delay tests."""
+"""Proxies ViewModel: groups, the nodes of the chosen group, selection and delay tests.
+
+When the tunnel routes with a plan, the region groups fold into a section of their own and
+each node names the subscription it came from (docs/routing.md §4.6)."""
 
 from __future__ import annotations
 
@@ -26,18 +29,25 @@ SORT_LABELS = {
 NO_DELAY_TYPES = ("Direct", "Reject")
 
 
+REGIONS_ROW = "\x00regions"  # the row that folds the region groups; no group has this name
+
+
 @dataclass(frozen=True)
 class GroupRow:
-    """One proxy group in the list of groups; names are unique, so the name is the id."""
+    """One proxy group in the list of groups; names are unique, so the name is the id. The
+    row that folds the region groups is a header, with their count in ``now``."""
 
     name: str
     kind: str
     now: str
     selected: bool
+    header: bool = False
+    region: bool = False  # a region group, indented under the header
+    expanded: bool = False  # the header's state
 
     @property
     def id(self) -> str:
-        return self.name
+        return REGIONS_ROW if self.header else self.name
 
 
 @dataclass(frozen=True)
@@ -49,6 +59,7 @@ class NodeRow:
     delay: str
     level: str
     selected: bool
+    source: str = ""  # the subscription of a pool node
 
     @property
     def id(self) -> str:
@@ -73,6 +84,9 @@ class ProxiesViewModel(QObject):
         self._sort = "config"
         self._testing = False
         self._error = ""
+        self._sources: dict[str, str] = {}  # pool node -> subscription name
+        self._regions: frozenset[str] = frozenset()  # names of the region groups
+        self._regions_expanded = False
         # Rows update in place, so the lists keep their delegates and the keyboard focus.
         self._group_model = KeyedListModel([f.name for f in fields(GroupRow)], self)
         self._node_model = KeyedListModel([f.name for f in fields(NodeRow)], self)
@@ -113,10 +127,46 @@ class ProxiesViewModel(QObject):
         return self._group_model
 
     def _sync_rows(self) -> None:
-        self._group_model.sync(
-            [GroupRow(g.name, g.type, g.now, g.name == self._current) for g in self._groups]
-        )
+        rows: list[GroupRow] = []
+        regions = [g for g in self._groups if g.name in self._regions]
+        expanded = self._regions_expanded or any(g.name == self._current for g in regions)
+        for group in self._groups:
+            if group.name not in self._regions:
+                rows.append(
+                    GroupRow(group.name, group.type, group.now, group.name == self._current)
+                )
+                continue
+            if group is regions[0]:
+                count = self.tr("%n 个", "", len(regions))
+                rows.append(
+                    GroupRow(self.tr("地区"), "", count, False, header=True, expanded=expanded)
+                )
+            if expanded:
+                rows.append(
+                    GroupRow(
+                        group.name, group.type, group.now, group.name == self._current, region=True
+                    )
+                )
+        self._group_model.sync(rows)
         self._node_model.sync(self._nodes())
+
+    def set_pool(self, sources: dict[str, str], regions: frozenset[str]) -> None:
+        """The pool of the plan the tunnel routes with: each node's subscription, and which
+        groups are region groups. Empty when it runs a profile's own rules."""
+        if (sources, regions) != (self._sources, self._regions):
+            self._sources, self._regions = sources, regions
+            self.changed.emit()
+
+    @Property(bool, notify=changed)
+    def showSource(self) -> bool:
+        return bool(self._sources)
+
+    @Slot()
+    def toggleRegions(self) -> None:
+        if self._current in self._regions:
+            return  # the chosen group keeps its section open
+        self._regions_expanded = not self._regions_expanded
+        self.changed.emit()
 
     @Slot(str)
     def selectGroup(self, name: str) -> None:
@@ -169,7 +219,9 @@ class ProxiesViewModel(QObject):
             text, level = (
                 ("—", "none") if proxy.type in NO_DELAY_TYPES else fmt.latency(proxy.delay_ms)
             )
-            result.append(NodeRow(proxy.name, proxy.type, text, level, proxy.name == group.now))
+            selected = proxy.name == group.now
+            source = self._sources.get(proxy.name, "")
+            result.append(NodeRow(proxy.name, proxy.type, text, level, selected, source))
         return result
 
     @Slot(str)

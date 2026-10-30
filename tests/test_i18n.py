@@ -102,10 +102,11 @@ def view_models(english: None, qtbot: QtBot, tmp_path: Path) -> Iterator[ViewMod
 
 def test_english_view_models(qtbot: QtBot, view_models: ViewModels) -> None:
     shell, overview, proxies = view_models.shell, view_models.overview, view_models.proxies
-    assert [page["label"] for page in prop(shell, "pages")][:3] == [
+    assert [page["label"] for page in prop(shell, "pages")][:4] == [
         "Overview",
         "Proxies",
-        "Profiles",
+        "Subscriptions",
+        "Routing",
     ]
     qtbot.waitUntil(lambda: prop(shell, "serviceAvailable"))
     assert prop(shell, "serviceText") == "Service running"
@@ -126,7 +127,7 @@ def test_english_view_models(qtbot: QtBot, view_models: ViewModels) -> None:
 
 def test_english_profiles(qtbot: QtBot, view_models: ViewModels) -> None:
     profiles, overview = view_models.profiles, view_models.overview
-    assert prop(profiles, "summary") == "3 profiles"
+    assert prop(profiles, "summary") == "3 subscriptions"
     a, b, c = rows(profiles)
     assert a.source == "Subscription · sub.example.com · 9 proxies"
     assert (a.expiry, a.updated, a.refreshLabel) == (
@@ -139,18 +140,16 @@ def test_english_profiles(qtbot: QtBot, view_models: ViewModels) -> None:
     assert prop(profiles, "activeDetail") == "sub.example.com · Updated 2 hours ago"
     assert prop(profiles, "activeExpiry") == "Expires Dec 31, 2026"
     assert prop(profiles, "autoUpdateLabel") == "Update every 12 hours"
-    assert prop(profiles, "globalOverrideDetail") == "Shared by all profiles · Not set"
+    assert prop(profiles, "globalOverrideDetail") == "Applies to both routing modes · Not set"
 
     # The two sentences of a removal's consequences are joined with a space.
     qtbot.waitUntil(lambda: prop(overview, "connected"))
-    overview.toggleConnection()
-    qtbot.waitUntil(lambda: not prop(overview, "connected"))
     with qtbot.waitSignal(profiles.removalRequested):
         profiles.requestRemove("sample-a")
     assert prop(profiles, "removalTitle") == "Delete “示例订阅 A”?"
     assert prop(profiles, "removalText") == (
-        "This is the profile in use; “示例订阅 B” will be used instead. "
-        "The profile will be deleted from this computer. This can’t be undone."  # noqa: RUF001
+        "Its rules are in use; the rules of “示例订阅 B” take over. "
+        "The subscription will be deleted from this computer. This can’t be undone."  # noqa: RUF001
     )
 
 

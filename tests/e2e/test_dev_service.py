@@ -44,7 +44,7 @@ def connected_on_nodes(app: App) -> None:
     """Import the direct profile and the nodes profile, use the nodes and connect."""
     app.import_file(app.write("direct.yaml", DIRECT_PROFILE))
     app.import_file(app.write("nodes.yaml", nodes_profile(app.network)))
-    app.view_models.profiles.use(app.profile_id("nodes"))
+    app.view_models.profiles.useRules(app.profile_id("nodes"))
     app.until(lambda: app.prop(app.view_models.profiles, "activeName") == "nodes")
     app.connect()
 
@@ -79,7 +79,7 @@ def test_import_check_connect_and_proxy(app: App) -> None:
     vm.shell.setPage("profiles")
     app.screenshot("profiles")
 
-    vm.profiles.use(subscription.id)
+    vm.profiles.useRules(subscription.id)
     app.until(lambda: app.prop(vm.profiles, "activeName") == "e2e-sub")
     app.connect()
     assert app.curl(network.proxied.url()) == "proxied"
@@ -171,7 +171,7 @@ def test_pages_show_the_core(app: App) -> None:
     logs.setLevel("info")
     logs.togglePause()
     shown = app.prop(logs, "count")
-    vm.profiles.use(app.profile_id("direct"))  # a reload logs a few lines
+    vm.profiles.useRules(app.profile_id("direct"))  # a reload logs a few lines
     app.until(lambda: app.prop(logs, "status").startswith("已暂停 · "))
     assert app.prop(logs, "count") == shown
     logs.togglePause()
@@ -255,7 +255,7 @@ def test_reloads_keep_connections(app: App) -> None:
     profiles = vm.profiles
     app.import_file(app.write("direct.yaml", DIRECT_PROFILE))
     app.import_url(serve_subscription(app, nodes_profile(network)))
-    profiles.use(app.profile_id("e2e-sub"))
+    profiles.useRules(app.profile_id("e2e-sub"))
     app.until(lambda: app.prop(profiles, "activeName") == "e2e-sub")
     app.connect()
     stream = app.stream(seconds=8)
@@ -286,7 +286,7 @@ def test_reloads_keep_connections(app: App) -> None:
     assert network.node_b.targets[-1] == f"127.0.0.1:{network.proxied.port}"
 
     # Another profile altogether.
-    profiles.use(app.profile_id("direct"))
+    profiles.useRules(app.profile_id("direct"))
     app.until(lambda: app.prop(profiles, "activeName") == "direct")
     app.until(lambda: app.prop(vm.overview, "nodeName") == "—")
     tunnels = len(network.node_a.targets) + len(network.node_b.targets)

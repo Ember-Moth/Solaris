@@ -265,6 +265,7 @@ Item {
         required property string connectionId
         required property string host
         required property string protocol
+        required property string ruleName
         required property string rule
         required property string chain
         required property string process
@@ -281,7 +282,7 @@ Item {
         focusPolicy: Qt.NoFocus
         Accessible.role: Accessible.Row
         Accessible.name: qsTr("%1，%2").arg(host).arg(process || protocol)
-        Accessible.description: qsTr("规则 %1，链路 %2，下载 %3，上传 %4，时长 %5").arg(rule).arg(chain).arg(downRate).arg(upRate).arg(duration)
+        Accessible.description: qsTr("规则 %1，链路 %2，下载 %3，上传 %4，时长 %5").arg(ruleName ? qsTr("%1（%2）").arg(ruleName).arg(rule) : rule).arg(chain).arg(downRate).arg(upRate).arg(duration)
         Accessible.selected: selected
         onClicked: {
             tableBox.forceActiveFocus(Qt.MouseFocusReason)
@@ -327,13 +328,26 @@ Item {
                     }
                 }
 
-                UiText {
+                // The plan's rule entry over the core's rule (docs/routing.md §4.6).
+                Column {
                     width: page.ruleWidth
                     anchors.verticalCenter: parent.verticalCenter
-                    text: row.rule
-                    role: Theme.type.dataSm
-                    color: Theme.textSecondary
-                    elide: Text.ElideRight
+
+                    UiText {
+                        width: parent.width
+                        visible: row.ruleName !== ""
+                        text: row.ruleName
+                        role: Theme.type.bodySm
+                        elide: Text.ElideRight
+                    }
+
+                    UiText {
+                        width: parent.width
+                        text: row.rule
+                        role: Theme.type.dataSm
+                        color: row.ruleName !== "" ? Theme.textMuted : Theme.textSecondary
+                        elide: Text.ElideRight
+                    }
                 }
 
                 UiText {

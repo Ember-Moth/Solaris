@@ -777,8 +777,10 @@ class SimulatedHost:
             return []
         if self.report is not None:
             return list(self.report.rules)
+        # Running before any start, the sample's own rules are in use.
+        effective = self.effective if self.effective is not None else _load(SAMPLE_CONFIG, "")
         rules = []
-        for line in (self.effective or {}).get("rules") or []:
+        for line in effective.get("rules") or []:
             parts = [part.strip() for part in str(line).split(",")]
             if parts[-1] == "no-resolve":
                 parts.pop()

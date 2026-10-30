@@ -25,6 +25,13 @@ def QT_TRANSLATE_NOOP(context: str, text: str) -> str:  # noqa: N802 - the name 
     return text
 
 
+def current_language() -> str:
+    """The language the installed translator shows, for text the catalog does not hold, such
+    as the service list's names (models/services.py): ``zh`` without a translator."""
+    shown = QCoreApplication.translate("Language", "zh")
+    return shown if shown in LANGUAGES else SOURCE_LANGUAGE
+
+
 def system_language(ui_languages: Sequence[str] | None = None) -> str:
     """Chinese when the system's first UI language is any Chinese, English otherwise."""
     languages = QLocale.system().uiLanguages() if ui_languages is None else ui_languages

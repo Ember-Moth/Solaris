@@ -9,6 +9,7 @@ ScrollView {
     id: page
 
     required property ProxiesViewModel proxies
+    readonly property int sourceWidth: 140
 
     // The arrows move the focus between the rows of a list; Space selects the focused one.
     function focusRow(rows: Repeater, index: int) {
@@ -87,19 +88,27 @@ ScrollView {
                             required property string kind
                             required property string now
                             required property bool selected
+                            required property bool header  // folds the region groups
+                            required property bool region
+                            required property bool expanded
                             readonly property bool last: index === groupRepeater.count - 1
 
                             Layout.fillWidth: true
-                            implicitHeight: Theme.rowDouble
-                            leftPadding: 14
+                            implicitHeight: header ? Theme.rowSingle : Theme.rowDouble
+                            leftPadding: region ? 14 + Theme.space3 : 14
                             rightPadding: 14
                             topPadding: Theme.space2
                             bottomPadding: Theme.space2
                             checked: selected  // what screen readers hear; clicking does not toggle it
-                            Accessible.role: Accessible.RadioButton
-                            Accessible.name: name
-                            Accessible.description: qsTr("%1，当前 %2").arg(kind).arg(now)
-                            onClicked: page.proxies.selectGroup(name)
+                            Accessible.role: header ? Accessible.Button : Accessible.RadioButton
+                            Accessible.name: header ? qsTr("%1，%2").arg(name).arg(now) : name
+                            Accessible.description: header ? (expanded ? qsTr("已展开") : qsTr("已收起")) : qsTr("%1，当前 %2").arg(kind).arg(now)
+                            onClicked: {
+                                if (header)
+                                    page.proxies.toggleRegions()
+                                else
+                                    page.proxies.selectGroup(name)
+                            }
                             Keys.onUpPressed: page.focusRow(groupRepeater, index - 1)
                             Keys.onDownPressed: page.focusRow(groupRepeater, index + 1)
 
@@ -108,6 +117,22 @@ ScrollView {
 
                                 RowLayout {
                                     Layout.fillWidth: true
+                                    spacing: 6
+
+                                    // The region section's disclosure (DESIGN.md "可折叠区").
+                                    Icon {
+                                        visible: groupButton.header
+                                        name: "chevron"
+                                        size: 14
+                                        rotation: groupButton.expanded ? 90 : 0
+
+                                        Behavior on rotation {
+                                            NumberAnimation {
+                                                duration: Motion.stateChange
+                                                easing.type: Easing.OutCubic
+                                            }
+                                        }
+                                    }
 
                                     UiText {
                                         Layout.fillWidth: true
@@ -125,6 +150,7 @@ ScrollView {
 
                                 UiText {
                                     Layout.fillWidth: true
+                                    visible: !groupButton.header
                                     text: groupButton.now
                                     role: Theme.type.caption
                                     color: Theme.textTertiary
@@ -206,6 +232,14 @@ ScrollView {
                             }
 
                             UiText {
+                                Layout.preferredWidth: page.sourceWidth
+                                visible: page.proxies.showSource
+                                text: qsTr("来源")
+                                role: Theme.type.caption
+                                color: Theme.textMuted
+                            }
+
+                            UiText {
                                 Layout.preferredWidth: 120
                                 text: qsTr("类型")
                                 role: Theme.type.caption
@@ -236,6 +270,7 @@ ScrollView {
                             required property string delay
                             required property string level
                             required property bool selected
+                            required property string source
                             readonly property bool selectable: page.proxies.currentSelectable
 
                             Layout.fillWidth: true
@@ -247,7 +282,7 @@ ScrollView {
                             checked: selected  // what screen readers hear; clicking does not toggle it
                             Accessible.role: selectable ? Accessible.RadioButton : Accessible.ListItem
                             Accessible.name: name
-                            Accessible.description: qsTr("%1，延迟 %2").arg(type).arg(delay)
+                            Accessible.description: source ? qsTr("%1，%2，延迟 %3").arg(source).arg(type).arg(delay) : qsTr("%1，延迟 %2").arg(type).arg(delay)
                             Accessible.selected: selected
                             onClicked: {
                                 if (selectable)
@@ -275,6 +310,15 @@ ScrollView {
                                     Layout.fillWidth: true
                                     text: nodeRow.name
                                     role: nodeRow.selected ? Theme.type.bodyMdStrong : Theme.type.bodyMd
+                                    elide: Text.ElideRight
+                                }
+
+                                UiText {
+                                    Layout.preferredWidth: page.sourceWidth
+                                    visible: page.proxies.showSource
+                                    text: nodeRow.source
+                                    role: Theme.type.bodySm
+                                    color: Theme.textMuted
                                     elide: Text.ElideRight
                                 }
 
