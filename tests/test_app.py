@@ -1,4 +1,7 @@
+import subprocess
+import sys
 from functools import partial
+from pathlib import Path
 
 import pytest
 from PySide6.QtCore import QCoreApplication, Qt, QUrl
@@ -9,6 +12,7 @@ from PySide6.QtTest import QTest
 from pytestqt.qtbot import QtBot
 
 from solaris.app import MAIN_QML, switch_language
+from solaris.desktop.instance import LOCK_NAME
 from solaris.i18n import Translations
 from solaris.viewmodels import settings as settings_view_model
 from solaris.viewmodels.composition import ViewModels
@@ -16,6 +20,74 @@ from tests.support.appearance import SystemColorScheme
 from tests.support.window import Loaded, find, texts
 
 TRAY_QML = MAIN_QML.parent / "components" / "TrayIcon.qml"
+ROOT = Path(__file__).resolve().parents[1]
+
+# The UI as main() runs it, in a process of its own, against the simulated host. It says
+# when its window has loaded, and what it asked of the host.
+RUNNING_UI = """
+import sys
+from pathlib import Path
+from solaris import app
+from solaris.models import credentials
+from solaris.models.store import ProfileStore
+from tests.support.credentials import MemoryKeyring
+from tests.support.releases import offline_updater
+from tests.support.simulated import SimulatedFetcher, SimulatedHost
+
+
+class Host(SimulatedHost):
+    async def stop(self) -> None:
+        print("stopped", flush=True)
+        await super().stop()
+
+    async def close(self) -> None:
+        print("closed", flush=True)
+        await super().close()
+
+
+def load_ui(engine, view_models):
+    loaded = load(engine, view_models)
+    print("loaded", flush=True)
+    return loaded
+
+
+load, app.load_ui = app.load_ui, load_ui
+keyring = MemoryKeyring()
+credentials.system_keyring = lambda: keyring
+directory = Path(sys.argv[1])
+del sys.argv[1:]
+store = ProfileStore(directory)
+sys.exit(app.main(Host(), store, SimulatedFetcher(), updater=offline_updater(directory)))
+"""
+
+# ``Solaris --quit``, with the data directory in the test's.
+QUIT = """
+import sys
+from pathlib import Path
+from solaris import app
+directory = Path(sys.argv[1])
+app.default_data_dir = lambda: directory
+sys.argv[1:] = ["--quit"]
+sys.exit(app.main())
+"""
+
+# A window that hides instead of closing, as the main window does with a tray.
+HIDING_WINDOW = """
+import sys
+from PySide6.QtCore import QTimer
+from PySide6.QtQml import QQmlApplicationEngine
+from solaris.app import Application
+app = Application(sys.argv)
+app.setQuitOnLastWindowClosed(False)
+engine = QQmlApplicationEngine()
+engine.loadData(
+    b"import QtQuick\\n"
+    b"Window { visible: true; onClosing: close => { close.accepted = false; hide() } }\\n"
+)
+QTimer.singleShot(0, app.quit)
+QTimer.singleShot(10_000, lambda: app.exit(3))
+sys.exit(app.exec())
+"""
 
 
 @pytest.mark.parametrize("appearance", ["light", "dark"], indirect=True)
@@ -318,6 +390,38 @@ def test_a_second_launch_shows_the_window(qtbot: QtBot, loaded: Loaded) -> None:
     assert not window.isVisible()
     loaded.view_models.desktop.showWindow()
     qtbot.waitUntil(window.isVisible)
+
+
+def test_quit_command_closes_the_running_ui(tmp_path: Path) -> None:
+    ui = subprocess.Popen(
+        [sys.executable, "-c", RUNNING_UI, str(tmp_path)],
+        stdout=subprocess.PIPE,
+        text=True,
+        cwd=ROOT,
+    )
+    quit_command = [sys.executable, "-c", QUIT, str(tmp_path)]
+    try:
+        assert ui.stdout is not None
+        assert ui.stdout.readline() == "loaded\n"
+        assert subprocess.run(quit_command, cwd=ROOT, timeout=60).returncode == 0
+        assert ui.wait(timeout=30) == 0
+        said = ui.stdout.read().split()
+    finally:
+        ui.kill()
+        ui.wait()
+    # It let go of the host and left the tunnel as it was.
+    assert said == ["closed"]
+    # It closed the database, then let go of the lock: no write-ahead log, no lock file.
+    assert not (tmp_path / "solaris.db-wal").exists()
+    assert not (tmp_path / LOCK_NAME).exists()
+    # With no UI running, the command has nothing to wait for.
+    assert subprocess.run(quit_command, cwd=ROOT, timeout=30).returncode == 0
+
+
+def test_quitting_leaves_even_when_the_window_hides_instead() -> None:
+    """Qt closes the windows before it quits and gives up when one refuses; the tray's
+    quit, ``--quit`` and ⌘Q leave anyway."""
+    assert subprocess.run([sys.executable, "-c", HIDING_WINDOW], timeout=60).returncode == 0
 
 
 def test_tray_icon_compiles(qtbot: QtBot) -> None:

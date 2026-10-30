@@ -3,8 +3,8 @@
 #
 #     setup.ps1 -Operation <operation> -InstallDirectory <the install directory>
 #
-# close-ui         end every Solaris.exe running from the install directory, in any session;
-#                  the UI has no command to quit, and the tunnel runs in the service
+# close-ui         ask Solaris.exe to quit, then end every one still running from the install
+#                  directory, in any session; the tunnel runs in the service either way
 # stop-service     stop SolarisService if it is there, and wait for its process to exit
 # install-service  create SolarisService, or point it at this directory again; then start it
 # remove-service   stop and delete SolarisService
@@ -25,6 +25,10 @@ $ServiceName = 'SolarisService'  # src/core/internal/product
 $Client = Join-Path $InstallDirectory 'Solaris.exe'
 $ServiceExecutable = Join-Path $InstallDirectory 'solaris-service.exe'
 $Timeout = [TimeSpan]::FromSeconds(60)
+# Solaris.exe --quit waits up to 10 seconds for the UI to go (src/solaris/desktop/instance.py);
+# the UIs it cannot reach get a few seconds more before they are ended.
+$QuitTimeout = 15000
+$QuitGrace = 5000
 
 # sc.exe with its command line as written: PowerShell 5.1 drops the inner quotes of native
 # arguments, and the service's path must keep its own.
@@ -57,11 +61,27 @@ function Wait-Exit([System.Diagnostics.Process[]] $Processes, [string] $What) {
     }
 }
 
+# Solaris.exe --quit reaches the UI of the user running the installer, which then quits as
+# from its tray menu; a UI of another user, or one that does not answer, is ended after the
+# grace period.
 function Close-UI {
     $processes = Get-ProcessFrom $Client
+    if ($processes.Count -eq 0) { return }
+    Write-Output 'Asking Solaris.exe to quit'
+    $quit = Start-Process -FilePath $Client -ArgumentList '--quit' -PassThru
+    if (-not $quit.WaitForExit($QuitTimeout)) {
+        Stop-Process -Id $quit.Id -Force
+        Wait-Exit @($quit) 'Solaris.exe --quit'
+    }
+    $deadline = [DateTime]::UtcNow.AddMilliseconds($QuitGrace)
     foreach ($process in $processes) {
-        Write-Output "Closing Solaris.exe ($($process.Id))"
-        Stop-Process -Id $process.Id -Force
+        $left = [Math]::Max(0, [int](($deadline - [DateTime]::UtcNow).TotalMilliseconds))
+        if ($process.WaitForExit($left)) {
+            Write-Output "Solaris.exe ($($process.Id)) quit"
+        } else {
+            Write-Output "Ending Solaris.exe ($($process.Id))"
+            Stop-Process -Id $process.Id -Force
+        }
     }
     Wait-Exit $processes 'Solaris.exe'
 }

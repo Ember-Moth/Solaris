@@ -10,7 +10,8 @@ rare, so waiting for the lock costs nothing noticeable, and a transaction never 
 another thread's statements in the middle of it.
 
 Records carry ``updated_at``, and records that can be deleted carry ``deleted_at`` instead
-of going away, so a backup can be merged record by record (storage.md §3).
+of going away, so a backup can be merged record by record (storage.md §3). These tombstones
+are purged once they are TOMBSTONE_DAYS old.
 """
 
 from __future__ import annotations
@@ -28,6 +29,11 @@ from pathlib import Path
 from typing import Any
 
 DATABASE_NAME = "solaris.db"
+# How long a deleted record stays as a tombstone. A merge cannot tell a record deleted here
+# before that from one this machine never had, and brings it back (storage.md §2).
+TOMBSTONE_DAYS = 90
+# The tables whose records are marked deleted rather than removed.
+SOFT_DELETED = ("profiles", "overrides", "plans", "plan_groups", "plan_rules", "backup_targets")
 
 Migration = Callable[[sqlite3.Connection], None]
 
@@ -39,13 +45,13 @@ class UnusableDatabaseError(Exception):
 
 
 # Version 1: the storage layer of M7 (storage.md §2) with the routing tables of M8a
-# (routing.md §9). Positions order a list; times are unix seconds.
+# (routing.md §9). Positions order a list; times are unix seconds; flags are 0 or 1.
 _SCHEMA_1 = """
 CREATE TABLE profiles (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     kind TEXT NOT NULL,
-    in_pool INTEGER NOT NULL DEFAULT 1,
+    in_pool INTEGER NOT NULL DEFAULT 1 CHECK (in_pool IN (0, 1)),
     url TEXT NOT NULL DEFAULT '',
     path TEXT NOT NULL DEFAULT '',
     auto_update_hours INTEGER NOT NULL DEFAULT 0,
@@ -77,11 +83,11 @@ CREATE TABLE overrides (
     deleted_at REAL
 ) STRICT;
 
--- One row per setting ever changed; value is JSON, scope 'synced' or 'local'.
+-- One row per setting ever changed; value is JSON. A setting's scope is its field's in
+-- models/settings.py, not stored.
 CREATE TABLE settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,
-    scope TEXT NOT NULL,
     updated_at REAL NOT NULL
 ) STRICT;
 
@@ -104,7 +110,8 @@ CREATE TABLE backup_targets (
 ) STRICT;
 
 -- One row. mode: NULL until chosen, 'profile' or 'plan'; profile_id: the profile in use;
--- info_pattern: NULL for the built-in expression.
+-- info_pattern: NULL for the built-in expression. No foreign keys: the profile and the plan
+-- named may be deleted, or purged.
 CREATE TABLE routing_state (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     mode TEXT,
@@ -130,15 +137,17 @@ CREATE TABLE plans (
 ) STRICT;
 
 -- A group's id is unique within its plan: region groups take theirs from the region code.
+-- A plan's groups and rules stay as they were when it is marked deleted, and go when it is
+-- purged.
 CREATE TABLE plan_groups (
-    plan_id TEXT NOT NULL REFERENCES plans (id),
+    plan_id TEXT NOT NULL REFERENCES plans (id) ON DELETE CASCADE,
     id TEXT NOT NULL,
     kind TEXT NOT NULL,
     type TEXT NOT NULL,
     name TEXT NOT NULL DEFAULT '',
     conditions TEXT NOT NULL DEFAULT '{}',
     options TEXT NOT NULL DEFAULT '{}',
-    hidden INTEGER NOT NULL DEFAULT 0,
+    hidden INTEGER NOT NULL DEFAULT 0 CHECK (hidden IN (0, 1)),
     position INTEGER NOT NULL,
     updated_at REAL NOT NULL,
     deleted_at REAL,
@@ -147,9 +156,9 @@ CREATE TABLE plan_groups (
 
 CREATE TABLE plan_rules (
     id TEXT PRIMARY KEY,
-    plan_id TEXT NOT NULL REFERENCES plans (id),
+    plan_id TEXT NOT NULL REFERENCES plans (id) ON DELETE CASCADE,
     position INTEGER NOT NULL,
-    enabled INTEGER NOT NULL DEFAULT 1,
+    enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
     kind TEXT NOT NULL,
     content TEXT NOT NULL,
     target TEXT NOT NULL,
@@ -235,6 +244,16 @@ def write_state(connection: sqlite3.Connection, key: str, value: Any, now: float
         "INSERT INTO state (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT (key) "
         "DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
         (key, json.dumps(value, ensure_ascii=False), now),
+    )
+
+
+def purge_tombstones(connection: sqlite3.Connection, now: float) -> int:
+    """Remove the records deleted more than TOMBSTONE_DAYS before ``now``; a plan's groups
+    and rules go with it. Returns how many went, not counting those."""
+    before = now - TOMBSTONE_DAYS * 86_400
+    return sum(
+        connection.execute(f"DELETE FROM {table} WHERE deleted_at < ?", (before,)).rowcount
+        for table in SOFT_DELETED
     )
 
 

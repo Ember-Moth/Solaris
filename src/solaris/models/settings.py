@@ -166,8 +166,8 @@ class Notifier:
 
 class DatabaseSettingsStore:
     """The settings as rows of the database's ``settings`` table: one per setting that was
-    ever changed, the value as JSON beside the setting's scope. A setting without a row,
-    or with a value it does not accept, takes its default.
+    ever changed, the value as JSON. A setting without a row, or with a value it does not
+    accept, takes its default.
 
     The app keeps one store per database. Code that writes the table itself, such as a
     restore, calls ``reload`` afterwards so the listeners hear of it."""
@@ -239,16 +239,13 @@ def read_settings(connection: sqlite3.Connection) -> Settings:
 def write_settings(
     connection: sqlite3.Connection, values: Mapping[str, Any], now: float, *, keep: bool = False
 ) -> None:
-    """Store checked values with their scopes; ``keep`` leaves the ones already stored."""
+    """Store checked values; ``keep`` leaves the ones already stored."""
     if keep:
         conflict = "NOTHING"
     else:
-        conflict = (
-            "UPDATE SET value = excluded.value, scope = excluded.scope, "
-            "updated_at = excluded.updated_at"
-        )
+        conflict = "UPDATE SET value = excluded.value, updated_at = excluded.updated_at"
     connection.executemany(
-        "INSERT INTO settings (key, value, scope, updated_at) VALUES (?, ?, ?, ?) "
+        "INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?) "
         f"ON CONFLICT (key) DO {conflict}",
-        [(name, json.dumps(value), scope(name), now) for name, value in values.items()],
+        [(name, json.dumps(value), now) for name, value in values.items()],
     )

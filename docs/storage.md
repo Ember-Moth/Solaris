@@ -25,6 +25,23 @@
   这样两台设备上的"全局覆写"或同一个设置项是同一条记录；策略组的 `id` 只在所属方案内唯一（地区组的 `id` 由地区代码派生，
   routing.md 第 9 节）。每行都记 `updated_at`；可以删除的记录采用软删除，记 `deleted_at`。备份恢复时靠这几项按记录合并；
   将来如果改成多设备双向同步，也不需要改表结构。
+- **约束**：表都是 `STRICT`；`in_pool`、`hidden`、`enabled` 只能是 0 或 1；`plan_groups`、`plan_rules` 以外键指向
+  `plans`，方案被清除（见下）时一并删除。种类、方式这类取值由代码检查，不写成 `CHECK`，以后加一种取值不必重建表。
+- **墓碑的保留**：软删除的记录（墓碑）保留 90 天（`database.TOMBSTONE_DAYS`）。每次启动时 `store.open_database`
+  在单实例锁之内删掉 `deleted_at` 早于 90 天前的记录，涉及 `profiles`、`overrides`、`plans`、`plan_groups`、
+  `plan_rules` 和 `backup_targets`；被清除的方案连同它的策略组和规则一起删除。这样删掉的订阅链接、覆写原文不会
+  一直留在本机，快照里的墓碑也不会越积越多。清除改变快照内容，下一次自动备份会上传新的一份。`backup_targets`
+  不进快照，它的墓碑只为和其他表一致。
+- **清除对合并的影响**：合并靠墓碑判断"本机删除得更晚"。墓碑清除后，本机分不出一条记录是"这里删过"还是"这里
+  从来没有"，一律按后者处理，把快照里的记录当作新记录加回来：
+  - 删除之前拍下的快照，在删除后 90 天之内合并，删除仍然生效；过了 90 天再合并，删掉的记录会回来，要再删一次；
+  - 另一台设备的快照同理：那台设备在 90 天内没有合并到这次删除，它的快照里这条记录仍是活的，之后在这里合并时
+    记录会回来；
+  - 快照里的记录在删除之后又被修改过的，本来就该胜出（第 3 节），清除不改变这一点；"替换"也不受影响。
+
+  反过来跳过这些记录是不行的：快照里修改时间早于清除界限、本机又没有的记录，也可能来自另一台设备、本机从来没有，
+  而把另一台设备的数据并进来正是合并的用途。跳过会悄悄丢掉它们，加回来的代价只是再删一次。90 天远长于自动备份的
+  间隔（变化后 30 秒，至少每天一次），只有隔了很久才合并的旧快照会碰到。
 
 表结构：
 
@@ -34,7 +51,7 @@
 | `profile_contents` | `profile_id`、配置 YAML 原文、`fetched_at`、用量（upload / download / total / expire）、`proxy_count`、`updated_at`。这是本机缓存，订阅下载的内容不进入备份 |
 | `overrides` | `scope`（`global` 或某个 `profile_id`）、YAML 原文、`updated_at`、`deleted_at` |
 | `routing_state`、`plans`、`plan_groups`、`plan_rules` | 分流方式、当前使用的配置、节点池设置、分流方案及其策略组和规则条目，字段见 routing.md 第 9 节 |
-| `settings` | `key`、`value`（JSON）、`scope`（`synced` / `local`）、`updated_at`。每个设置项属于哪个 scope，由 `models/settings.py` 里字段的元数据决定（ui.md §8） |
+| `settings` | `key`、`value`（JSON）、`updated_at`。每个设置项的范围（`synced` / `local`）由 `models/settings.py` 里字段的元数据决定（ui.md §8），不存进表里 |
 | `state` | 只属于本机的状态（`key`、`value`（JSON）、`updated_at`）：每个备份目标上次上传的快照摘要（`backup_digest:<目标 id>`） |
 | `backup_targets` | 已开启的备份目标：`id`、提供方、显示用的账户名、上次成功备份的时间、上次的错误、`created_at`、`updated_at`、`deleted_at`。不存令牌（见 4 节） |
 
@@ -59,15 +76,16 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
   `config`（`yaml` 原文和它的 `updated_at`，即 `profile_contents.updated_at`）；
 - `overrides`：全部覆写，`scope`、`yaml`、`updated_at`；
 - `routing`：`mode`、`profile_id`（当前使用的配置）、`plan_id`（当前使用的方案）、`info_pattern`（信息节点表达式）、
-  `updated_at`，以及 `plans`：全部分流方案，每套带 `groups` 和 `rules`，字段与表相同，`conditions`、`options`、
-  `content` 是 JSON 值而不是字符串；
+  `updated_at`，以及 `plans`：全部分流方案，每套带 `groups` 和 `rules`，字段与表相同，`egress`、`conditions`、
+  `options`、`content` 是 JSON 值而不是字符串；
 - `settings`：只包含 `synced` 范围、改过的设置，`key`、`value`、`updated_at`。
 
 快照不包含用量、下载缓存（`profile_contents` 里订阅的原文和下载信息）、本机范围的设置、`state` 和 `backup_targets`，
 也不包含任何令牌和 WARP 账户。
 
 - **删除的记录**：配置、覆写、方案、策略组和规则条目删除后只留**墓碑**：主键、`updated_at` 和 `deleted_at`，
-  不带内容，所以删掉的订阅链接不会一直留在备份里。删除的方案不带它的策略组和规则。
+  不带内容，所以删掉的订阅链接不会一直留在备份里。删除的方案不带它的策略组和规则。墓碑在本机保留 90 天
+  （第 2 节），清除之后快照里也就没有了。
 - **摘要**：去掉 `format`、`version`、`created_at`、`device`、`app_version` 之后，按键排序的紧凑 JSON 的 SHA-256。
   同样的数据不论何时、在哪台设备上导出，摘要都相同；订阅更新、用量变化、本机设置的改动都不改变摘要。
 - **读取**：超过 64 MiB、不是 JSON、`format` 不对或字段类型不对的文件报 `not_a_backup`（或 `too_large`）；`version`

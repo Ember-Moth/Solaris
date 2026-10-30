@@ -24,6 +24,8 @@ from solaris.models.backup import (
     read_file,
     write_file,
 )
+from solaris.models.backup_auto import BackupTargets
+from solaris.models.database import TOMBSTONE_DAYS
 from solaris.models.library import ProfileLibrary
 from solaris.models.profiles import (
     KIND_FILE,
@@ -47,6 +49,7 @@ from solaris.models.subscription import Download
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
 from tests.support.storage import stored
 
+DAY = 86_400.0
 LINK_A = "https://sub.example.com/api?token=secret-a"
 LINK_B = "https://nodes.example.org/clash.yaml?token=secret-b"
 DOWNLOADED = "proxies:\n  - {name: downloaded-node, type: ss, server: a.example.net, port: 1}\n"
@@ -111,6 +114,7 @@ PLAN = Plan(
         PlanRule("r-tg", "service", {"service": "telegram"}, "region:JP"),
         PlanRule("r-ip", "ip", {"items": ["10.0.0.0/8"], "no_resolve": True}, "DIRECT", False),
     ),
+    {"warp": {"enabled": True, "via": "auto"}},
 )
 
 
@@ -167,6 +171,7 @@ def test_a_snapshot_holds_the_users_data(tmp_path: Path) -> None:
     assert routing["info_pattern"] == "到期"
     (plan,) = routing["plans"]
     assert (plan["id"], plan["name"], plan["fallback"]) == ("plan-1", "日常", "proxy")
+    assert plan["egress"] == {"warp": {"enabled": True, "via": "auto"}}
     work = plan["groups"][2]
     assert (work["name"], work["conditions"], work["options"]) == (
         "工作",
@@ -594,3 +599,81 @@ def test_an_update_that_ends_during_a_restore_does_not_undo_it(tmp_path: Path) -
     profiles = asyncio.run(scenario())
     assert [p.id for p in profiles.profiles] == ["a", "b", "c"]
     assert [p.id for p in target.profiles().profiles] == ["a", "b", "c"]
+
+
+# -- tombstones past their time (storage.md §2) ------------------------------------------------
+def delete_some(machine: Machine) -> None:
+    """At 2 000: profile b with its override, a plan with its groups and rules, a rule of the
+    plan that stays, and a backup target. At 3 000: the global override."""
+    machine.at(2_000).store.save(ProfileList((SUB_A, FILE_C), "a"))
+    machine.store.delete_config("b")
+    group = PlanGroup("proxy", "builtin", "select")
+    rule = PlanRule("r-2", "ip", {"items": []}, "DIRECT")
+    machine.routing.put_plan(Plan("plan-2", "临时", "proxy", (group,), (rule,)))
+    machine.routing.delete_plan("plan-2")
+    machine.routing.put_plan(replace(PLAN, rules=PLAN.rules[:1]))
+    targets = BackupTargets(machine.store.database)
+    targets.remove(targets.add("memory", "someone").id)
+    machine.at(3_000).store.write_override(None, "")
+
+
+def reopened(machine: Machine, now: float) -> Machine:
+    machine.store.close()
+    return Machine(machine.directory, now=now)
+
+
+def test_tombstones_stay_their_time(tmp_path: Path) -> None:
+    machine = Machine(tmp_path)
+    populate(machine)
+    delete_some(machine)
+    before = machine.snapshot()
+
+    machine = reopened(machine, 2_000 + TOMBSTONE_DAYS * DAY)
+
+    assert machine.snapshot().digest == before.digest
+    assert stored(tmp_path, "SELECT id FROM profiles WHERE deleted_at IS NOT NULL") == [("b",)]
+    assert stored(tmp_path, "SELECT COUNT(*) FROM backup_targets") == [(1,)]
+
+
+def test_old_tombstones_are_purged_at_startup(tmp_path: Path) -> None:
+    machine = Machine(tmp_path)
+    populate(machine)
+    delete_some(machine)
+    live = (plain(machine.profiles()), machine.routing.plans(), machine.settings.current)
+
+    machine = reopened(machine, 2_001 + TOMBSTONE_DAYS * DAY)
+
+    assert stored(tmp_path, "SELECT id FROM profiles ORDER BY id") == [("a",), ("c",)]
+    # The global override was deleted later than the rest.
+    assert stored(tmp_path, "SELECT scope, deleted_at FROM overrides") == [("global", 3_000)]
+    assert stored(tmp_path, "SELECT id FROM plans") == [("plan-1",)]
+    # The deleted plan's groups and rules went with it.
+    assert stored(tmp_path, "SELECT DISTINCT plan_id FROM plan_groups") == [("plan-1",)]
+    assert stored(tmp_path, "SELECT id, plan_id FROM plan_rules") == [("r-tg", "plan-1")]
+    assert stored(tmp_path, "SELECT COUNT(*) FROM backup_targets") == [(0,)]
+    assert (plain(machine.profiles()), machine.routing.plans(), machine.settings.current) == live
+    document = machine.snapshot().document
+    assert [p["id"] for p in document["profiles"]] == ["a", "c"]
+    assert [p["id"] for p in document["routing"]["plans"]] == ["plan-1"]
+
+
+def test_a_merge_brings_back_what_was_deleted_before_the_tombstones_went(tmp_path: Path) -> None:
+    """A merge cannot tell a record whose tombstone was purged from one this machine never
+    had, and takes it as new."""
+    machine = Machine(tmp_path)
+    populate(machine)
+    older = machine.snapshot()  # b, its override and the rule r-ip, before their deletion
+    delete_some(machine)
+
+    machine.at(4_000).backups.restore(older, MERGE)
+    assert [p.id for p in machine.profiles().profiles] == ["a", "c"]  # the deletion is later
+
+    machine = reopened(machine, 2_001 + TOMBSTONE_DAYS * DAY)
+    machine.backups.restore(older, MERGE)
+
+    assert {p.id for p in machine.profiles().profiles} == {"a", "b", "c"}
+    assert machine.store.read_override("b") == "dns: {enable: true}\n"
+    (plan,) = machine.routing.plans()
+    assert [r.id for r in plan.rules] == ["r-tg", "r-ip"]
+    # The global override's tombstone is younger, so its deletion still wins.
+    assert machine.store.read_override(None) == ""

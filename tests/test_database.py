@@ -176,6 +176,29 @@ def test_a_transaction_is_not_seen_half_done(tmp_path: Path) -> None:
     database.close()
 
 
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "INSERT INTO profiles (id, name, kind, in_pool, position, created_at, updated_at) "
+        "VALUES ('a', 'A', 'subscription', 2, 0, 0, 0)",
+        "INSERT INTO plan_groups (plan_id, id, kind, type, hidden, position, updated_at) "
+        "VALUES ('p', 'g', 'custom', 'select', -1, 0, 0)",
+        "INSERT INTO plan_rules (id, plan_id, position, enabled, kind, content, target, "
+        "updated_at) VALUES ('r', 'p', 0, 2, 'ip', '{}', 'DIRECT', 0)",
+    ],
+)
+def test_flags_are_zero_or_one(tmp_path: Path, statement: str) -> None:
+    database = Database(tmp_path / DATABASE_NAME)
+    with database.transaction() as connection:
+        connection.execute(
+            "INSERT INTO plans (id, name, fallback, position, created_at, updated_at) "
+            "VALUES ('p', 'P', 'DIRECT', 0, 0, 0)"
+        )
+    with pytest.raises(sqlite3.IntegrityError, match="CHECK"), database.transaction() as c:
+        c.execute(statement)
+    database.close()
+
+
 def test_sync_rows_touches_only_what_changed(tmp_path: Path) -> None:
     database = Database(tmp_path / DATABASE_NAME)
     columns = ("id", "name", "fallback", "position")

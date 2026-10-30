@@ -2,7 +2,8 @@
 
 The first UI holds a lock file in the user's data directory and listens on a local server.
 A later one finds the lock taken, asks the first to show its window, or hands it the
-install link it was started with (docs/release.md §7), and exits. The lock
+install link it was started with (docs/release.md §7), and exits. ``--quit`` asks the
+first to quit instead and waits until it has let go of the lock. The lock
 decides, not the server: QLockFile notices a lock left by a process that died, and two UIs
 started at once cannot both take it. The server's name is derived from the user and the
 lock's directory, so other users and other data directories (the preview) have their own.
@@ -16,15 +17,16 @@ import hashlib
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QLockFile, QObject, QThread, Signal
+from PySide6.QtCore import QDeadlineTimer, QLockFile, QObject, QThread, Signal
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 
 from solaris.product import PRODUCT_ID
 
 LOCK_NAME = "ui.lock"
-# One line per connection: show the window, or open a link (which shows it too).
+# One line per connection: show the window, open a link (which shows it too), or quit.
 ACTIVATE = b"activate\n"
 OPEN = b"open "
+QUIT = b"quit\n"
 MAX_MESSAGE = 16 * 1024  # a line longer than this is dropped
 CONNECT_TIMEOUT_MS = 500
 # The first UI takes the lock before it listens; give it this long to start listening.
@@ -33,6 +35,9 @@ CONNECT_ATTEMPTS = 6
 # and closing the socket before then drops the message. The first UI may still be loading
 # its window, so wait well past a connection attempt.
 DELIVER_TIMEOUT_MS = 5000
+# How long ``ask_to_quit`` waits by default for the first UI to go, and how often it looks.
+QUIT_TIMEOUT_MS = 10_000
+QUIT_POLL_MS = 100
 
 
 def server_name(directory: Path, user: str | None = None) -> str:
@@ -57,9 +62,58 @@ def message(link: str | None) -> bytes:
     return OPEN + link.replace("\n", "").replace("\r", "").encode() + b"\n"
 
 
+def ask_to_quit(directory: Path, timeout_ms: int = QUIT_TIMEOUT_MS) -> bool:
+    """Ask the UI running for this user and ``directory`` to quit, and wait until it has
+    let go of its lock. True when no UI runs any more, False when one still does after
+    ``timeout_ms``. Creates nothing when none runs."""
+    path = directory / LOCK_NAME
+    lock = QLockFile(str(path))
+    lock.setStaleLockTime(0)
+    deadline = QDeadlineTimer(timeout_ms)
+    asked = False
+    while not _released(lock, path):
+        if deadline.hasExpired():
+            return False
+        if asked:
+            QThread.msleep(QUIT_POLL_MS)
+        else:
+            # On Windows the write waits for the first UI to read it, which it does only
+            # once it is idle; give it all the time there is.
+            remaining = max(deadline.remainingTime(), 0)
+            asked = _send(server_name(directory), QUIT, CONNECT_ATTEMPTS, remaining)
+    return True
+
+
+def _released(lock: QLockFile, path: Path) -> bool:
+    """Whether no UI holds the lock; takes it for a moment to find out, as a lock whose
+    process is gone only counts as free once taken."""
+    if not path.exists():
+        return True
+    if lock.tryLock(0):
+        lock.unlock()
+        return True
+    return False
+
+
+def _send(name: str, line: bytes, attempts: int, deliver_ms: int) -> bool:
+    """Connect to the first UI and write ``line``; True once it was written."""
+    for attempt in range(attempts):
+        if attempt:
+            QThread.msleep(CONNECT_TIMEOUT_MS)
+        socket = QLocalSocket()
+        socket.connectToServer(name)
+        if socket.waitForConnected(CONNECT_TIMEOUT_MS):
+            socket.write(line)
+            written = socket.waitForBytesWritten(deliver_ms)
+            socket.disconnectFromServer()
+            return written
+    return False
+
+
 class SingleInstance(QObject):
     activated = Signal()  # another UI started and asked for the window
     received = Signal(str)  # another UI was started with this install link
+    quit_requested = Signal()  # ``--quit``: leave the UI; the tunnel keeps running
 
     def __init__(self, directory: Path, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -114,19 +168,12 @@ class SingleInstance(QObject):
         line = bytes(socket.readLine(MAX_MESSAGE + 1).data())
         if line == ACTIVATE:
             self.activated.emit()
+        elif line == QUIT:
+            self.quit_requested.emit()
         elif line.startswith(OPEN) and line.endswith(b"\n") and len(line) <= MAX_MESSAGE:
             self.received.emit(line[len(OPEN) : -1].decode("utf-8", "replace"))
         socket.disconnectFromServer()
 
     def _notify(self, line: bytes) -> None:
         _allow_foreground()
-        for attempt in range(CONNECT_ATTEMPTS):
-            if attempt:
-                QThread.msleep(CONNECT_TIMEOUT_MS)
-            socket = QLocalSocket()
-            socket.connectToServer(self.name)
-            if socket.waitForConnected(CONNECT_TIMEOUT_MS):
-                socket.write(line)
-                socket.waitForBytesWritten(DELIVER_TIMEOUT_MS)
-                socket.disconnectFromServer()
-                return
+        _send(self.name, line, CONNECT_ATTEMPTS, DELIVER_TIMEOUT_MS)

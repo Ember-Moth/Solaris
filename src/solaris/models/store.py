@@ -27,6 +27,7 @@ from pathlib import Path
 from solaris.models.database import (
     DATABASE_NAME,
     Database,
+    purge_tombstones,
     sync_rows,
 )
 from solaris.models.profiles import Profile, ProfileError, ProfileList, Usage
@@ -48,9 +49,12 @@ def default_data_dir() -> Path:
 
 
 def open_database(directory: Path, *, clock: Callable[[], float] = time.time) -> Database:
-    """The database in ``directory``, migrated."""
+    """The database in ``directory``, migrated, without old tombstones."""
     database = Database(directory / DATABASE_NAME, clock=clock)
     with database.transaction() as connection:
+        purged = purge_tombstones(connection, clock())
+        if purged:
+            _log.info("purged %d deleted records", purged)
         # Configs left by a crash between writing one and saving the list.
         connection.execute(
             "DELETE FROM profile_contents WHERE profile_id NOT IN "

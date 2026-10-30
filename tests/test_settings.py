@@ -27,7 +27,7 @@ def database(tmp_path: Path) -> Database:
 
 
 def rows(directory: Path) -> dict[str, tuple[object, ...]]:
-    query = "SELECT key, value, scope, updated_at FROM settings"
+    query = "SELECT key, value, updated_at FROM settings"
     return {row[0]: (json.loads(str(row[1])), *row[2:]) for row in stored(directory, query)}
 
 
@@ -67,12 +67,12 @@ def test_update_writes_and_notifies(tmp_path: Path, database: Database) -> None:
     assert seen == [(Settings(), changed)]
     assert DatabaseSettingsStore(database).current == changed
     assert store.current.run_options() == RunOptions(True, False, 7897, True)
-    # One row per setting changed, with the scope it has (storage.md §2).
+    # One row per setting changed (storage.md §2).
     assert rows(tmp_path) == {
-        "language": ("en", SYNCED, 1_000.0),
-        "tun": (True, LOCAL, 1_000.0),
-        "mixed_port": (7897, LOCAL, 1_000.0),
-        "allow_lan": (True, LOCAL, 1_000.0),
+        "language": ("en", 1_000.0),
+        "tun": (True, 1_000.0),
+        "mixed_port": (7897, 1_000.0),
+        "allow_lan": (True, 1_000.0),
     }
 
     store.update(language="en")  # no change, no write, nobody told
@@ -80,7 +80,7 @@ def test_update_writes_and_notifies(tmp_path: Path, database: Database) -> None:
     stop()
     store.update(language="zh")
     assert len(seen) == 1
-    assert rows(tmp_path)["language"] == ("zh", SYNCED, 1_000.0)
+    assert rows(tmp_path)["language"] == ("zh", 1_000.0)
 
 
 def test_run_options_carry_the_stack_and_all_networks(database: Database) -> None:
@@ -135,7 +135,7 @@ def test_failed_write_keeps_the_settings(tmp_path: Path, database: Database) -> 
 def test_unacceptable_values_take_defaults(database: Database) -> None:
     with database.transaction() as connection:
         connection.executemany(
-            "INSERT INTO settings (key, value, scope, updated_at) VALUES (?, ?, 'synced', 0)",
+            "INSERT INTO settings (key, value, updated_at) VALUES (?, ?, 0)",
             [
                 ("language", '"zh"'),
                 ("appearance", '"neon"'),
