@@ -17,13 +17,9 @@ from PySide6.QtCore import QObject, Qt, QUrl
 from pytestqt.qtbot import QtBot
 
 from solaris.host.base import (
-    Composition,
-    CompositionSource,
     EasyTierSettings,
-    MeshNetwork,
     MeshStatus,
     TailscaleSettings,
-    ZeroTierSettings,
 )
 from solaris.models import plans
 from solaris.models.routing import PlanRule
@@ -32,13 +28,12 @@ from solaris.viewmodels import routing_mesh
 from solaris.viewmodels.composition import ViewModels, compose
 from solaris.viewmodels.routing import RoutingViewModel
 from solaris.viewmodels.routing_mesh import MeshNetworks
-from tests.support import simulated
 from tests.support.credentials import MemoryCredentials
-from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
+from tests.support.simulated import MESH_LOGIN, SimulatedFetcher, SimulatedHost, seed_profiles
 from tests.support.window import Loaded, texts
 
 NOW = datetime(2026, 10, 30, 12).timestamp()
-LOGIN = "https://login.tailscale.com/a/simulated"
+LOGIN = MESH_LOGIN
 
 
 def prop(view_model: QObject, name: str) -> Any:
@@ -127,10 +122,13 @@ def test_a_tailscale_network_logs_in_through_the_browser(
     assert (network.name, network.settings) == ("家里", TailscaleSettings(hostname="laptop"))
     assert credentials.secrets == {}
     # The core has a login URL as soon as the network starts; the browser opens it once.
+    host.mesh_states["家里"] = MeshStatus(
+        "家里", f"mesh:{network.id}", "Tailscale", "needs_login", login_url=LOGIN
+    )
     qtbot.waitUntil(lambda: opened == [LOGIN])
     assert (row(networks, "家里").status, row(networks, "家里").tone) == ("需要登录", "warning")
     # Logged in: online with the device's address.
-    host.mesh_logins.append("家里")
+    del host.mesh_states["家里"]
     qtbot.waitUntil(lambda: row(networks, "家里").status == "在线", timeout=5000)
     assert row(networks, "家里").caption == "Tailscale · 100.101.102.3 · 4 台设备"
     assert opened == [LOGIN]
@@ -252,7 +250,11 @@ def test_zerotier_waits_for_its_admin_then_offers_its_range(
     networks = networks_of(routing)
     add(qtbot, networks, "zerotier", name="公司", network="8056C2E21C000001", via="auto")
     network_id = row(networks, "公司").id
-    qtbot.waitUntil(lambda: row(networks, "公司").status == "等待授权")
+    # The controller has not authorized the node yet.
+    host.mesh_states["公司"] = MeshStatus(
+        "公司", f"mesh:{network_id}", "ZeroTier", "waiting", node_id="a1b2c3d4e5"
+    )
+    qtbot.waitUntil(lambda: row(networks, "公司").status == "等待授权", timeout=5000)
     assert row(networks, "公司").caption == "ZeroTier · 本机 ID a1b2c3d4e5 · 经由 自动选择"
     assert host.effective is not None
     outbound = next(p for p in host.effective["proxies"] if p["name"] == "公司")
@@ -424,45 +426,3 @@ def test_the_section_and_its_dialog_load_without_qml_warnings(
         networks.openEdit(row(networks, "公司").id)
     loaded.key(qtbot, Qt.Key.Key_Escape)
     assert loaded.warnings == []
-
-
-def test_the_simulation_names_networks_as_the_core_does() -> None:
-    """As compose's TestNetworkNamesComeBeforeTheNodes: the groups, the exits and the regions
-    take their names first; a network that clashes gets its type, then a number."""
-    plan = {
-        "version": 1,
-        "groups": [
-            {"id": "g1", "kind": "custom", "name": "公司"},
-            {"id": "g2", "kind": "custom", "name": "工作"},
-        ],
-    }
-
-    def tailscale(network_id: str, name: str) -> MeshNetwork:
-        return MeshNetwork(network_id, name, TailscaleSettings())
-
-    composition = Composition(
-        (CompositionSource("a", "机场 A", "proxies:\n  - {name: 香港 01, type: direct}\n"),),
-        json.dumps(plan),
-        mesh=(
-            MeshNetwork("zt1", "公司", ZeroTierSettings("8056c2e21c000001")),
-            tailscale("ts1", "家里"),
-            tailscale("ts2", "家里"),
-            tailscale("ts3", "香港 01"),
-            tailscale("ts4", "WARP 出口"),
-            tailscale("ts5", "🇭🇰 香港"),
-            tailscale("ts6", "工作"),
-            tailscale("ts7", "工作"),
-        ),
-    )
-    _, report = simulated.compose(composition)
-    assert {m.id: m.name for m in report.mesh} == {
-        "mesh:zt1": "公司 · ZeroTier",  # a group has the name
-        "mesh:ts1": "家里",
-        "mesh:ts2": "家里 · Tailscale",  # an earlier network has it
-        "mesh:ts3": "香港 01",  # the node gives way
-        "mesh:ts4": "WARP 出口 · Tailscale",
-        "mesh:ts5": "🇭🇰 香港 · Tailscale",  # a region's, nodes or not
-        "mesh:ts6": "工作 · Tailscale",
-        "mesh:ts7": "工作 · Tailscale 2",
-    }
-    assert [n.name for n in report.nodes] == ["香港 01 · 机场 A"]

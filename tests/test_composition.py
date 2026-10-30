@@ -1,8 +1,8 @@
 """The host's side of "my plan" routing (docs/routing.md §8): compositions, InspectSource and
-ListGeoCategories over the protocol, and the simulated host's stand-in for them."""
+ListGeoCategories over the protocol. The simulated host's stand-ins for the core's answers are
+checked against the core in test_simulated.py."""
 
 import asyncio
-import base64
 import json
 from dataclasses import replace
 
@@ -34,7 +34,6 @@ from tests.support.simulated import (
     SAMPLE_CONFIG,
     VPNGATE_SERVERS,
     SimulatedHost,
-    check_config,
 )
 from tests.test_control_client import serve
 
@@ -268,116 +267,8 @@ def test_bundled_categories_hold_what_the_default_template_names() -> None:
     assert len(bundled.geosite.sha256) == len(bundled.geoip.sha256) == 64
 
 
-def test_simulated_host_composes() -> None:
-    host = SimulatedHost(development=True)
-
-    async def scenario() -> tuple[CompositionReport | None, CompositionReport | None]:
-        validated = await host.validate(TunnelConfig(composition=COMPOSITION))
-        await host.stop()
-        return validated, await host.start(TunnelConfig(composition=COMPOSITION))
-
-    validated, started = asyncio.run(scenario())
-    assert validated == started == host.report
-    assert validated is not None
-    assert [g.id for g in validated.groups] == [
-        "proxy",
-        "auto",
-        "region:HK",
-        "region:JP",
-        "region:SG",
-        "region:US",
-    ]
-    assert [(r.type, r.payload, r.proxy, r.entry_id) for r in validated.rules] == [
-        ("GEOSITE", "telegram", "节点选择", "tg"),
-        ("MATCH", "", "🇯🇵 日本", "fallback"),
-    ]
-    assert validated.warnings == (CompositionWarning("tg", "region_empty", "region:KR"),)
-    assert len(validated.nodes) == 9
-    assert host.effective is not None
-    assert host.effective["rules"] == ["GEOSITE,telegram,节点选择", "MATCH,🇯🇵 日本"]
-
-    broken = Composition((), json.dumps({"version": 2}))
-    with pytest.raises(HostError) as raised:
-        asyncio.run(host.validate(TunnelConfig(composition=broken)))
-    assert raised.value.code == "invalid_config"
-    assert raised.value.message.startswith("plan: plan version 2 is not supported")
-
-
-MESH_SOURCE = """proxies:
-  - {name: 家里, type: tailscale, auth-key: tskey-sample}
-  - {name: 香港 01, type: easytier, network-name: home}
-"""
-
-
-def test_simulated_host_keeps_mesh_outbounds_apart_and_rejects_without_exits() -> None:
-    """docs/mesh.md §3 and docs/exits.md §3.3, as the core does them."""
-    plan = {
-        "version": 1,
-        "rules": [
-            {
-                "id": "ts",
-                "items": [{"type": "DOMAIN-SUFFIX", "value": "ts.net"}],
-                "target": "mesh:home/家里",
-            },
-            {
-                "id": "gone",
-                "items": [{"type": "DOMAIN", "value": "nas.lan"}],
-                "target": "mesh:home/旧的",
-            },
-            {
-                "id": "ai",
-                "items": [{"type": "GEOSITE", "value": "openai"}],
-                "target": "egress:warp",
-            },
-        ],
-        "fallback": "proxy",
-        "egress": {"warp": {"via": "region:KR"}},
-    }
-    sources = (*COMPOSITION.sources, CompositionSource("home", "家", MESH_SOURCE))
-    composition = Composition(sources, json.dumps(plan))
+def test_simulated_host_lists_categories() -> None:
     host = SimulatedHost()
-    report = asyncio.run(host.validate(TunnelConfig(composition=composition)))
-    assert report is not None
-    assert report.mesh == (
-        MeshOutbound("mesh:home/家里", "家里", "Tailscale", "home"),
-        # The name a pool node holds already gets the profile's.
-        MeshOutbound("mesh:home/香港 01", "香港 01 · 家", "EasyTier", "home"),
-    )
-    assert len(report.nodes) == 9
-    assert [(r.payload, r.proxy) for r in report.rules[:3]] == [
-        ("ts.net", "家里"),
-        ("nas.lan", "REJECT"),
-        ("openai", "REJECT"),
-    ]
-    assert report.warnings == (
-        CompositionWarning("gone", "mesh_missing", "mesh:home/旧的"),
-        CompositionWarning("ai", "egress_unavailable", "egress:warp"),
-    )
-    # With an account the exit goes out through its via group, or 节点选择 without nodes.
-    composition = replace(composition, egress=Egress(warp=WARP))
-    report = asyncio.run(host.validate(TunnelConfig(composition=composition)))
-    assert report is not None
-    assert report.rules[2].proxy == "WARP 出口"
-    assert report.warnings[-1] == CompositionWarning("egress:warp", "via_empty", "region:KR")
-    document = check_config(TunnelConfig(composition=composition))
-    warp = next(p for p in document["proxies"] if p["name"] == "WARP 出口")
-    assert (warp["type"], warp["dialer-proxy"]) == ("wireguard", "节点选择")
-    inspection = asyncio.run(host.inspect_source(MESH_SOURCE))
-    assert [(n.name, n.mesh) for n in inspection.nodes] == [("家里", True), ("香港 01", True)]
-
-
-def test_simulated_host_inspects_and_lists_categories() -> None:
-    host = SimulatedHost()
-    inspection = asyncio.run(host.inspect_source(SAMPLE_CONFIG, "香港"))
-    assert (inspection.has_rules, inspection.group_count, inspection.rule_count) == (True, 1, 1)
-    assert inspection.nodes[0] == SourceNode("香港 01", "Vless", "HK", True)
-    assert inspection.nodes[3] == SourceNode("日本 01", "Vless", "JP", False)
-
-    links = "trojan://x@t.example:443#%F0%9F%87%B8%F0%9F%87%AC%20SG%2001\n"
-    shared = asyncio.run(host.inspect_source(base64.b64encode(links.encode()).decode()))
-    assert shared.nodes == (SourceNode("🇸🇬 SG 01", "Trojan", "SG", False),)
-    assert not shared.has_rules
-
     categories = asyncio.run(host.list_geo_categories())
     assert not categories.geosite.bundled
     assert "telegram" in categories.geosite.names
@@ -440,24 +331,3 @@ def test_service_host_carries_the_vpngate_servers() -> None:
         "203.0.113.11",
         ["AES-128-CBC"],
     )
-
-
-def test_simulated_list_vpngate_goes_through_any_outbound() -> None:
-    """As in the core, the list may go out through any outbound of the running configuration:
-    a group, a node or a built-in one; nothing else."""
-    host = SimulatedHost()
-
-    async def scenario() -> list[str | None]:
-        report = await host.reload(TunnelConfig(composition=COMPOSITION))
-        assert report is not None
-        outcomes: list[str | None] = []
-        for via in (report.groups[0].name, report.nodes[0].name, "DIRECT", "没有这个"):
-            try:
-                await host.list_vpngate(via)
-                outcomes.append(None)
-            except HostError as error:
-                outcomes.append(error.code)
-        return outcomes
-
-    assert asyncio.run(scenario()) == [None, None, None, "invalid_request"]
-    assert len(host.vpngate_calls) == 3

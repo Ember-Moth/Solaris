@@ -19,6 +19,7 @@ import pytest
 from scripts.dev import DevService
 from scripts.fetch_geodata import GEOIP, GEOSITE, seed
 from solaris.host.base import (
+    EXPORT_GENERATED,
     Composition,
     CompositionSource,
     CompositionWarning,
@@ -268,3 +269,23 @@ def test_core_judges_categories_by_its_data(service: DevService) -> None:
     code, message = on_service(service, verdicts)
     assert code == "invalid_config"
     assert "no-such-category" in message
+
+
+def test_the_generated_configuration_leaves_out_node_secrets(service: DevService) -> None:
+    """ExportPlan's whole configuration shows each node by name, type, server and port only
+    (docs/routing.md §8.2); the routing page's 查看生成的配置 shows it as it comes."""
+    seed(service.home)
+    subscription = (
+        "proxies:\n"
+        "  - {name: 香港 01, type: ss, server: hk.example.net, port: 443,"
+        " cipher: aes-128-gcm, password: hunter2}\n"
+    )
+    config = TunnelConfig(
+        composition=Composition(
+            (CompositionSource("sub", "测试机场", subscription),), json.dumps({"version": 1})
+        )
+    )
+    generated = on_service(service, lambda host: host.export_plan(config, EXPORT_GENERATED))
+    assert "hunter2" not in generated
+    assert "aes-128-gcm" not in generated
+    assert "server: hk.example.net" in generated
