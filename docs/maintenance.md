@@ -45,11 +45,12 @@ Windows runner 上测。服务的属主逻辑（认领、换属主重启、注�
 - iCloud 备份：CloudKit 从没真正运行过，Production 的 schema 也还没部署（2.3 节）。
 
 两个平台都没做过的：真实订阅（e2e 的节点是本机起的代理）、WARP 与 VPN Gate 出口和组网（只对假服务器、构造的出站和
-模拟宿主测过）、"检查更新"对真实 Release（只对本机的假服务器测过）。
+模拟宿主测过）、"检查更新"对真实 Release（只对本机的假服务器测过）、Google Drive 备份（只对本机的假 OAuth 和 Drive
+服务器测过；Google Cloud 的项目和 OAuth 客户端还没建，2.8 节）。
 
 ### 1.4 没有实现的
 
-- Tor 出口（D23，[exits.md](exits.md) 第 4 节）和 Google Drive 备份（[storage.md](storage.md) 第 4 节）：只有设计；
+- Tor 出口（D23，[exits.md](exits.md) 第 4 节）：只有设计；
 - Windows 代码签名（D29）：签名方案定下后接上 `product.WindowsSigner`、`SignedRelease` 和界面的
   `signature.WINDOWS_SIGNER`（[release.md](release.md) 第 3 节）；
 - 管理员接管其他用户的隧道（D5b）；
@@ -68,6 +69,7 @@ Windows runner 上测。服务的属主逻辑（认领、换属主重启、注�
 | 一台全新的 Windows 10 / 11 x64 虚拟机 | 2.1、2.4 |
 | 一台单独的 Apple Silicon 测试 Mac 或 macOS 虚拟机，装 macOS 26 | 2.2、2.3、2.4 |
 | 一个测试用的 Apple 账户 | 2.3 |
+| 一个测试用的 Google 账户，以及 Google Cloud 里的项目和 OAuth 客户端 | 2.8 |
 | 一个只有 TCP 的真实节点（另有一个支持 UDP 的更好） | 2.5、2.6 |
 | 自己的 Tailscale、ZeroTier 或 EasyTier 网络 | 2.7 |
 
@@ -129,8 +131,7 @@ Development 里建好再部署：
 
 然后用签名、公证过的 app，在测试 Mac 上登录测试用的 Apple 账户：
 
-1. 设置页"备份与同步"有 iCloud 一行，写"未开启"。打开开关，确认框写明不加密、含订阅链接和配置原文；"开启"后
-   写"上次备份：刚刚 · 成功"。CloudKit Console 的 Production → Records（用同一个 Apple 账户登录，Private
+1. 设置页"备份与同步"有 iCloud 一行，写"未开启"。打开开关后不弹确认框（D30），写"上次备份：刚刚 · 成功"。CloudKit Console 的 Production → Records（用同一个 Apple 账户登录，Private
    Database，`Snapshot`）里有一条记录。
 2. 改一个设置或导入一份订阅，约 35 秒后多一条记录；什么都不改时不再多。"立即备份"每次都多一条；超过 10 条后
    最旧的被删掉。
@@ -213,6 +214,52 @@ exits.md 第 9 节的待实测项。
 
 同时记下 mesh.md 第 8 节的待实测项。
 
+### 2.8 Google Drive 备份
+
+设计见 [storage.md](storage.md) 第 4 节。先在 Google Cloud 建 OAuth 客户端（一次）：
+
+1. 用打算作为应用所有者的 Google 账户打开 [Google Cloud Console](https://console.cloud.google.com)，新建一个项目
+   （如 `Solaris`）。
+2. "API 和服务" → "库"，搜索 Google Drive API，启用。
+3. "Google Auth Platform"（旧称"OAuth 同意屏幕"）→ 开始配置：
+   - 品牌：应用名称 `Solaris`，用户支持邮箱、开发者联系邮箱；
+   - 受众群体：用户类型选"外部"（External）；
+   - 数据访问：添加范围 `https://www.googleapis.com/auth/drive.appdata`，它在"非敏感范围"一栏，不要加别的范围；
+   - 受众群体 → 发布状态：点"发布应用"，改成"正式版"（In production）。测试状态下只有列出的测试用户能登录，他们
+     的授权 7 天后失效，自动备份会随之停下。
+4. "客户端" → 创建客户端，应用类型选"桌面应用"（Desktop app），名称如 `Solaris desktop`。记下客户端 ID
+   （`….apps.googleusercontent.com`）和客户端密钥（`GOCSPX-…`）。桌面应用不用登记重定向 URI，Google 接受
+   `http://127.0.0.1` 上的任意端口。
+5. GitHub 仓库 → Settings → Environments → `release` → Environment secrets，添加两个机密：
+   `SOLARIS_GOOGLE_CLIENT_ID`（客户端 ID）、`SOLARIS_GOOGLE_CLIENT_SECRET`（客户端密钥）。两个都不进仓库。
+
+审核：`drive.appdata` 是非敏感范围，发布为正式版不需要 Google 的应用审核，也没有用户数上限。不做品牌审核时，Google
+的授权页不显示应用的名称和图标；要显示，需要经过验证的自有域名上的主页和隐私政策，在"品牌"里填好后提交品牌审核。
+
+然后用一个测试用的 Google 账户，在测试机上用发布工作流的安装包验收；也可以在开发机上从源码试：设好两个环境变量
+后运行 `uv run python scripts/preview.py`（模拟宿主，临时数据目录，不动本机网络），令牌存进本机真实的钥匙串，试完
+"退出登录"即删除。
+
+1. 设置页"备份与同步"有 Google Drive 一行，写"未登录"。不带这两个机密构建的安装包没有这一行。
+2. "登录…"在浏览器里打开 Google 的授权页，只请求"查看、创建和删除其自身在 Google 云端硬盘中的配置数据"一项；
+   允许后浏览器显示"已登录 Google Drive，可以关闭这个页面，回到 Solaris。"，这一行写"<邮箱> · 上次备份：刚刚 · 成功"。
+   在授权页拒绝时写"无法登录：没有获得授权"；关掉标签页后点"取消"，回到"未登录"。
+3. 令牌只在系统凭据库里：macOS"钥匙串访问"里有服务 `Solaris`、账户 `google-drive` 的一项，Windows 凭据管理器里
+   有对应的普通凭据；`solaris.db`、导出的备份文件和诊断信息 zip 里都搜不到它。
+4. drive.google.com → 设置 → 管理应用，Solaris 有"隐藏的应用数据"；云端硬盘里看不到快照文件。
+5. 改一个设置，约 35 秒后多一份快照（"从云端恢复…"列表多一行）；什么都不改时不再多。"立即备份"每次都多一份；
+   超过 10 份后最旧的被删掉。
+6. 另一台机器（或换一个数据目录）用同一个账户登录：不上传空数据；"从云端恢复…"列出快照，右侧写 Google Drive，
+   恢复后订阅、方案、覆写、设置都回来。macOS 上同时开着 iCloud 时，两个提供方各自上传，列表里两者都有。
+7. "更多"→"删除云端备份"后列表为空，这一行写"<邮箱> · 尚未备份"。
+8. 断网后"立即备份"：写"上次备份失败：无法连接，稍后会再试"；联网后一小时内（或下次启动）自动补上。设了系统代理
+   时，请求经代理发出（看代理的日志）。
+9. "更多"→"退出登录"：这一行写"未登录"，凭据库里的那一项不见了；Google 账户的"第三方应用和服务"里不再有
+   Solaris；云端的快照还在（重新登录后能列出）。第 6 项的另一台机器在下次上传时写"<邮箱> · 需要重新登录"。
+10. 在 Google 账户的"第三方应用和服务"里移除 Solaris：下次上传时这一行写"<邮箱> · 需要重新登录"，之后不再尝试；
+    重新登录后立即备份一次。
+11. 账户的存储空间满时，失败原因是"储存空间已满"。
+
 ## 3. 已知问题
 
 - **不稳定的测试**：TUN 测试在 gVisor、mixed 栈上偶尔报"mihomo carried no traffic"；Windows runner 保留了一段端口
@@ -235,7 +282,8 @@ exits.md 第 9 节的待实测项。
    号由 `scripts/build_apple.py` 从 `pyproject.toml` 读取。合并到 main，CI 全绿。
 2. **试运行**：在 Actions 里手动运行 Release 工作流（`workflow_dispatch`，选 main）。它在 `release` Environment
    里，审批后构建、签名、公证两个安装包，存为 workflow artifact，不建 Release。下载 artifact，在测试 Mac 和
-   Windows 虚拟机上装一遍。
+   Windows 虚拟机上装一遍。Environment 里没有 Google OAuth 客户端的两个机密（2.8 节）时，两个构建 job 各给一条
+   警告，安装包里没有 Google Drive 备份。
 3. **打标签**：`v<版本>`，必须与 `pyproject.toml` 的版本一致。
 
    ```bash
@@ -278,7 +326,7 @@ SHA-256。界面从不静默安装，用户确认后才打开安装包。
 - **视觉**：先改 [DESIGN.md](../DESIGN.md)，再运行 `scripts/gen_theme.py` 生成 `Theme.qml`。
 - **文案**：中文是源语言；改动文案后运行 `scripts/gen_i18n.py`，并在 `src/solaris/translations/en.ts` 里补齐英文。
   文案保持中立、简短（DESIGN.md 的 Typography 一节）。
-- **决策**：新的设计决策接着编号（D30 起）记进 [decisions.md](decisions.md)；已有的编号不变，代码注释引用它们。
+- **决策**：新的设计决策接着编号（D31 起）记进 [decisions.md](decisions.md)；已有的编号不变，代码注释引用它们。
 - 每个改动先开 PR，CI 全绿再合并；main 变红时先修。
 
 ### 5.3 表结构与存下的格式

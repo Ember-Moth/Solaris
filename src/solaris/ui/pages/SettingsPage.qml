@@ -388,6 +388,7 @@ ScrollView {
 
                                 AccessibleText {
                                     Layout.fillWidth: true
+                                    visible: text !== ""
                                     text: page.backup.exportStatus
                                     role: Theme.type.caption
                                     color: page.backup.exportFailed ? Theme.danger : Theme.textMuted
@@ -397,14 +398,15 @@ ScrollView {
                             }
 
                             AppButton {
-                                id: exportButton
-
                                 variant: "compact"
                                 text: qsTr("导出…")
                                 enabled: !page.backup.busy
                                 Accessible.name: qsTr("导出到文件")
                                 Accessible.description: page.backup.exportStatus
-                                onClicked: exportDialog.show(exportButton)
+                                onClicked: {
+                                    exportFileDialog.selectedFile = exportFileDialog.currentFolder + "/" + page.backup.exportName
+                                    exportFileDialog.open()
+                                }
                             }
                         }
 
@@ -485,19 +487,65 @@ ScrollView {
                             }
 
                             AppSwitch {
-                                id: icloudSwitch
-
                                 visible: page.backup.icloudSwitchShown
                                 value: page.backup.icloudOn
                                 enabled: page.backup.icloudSwitchEnabled
                                 Accessible.name: "iCloud"
                                 Accessible.description: page.backup.icloudStatus
-                                onRequested: on => {
-                                    if (on)
-                                        enableICloudDialog.show(icloudSwitch)
-                                    else
-                                        page.backup.setICloudEnabled(false)
+                                onRequested: on => page.backup.setICloudEnabled(on)
+                            }
+                        }
+
+                        // Where the build has a Google OAuth client (docs/storage.md §4).
+                        GroupRow {
+                            visible: page.backup.googleShown
+                            verticalPadding: Theme.space2
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+
+                                UiText {
+                                    Layout.fillWidth: true
+                                    text: "Google Drive"
                                 }
+
+                                AccessibleText {
+                                    Layout.fillWidth: true
+                                    text: page.backup.googleStatus
+                                    role: Theme.type.caption
+                                    color: page.backup.googleWarning ? Theme.warning : Theme.textMuted
+                                    wrapMode: Text.Wrap
+                                    Accessible.role: Accessible.StatusBar
+                                }
+                            }
+
+                            AppButton {
+                                visible: page.backup.googleSigningIn
+                                variant: "compact"
+                                text: qsTr("取消")
+                                Accessible.name: qsTr("取消登录")
+                                onClicked: page.backup.cancelGoogleSignIn()
+                            }
+
+                            AppButton {
+                                visible: page.backup.googleSignInShown
+                                variant: "compact"
+                                text: qsTr("登录…")
+                                enabled: page.backup.googleSignInEnabled
+                                Accessible.name: qsTr("登录 Google Drive")
+                                Accessible.description: page.backup.googleStatus
+                                onClicked: page.backup.signInGoogle()
+                            }
+
+                            IconButton {
+                                id: googleMoreButton
+
+                                visible: page.backup.googleMenuShown
+                                enabled: !page.backup.busy
+                                iconName: "more"
+                                accessibleName: qsTr("Google Drive 备份的更多操作")
+                                onClicked: googleMenu.openBelow(googleMoreButton)
                             }
                         }
                     }
@@ -850,18 +898,6 @@ ScrollView {
         onAccepted: page.about.exportDiagnostics(selectedFile.toString())
     }
 
-    ConfirmDialog {
-        id: exportDialog
-
-        title: qsTr("导出备份文件？")
-        message: qsTr("备份文件不加密，含订阅链接和配置原文，请妥善保管。")
-        confirmText: qsTr("继续")
-        onAccepted: {
-            exportFileDialog.selectedFile = exportFileDialog.currentFolder + "/" + page.backup.exportName
-            exportFileDialog.open()
-        }
-    }
-
     FileDialog {
         id: exportFileDialog
 
@@ -907,32 +943,51 @@ ScrollView {
         }
     }
 
-    ConfirmDialog {
-        id: enableICloudDialog
-
-        title: qsTr("开启 iCloud 备份？")
-        message: qsTr("备份不加密，其中有订阅链接和配置原文，能登录这个 Apple 账户的人都能看到。")
-        confirmText: qsTr("开启")
-        onAccepted: page.backup.setICloudEnabled(true)
-    }
-
     AppMenu {
         id: icloudMenu
 
         AppMenuItem {
             text: qsTr("删除云端备份")
             destructive: true
-            onTriggered: deleteICloudDialog.showFor(icloudMenu.trigger, icloudMenu.triggerFocusReason)
+            onTriggered: deleteCloudDialog.ask(icloudMenu, "icloud", "iCloud")
+        }
+    }
+
+    AppMenu {
+        id: googleMenu
+
+        AppMenuItem {
+            text: qsTr("退出登录")
+            onTriggered: page.backup.signOutGoogle()
+        }
+
+        AppMenuSeparator {}
+
+        AppMenuItem {
+            text: qsTr("删除云端备份")
+            destructive: true
+            enabled: page.backup.googleDeleteEnabled
+            onTriggered: deleteCloudDialog.ask(googleMenu, "google_drive", "Google Drive")
         }
     }
 
     ConfirmDialog {
-        id: deleteICloudDialog
+        id: deleteCloudDialog
 
-        title: qsTr("删除 iCloud 中的备份？")
-        message: qsTr("iCloud 中保存的备份会全部删除，无法恢复。本机的数据不受影响。")
+        property string kind
+        property string provider
+
+        // `kind` is the provider's as BackupViewModel names it; `provider` the name shown.
+        function ask(menu: AppMenu, kind: string, provider: string) {
+            deleteCloudDialog.kind = kind
+            deleteCloudDialog.provider = provider
+            deleteCloudDialog.showFor(menu.trigger, menu.triggerFocusReason)
+        }
+
+        title: qsTr("删除 %1 中的备份？").arg(provider)
+        message: qsTr("%1 中保存的备份会全部删除，无法恢复。本机的数据不受影响。").arg(provider)
         confirmText: qsTr("删除")
         destructive: true
-        onAccepted: page.backup.deleteICloudBackups()
+        onAccepted: page.backup.deleteCloudBackups(kind)
     }
 }

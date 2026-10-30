@@ -32,7 +32,10 @@ Release 上只有这四个文件。只做 Windows x64 和 macOS arm64（D2）。
 `release` Environment 里，由它的审批人批准后才开始：先批准两个构建 job，它们成功后再批准创建 Release 的 job。
 
 1. **macOS**、**Windows** 两个 job 构建、签名（Windows 目前不签名）、公证安装包，Windows 的安装包还在 runner 上装一遍、
-   升级、卸载（architecture.md 第 10 节）。产物连同各自的 `.sha256` 存为 workflow artifact。
+   升级、卸载（architecture.md 第 10 节）。产物连同各自的 `.sha256` 存为 workflow artifact。两个 job 都把 Environment
+   的机密 `SOLARIS_GOOGLE_CLIENT_ID`、`SOLARIS_GOOGLE_CLIENT_SECRET` 交给构建脚本，打包进 Google Drive 备份用的 OAuth
+   客户端（storage.md 第 4 节）；没有这两个机密时给出警告，照常构建，安装包里没有 Google Drive 备份。客户端在 Google
+   Cloud 里的设置见 [maintenance.md](maintenance.md) 2.8 节。
 2. **release** job（只对标签运行，`contents: write`）：
    - 确认标签是 `v<pyproject.toml 的版本>`，版本是三段数字（界面只认这种，第 2 节）；
    - 取回两个 artifact，用构建 job 写的 `.sha256` 核对两个安装包；`.sha256` 文件不上传；
@@ -216,6 +219,9 @@ macOS 允许系统扩展和 VPN 配置）、源代码与许可、隐私说明的
   （`--include-distribution-metadata=solaris`），否则 `__version__` 是 `0.0.0`，每个 Release 都会被当成新版本。
 - Windows 的界面由 `scripts/build_windows.py` 用同一个 `package/entry.py` 构建（architecture.md 第 10 节），这些选项
   两个平台共用。
+- Google OAuth 客户端不进仓库：环境变量 `SOLARIS_GOOGLE_CLIENT_ID`、`SOLARIS_GOOGLE_CLIENT_SECRET` 都设了时，两个构建
+  脚本把它写成 `build/<平台>/google_client.json`，以 `--include-data-files` 放到 `solaris/google_client.json`；只设了一个
+  时构建失败（storage.md 第 4 节）。源代码包由 `git archive` 打出，不含这个文件。
 - `solaris:` 和 `clash:` 两个 scheme 由打包注册：macOS 在 `Info.plist` 的 `CFBundleURLTypes` 里，Windows
   由安装器写在 HKLM 的 `Software\Classes\solaris` 和 `Software\Classes\clash` 下，命令是
   `"<安装目录>\Solaris.exe" "%1"`。写在 HKLM 而不是 HKCU：安装器以管理员身份运行，这个管理员不一定是使用者本人。

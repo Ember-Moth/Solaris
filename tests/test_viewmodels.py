@@ -211,8 +211,10 @@ def test_selecting_a_proxy_updates_both_screens(qtbot: QtBot, view_models: ViewM
     assert prop(proxies, "currentSelectable")
     proxies.selectProxy("香港 02")
     qtbot.waitUntil(lambda: prop(overview, "nodeName") == "香港 02")
-    selected = [node.name for node in rows(proxies, "nodes") if node.selected]
-    assert selected == ["香港 02"]
+    # The proxies page refreshes on its own, so it may follow the overview a moment later.
+    qtbot.waitUntil(
+        lambda: [node.name for node in rows(proxies, "nodes") if node.selected] == ["香港 02"]
+    )
 
     proxies.selectGroup("自动选择")
     assert not prop(proxies, "currentSelectable")
