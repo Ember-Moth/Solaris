@@ -12,6 +12,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
+	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/compose"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/controlpb"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/engine"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/frame"
@@ -38,9 +39,9 @@ const (
 type Engine interface {
 	CoreVersion() string
 	State() controlpb.RunState
-	Validate(engine.Profile) error
-	Start(engine.Profile) error
-	Reload(engine.Profile) error
+	Validate(engine.Profile) (*controlpb.CompositionReport, error)
+	Start(engine.Profile) (*controlpb.CompositionReport, error)
+	Reload(engine.Profile) (*controlpb.CompositionReport, error)
 	Stop() error
 	Status() *controlpb.GetStatusResponse
 	SetMode(controlpb.Mode) error
@@ -59,6 +60,8 @@ type Engine interface {
 	Traffic() *controlpb.TrafficSample
 	Connections() *controlpb.ConnectionSnapshot
 	WatchLogs(emit func(*controlpb.LogEntry)) (stop func())
+	InspectSource(source []byte, infoFilter string) (*controlpb.InspectSourceResponse, error)
+	ListGeoCategories() (*controlpb.ListGeoCategoriesResponse, error)
 }
 
 type Options struct {
@@ -148,18 +151,20 @@ func (d *Dispatcher) hostMethod(request *controlpb.Request) *controlpb.Response 
 		// The development socket only admits the user running the server.
 		return empty()
 	case *controlpb.Request_Validate:
+		validate := method.Validate
 		profile := engine.Profile{
-			Config:    []byte(method.Validate.GetConfigYaml()),
-			Overrides: overrides(method.Validate.GetOverrides()),
+			Config:      []byte(validate.GetConfigYaml()),
+			Composition: composition(validate.GetComposition()),
+			Overrides:   overrides(validate.GetOverrides()),
 		}
-		return d.result(d.engine.Validate(profile))
+		return d.applied(d.engine.Validate(profile))
 	case *controlpb.Request_Start:
 		start := method.Start
-		profile, response := d.profile(start.GetConfigYaml(), start.GetOverrides(), start.GetOptions())
+		profile, response := d.profile(start.GetConfigYaml(), start.GetComposition(), start.GetOverrides(), start.GetOptions())
 		if response != nil {
 			return response
 		}
-		return d.result(d.engine.Start(profile))
+		return d.applied(d.engine.Start(profile))
 	case *controlpb.Request_Stop:
 		return d.result(d.engine.Stop())
 	case *controlpb.Request_SetSystemProxy:
@@ -169,11 +174,38 @@ func (d *Dispatcher) hostMethod(request *controlpb.Request) *controlpb.Response 
 }
 
 func (d *Dispatcher) reload(reload *controlpb.ReloadRequest) *controlpb.Response {
-	profile, response := d.profile(reload.GetConfigYaml(), reload.GetOverrides(), reload.GetOptions())
+	profile, response := d.profile(reload.GetConfigYaml(), reload.GetComposition(), reload.GetOverrides(), reload.GetOptions())
 	if response != nil {
 		return response
 	}
-	return d.result(d.engine.Reload(profile))
+	return d.applied(d.engine.Reload(profile))
+}
+
+// applied answers Validate, Start and Reload: a composition's report, or Empty.
+func (d *Dispatcher) applied(report *controlpb.CompositionReport, err error) *controlpb.Response {
+	if err != nil || report == nil {
+		return d.result(err)
+	}
+	return &controlpb.Response{Result: &controlpb.Response_Composition{Composition: report}}
+}
+
+// composition is the request's node pool and plan, or nil when it carries config_yaml.
+func composition(request *controlpb.Composition) *compose.Composition {
+	if request == nil {
+		return nil
+	}
+	out := &compose.Composition{
+		InfoFilter: request.GetInfoFilter(),
+		Plan:       []byte(request.GetPlanJson()),
+	}
+	for _, source := range request.GetSources() {
+		out.Sources = append(out.Sources, compose.Source{
+			ID:   source.GetId(),
+			Name: source.GetName(),
+			YAML: []byte(source.GetYaml()),
+		})
+	}
+	return out
 }
 
 // overrides keeps the order the UI sends: the global override, then the profile's own.
@@ -185,7 +217,7 @@ func overrides(sources []string) [][]byte {
 	return out
 }
 
-func (d *Dispatcher) profile(configYAML string, overrideYAML []string, options *controlpb.RunOptions) (engine.Profile, *controlpb.Response) {
+func (d *Dispatcher) profile(configYAML string, source *controlpb.Composition, overrideYAML []string, options *controlpb.RunOptions) (engine.Profile, *controlpb.Response) {
 	if options.GetMixedPort() > 0xffff {
 		return engine.Profile{}, failure(CodeInvalidRequest, "mixed_port must be a TCP port")
 	}
@@ -195,8 +227,9 @@ func (d *Dispatcher) profile(configYAML string, overrideYAML []string, options *
 		}
 	}
 	return engine.Profile{
-		Config:    []byte(configYAML),
-		Overrides: overrides(overrideYAML),
+		Config:      []byte(configYAML),
+		Composition: composition(source),
+		Overrides:   overrides(overrideYAML),
 		Options: engine.RunOptions{
 			TUN:       options.GetTunEnabled(),
 			MixedPort: uint16(options.GetMixedPort()),
@@ -320,6 +353,19 @@ func (d *Dispatcher) coreMethod(ctx context.Context, caller peer.Identity, reque
 			return subscriptionFailure(err)
 		}
 		return empty()
+	case *controlpb.Request_InspectSource:
+		inspect := method.InspectSource
+		inspection, err := d.engine.InspectSource([]byte(inspect.GetYaml()), inspect.GetInfoFilter())
+		if err != nil {
+			return engineFailure(err)
+		}
+		return &controlpb.Response{Result: &controlpb.Response_InspectSource{InspectSource: inspection}}
+	case *controlpb.Request_ListGeoCategories:
+		categories, err := d.engine.ListGeoCategories()
+		if err != nil {
+			return engineFailure(err)
+		}
+		return &controlpb.Response{Result: &controlpb.Response_ListGeoCategories{ListGeoCategories: categories}}
 	}
 	return failure(CodeNotImplemented, methodName(request)+" is not implemented")
 }

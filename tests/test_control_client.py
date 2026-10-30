@@ -250,6 +250,7 @@ def test_service_host_shares_the_latest_connection_snapshot() -> None:
                             chains=["香港 01", "节点选择"],
                             rule="DomainSuffix",
                             rule_payload="github.com",
+                            rule_entry_id="dev",
                             download_bytes=2048,
                         )
                     ]
@@ -275,6 +276,7 @@ def test_service_host_shares_the_latest_connection_snapshot() -> None:
                 assert connection.chains == ("节点选择", "香港 01")  # outermost group first
                 assert connection.rule == "DomainSuffix,github.com"
                 assert connection.destination == "140.82.112.3:443"
+                assert connection.rule_entry_id == "dev"
                 assert await host.poll_connections() == [connection]
             finally:
                 await host.close()

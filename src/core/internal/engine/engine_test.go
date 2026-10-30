@@ -91,7 +91,7 @@ func TestStartProxiesTrafficAndStopClosesThePort(t *testing.T) {
 	engine := openEngine(t, TunNone)
 	server := target(t)
 	port := freePort(t)
-	if err := engine.Start(directProfile(port, server.URL+"/generate_204")); err != nil {
+	if _, err := engine.Start(directProfile(port, server.URL+"/generate_204")); err != nil {
 		t.Fatal(err)
 	}
 	if engine.State() != controlpb.RunState_RUN_STATE_RUNNING {
@@ -110,7 +110,7 @@ func TestStartProxiesTrafficAndStopClosesThePort(t *testing.T) {
 		t.Errorf("status = %v", status)
 	}
 
-	if err := engine.Start(directProfile(port, server.URL)); !errors.Is(err, ErrAlreadyRunning) {
+	if _, err := engine.Start(directProfile(port, server.URL)); !errors.Is(err, ErrAlreadyRunning) {
 		t.Errorf("second Start = %v, want ErrAlreadyRunning", err)
 	}
 	if err := engine.Stop(); err != nil {
@@ -122,7 +122,7 @@ func TestStartProxiesTrafficAndStopClosesThePort(t *testing.T) {
 	if err := engine.Stop(); err != nil {
 		t.Errorf("stopping a stopped core = %v", err)
 	}
-	if err := engine.Reload(directProfile(port, server.URL)); !errors.Is(err, ErrNotRunning) {
+	if _, err := engine.Reload(directProfile(port, server.URL)); !errors.Is(err, ErrNotRunning) {
 		t.Errorf("Reload while stopped = %v, want ErrNotRunning", err)
 	}
 	if groups := engine.ListGroups(0, false); groups != nil {
@@ -134,17 +134,17 @@ func TestReloadMovesThePort(t *testing.T) {
 	engine := openEngine(t, TunNone)
 	server := target(t)
 	first, second := freePort(t), freePort(t)
-	if err := engine.Start(directProfile(first, server.URL)); err != nil {
+	if _, err := engine.Start(directProfile(first, server.URL)); err != nil {
 		t.Fatal(err)
 	}
 	defer engine.Stop()
-	if err := engine.Reload(directProfile(second, server.URL)); err != nil {
+	if _, err := engine.Reload(directProfile(second, server.URL)); err != nil {
 		t.Fatal(err)
 	}
 	if listening(first) || !listening(second) {
 		t.Fatalf("after Reload: old port open=%v, new port open=%v", listening(first), listening(second))
 	}
-	if err := engine.Reload(profileOf("rules: ['MATCH,NOWHERE']\n")); !errors.Is(err, ErrInvalidConfig) {
+	if _, err := engine.Reload(profileOf("rules: ['MATCH,NOWHERE']\n")); !errors.Is(err, ErrInvalidConfig) {
 		t.Fatalf("Reload with a broken profile = %v", err)
 	}
 	if !listening(second) || engine.State() != controlpb.RunState_RUN_STATE_RUNNING {
@@ -160,7 +160,7 @@ func TestStartFailsWhenThePortIsTaken(t *testing.T) {
 	}
 	defer taken.Close()
 	port := taken.Addr().(*net.TCPAddr).Port
-	err = engine.Start(directProfile(port, "http://127.0.0.1:1/"))
+	_, err = engine.Start(directProfile(port, "http://127.0.0.1:1/"))
 	if !errors.Is(err, ErrApplyFailed) || !isListenError(err) {
 		t.Fatalf("Start on a taken port = %v, want ErrApplyFailed with the listen error", err)
 	}
@@ -179,7 +179,7 @@ func TestReloadToATakenPortKeepsTheOldOne(t *testing.T) {
 	engine := openEngine(t, TunNone)
 	server := target(t)
 	port := freePort(t)
-	if err := engine.Start(directProfile(port, server.URL)); err != nil {
+	if _, err := engine.Start(directProfile(port, server.URL)); err != nil {
 		t.Fatal(err)
 	}
 	defer engine.Stop()
@@ -188,7 +188,7 @@ func TestReloadToATakenPortKeepsTheOldOne(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer taken.Close()
-	err = engine.Reload(directProfile(taken.Addr().(*net.TCPAddr).Port, server.URL))
+	_, err = engine.Reload(directProfile(taken.Addr().(*net.TCPAddr).Port, server.URL))
 	if !errors.Is(err, ErrApplyFailed) || !isListenError(err) {
 		t.Fatalf("Reload to a taken port = %v, want ErrApplyFailed with the listen error", err)
 	}
@@ -224,7 +224,7 @@ proxy-groups:
 rules:
   - MATCH,PROXY
 `, freePort(t), freePort(t), server.URL+"/generate_204")
-	if err := engine.Start(Profile{Config: []byte(source)}); err != nil {
+	if _, err := engine.Start(Profile{Config: []byte(source)}); err != nil {
 		t.Fatal(err)
 	}
 	defer engine.Stop()
@@ -258,7 +258,7 @@ func TestQueriesAndOperations(t *testing.T) {
 	server := target(t)
 	port := freePort(t)
 	testURL := server.URL + "/generate_204"
-	if err := engine.Start(directProfile(port, testURL)); err != nil {
+	if _, err := engine.Start(directProfile(port, testURL)); err != nil {
 		t.Fatal(err)
 	}
 	defer engine.Stop()
@@ -389,7 +389,7 @@ func TestWatchLogsSeesParseErrors(t *testing.T) {
 		lines = append(lines, entry.GetMessage())
 		mu.Unlock()
 	})
-	_ = engine.Validate(directProfile(freePort(t), "http://127.0.0.1:1/"))
+	_, _ = engine.Validate(directProfile(freePort(t), "http://127.0.0.1:1/"))
 	deadline := time.Now().Add(5 * time.Second)
 	for {
 		mu.Lock()
@@ -417,7 +417,7 @@ func TestStartStopDoesNotLeak(t *testing.T) {
 	port := freePort(t)
 	profile := directProfile(port, server.URL+"/generate_204")
 	cycle := func() {
-		if err := engine.Start(profile); err != nil {
+		if _, err := engine.Start(profile); err != nil {
 			t.Fatal(err)
 		}
 		proxiedGet(t, port, server.URL)

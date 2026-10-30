@@ -89,7 +89,7 @@ tun:
   dns-mode: disabled
 `, stack, tunDevice)), Options: RunOptions{TUN: true}}
 
-	if err := engine.Start(profile); err != nil {
+	if _, err := engine.Start(profile); err != nil {
 		t.Fatalf("Start with the TUN: %v", err)
 	}
 	defer engine.Stop()
@@ -111,7 +111,7 @@ tun:
 	}
 
 	// An unchanged TUN survives a reload.
-	if err := engine.Reload(profile); err != nil {
+	if _, err := engine.Reload(profile); err != nil {
 		t.Fatal(err)
 	}
 	if again := waitForInterface(t, true); again != index {
@@ -120,7 +120,7 @@ tun:
 
 	// Turning the TUN off removes it and its routes while the core keeps running.
 	profile.Options.TUN = false
-	if err := engine.Reload(profile); err != nil {
+	if _, err := engine.Reload(profile); err != nil {
 		t.Fatal(err)
 	}
 	waitForInterface(t, false)
@@ -129,7 +129,7 @@ tun:
 	}
 
 	profile.Options.TUN = true
-	if err := engine.Reload(profile); err != nil {
+	if _, err := engine.Reload(profile); err != nil {
 		t.Fatal(err)
 	}
 	waitForInterface(t, true)

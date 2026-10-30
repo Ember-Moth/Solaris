@@ -74,8 +74,8 @@ func handle(t *testing.T, dispatcher *control.Dispatcher, request *controlpb.Req
 
 func start(configYAML string, options *controlpb.RunOptions) *controlpb.Request {
 	return &controlpb.Request{Method: &controlpb.Request_Start{Start: &controlpb.StartRequest{
-		ConfigYaml: configYAML,
-		Options:    options,
+		Source:  &controlpb.StartRequest_ConfigYaml{ConfigYaml: configYAML},
+		Options: options,
 	}}}
 }
 

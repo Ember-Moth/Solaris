@@ -67,6 +67,13 @@ jobs:
           cache-dependency-path: src/core/go.sum
       - name: Install (locked)
         run: uv sync --frozen
+      # The GEO data the installers ship, for the "my plan" tests; the pin is in the script.
+      - uses: actions/cache@v6
+        with:
+          path: build/geodata
+          key: geodata-${{ hashFiles('scripts/fetch_geodata.py') }}
+      - name: GEO data and its category list
+        run: uv run python scripts/fetch_geodata.py --check
       - name: Build the development service
         run: go -C src/core build -o "$RUNNER_TEMP/mihomo-desktop-service" ./service
       - name: End-to-end tests

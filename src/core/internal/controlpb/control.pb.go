@@ -131,6 +131,58 @@ func (Ownership) EnumDescriptor() ([]byte, []int) {
 	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{1}
 }
 
+type GroupKind int32
+
+const (
+	GroupKind_GROUP_KIND_UNSPECIFIED GroupKind = 0
+	GroupKind_GROUP_KIND_BUILTIN     GroupKind = 1
+	GroupKind_GROUP_KIND_REGION      GroupKind = 2
+	GroupKind_GROUP_KIND_CUSTOM      GroupKind = 3
+)
+
+// Enum value maps for GroupKind.
+var (
+	GroupKind_name = map[int32]string{
+		0: "GROUP_KIND_UNSPECIFIED",
+		1: "GROUP_KIND_BUILTIN",
+		2: "GROUP_KIND_REGION",
+		3: "GROUP_KIND_CUSTOM",
+	}
+	GroupKind_value = map[string]int32{
+		"GROUP_KIND_UNSPECIFIED": 0,
+		"GROUP_KIND_BUILTIN":     1,
+		"GROUP_KIND_REGION":      2,
+		"GROUP_KIND_CUSTOM":      3,
+	}
+)
+
+func (x GroupKind) Enum() *GroupKind {
+	p := new(GroupKind)
+	*p = x
+	return p
+}
+
+func (x GroupKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (GroupKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_mihomo_desktop_protocol_control_proto_enumTypes[2].Descriptor()
+}
+
+func (GroupKind) Type() protoreflect.EnumType {
+	return &file_mihomo_desktop_protocol_control_proto_enumTypes[2]
+}
+
+func (x GroupKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use GroupKind.Descriptor instead.
+func (GroupKind) EnumDescriptor() ([]byte, []int) {
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{2}
+}
+
 type Mode int32
 
 const (
@@ -167,11 +219,11 @@ func (x Mode) String() string {
 }
 
 func (Mode) Descriptor() protoreflect.EnumDescriptor {
-	return file_mihomo_desktop_protocol_control_proto_enumTypes[2].Descriptor()
+	return file_mihomo_desktop_protocol_control_proto_enumTypes[3].Descriptor()
 }
 
 func (Mode) Type() protoreflect.EnumType {
-	return &file_mihomo_desktop_protocol_control_proto_enumTypes[2]
+	return &file_mihomo_desktop_protocol_control_proto_enumTypes[3]
 }
 
 func (x Mode) Number() protoreflect.EnumNumber {
@@ -180,7 +232,7 @@ func (x Mode) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Mode.Descriptor instead.
 func (Mode) EnumDescriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{2}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{3}
 }
 
 type GroupSort int32
@@ -216,11 +268,11 @@ func (x GroupSort) String() string {
 }
 
 func (GroupSort) Descriptor() protoreflect.EnumDescriptor {
-	return file_mihomo_desktop_protocol_control_proto_enumTypes[3].Descriptor()
+	return file_mihomo_desktop_protocol_control_proto_enumTypes[4].Descriptor()
 }
 
 func (GroupSort) Type() protoreflect.EnumType {
-	return &file_mihomo_desktop_protocol_control_proto_enumTypes[3]
+	return &file_mihomo_desktop_protocol_control_proto_enumTypes[4]
 }
 
 func (x GroupSort) Number() protoreflect.EnumNumber {
@@ -229,7 +281,7 @@ func (x GroupSort) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use GroupSort.Descriptor instead.
 func (GroupSort) EnumDescriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{3}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{4}
 }
 
 type ProviderKind int32
@@ -265,11 +317,11 @@ func (x ProviderKind) String() string {
 }
 
 func (ProviderKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_mihomo_desktop_protocol_control_proto_enumTypes[4].Descriptor()
+	return file_mihomo_desktop_protocol_control_proto_enumTypes[5].Descriptor()
 }
 
 func (ProviderKind) Type() protoreflect.EnumType {
-	return &file_mihomo_desktop_protocol_control_proto_enumTypes[4]
+	return &file_mihomo_desktop_protocol_control_proto_enumTypes[5]
 }
 
 func (x ProviderKind) Number() protoreflect.EnumNumber {
@@ -278,7 +330,7 @@ func (x ProviderKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ProviderKind.Descriptor instead.
 func (ProviderKind) EnumDescriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{4}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{5}
 }
 
 type LogLevel int32
@@ -320,11 +372,11 @@ func (x LogLevel) String() string {
 }
 
 func (LogLevel) Descriptor() protoreflect.EnumDescriptor {
-	return file_mihomo_desktop_protocol_control_proto_enumTypes[5].Descriptor()
+	return file_mihomo_desktop_protocol_control_proto_enumTypes[6].Descriptor()
 }
 
 func (LogLevel) Type() protoreflect.EnumType {
-	return &file_mihomo_desktop_protocol_control_proto_enumTypes[5]
+	return &file_mihomo_desktop_protocol_control_proto_enumTypes[6]
 }
 
 func (x LogLevel) Number() protoreflect.EnumNumber {
@@ -333,7 +385,7 @@ func (x LogLevel) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use LogLevel.Descriptor instead.
 func (LogLevel) EnumDescriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{5}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{6}
 }
 
 type Request struct {
@@ -368,6 +420,8 @@ type Request struct {
 	//	*Request_SubscribeConnections
 	//	*Request_PollEvents
 	//	*Request_Unsubscribe
+	//	*Request_InspectSource
+	//	*Request_ListGeoCategories
 	Method        isRequest_Method `protobuf_oneof:"method"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -658,6 +712,24 @@ func (x *Request) GetUnsubscribe() *UnsubscribeRequest {
 	return nil
 }
 
+func (x *Request) GetInspectSource() *InspectSourceRequest {
+	if x != nil {
+		if x, ok := x.Method.(*Request_InspectSource); ok {
+			return x.InspectSource
+		}
+	}
+	return nil
+}
+
+func (x *Request) GetListGeoCategories() *ListGeoCategoriesRequest {
+	if x != nil {
+		if x, ok := x.Method.(*Request_ListGeoCategories); ok {
+			return x.ListGeoCategories
+		}
+	}
+	return nil
+}
+
 type isRequest_Method interface {
 	isRequest_Method()
 }
@@ -769,6 +841,17 @@ type Request_Unsubscribe struct {
 	Unsubscribe *UnsubscribeRequest `protobuf:"bytes,48,opt,name=unsubscribe,proto3,oneof"`
 }
 
+type Request_InspectSource struct {
+	// Routing methods (docs/routing.md §8.2), served on both platforms. They only read
+	// and need no running core. 51 to 54 are kept for PreviewGroup, MatchRule,
+	// ConvertToPlan and ExportPlan (M8b).
+	InspectSource *InspectSourceRequest `protobuf:"bytes,49,opt,name=inspect_source,json=inspectSource,proto3,oneof"`
+}
+
+type Request_ListGeoCategories struct {
+	ListGeoCategories *ListGeoCategoriesRequest `protobuf:"bytes,50,opt,name=list_geo_categories,json=listGeoCategories,proto3,oneof"`
+}
+
 func (*Request_GetInfo) isRequest_Method() {}
 
 func (*Request_Claim) isRequest_Method() {}
@@ -821,6 +904,10 @@ func (*Request_PollEvents) isRequest_Method() {}
 
 func (*Request_Unsubscribe) isRequest_Method() {}
 
+func (*Request_InspectSource) isRequest_Method() {}
+
+func (*Request_ListGeoCategories) isRequest_Method() {}
+
 type Response struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	ProtocolVersion uint32                 `protobuf:"varint,1,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
@@ -830,6 +917,7 @@ type Response struct {
 	//	*Response_Error
 	//	*Response_Empty
 	//	*Response_GetInfo
+	//	*Response_Composition
 	//	*Response_GetStatus
 	//	*Response_ListGroups
 	//	*Response_GetGroup
@@ -838,6 +926,8 @@ type Response struct {
 	//	*Response_ListRules
 	//	*Response_Subscribe
 	//	*Response_PollEvents
+	//	*Response_InspectSource
+	//	*Response_ListGeoCategories
 	Result        isResponse_Result `protobuf_oneof:"result"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -921,6 +1011,15 @@ func (x *Response) GetGetInfo() *GetInfoResponse {
 	return nil
 }
 
+func (x *Response) GetComposition() *CompositionReport {
+	if x != nil {
+		if x, ok := x.Result.(*Response_Composition); ok {
+			return x.Composition
+		}
+	}
+	return nil
+}
+
 func (x *Response) GetGetStatus() *GetStatusResponse {
 	if x != nil {
 		if x, ok := x.Result.(*Response_GetStatus); ok {
@@ -993,6 +1092,24 @@ func (x *Response) GetPollEvents() *PollEventsResponse {
 	return nil
 }
 
+func (x *Response) GetInspectSource() *InspectSourceResponse {
+	if x != nil {
+		if x, ok := x.Result.(*Response_InspectSource); ok {
+			return x.InspectSource
+		}
+	}
+	return nil
+}
+
+func (x *Response) GetListGeoCategories() *ListGeoCategoriesResponse {
+	if x != nil {
+		if x, ok := x.Result.(*Response_ListGeoCategories); ok {
+			return x.ListGeoCategories
+		}
+	}
+	return nil
+}
+
 type isResponse_Result interface {
 	isResponse_Result()
 }
@@ -1007,6 +1124,11 @@ type Response_Empty struct {
 
 type Response_GetInfo struct {
 	GetInfo *GetInfoResponse `protobuf:"bytes,10,opt,name=get_info,json=getInfo,proto3,oneof"`
+}
+
+type Response_Composition struct {
+	// Validate, Start and Reload with a Composition; with config_yaml they answer Empty.
+	Composition *CompositionReport `protobuf:"bytes,12,opt,name=composition,proto3,oneof"`
 }
 
 type Response_GetStatus struct {
@@ -1041,11 +1163,21 @@ type Response_PollEvents struct {
 	PollEvents *PollEventsResponse `protobuf:"bytes,47,opt,name=poll_events,json=pollEvents,proto3,oneof"`
 }
 
+type Response_InspectSource struct {
+	InspectSource *InspectSourceResponse `protobuf:"bytes,49,opt,name=inspect_source,json=inspectSource,proto3,oneof"`
+}
+
+type Response_ListGeoCategories struct {
+	ListGeoCategories *ListGeoCategoriesResponse `protobuf:"bytes,50,opt,name=list_geo_categories,json=listGeoCategories,proto3,oneof"`
+}
+
 func (*Response_Error) isResponse_Result() {}
 
 func (*Response_Empty) isResponse_Result() {}
 
 func (*Response_GetInfo) isResponse_Result() {}
+
+func (*Response_Composition) isResponse_Result() {}
 
 func (*Response_GetStatus) isResponse_Result() {}
 
@@ -1062,6 +1194,10 @@ func (*Response_ListRules) isResponse_Result() {}
 func (*Response_Subscribe) isResponse_Result() {}
 
 func (*Response_PollEvents) isResponse_Result() {}
+
+func (*Response_InspectSource) isResponse_Result() {}
+
+func (*Response_ListGeoCategories) isResponse_Result() {}
 
 type Empty struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1375,10 +1511,17 @@ func (x *RunOptions) GetAllowLan() bool {
 	return false
 }
 
+// Validate, Start and Reload take the configuration from one of two sources: a
+// subscription's own YAML, or a Composition the core assembles from the node pool and a
+// plan (docs/routing.md §8.1). The overrides apply after either.
 type ValidateRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ConfigYaml    string                 `protobuf:"bytes,1,opt,name=config_yaml,json=configYaml,proto3" json:"config_yaml,omitempty"`
-	Overrides     []string               `protobuf:"bytes,2,rep,name=overrides,proto3" json:"overrides,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Source:
+	//
+	//	*ValidateRequest_ConfigYaml
+	//	*ValidateRequest_Composition
+	Source        isValidateRequest_Source `protobuf_oneof:"source"`
+	Overrides     []string                 `protobuf:"bytes,2,rep,name=overrides,proto3" json:"overrides,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1413,11 +1556,29 @@ func (*ValidateRequest) Descriptor() ([]byte, []int) {
 	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{8}
 }
 
+func (x *ValidateRequest) GetSource() isValidateRequest_Source {
+	if x != nil {
+		return x.Source
+	}
+	return nil
+}
+
 func (x *ValidateRequest) GetConfigYaml() string {
 	if x != nil {
-		return x.ConfigYaml
+		if x, ok := x.Source.(*ValidateRequest_ConfigYaml); ok {
+			return x.ConfigYaml
+		}
 	}
 	return ""
+}
+
+func (x *ValidateRequest) GetComposition() *Composition {
+	if x != nil {
+		if x, ok := x.Source.(*ValidateRequest_Composition); ok {
+			return x.Composition
+		}
+	}
+	return nil
 }
 
 func (x *ValidateRequest) GetOverrides() []string {
@@ -1427,11 +1588,31 @@ func (x *ValidateRequest) GetOverrides() []string {
 	return nil
 }
 
+type isValidateRequest_Source interface {
+	isValidateRequest_Source()
+}
+
+type ValidateRequest_ConfigYaml struct {
+	ConfigYaml string `protobuf:"bytes,1,opt,name=config_yaml,json=configYaml,proto3,oneof"`
+}
+
+type ValidateRequest_Composition struct {
+	Composition *Composition `protobuf:"bytes,4,opt,name=composition,proto3,oneof"`
+}
+
+func (*ValidateRequest_ConfigYaml) isValidateRequest_Source() {}
+
+func (*ValidateRequest_Composition) isValidateRequest_Source() {}
+
 type StartRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ConfigYaml    string                 `protobuf:"bytes,1,opt,name=config_yaml,json=configYaml,proto3" json:"config_yaml,omitempty"`
-	Overrides     []string               `protobuf:"bytes,2,rep,name=overrides,proto3" json:"overrides,omitempty"`
-	Options       *RunOptions            `protobuf:"bytes,3,opt,name=options,proto3" json:"options,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Source:
+	//
+	//	*StartRequest_ConfigYaml
+	//	*StartRequest_Composition
+	Source        isStartRequest_Source `protobuf_oneof:"source"`
+	Overrides     []string              `protobuf:"bytes,2,rep,name=overrides,proto3" json:"overrides,omitempty"`
+	Options       *RunOptions           `protobuf:"bytes,3,opt,name=options,proto3" json:"options,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1466,11 +1647,29 @@ func (*StartRequest) Descriptor() ([]byte, []int) {
 	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{9}
 }
 
+func (x *StartRequest) GetSource() isStartRequest_Source {
+	if x != nil {
+		return x.Source
+	}
+	return nil
+}
+
 func (x *StartRequest) GetConfigYaml() string {
 	if x != nil {
-		return x.ConfigYaml
+		if x, ok := x.Source.(*StartRequest_ConfigYaml); ok {
+			return x.ConfigYaml
+		}
 	}
 	return ""
+}
+
+func (x *StartRequest) GetComposition() *Composition {
+	if x != nil {
+		if x, ok := x.Source.(*StartRequest_Composition); ok {
+			return x.Composition
+		}
+	}
+	return nil
 }
 
 func (x *StartRequest) GetOverrides() []string {
@@ -1487,9 +1686,29 @@ func (x *StartRequest) GetOptions() *RunOptions {
 	return nil
 }
 
+type isStartRequest_Source interface {
+	isStartRequest_Source()
+}
+
+type StartRequest_ConfigYaml struct {
+	ConfigYaml string `protobuf:"bytes,1,opt,name=config_yaml,json=configYaml,proto3,oneof"`
+}
+
+type StartRequest_Composition struct {
+	Composition *Composition `protobuf:"bytes,4,opt,name=composition,proto3,oneof"`
+}
+
+func (*StartRequest_ConfigYaml) isStartRequest_Source() {}
+
+func (*StartRequest_Composition) isStartRequest_Source() {}
+
 type ReloadRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ConfigYaml    string                 `protobuf:"bytes,1,opt,name=config_yaml,json=configYaml,proto3" json:"config_yaml,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Source:
+	//
+	//	*ReloadRequest_ConfigYaml
+	//	*ReloadRequest_Composition
+	Source        isReloadRequest_Source `protobuf_oneof:"source"`
 	Overrides     []string               `protobuf:"bytes,2,rep,name=overrides,proto3" json:"overrides,omitempty"`
 	Options       *RunOptions            `protobuf:"bytes,3,opt,name=options,proto3" json:"options,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1526,11 +1745,29 @@ func (*ReloadRequest) Descriptor() ([]byte, []int) {
 	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{10}
 }
 
+func (x *ReloadRequest) GetSource() isReloadRequest_Source {
+	if x != nil {
+		return x.Source
+	}
+	return nil
+}
+
 func (x *ReloadRequest) GetConfigYaml() string {
 	if x != nil {
-		return x.ConfigYaml
+		if x, ok := x.Source.(*ReloadRequest_ConfigYaml); ok {
+			return x.ConfigYaml
+		}
 	}
 	return ""
+}
+
+func (x *ReloadRequest) GetComposition() *Composition {
+	if x != nil {
+		if x, ok := x.Source.(*ReloadRequest_Composition); ok {
+			return x.Composition
+		}
+	}
+	return nil
 }
 
 func (x *ReloadRequest) GetOverrides() []string {
@@ -1547,6 +1784,432 @@ func (x *ReloadRequest) GetOptions() *RunOptions {
 	return nil
 }
 
+type isReloadRequest_Source interface {
+	isReloadRequest_Source()
+}
+
+type ReloadRequest_ConfigYaml struct {
+	ConfigYaml string `protobuf:"bytes,1,opt,name=config_yaml,json=configYaml,proto3,oneof"`
+}
+
+type ReloadRequest_Composition struct {
+	Composition *Composition `protobuf:"bytes,4,opt,name=composition,proto3,oneof"`
+}
+
+func (*ReloadRequest_ConfigYaml) isReloadRequest_Source() {}
+
+func (*ReloadRequest_Composition) isReloadRequest_Source() {}
+
+// The node pool and a plan, for "my plan" routing (docs/routing.md §8.5).
+type Composition struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The subscriptions in the pool, in the order they were imported; the UI leaves out the
+	// ones kept out of the pool. A node whose name an earlier subscription took gets
+	// " · <subscription name>" appended.
+	Sources []*CompositionSource `protobuf:"bytes,1,rep,name=sources,proto3" json:"sources,omitempty"`
+	// A regular expression in mihomo's syntax (regexp2) for information nodes such as
+	// "剩余流量"; the pool leaves out nodes whose names match it. Empty leaves out none.
+	InfoFilter string `protobuf:"bytes,2,opt,name=info_filter,json=infoFilter,proto3" json:"info_filter,omitempty"`
+	// The plan as JSON, format version 1 (docs/routing.md §8.5).
+	PlanJson      string `protobuf:"bytes,3,opt,name=plan_json,json=planJson,proto3" json:"plan_json,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Composition) Reset() {
+	*x = Composition{}
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Composition) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Composition) ProtoMessage() {}
+
+func (x *Composition) ProtoReflect() protoreflect.Message {
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Composition.ProtoReflect.Descriptor instead.
+func (*Composition) Descriptor() ([]byte, []int) {
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *Composition) GetSources() []*CompositionSource {
+	if x != nil {
+		return x.Sources
+	}
+	return nil
+}
+
+func (x *Composition) GetInfoFilter() string {
+	if x != nil {
+		return x.InfoFilter
+	}
+	return ""
+}
+
+func (x *Composition) GetPlanJson() string {
+	if x != nil {
+		return x.PlanJson
+	}
+	return ""
+}
+
+type CompositionSource struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Yaml          string                 `protobuf:"bytes,3,opt,name=yaml,proto3" json:"yaml,omitempty"` // the subscription as downloaded: a mihomo profile or share links
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CompositionSource) Reset() {
+	*x = CompositionSource{}
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CompositionSource) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CompositionSource) ProtoMessage() {}
+
+func (x *CompositionSource) ProtoReflect() protoreflect.Message {
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CompositionSource.ProtoReflect.Descriptor instead.
+func (*CompositionSource) Descriptor() ([]byte, []int) {
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *CompositionSource) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *CompositionSource) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CompositionSource) GetYaml() string {
+	if x != nil {
+		return x.Yaml
+	}
+	return ""
+}
+
+type CompositionReport struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Warnings []*CompositionWarning  `protobuf:"bytes,1,rep,name=warnings,proto3" json:"warnings,omitempty"`
+	Groups   []*ComposedGroup       `protobuf:"bytes,2,rep,name=groups,proto3" json:"groups,omitempty"` // in configuration order
+	// Every rule the plan produced, in order, with the rule entry it came from.
+	Rules         []*Rule     `protobuf:"bytes,3,rep,name=rules,proto3" json:"rules,omitempty"`
+	Nodes         []*PoolNode `protobuf:"bytes,4,rep,name=nodes,proto3" json:"nodes,omitempty"` // the pool after exclusions, in order
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CompositionReport) Reset() {
+	*x = CompositionReport{}
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CompositionReport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CompositionReport) ProtoMessage() {}
+
+func (x *CompositionReport) ProtoReflect() protoreflect.Message {
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CompositionReport.ProtoReflect.Descriptor instead.
+func (*CompositionReport) Descriptor() ([]byte, []int) {
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *CompositionReport) GetWarnings() []*CompositionWarning {
+	if x != nil {
+		return x.Warnings
+	}
+	return nil
+}
+
+func (x *CompositionReport) GetGroups() []*ComposedGroup {
+	if x != nil {
+		return x.Groups
+	}
+	return nil
+}
+
+func (x *CompositionReport) GetRules() []*Rule {
+	if x != nil {
+		return x.Rules
+	}
+	return nil
+}
+
+func (x *CompositionReport) GetNodes() []*PoolNode {
+	if x != nil {
+		return x.Nodes
+	}
+	return nil
+}
+
+type CompositionWarning struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	EntryId string                 `protobuf:"bytes,1,opt,name=entry_id,json=entryId,proto3" json:"entry_id,omitempty"` // a rule entry, or "fallback"
+	// "region_empty": the target region has no nodes; "group_empty": the target group has
+	// no members. The entry goes to the built-in "proxy" group until that changes.
+	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	Target        string `protobuf:"bytes,3,opt,name=target,proto3" json:"target,omitempty"` // the target the plan names
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CompositionWarning) Reset() {
+	*x = CompositionWarning{}
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CompositionWarning) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CompositionWarning) ProtoMessage() {}
+
+func (x *CompositionWarning) ProtoReflect() protoreflect.Message {
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CompositionWarning.ProtoReflect.Descriptor instead.
+func (*CompositionWarning) Descriptor() ([]byte, []int) {
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *CompositionWarning) GetEntryId() string {
+	if x != nil {
+		return x.EntryId
+	}
+	return ""
+}
+
+func (x *CompositionWarning) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *CompositionWarning) GetTarget() string {
+	if x != nil {
+		return x.Target
+	}
+	return ""
+}
+
+type ComposedGroup struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`     // "proxy", "auto", "region:HK" or the plan's own id
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"` // the name in the generated configuration
+	Kind          GroupKind              `protobuf:"varint,3,opt,name=kind,proto3,enum=mihomo_desktop.control.v1.GroupKind" json:"kind,omitempty"`
+	Region        string                 `protobuf:"bytes,4,opt,name=region,proto3" json:"region,omitempty"` // region groups only: the region code
+	NodeCount     uint32                 `protobuf:"varint,5,opt,name=node_count,json=nodeCount,proto3" json:"node_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ComposedGroup) Reset() {
+	*x = ComposedGroup{}
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ComposedGroup) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ComposedGroup) ProtoMessage() {}
+
+func (x *ComposedGroup) ProtoReflect() protoreflect.Message {
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ComposedGroup.ProtoReflect.Descriptor instead.
+func (*ComposedGroup) Descriptor() ([]byte, []int) {
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *ComposedGroup) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ComposedGroup) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ComposedGroup) GetKind() GroupKind {
+	if x != nil {
+		return x.Kind
+	}
+	return GroupKind_GROUP_KIND_UNSPECIFIED
+}
+
+func (x *ComposedGroup) GetRegion() string {
+	if x != nil {
+		return x.Region
+	}
+	return ""
+}
+
+func (x *ComposedGroup) GetNodeCount() uint32 {
+	if x != nil {
+		return x.NodeCount
+	}
+	return 0
+}
+
+type PoolNode struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`                                     // the name in the generated configuration
+	OriginalName  string                 `protobuf:"bytes,2,opt,name=original_name,json=originalName,proto3" json:"original_name,omitempty"` // the name in the subscription
+	SourceId      string                 `protobuf:"bytes,3,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
+	Type          string                 `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`     // mihomo adapter type, as in Proxy.type
+	Region        string                 `protobuf:"bytes,5,opt,name=region,proto3" json:"region,omitempty"` // region code; "ZZ" when no region matched
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PoolNode) Reset() {
+	*x = PoolNode{}
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PoolNode) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PoolNode) ProtoMessage() {}
+
+func (x *PoolNode) ProtoReflect() protoreflect.Message {
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PoolNode.ProtoReflect.Descriptor instead.
+func (*PoolNode) Descriptor() ([]byte, []int) {
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *PoolNode) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *PoolNode) GetOriginalName() string {
+	if x != nil {
+		return x.OriginalName
+	}
+	return ""
+}
+
+func (x *PoolNode) GetSourceId() string {
+	if x != nil {
+		return x.SourceId
+	}
+	return ""
+}
+
+func (x *PoolNode) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *PoolNode) GetRegion() string {
+	if x != nil {
+		return x.Region
+	}
+	return ""
+}
+
 type StopRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -1555,7 +2218,7 @@ type StopRequest struct {
 
 func (x *StopRequest) Reset() {
 	*x = StopRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[11]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1567,7 +2230,7 @@ func (x *StopRequest) String() string {
 func (*StopRequest) ProtoMessage() {}
 
 func (x *StopRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[11]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1580,7 +2243,7 @@ func (x *StopRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopRequest.ProtoReflect.Descriptor instead.
 func (*StopRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{11}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{17}
 }
 
 type SetSystemProxyRequest struct {
@@ -1592,7 +2255,7 @@ type SetSystemProxyRequest struct {
 
 func (x *SetSystemProxyRequest) Reset() {
 	*x = SetSystemProxyRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[12]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1604,7 +2267,7 @@ func (x *SetSystemProxyRequest) String() string {
 func (*SetSystemProxyRequest) ProtoMessage() {}
 
 func (x *SetSystemProxyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[12]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1617,7 +2280,7 @@ func (x *SetSystemProxyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetSystemProxyRequest.ProtoReflect.Descriptor instead.
 func (*SetSystemProxyRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{12}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *SetSystemProxyRequest) GetEnabled() bool {
@@ -1635,7 +2298,7 @@ type GetStatusRequest struct {
 
 func (x *GetStatusRequest) Reset() {
 	*x = GetStatusRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[13]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1647,7 +2310,7 @@ func (x *GetStatusRequest) String() string {
 func (*GetStatusRequest) ProtoMessage() {}
 
 func (x *GetStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[13]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1660,7 +2323,7 @@ func (x *GetStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetStatusRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{13}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{19}
 }
 
 type GetStatusResponse struct {
@@ -1679,7 +2342,7 @@ type GetStatusResponse struct {
 
 func (x *GetStatusResponse) Reset() {
 	*x = GetStatusResponse{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[14]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1691,7 +2354,7 @@ func (x *GetStatusResponse) String() string {
 func (*GetStatusResponse) ProtoMessage() {}
 
 func (x *GetStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[14]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1704,7 +2367,7 @@ func (x *GetStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetStatusResponse) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{14}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *GetStatusResponse) GetState() RunState {
@@ -1772,7 +2435,7 @@ type SetModeRequest struct {
 
 func (x *SetModeRequest) Reset() {
 	*x = SetModeRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[15]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1784,7 +2447,7 @@ func (x *SetModeRequest) String() string {
 func (*SetModeRequest) ProtoMessage() {}
 
 func (x *SetModeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[15]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1797,7 +2460,7 @@ func (x *SetModeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetModeRequest.ProtoReflect.Descriptor instead.
 func (*SetModeRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{15}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *SetModeRequest) GetMode() Mode {
@@ -1818,7 +2481,7 @@ type Proxy struct {
 
 func (x *Proxy) Reset() {
 	*x = Proxy{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[16]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1830,7 +2493,7 @@ func (x *Proxy) String() string {
 func (*Proxy) ProtoMessage() {}
 
 func (x *Proxy) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[16]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1843,7 +2506,7 @@ func (x *Proxy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Proxy.ProtoReflect.Descriptor instead.
 func (*Proxy) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{16}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *Proxy) GetName() string {
@@ -1880,7 +2543,7 @@ type ProxyGroup struct {
 
 func (x *ProxyGroup) Reset() {
 	*x = ProxyGroup{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[17]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1892,7 +2555,7 @@ func (x *ProxyGroup) String() string {
 func (*ProxyGroup) ProtoMessage() {}
 
 func (x *ProxyGroup) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[17]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1905,7 +2568,7 @@ func (x *ProxyGroup) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProxyGroup.ProtoReflect.Descriptor instead.
 func (*ProxyGroup) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{17}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ProxyGroup) GetName() string {
@@ -1953,7 +2616,7 @@ type ListGroupsRequest struct {
 
 func (x *ListGroupsRequest) Reset() {
 	*x = ListGroupsRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[18]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1965,7 +2628,7 @@ func (x *ListGroupsRequest) String() string {
 func (*ListGroupsRequest) ProtoMessage() {}
 
 func (x *ListGroupsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[18]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1978,7 +2641,7 @@ func (x *ListGroupsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGroupsRequest.ProtoReflect.Descriptor instead.
 func (*ListGroupsRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{18}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ListGroupsRequest) GetSort() GroupSort {
@@ -2004,7 +2667,7 @@ type ListGroupsResponse struct {
 
 func (x *ListGroupsResponse) Reset() {
 	*x = ListGroupsResponse{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[19]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2016,7 +2679,7 @@ func (x *ListGroupsResponse) String() string {
 func (*ListGroupsResponse) ProtoMessage() {}
 
 func (x *ListGroupsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[19]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2029,7 +2692,7 @@ func (x *ListGroupsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGroupsResponse.ProtoReflect.Descriptor instead.
 func (*ListGroupsResponse) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{19}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ListGroupsResponse) GetGroups() []*ProxyGroup {
@@ -2049,7 +2712,7 @@ type GetGroupRequest struct {
 
 func (x *GetGroupRequest) Reset() {
 	*x = GetGroupRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[20]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2061,7 +2724,7 @@ func (x *GetGroupRequest) String() string {
 func (*GetGroupRequest) ProtoMessage() {}
 
 func (x *GetGroupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[20]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2074,7 +2737,7 @@ func (x *GetGroupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGroupRequest.ProtoReflect.Descriptor instead.
 func (*GetGroupRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{20}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *GetGroupRequest) GetName() string {
@@ -2100,7 +2763,7 @@ type GetGroupResponse struct {
 
 func (x *GetGroupResponse) Reset() {
 	*x = GetGroupResponse{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[21]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2112,7 +2775,7 @@ func (x *GetGroupResponse) String() string {
 func (*GetGroupResponse) ProtoMessage() {}
 
 func (x *GetGroupResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[21]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2125,7 +2788,7 @@ func (x *GetGroupResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGroupResponse.ProtoReflect.Descriptor instead.
 func (*GetGroupResponse) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{21}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *GetGroupResponse) GetGroup() *ProxyGroup {
@@ -2145,7 +2808,7 @@ type SelectProxyRequest struct {
 
 func (x *SelectProxyRequest) Reset() {
 	*x = SelectProxyRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[22]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2157,7 +2820,7 @@ func (x *SelectProxyRequest) String() string {
 func (*SelectProxyRequest) ProtoMessage() {}
 
 func (x *SelectProxyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[22]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2170,7 +2833,7 @@ func (x *SelectProxyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SelectProxyRequest.ProtoReflect.Descriptor instead.
 func (*SelectProxyRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{22}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *SelectProxyRequest) GetGroup() string {
@@ -2196,7 +2859,7 @@ type HealthCheckRequest struct {
 
 func (x *HealthCheckRequest) Reset() {
 	*x = HealthCheckRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[23]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2208,7 +2871,7 @@ func (x *HealthCheckRequest) String() string {
 func (*HealthCheckRequest) ProtoMessage() {}
 
 func (x *HealthCheckRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[23]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2221,7 +2884,7 @@ func (x *HealthCheckRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HealthCheckRequest.ProtoReflect.Descriptor instead.
 func (*HealthCheckRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{23}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *HealthCheckRequest) GetGroup() string {
@@ -2242,7 +2905,7 @@ type TestDelayRequest struct {
 
 func (x *TestDelayRequest) Reset() {
 	*x = TestDelayRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[24]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2254,7 +2917,7 @@ func (x *TestDelayRequest) String() string {
 func (*TestDelayRequest) ProtoMessage() {}
 
 func (x *TestDelayRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[24]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2267,7 +2930,7 @@ func (x *TestDelayRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TestDelayRequest.ProtoReflect.Descriptor instead.
 func (*TestDelayRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{24}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *TestDelayRequest) GetProxy() string {
@@ -2300,7 +2963,7 @@ type TestDelayResponse struct {
 
 func (x *TestDelayResponse) Reset() {
 	*x = TestDelayResponse{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[25]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2312,7 +2975,7 @@ func (x *TestDelayResponse) String() string {
 func (*TestDelayResponse) ProtoMessage() {}
 
 func (x *TestDelayResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[25]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2325,7 +2988,7 @@ func (x *TestDelayResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TestDelayResponse.ProtoReflect.Descriptor instead.
 func (*TestDelayResponse) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{25}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *TestDelayResponse) GetDelayMs() uint32 {
@@ -2347,7 +3010,7 @@ type Provider struct {
 
 func (x *Provider) Reset() {
 	*x = Provider{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[26]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2359,7 +3022,7 @@ func (x *Provider) String() string {
 func (*Provider) ProtoMessage() {}
 
 func (x *Provider) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[26]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2372,7 +3035,7 @@ func (x *Provider) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Provider.ProtoReflect.Descriptor instead.
 func (*Provider) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{26}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *Provider) GetName() string {
@@ -2411,7 +3074,7 @@ type ListProvidersRequest struct {
 
 func (x *ListProvidersRequest) Reset() {
 	*x = ListProvidersRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[27]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2423,7 +3086,7 @@ func (x *ListProvidersRequest) String() string {
 func (*ListProvidersRequest) ProtoMessage() {}
 
 func (x *ListProvidersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[27]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2436,7 +3099,7 @@ func (x *ListProvidersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProvidersRequest.ProtoReflect.Descriptor instead.
 func (*ListProvidersRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{27}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{33}
 }
 
 type ListProvidersResponse struct {
@@ -2448,7 +3111,7 @@ type ListProvidersResponse struct {
 
 func (x *ListProvidersResponse) Reset() {
 	*x = ListProvidersResponse{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[28]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2460,7 +3123,7 @@ func (x *ListProvidersResponse) String() string {
 func (*ListProvidersResponse) ProtoMessage() {}
 
 func (x *ListProvidersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[28]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2473,7 +3136,7 @@ func (x *ListProvidersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProvidersResponse.ProtoReflect.Descriptor instead.
 func (*ListProvidersResponse) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{28}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *ListProvidersResponse) GetProviders() []*Provider {
@@ -2493,7 +3156,7 @@ type UpdateProviderRequest struct {
 
 func (x *UpdateProviderRequest) Reset() {
 	*x = UpdateProviderRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[29]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2505,7 +3168,7 @@ func (x *UpdateProviderRequest) String() string {
 func (*UpdateProviderRequest) ProtoMessage() {}
 
 func (x *UpdateProviderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[29]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2518,7 +3181,7 @@ func (x *UpdateProviderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateProviderRequest.ProtoReflect.Descriptor instead.
 func (*UpdateProviderRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{29}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *UpdateProviderRequest) GetKind() ProviderKind {
@@ -2536,17 +3199,20 @@ func (x *UpdateProviderRequest) GetName() string {
 }
 
 type Rule struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Type          string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	Payload       string                 `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`
-	Proxy         string                 `protobuf:"bytes,3,opt,name=proxy,proto3" json:"proxy,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Type    string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Payload string                 `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`
+	Proxy   string                 `protobuf:"bytes,3,opt,name=proxy,proto3" json:"proxy,omitempty"`
+	// The plan's rule entry this rule came from, or "fallback"; empty for rules that a
+	// subscription or an override wrote.
+	EntryId       string `protobuf:"bytes,4,opt,name=entry_id,json=entryId,proto3" json:"entry_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Rule) Reset() {
 	*x = Rule{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[30]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2558,7 +3224,7 @@ func (x *Rule) String() string {
 func (*Rule) ProtoMessage() {}
 
 func (x *Rule) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[30]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2571,7 +3237,7 @@ func (x *Rule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Rule.ProtoReflect.Descriptor instead.
 func (*Rule) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{30}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *Rule) GetType() string {
@@ -2595,6 +3261,13 @@ func (x *Rule) GetProxy() string {
 	return ""
 }
 
+func (x *Rule) GetEntryId() string {
+	if x != nil {
+		return x.EntryId
+	}
+	return ""
+}
+
 type ListRulesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -2603,7 +3276,7 @@ type ListRulesRequest struct {
 
 func (x *ListRulesRequest) Reset() {
 	*x = ListRulesRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[31]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2615,7 +3288,7 @@ func (x *ListRulesRequest) String() string {
 func (*ListRulesRequest) ProtoMessage() {}
 
 func (x *ListRulesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[31]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2628,7 +3301,7 @@ func (x *ListRulesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRulesRequest.ProtoReflect.Descriptor instead.
 func (*ListRulesRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{31}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{37}
 }
 
 type ListRulesResponse struct {
@@ -2640,7 +3313,7 @@ type ListRulesResponse struct {
 
 func (x *ListRulesResponse) Reset() {
 	*x = ListRulesResponse{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[32]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2652,7 +3325,7 @@ func (x *ListRulesResponse) String() string {
 func (*ListRulesResponse) ProtoMessage() {}
 
 func (x *ListRulesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[32]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2665,7 +3338,7 @@ func (x *ListRulesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRulesResponse.ProtoReflect.Descriptor instead.
 func (*ListRulesResponse) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{32}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *ListRulesResponse) GetRules() []*Rule {
@@ -2684,7 +3357,7 @@ type CloseConnectionRequest struct {
 
 func (x *CloseConnectionRequest) Reset() {
 	*x = CloseConnectionRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[33]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2696,7 +3369,7 @@ func (x *CloseConnectionRequest) String() string {
 func (*CloseConnectionRequest) ProtoMessage() {}
 
 func (x *CloseConnectionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[33]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2709,7 +3382,7 @@ func (x *CloseConnectionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloseConnectionRequest.ProtoReflect.Descriptor instead.
 func (*CloseConnectionRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{33}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *CloseConnectionRequest) GetId() string {
@@ -2727,7 +3400,7 @@ type CloseAllConnectionsRequest struct {
 
 func (x *CloseAllConnectionsRequest) Reset() {
 	*x = CloseAllConnectionsRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[34]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2739,7 +3412,7 @@ func (x *CloseAllConnectionsRequest) String() string {
 func (*CloseAllConnectionsRequest) ProtoMessage() {}
 
 func (x *CloseAllConnectionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[34]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2752,7 +3425,7 @@ func (x *CloseAllConnectionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloseAllConnectionsRequest.ProtoReflect.Descriptor instead.
 func (*CloseAllConnectionsRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{34}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{40}
 }
 
 type FlushFakeIPRequest struct {
@@ -2763,7 +3436,7 @@ type FlushFakeIPRequest struct {
 
 func (x *FlushFakeIPRequest) Reset() {
 	*x = FlushFakeIPRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[35]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2775,7 +3448,7 @@ func (x *FlushFakeIPRequest) String() string {
 func (*FlushFakeIPRequest) ProtoMessage() {}
 
 func (x *FlushFakeIPRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[35]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2788,7 +3461,7 @@ func (x *FlushFakeIPRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FlushFakeIPRequest.ProtoReflect.Descriptor instead.
 func (*FlushFakeIPRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{35}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{41}
 }
 
 type FlushDNSCacheRequest struct {
@@ -2799,7 +3472,7 @@ type FlushDNSCacheRequest struct {
 
 func (x *FlushDNSCacheRequest) Reset() {
 	*x = FlushDNSCacheRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[36]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2811,7 +3484,7 @@ func (x *FlushDNSCacheRequest) String() string {
 func (*FlushDNSCacheRequest) ProtoMessage() {}
 
 func (x *FlushDNSCacheRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[36]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2824,7 +3497,7 @@ func (x *FlushDNSCacheRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FlushDNSCacheRequest.ProtoReflect.Descriptor instead.
 func (*FlushDNSCacheRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{36}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{42}
 }
 
 type SubscribeLogsRequest struct {
@@ -2836,7 +3509,7 @@ type SubscribeLogsRequest struct {
 
 func (x *SubscribeLogsRequest) Reset() {
 	*x = SubscribeLogsRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[37]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2848,7 +3521,7 @@ func (x *SubscribeLogsRequest) String() string {
 func (*SubscribeLogsRequest) ProtoMessage() {}
 
 func (x *SubscribeLogsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[37]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2861,7 +3534,7 @@ func (x *SubscribeLogsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeLogsRequest.ProtoReflect.Descriptor instead.
 func (*SubscribeLogsRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{37}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *SubscribeLogsRequest) GetLevel() LogLevel {
@@ -2879,7 +3552,7 @@ type SubscribeTrafficRequest struct {
 
 func (x *SubscribeTrafficRequest) Reset() {
 	*x = SubscribeTrafficRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[38]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2891,7 +3564,7 @@ func (x *SubscribeTrafficRequest) String() string {
 func (*SubscribeTrafficRequest) ProtoMessage() {}
 
 func (x *SubscribeTrafficRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[38]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2904,7 +3577,7 @@ func (x *SubscribeTrafficRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeTrafficRequest.ProtoReflect.Descriptor instead.
 func (*SubscribeTrafficRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{38}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{44}
 }
 
 type SubscribeConnectionsRequest struct {
@@ -2915,7 +3588,7 @@ type SubscribeConnectionsRequest struct {
 
 func (x *SubscribeConnectionsRequest) Reset() {
 	*x = SubscribeConnectionsRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[39]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2927,7 +3600,7 @@ func (x *SubscribeConnectionsRequest) String() string {
 func (*SubscribeConnectionsRequest) ProtoMessage() {}
 
 func (x *SubscribeConnectionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[39]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2940,7 +3613,7 @@ func (x *SubscribeConnectionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeConnectionsRequest.ProtoReflect.Descriptor instead.
 func (*SubscribeConnectionsRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{39}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{45}
 }
 
 type SubscribeResponse struct {
@@ -2952,7 +3625,7 @@ type SubscribeResponse struct {
 
 func (x *SubscribeResponse) Reset() {
 	*x = SubscribeResponse{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[40]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2964,7 +3637,7 @@ func (x *SubscribeResponse) String() string {
 func (*SubscribeResponse) ProtoMessage() {}
 
 func (x *SubscribeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[40]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2977,7 +3650,7 @@ func (x *SubscribeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeResponse.ProtoReflect.Descriptor instead.
 func (*SubscribeResponse) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{40}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *SubscribeResponse) GetSubscriptionId() uint64 {
@@ -2997,7 +3670,7 @@ type PollEventsRequest struct {
 
 func (x *PollEventsRequest) Reset() {
 	*x = PollEventsRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[41]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3009,7 +3682,7 @@ func (x *PollEventsRequest) String() string {
 func (*PollEventsRequest) ProtoMessage() {}
 
 func (x *PollEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[41]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3022,7 +3695,7 @@ func (x *PollEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PollEventsRequest.ProtoReflect.Descriptor instead.
 func (*PollEventsRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{41}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *PollEventsRequest) GetSubscriptionId() uint64 {
@@ -3049,7 +3722,7 @@ type PollEventsResponse struct {
 
 func (x *PollEventsResponse) Reset() {
 	*x = PollEventsResponse{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[42]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3061,7 +3734,7 @@ func (x *PollEventsResponse) String() string {
 func (*PollEventsResponse) ProtoMessage() {}
 
 func (x *PollEventsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[42]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3074,7 +3747,7 @@ func (x *PollEventsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PollEventsResponse.ProtoReflect.Descriptor instead.
 func (*PollEventsResponse) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{42}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *PollEventsResponse) GetEvents() []*Event {
@@ -3100,7 +3773,7 @@ type UnsubscribeRequest struct {
 
 func (x *UnsubscribeRequest) Reset() {
 	*x = UnsubscribeRequest{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[43]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3112,7 +3785,7 @@ func (x *UnsubscribeRequest) String() string {
 func (*UnsubscribeRequest) ProtoMessage() {}
 
 func (x *UnsubscribeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[43]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3125,7 +3798,7 @@ func (x *UnsubscribeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnsubscribeRequest.ProtoReflect.Descriptor instead.
 func (*UnsubscribeRequest) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{43}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *UnsubscribeRequest) GetSubscriptionId() uint64 {
@@ -3149,7 +3822,7 @@ type Event struct {
 
 func (x *Event) Reset() {
 	*x = Event{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[44]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3161,7 +3834,7 @@ func (x *Event) String() string {
 func (*Event) ProtoMessage() {}
 
 func (x *Event) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[44]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3174,7 +3847,7 @@ func (x *Event) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Event.ProtoReflect.Descriptor instead.
 func (*Event) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{44}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *Event) GetPayload() isEvent_Payload {
@@ -3244,7 +3917,7 @@ type LogEntry struct {
 
 func (x *LogEntry) Reset() {
 	*x = LogEntry{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[45]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3256,7 +3929,7 @@ func (x *LogEntry) String() string {
 func (*LogEntry) ProtoMessage() {}
 
 func (x *LogEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[45]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3269,7 +3942,7 @@ func (x *LogEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogEntry.ProtoReflect.Descriptor instead.
 func (*LogEntry) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{45}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *LogEntry) GetLevel() LogLevel {
@@ -3305,7 +3978,7 @@ type TrafficSample struct {
 
 func (x *TrafficSample) Reset() {
 	*x = TrafficSample{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[46]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3317,7 +3990,7 @@ func (x *TrafficSample) String() string {
 func (*TrafficSample) ProtoMessage() {}
 
 func (x *TrafficSample) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[46]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3330,7 +4003,7 @@ func (x *TrafficSample) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrafficSample.ProtoReflect.Descriptor instead.
 func (*TrafficSample) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{46}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *TrafficSample) GetUpBytesPerSecond() uint64 {
@@ -3375,13 +4048,14 @@ type Connection struct {
 	UploadBytes     uint64                 `protobuf:"varint,10,opt,name=upload_bytes,json=uploadBytes,proto3" json:"upload_bytes,omitempty"`
 	DownloadBytes   uint64                 `protobuf:"varint,11,opt,name=download_bytes,json=downloadBytes,proto3" json:"download_bytes,omitempty"`
 	StartedAtUnixMs uint64                 `protobuf:"varint,12,opt,name=started_at_unix_ms,json=startedAtUnixMs,proto3" json:"started_at_unix_ms,omitempty"`
+	RuleEntryId     string                 `protobuf:"bytes,13,opt,name=rule_entry_id,json=ruleEntryId,proto3" json:"rule_entry_id,omitempty"` // Rule.entry_id of the rule the connection matched
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Connection) Reset() {
 	*x = Connection{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[47]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3393,7 +4067,7 @@ func (x *Connection) String() string {
 func (*Connection) ProtoMessage() {}
 
 func (x *Connection) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[47]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3406,7 +4080,7 @@ func (x *Connection) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Connection.ProtoReflect.Descriptor instead.
 func (*Connection) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{47}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *Connection) GetId() string {
@@ -3493,6 +4167,13 @@ func (x *Connection) GetStartedAtUnixMs() uint64 {
 	return 0
 }
 
+func (x *Connection) GetRuleEntryId() string {
+	if x != nil {
+		return x.RuleEntryId
+	}
+	return ""
+}
+
 type ConnectionSnapshot struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Connections   []*Connection          `protobuf:"bytes,1,rep,name=connections,proto3" json:"connections,omitempty"`
@@ -3502,7 +4183,7 @@ type ConnectionSnapshot struct {
 
 func (x *ConnectionSnapshot) Reset() {
 	*x = ConnectionSnapshot{}
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[48]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3514,7 +4195,7 @@ func (x *ConnectionSnapshot) String() string {
 func (*ConnectionSnapshot) ProtoMessage() {}
 
 func (x *ConnectionSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[48]
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3527,7 +4208,7 @@ func (x *ConnectionSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectionSnapshot.ProtoReflect.Descriptor instead.
 func (*ConnectionSnapshot) Descriptor() ([]byte, []int) {
-	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{48}
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *ConnectionSnapshot) GetConnections() []*Connection {
@@ -3537,11 +4218,349 @@ func (x *ConnectionSnapshot) GetConnections() []*Connection {
 	return nil
 }
 
+type InspectSourceRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Yaml          string                 `protobuf:"bytes,1,opt,name=yaml,proto3" json:"yaml,omitempty"`                               // a subscription as downloaded
+	InfoFilter    string                 `protobuf:"bytes,2,opt,name=info_filter,json=infoFilter,proto3" json:"info_filter,omitempty"` // as in Composition
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InspectSourceRequest) Reset() {
+	*x = InspectSourceRequest{}
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[55]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InspectSourceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InspectSourceRequest) ProtoMessage() {}
+
+func (x *InspectSourceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[55]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InspectSourceRequest.ProtoReflect.Descriptor instead.
+func (*InspectSourceRequest) Descriptor() ([]byte, []int) {
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{55}
+}
+
+func (x *InspectSourceRequest) GetYaml() string {
+	if x != nil {
+		return x.Yaml
+	}
+	return ""
+}
+
+func (x *InspectSourceRequest) GetInfoFilter() string {
+	if x != nil {
+		return x.InfoFilter
+	}
+	return ""
+}
+
+type InspectSourceResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Nodes         []*SourceNode          `protobuf:"bytes,1,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	HasRules      bool                   `protobuf:"varint,2,opt,name=has_rules,json=hasRules,proto3" json:"has_rules,omitempty"`
+	GroupCount    uint32                 `protobuf:"varint,3,opt,name=group_count,json=groupCount,proto3" json:"group_count,omitempty"`
+	RuleCount     uint32                 `protobuf:"varint,4,opt,name=rule_count,json=ruleCount,proto3" json:"rule_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InspectSourceResponse) Reset() {
+	*x = InspectSourceResponse{}
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[56]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InspectSourceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InspectSourceResponse) ProtoMessage() {}
+
+func (x *InspectSourceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[56]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InspectSourceResponse.ProtoReflect.Descriptor instead.
+func (*InspectSourceResponse) Descriptor() ([]byte, []int) {
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{56}
+}
+
+func (x *InspectSourceResponse) GetNodes() []*SourceNode {
+	if x != nil {
+		return x.Nodes
+	}
+	return nil
+}
+
+func (x *InspectSourceResponse) GetHasRules() bool {
+	if x != nil {
+		return x.HasRules
+	}
+	return false
+}
+
+func (x *InspectSourceResponse) GetGroupCount() uint32 {
+	if x != nil {
+		return x.GroupCount
+	}
+	return 0
+}
+
+func (x *InspectSourceResponse) GetRuleCount() uint32 {
+	if x != nil {
+		return x.RuleCount
+	}
+	return 0
+}
+
+type SourceNode struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`     // mihomo adapter type, as in Proxy.type
+	Region        string                 `protobuf:"bytes,3,opt,name=region,proto3" json:"region,omitempty"` // region code; "ZZ" when no region matched
+	Info          bool                   `protobuf:"varint,4,opt,name=info,proto3" json:"info,omitempty"`    // the name matches info_filter, so the pool leaves the node out
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SourceNode) Reset() {
+	*x = SourceNode{}
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[57]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SourceNode) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SourceNode) ProtoMessage() {}
+
+func (x *SourceNode) ProtoReflect() protoreflect.Message {
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[57]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SourceNode.ProtoReflect.Descriptor instead.
+func (*SourceNode) Descriptor() ([]byte, []int) {
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{57}
+}
+
+func (x *SourceNode) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *SourceNode) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *SourceNode) GetRegion() string {
+	if x != nil {
+		return x.Region
+	}
+	return ""
+}
+
+func (x *SourceNode) GetInfo() bool {
+	if x != nil {
+		return x.Info
+	}
+	return false
+}
+
+type ListGeoCategoriesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListGeoCategoriesRequest) Reset() {
+	*x = ListGeoCategoriesRequest{}
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[58]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListGeoCategoriesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListGeoCategoriesRequest) ProtoMessage() {}
+
+func (x *ListGeoCategoriesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[58]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListGeoCategoriesRequest.ProtoReflect.Descriptor instead.
+func (*ListGeoCategoriesRequest) Descriptor() ([]byte, []int) {
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{58}
+}
+
+type ListGeoCategoriesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Geosite       *GeoCategories         `protobuf:"bytes,1,opt,name=geosite,proto3" json:"geosite,omitempty"`
+	Geoip         *GeoCategories         `protobuf:"bytes,2,opt,name=geoip,proto3" json:"geoip,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListGeoCategoriesResponse) Reset() {
+	*x = ListGeoCategoriesResponse{}
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[59]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListGeoCategoriesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListGeoCategoriesResponse) ProtoMessage() {}
+
+func (x *ListGeoCategoriesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[59]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListGeoCategoriesResponse.ProtoReflect.Descriptor instead.
+func (*ListGeoCategoriesResponse) Descriptor() ([]byte, []int) {
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{59}
+}
+
+func (x *ListGeoCategoriesResponse) GetGeosite() *GeoCategories {
+	if x != nil {
+		return x.Geosite
+	}
+	return nil
+}
+
+func (x *ListGeoCategoriesResponse) GetGeoip() *GeoCategories {
+	if x != nil {
+		return x.Geoip
+	}
+	return nil
+}
+
+// The categories in one GEO data file of the core's home, lower-cased and sorted. Without
+// the file, every field is empty.
+type GeoCategories struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Names           []string               `protobuf:"bytes,1,rep,name=names,proto3" json:"names,omitempty"`
+	Sha256          string                 `protobuf:"bytes,2,opt,name=sha256,proto3" json:"sha256,omitempty"` // of the file, which identifies the data release
+	UpdatedAtUnixMs uint64                 `protobuf:"varint,3,opt,name=updated_at_unix_ms,json=updatedAtUnixMs,proto3" json:"updated_at_unix_ms,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *GeoCategories) Reset() {
+	*x = GeoCategories{}
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[60]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GeoCategories) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GeoCategories) ProtoMessage() {}
+
+func (x *GeoCategories) ProtoReflect() protoreflect.Message {
+	mi := &file_mihomo_desktop_protocol_control_proto_msgTypes[60]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GeoCategories.ProtoReflect.Descriptor instead.
+func (*GeoCategories) Descriptor() ([]byte, []int) {
+	return file_mihomo_desktop_protocol_control_proto_rawDescGZIP(), []int{60}
+}
+
+func (x *GeoCategories) GetNames() []string {
+	if x != nil {
+		return x.Names
+	}
+	return nil
+}
+
+func (x *GeoCategories) GetSha256() string {
+	if x != nil {
+		return x.Sha256
+	}
+	return ""
+}
+
+func (x *GeoCategories) GetUpdatedAtUnixMs() uint64 {
+	if x != nil {
+		return x.UpdatedAtUnixMs
+	}
+	return 0
+}
+
 var File_mihomo_desktop_protocol_control_proto protoreflect.FileDescriptor
 
 const file_mihomo_desktop_protocol_control_proto_rawDesc = "" +
 	"\n" +
-	"%mihomo_desktop/protocol/control.proto\x12\x19mihomo_desktop.control.v1\"\xbc\x11\n" +
+	"%mihomo_desktop/protocol/control.proto\x12\x19mihomo_desktop.control.v1\"\x83\x13\n" +
 	"\aRequest\x12)\n" +
 	"\x10protocol_version\x18\x01 \x01(\rR\x0fprotocolVersion\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\x04R\x02id\x12F\n" +
@@ -3576,15 +4595,18 @@ const file_mihomo_desktop_protocol_control_proto_rawDesc = "" +
 	"\x15subscribe_connections\x18. \x01(\v26.mihomo_desktop.control.v1.SubscribeConnectionsRequestH\x00R\x14subscribeConnections\x12O\n" +
 	"\vpoll_events\x18/ \x01(\v2,.mihomo_desktop.control.v1.PollEventsRequestH\x00R\n" +
 	"pollEvents\x12Q\n" +
-	"\vunsubscribe\x180 \x01(\v2-.mihomo_desktop.control.v1.UnsubscribeRequestH\x00R\vunsubscribeB\b\n" +
-	"\x06method\"\x92\a\n" +
+	"\vunsubscribe\x180 \x01(\v2-.mihomo_desktop.control.v1.UnsubscribeRequestH\x00R\vunsubscribe\x12X\n" +
+	"\x0einspect_source\x181 \x01(\v2/.mihomo_desktop.control.v1.InspectSourceRequestH\x00R\rinspectSource\x12e\n" +
+	"\x13list_geo_categories\x182 \x01(\v23.mihomo_desktop.control.v1.ListGeoCategoriesRequestH\x00R\x11listGeoCategoriesB\b\n" +
+	"\x06methodJ\x04\b3\x107\"\xad\t\n" +
 	"\bResponse\x12)\n" +
 	"\x10protocol_version\x18\x01 \x01(\rR\x0fprotocolVersion\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\x04R\x02id\x128\n" +
 	"\x05error\x18\x03 \x01(\v2 .mihomo_desktop.control.v1.ErrorH\x00R\x05error\x128\n" +
 	"\x05empty\x18\x04 \x01(\v2 .mihomo_desktop.control.v1.EmptyH\x00R\x05empty\x12G\n" +
 	"\bget_info\x18\n" +
-	" \x01(\v2*.mihomo_desktop.control.v1.GetInfoResponseH\x00R\agetInfo\x12M\n" +
+	" \x01(\v2*.mihomo_desktop.control.v1.GetInfoResponseH\x00R\agetInfo\x12P\n" +
+	"\vcomposition\x18\f \x01(\v2,.mihomo_desktop.control.v1.CompositionReportH\x00R\vcomposition\x12M\n" +
 	"\n" +
 	"get_status\x18\x1e \x01(\v2,.mihomo_desktop.control.v1.GetStatusResponseH\x00R\tgetStatus\x12P\n" +
 	"\vlist_groups\x18  \x01(\v2-.mihomo_desktop.control.v1.ListGroupsResponseH\x00R\n" +
@@ -3597,8 +4619,10 @@ const file_mihomo_desktop_protocol_control_proto_rawDesc = "" +
 	"list_rules\x18' \x01(\v2,.mihomo_desktop.control.v1.ListRulesResponseH\x00R\tlistRules\x12L\n" +
 	"\tsubscribe\x18, \x01(\v2,.mihomo_desktop.control.v1.SubscribeResponseH\x00R\tsubscribe\x12P\n" +
 	"\vpoll_events\x18/ \x01(\v2-.mihomo_desktop.control.v1.PollEventsResponseH\x00R\n" +
-	"pollEventsB\b\n" +
-	"\x06result\"\a\n" +
+	"pollEvents\x12Y\n" +
+	"\x0einspect_source\x181 \x01(\v20.mihomo_desktop.control.v1.InspectSourceResponseH\x00R\rinspectSource\x12f\n" +
+	"\x13list_geo_categories\x182 \x01(\v24.mihomo_desktop.control.v1.ListGeoCategoriesResponseH\x00R\x11listGeoCategoriesB\b\n" +
+	"\x06resultJ\x04\b3\x107\"\a\n" +
 	"\x05Empty\"S\n" +
 	"\x05Error\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x18\n" +
@@ -3619,21 +4643,58 @@ const file_mihomo_desktop_protocol_control_proto_rawDesc = "" +
 	"\x14system_proxy_enabled\x18\x02 \x01(\bR\x12systemProxyEnabled\x12\x1d\n" +
 	"\n" +
 	"mixed_port\x18\x03 \x01(\rR\tmixedPort\x12\x1b\n" +
-	"\tallow_lan\x18\x04 \x01(\bR\ballowLan\"P\n" +
-	"\x0fValidateRequest\x12\x1f\n" +
-	"\vconfig_yaml\x18\x01 \x01(\tR\n" +
-	"configYaml\x12\x1c\n" +
-	"\toverrides\x18\x02 \x03(\tR\toverrides\"\x8e\x01\n" +
-	"\fStartRequest\x12\x1f\n" +
-	"\vconfig_yaml\x18\x01 \x01(\tR\n" +
-	"configYaml\x12\x1c\n" +
+	"\tallow_lan\x18\x04 \x01(\bR\ballowLan\"\xa8\x01\n" +
+	"\x0fValidateRequest\x12!\n" +
+	"\vconfig_yaml\x18\x01 \x01(\tH\x00R\n" +
+	"configYaml\x12J\n" +
+	"\vcomposition\x18\x04 \x01(\v2&.mihomo_desktop.control.v1.CompositionH\x00R\vcomposition\x12\x1c\n" +
+	"\toverrides\x18\x02 \x03(\tR\toverridesB\b\n" +
+	"\x06source\"\xe6\x01\n" +
+	"\fStartRequest\x12!\n" +
+	"\vconfig_yaml\x18\x01 \x01(\tH\x00R\n" +
+	"configYaml\x12J\n" +
+	"\vcomposition\x18\x04 \x01(\v2&.mihomo_desktop.control.v1.CompositionH\x00R\vcomposition\x12\x1c\n" +
 	"\toverrides\x18\x02 \x03(\tR\toverrides\x12?\n" +
-	"\aoptions\x18\x03 \x01(\v2%.mihomo_desktop.control.v1.RunOptionsR\aoptions\"\x8f\x01\n" +
-	"\rReloadRequest\x12\x1f\n" +
-	"\vconfig_yaml\x18\x01 \x01(\tR\n" +
-	"configYaml\x12\x1c\n" +
+	"\aoptions\x18\x03 \x01(\v2%.mihomo_desktop.control.v1.RunOptionsR\aoptionsB\b\n" +
+	"\x06source\"\xe7\x01\n" +
+	"\rReloadRequest\x12!\n" +
+	"\vconfig_yaml\x18\x01 \x01(\tH\x00R\n" +
+	"configYaml\x12J\n" +
+	"\vcomposition\x18\x04 \x01(\v2&.mihomo_desktop.control.v1.CompositionH\x00R\vcomposition\x12\x1c\n" +
 	"\toverrides\x18\x02 \x03(\tR\toverrides\x12?\n" +
-	"\aoptions\x18\x03 \x01(\v2%.mihomo_desktop.control.v1.RunOptionsR\aoptions\"\r\n" +
+	"\aoptions\x18\x03 \x01(\v2%.mihomo_desktop.control.v1.RunOptionsR\aoptionsB\b\n" +
+	"\x06source\"\x93\x01\n" +
+	"\vComposition\x12F\n" +
+	"\asources\x18\x01 \x03(\v2,.mihomo_desktop.control.v1.CompositionSourceR\asources\x12\x1f\n" +
+	"\vinfo_filter\x18\x02 \x01(\tR\n" +
+	"infoFilter\x12\x1b\n" +
+	"\tplan_json\x18\x03 \x01(\tR\bplanJson\"K\n" +
+	"\x11CompositionSource\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04yaml\x18\x03 \x01(\tR\x04yaml\"\x92\x02\n" +
+	"\x11CompositionReport\x12I\n" +
+	"\bwarnings\x18\x01 \x03(\v2-.mihomo_desktop.control.v1.CompositionWarningR\bwarnings\x12@\n" +
+	"\x06groups\x18\x02 \x03(\v2(.mihomo_desktop.control.v1.ComposedGroupR\x06groups\x125\n" +
+	"\x05rules\x18\x03 \x03(\v2\x1f.mihomo_desktop.control.v1.RuleR\x05rules\x129\n" +
+	"\x05nodes\x18\x04 \x03(\v2#.mihomo_desktop.control.v1.PoolNodeR\x05nodes\"_\n" +
+	"\x12CompositionWarning\x12\x19\n" +
+	"\bentry_id\x18\x01 \x01(\tR\aentryId\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x16\n" +
+	"\x06target\x18\x03 \x01(\tR\x06target\"\xa4\x01\n" +
+	"\rComposedGroup\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x128\n" +
+	"\x04kind\x18\x03 \x01(\x0e2$.mihomo_desktop.control.v1.GroupKindR\x04kind\x12\x16\n" +
+	"\x06region\x18\x04 \x01(\tR\x06region\x12\x1d\n" +
+	"\n" +
+	"node_count\x18\x05 \x01(\rR\tnodeCount\"\x8c\x01\n" +
+	"\bPoolNode\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12#\n" +
+	"\roriginal_name\x18\x02 \x01(\tR\foriginalName\x12\x1b\n" +
+	"\tsource_id\x18\x03 \x01(\tR\bsourceId\x12\x12\n" +
+	"\x04type\x18\x04 \x01(\tR\x04type\x12\x16\n" +
+	"\x06region\x18\x05 \x01(\tR\x06region\"\r\n" +
 	"\vStopRequest\"1\n" +
 	"\x15SetSystemProxyRequest\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\"\x12\n" +
@@ -3696,11 +4757,12 @@ const file_mihomo_desktop_protocol_control_proto_rawDesc = "" +
 	"\tproviders\x18\x01 \x03(\v2#.mihomo_desktop.control.v1.ProviderR\tproviders\"h\n" +
 	"\x15UpdateProviderRequest\x12;\n" +
 	"\x04kind\x18\x01 \x01(\x0e2'.mihomo_desktop.control.v1.ProviderKindR\x04kind\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"J\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"e\n" +
 	"\x04Rule\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x18\n" +
 	"\apayload\x18\x02 \x01(\tR\apayload\x12\x14\n" +
-	"\x05proxy\x18\x03 \x01(\tR\x05proxy\"\x12\n" +
+	"\x05proxy\x18\x03 \x01(\tR\x05proxy\x12\x19\n" +
+	"\bentry_id\x18\x04 \x01(\tR\aentryId\"\x12\n" +
 	"\x10ListRulesRequest\"J\n" +
 	"\x11ListRulesResponse\x125\n" +
 	"\x05rules\x18\x01 \x03(\v2\x1f.mihomo_desktop.control.v1.RuleR\x05rules\"(\n" +
@@ -3738,7 +4800,7 @@ const file_mihomo_desktop_protocol_control_proto_rawDesc = "" +
 	"\x13up_bytes_per_second\x18\x01 \x01(\x04R\x10upBytesPerSecond\x121\n" +
 	"\x15down_bytes_per_second\x18\x02 \x01(\x04R\x12downBytesPerSecond\x12$\n" +
 	"\x0eup_total_bytes\x18\x03 \x01(\x04R\fupTotalBytes\x12(\n" +
-	"\x10down_total_bytes\x18\x04 \x01(\x04R\x0edownTotalBytes\"\xe4\x02\n" +
+	"\x10down_total_bytes\x18\x04 \x01(\x04R\x0edownTotalBytes\"\x88\x03\n" +
 	"\n" +
 	"Connection\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
@@ -3753,9 +4815,35 @@ const file_mihomo_desktop_protocol_control_proto_rawDesc = "" +
 	"\fupload_bytes\x18\n" +
 	" \x01(\x04R\vuploadBytes\x12%\n" +
 	"\x0edownload_bytes\x18\v \x01(\x04R\rdownloadBytes\x12+\n" +
-	"\x12started_at_unix_ms\x18\f \x01(\x04R\x0fstartedAtUnixMs\"]\n" +
+	"\x12started_at_unix_ms\x18\f \x01(\x04R\x0fstartedAtUnixMs\x12\"\n" +
+	"\rrule_entry_id\x18\r \x01(\tR\vruleEntryId\"]\n" +
 	"\x12ConnectionSnapshot\x12G\n" +
-	"\vconnections\x18\x01 \x03(\v2%.mihomo_desktop.control.v1.ConnectionR\vconnections*\x99\x01\n" +
+	"\vconnections\x18\x01 \x03(\v2%.mihomo_desktop.control.v1.ConnectionR\vconnections\"K\n" +
+	"\x14InspectSourceRequest\x12\x12\n" +
+	"\x04yaml\x18\x01 \x01(\tR\x04yaml\x12\x1f\n" +
+	"\vinfo_filter\x18\x02 \x01(\tR\n" +
+	"infoFilter\"\xb1\x01\n" +
+	"\x15InspectSourceResponse\x12;\n" +
+	"\x05nodes\x18\x01 \x03(\v2%.mihomo_desktop.control.v1.SourceNodeR\x05nodes\x12\x1b\n" +
+	"\thas_rules\x18\x02 \x01(\bR\bhasRules\x12\x1f\n" +
+	"\vgroup_count\x18\x03 \x01(\rR\n" +
+	"groupCount\x12\x1d\n" +
+	"\n" +
+	"rule_count\x18\x04 \x01(\rR\truleCount\"`\n" +
+	"\n" +
+	"SourceNode\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type\x12\x16\n" +
+	"\x06region\x18\x03 \x01(\tR\x06region\x12\x12\n" +
+	"\x04info\x18\x04 \x01(\bR\x04info\"\x1a\n" +
+	"\x18ListGeoCategoriesRequest\"\x9f\x01\n" +
+	"\x19ListGeoCategoriesResponse\x12B\n" +
+	"\ageosite\x18\x01 \x01(\v2(.mihomo_desktop.control.v1.GeoCategoriesR\ageosite\x12>\n" +
+	"\x05geoip\x18\x02 \x01(\v2(.mihomo_desktop.control.v1.GeoCategoriesR\x05geoip\"j\n" +
+	"\rGeoCategories\x12\x14\n" +
+	"\x05names\x18\x01 \x03(\tR\x05names\x12\x16\n" +
+	"\x06sha256\x18\x02 \x01(\tR\x06sha256\x12+\n" +
+	"\x12updated_at_unix_ms\x18\x03 \x01(\x04R\x0fupdatedAtUnixMs*\x99\x01\n" +
 	"\bRunState\x12\x19\n" +
 	"\x15RUN_STATE_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11RUN_STATE_STOPPED\x10\x01\x12\x16\n" +
@@ -3767,7 +4855,12 @@ const file_mihomo_desktop_protocol_control_proto_rawDesc = "" +
 	"\x15OWNERSHIP_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13OWNERSHIP_AVAILABLE\x10\x01\x12\x14\n" +
 	"\x10OWNERSHIP_CALLER\x10\x02\x12\x13\n" +
-	"\x0fOWNERSHIP_OTHER\x10\x03*M\n" +
+	"\x0fOWNERSHIP_OTHER\x10\x03*m\n" +
+	"\tGroupKind\x12\x1a\n" +
+	"\x16GROUP_KIND_UNSPECIFIED\x10\x00\x12\x16\n" +
+	"\x12GROUP_KIND_BUILTIN\x10\x01\x12\x15\n" +
+	"\x11GROUP_KIND_REGION\x10\x02\x12\x15\n" +
+	"\x11GROUP_KIND_CUSTOM\x10\x03*M\n" +
 	"\x04Mode\x12\x14\n" +
 	"\x10MODE_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tMODE_RULE\x10\x01\x12\x0f\n" +
@@ -3800,132 +4893,162 @@ func file_mihomo_desktop_protocol_control_proto_rawDescGZIP() []byte {
 	return file_mihomo_desktop_protocol_control_proto_rawDescData
 }
 
-var file_mihomo_desktop_protocol_control_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_mihomo_desktop_protocol_control_proto_msgTypes = make([]protoimpl.MessageInfo, 49)
+var file_mihomo_desktop_protocol_control_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
+var file_mihomo_desktop_protocol_control_proto_msgTypes = make([]protoimpl.MessageInfo, 61)
 var file_mihomo_desktop_protocol_control_proto_goTypes = []any{
 	(RunState)(0),                       // 0: mihomo_desktop.control.v1.RunState
 	(Ownership)(0),                      // 1: mihomo_desktop.control.v1.Ownership
-	(Mode)(0),                           // 2: mihomo_desktop.control.v1.Mode
-	(GroupSort)(0),                      // 3: mihomo_desktop.control.v1.GroupSort
-	(ProviderKind)(0),                   // 4: mihomo_desktop.control.v1.ProviderKind
-	(LogLevel)(0),                       // 5: mihomo_desktop.control.v1.LogLevel
-	(*Request)(nil),                     // 6: mihomo_desktop.control.v1.Request
-	(*Response)(nil),                    // 7: mihomo_desktop.control.v1.Response
-	(*Empty)(nil),                       // 8: mihomo_desktop.control.v1.Empty
-	(*Error)(nil),                       // 9: mihomo_desktop.control.v1.Error
-	(*GetInfoRequest)(nil),              // 10: mihomo_desktop.control.v1.GetInfoRequest
-	(*GetInfoResponse)(nil),             // 11: mihomo_desktop.control.v1.GetInfoResponse
-	(*ClaimRequest)(nil),                // 12: mihomo_desktop.control.v1.ClaimRequest
-	(*RunOptions)(nil),                  // 13: mihomo_desktop.control.v1.RunOptions
-	(*ValidateRequest)(nil),             // 14: mihomo_desktop.control.v1.ValidateRequest
-	(*StartRequest)(nil),                // 15: mihomo_desktop.control.v1.StartRequest
-	(*ReloadRequest)(nil),               // 16: mihomo_desktop.control.v1.ReloadRequest
-	(*StopRequest)(nil),                 // 17: mihomo_desktop.control.v1.StopRequest
-	(*SetSystemProxyRequest)(nil),       // 18: mihomo_desktop.control.v1.SetSystemProxyRequest
-	(*GetStatusRequest)(nil),            // 19: mihomo_desktop.control.v1.GetStatusRequest
-	(*GetStatusResponse)(nil),           // 20: mihomo_desktop.control.v1.GetStatusResponse
-	(*SetModeRequest)(nil),              // 21: mihomo_desktop.control.v1.SetModeRequest
-	(*Proxy)(nil),                       // 22: mihomo_desktop.control.v1.Proxy
-	(*ProxyGroup)(nil),                  // 23: mihomo_desktop.control.v1.ProxyGroup
-	(*ListGroupsRequest)(nil),           // 24: mihomo_desktop.control.v1.ListGroupsRequest
-	(*ListGroupsResponse)(nil),          // 25: mihomo_desktop.control.v1.ListGroupsResponse
-	(*GetGroupRequest)(nil),             // 26: mihomo_desktop.control.v1.GetGroupRequest
-	(*GetGroupResponse)(nil),            // 27: mihomo_desktop.control.v1.GetGroupResponse
-	(*SelectProxyRequest)(nil),          // 28: mihomo_desktop.control.v1.SelectProxyRequest
-	(*HealthCheckRequest)(nil),          // 29: mihomo_desktop.control.v1.HealthCheckRequest
-	(*TestDelayRequest)(nil),            // 30: mihomo_desktop.control.v1.TestDelayRequest
-	(*TestDelayResponse)(nil),           // 31: mihomo_desktop.control.v1.TestDelayResponse
-	(*Provider)(nil),                    // 32: mihomo_desktop.control.v1.Provider
-	(*ListProvidersRequest)(nil),        // 33: mihomo_desktop.control.v1.ListProvidersRequest
-	(*ListProvidersResponse)(nil),       // 34: mihomo_desktop.control.v1.ListProvidersResponse
-	(*UpdateProviderRequest)(nil),       // 35: mihomo_desktop.control.v1.UpdateProviderRequest
-	(*Rule)(nil),                        // 36: mihomo_desktop.control.v1.Rule
-	(*ListRulesRequest)(nil),            // 37: mihomo_desktop.control.v1.ListRulesRequest
-	(*ListRulesResponse)(nil),           // 38: mihomo_desktop.control.v1.ListRulesResponse
-	(*CloseConnectionRequest)(nil),      // 39: mihomo_desktop.control.v1.CloseConnectionRequest
-	(*CloseAllConnectionsRequest)(nil),  // 40: mihomo_desktop.control.v1.CloseAllConnectionsRequest
-	(*FlushFakeIPRequest)(nil),          // 41: mihomo_desktop.control.v1.FlushFakeIPRequest
-	(*FlushDNSCacheRequest)(nil),        // 42: mihomo_desktop.control.v1.FlushDNSCacheRequest
-	(*SubscribeLogsRequest)(nil),        // 43: mihomo_desktop.control.v1.SubscribeLogsRequest
-	(*SubscribeTrafficRequest)(nil),     // 44: mihomo_desktop.control.v1.SubscribeTrafficRequest
-	(*SubscribeConnectionsRequest)(nil), // 45: mihomo_desktop.control.v1.SubscribeConnectionsRequest
-	(*SubscribeResponse)(nil),           // 46: mihomo_desktop.control.v1.SubscribeResponse
-	(*PollEventsRequest)(nil),           // 47: mihomo_desktop.control.v1.PollEventsRequest
-	(*PollEventsResponse)(nil),          // 48: mihomo_desktop.control.v1.PollEventsResponse
-	(*UnsubscribeRequest)(nil),          // 49: mihomo_desktop.control.v1.UnsubscribeRequest
-	(*Event)(nil),                       // 50: mihomo_desktop.control.v1.Event
-	(*LogEntry)(nil),                    // 51: mihomo_desktop.control.v1.LogEntry
-	(*TrafficSample)(nil),               // 52: mihomo_desktop.control.v1.TrafficSample
-	(*Connection)(nil),                  // 53: mihomo_desktop.control.v1.Connection
-	(*ConnectionSnapshot)(nil),          // 54: mihomo_desktop.control.v1.ConnectionSnapshot
+	(GroupKind)(0),                      // 2: mihomo_desktop.control.v1.GroupKind
+	(Mode)(0),                           // 3: mihomo_desktop.control.v1.Mode
+	(GroupSort)(0),                      // 4: mihomo_desktop.control.v1.GroupSort
+	(ProviderKind)(0),                   // 5: mihomo_desktop.control.v1.ProviderKind
+	(LogLevel)(0),                       // 6: mihomo_desktop.control.v1.LogLevel
+	(*Request)(nil),                     // 7: mihomo_desktop.control.v1.Request
+	(*Response)(nil),                    // 8: mihomo_desktop.control.v1.Response
+	(*Empty)(nil),                       // 9: mihomo_desktop.control.v1.Empty
+	(*Error)(nil),                       // 10: mihomo_desktop.control.v1.Error
+	(*GetInfoRequest)(nil),              // 11: mihomo_desktop.control.v1.GetInfoRequest
+	(*GetInfoResponse)(nil),             // 12: mihomo_desktop.control.v1.GetInfoResponse
+	(*ClaimRequest)(nil),                // 13: mihomo_desktop.control.v1.ClaimRequest
+	(*RunOptions)(nil),                  // 14: mihomo_desktop.control.v1.RunOptions
+	(*ValidateRequest)(nil),             // 15: mihomo_desktop.control.v1.ValidateRequest
+	(*StartRequest)(nil),                // 16: mihomo_desktop.control.v1.StartRequest
+	(*ReloadRequest)(nil),               // 17: mihomo_desktop.control.v1.ReloadRequest
+	(*Composition)(nil),                 // 18: mihomo_desktop.control.v1.Composition
+	(*CompositionSource)(nil),           // 19: mihomo_desktop.control.v1.CompositionSource
+	(*CompositionReport)(nil),           // 20: mihomo_desktop.control.v1.CompositionReport
+	(*CompositionWarning)(nil),          // 21: mihomo_desktop.control.v1.CompositionWarning
+	(*ComposedGroup)(nil),               // 22: mihomo_desktop.control.v1.ComposedGroup
+	(*PoolNode)(nil),                    // 23: mihomo_desktop.control.v1.PoolNode
+	(*StopRequest)(nil),                 // 24: mihomo_desktop.control.v1.StopRequest
+	(*SetSystemProxyRequest)(nil),       // 25: mihomo_desktop.control.v1.SetSystemProxyRequest
+	(*GetStatusRequest)(nil),            // 26: mihomo_desktop.control.v1.GetStatusRequest
+	(*GetStatusResponse)(nil),           // 27: mihomo_desktop.control.v1.GetStatusResponse
+	(*SetModeRequest)(nil),              // 28: mihomo_desktop.control.v1.SetModeRequest
+	(*Proxy)(nil),                       // 29: mihomo_desktop.control.v1.Proxy
+	(*ProxyGroup)(nil),                  // 30: mihomo_desktop.control.v1.ProxyGroup
+	(*ListGroupsRequest)(nil),           // 31: mihomo_desktop.control.v1.ListGroupsRequest
+	(*ListGroupsResponse)(nil),          // 32: mihomo_desktop.control.v1.ListGroupsResponse
+	(*GetGroupRequest)(nil),             // 33: mihomo_desktop.control.v1.GetGroupRequest
+	(*GetGroupResponse)(nil),            // 34: mihomo_desktop.control.v1.GetGroupResponse
+	(*SelectProxyRequest)(nil),          // 35: mihomo_desktop.control.v1.SelectProxyRequest
+	(*HealthCheckRequest)(nil),          // 36: mihomo_desktop.control.v1.HealthCheckRequest
+	(*TestDelayRequest)(nil),            // 37: mihomo_desktop.control.v1.TestDelayRequest
+	(*TestDelayResponse)(nil),           // 38: mihomo_desktop.control.v1.TestDelayResponse
+	(*Provider)(nil),                    // 39: mihomo_desktop.control.v1.Provider
+	(*ListProvidersRequest)(nil),        // 40: mihomo_desktop.control.v1.ListProvidersRequest
+	(*ListProvidersResponse)(nil),       // 41: mihomo_desktop.control.v1.ListProvidersResponse
+	(*UpdateProviderRequest)(nil),       // 42: mihomo_desktop.control.v1.UpdateProviderRequest
+	(*Rule)(nil),                        // 43: mihomo_desktop.control.v1.Rule
+	(*ListRulesRequest)(nil),            // 44: mihomo_desktop.control.v1.ListRulesRequest
+	(*ListRulesResponse)(nil),           // 45: mihomo_desktop.control.v1.ListRulesResponse
+	(*CloseConnectionRequest)(nil),      // 46: mihomo_desktop.control.v1.CloseConnectionRequest
+	(*CloseAllConnectionsRequest)(nil),  // 47: mihomo_desktop.control.v1.CloseAllConnectionsRequest
+	(*FlushFakeIPRequest)(nil),          // 48: mihomo_desktop.control.v1.FlushFakeIPRequest
+	(*FlushDNSCacheRequest)(nil),        // 49: mihomo_desktop.control.v1.FlushDNSCacheRequest
+	(*SubscribeLogsRequest)(nil),        // 50: mihomo_desktop.control.v1.SubscribeLogsRequest
+	(*SubscribeTrafficRequest)(nil),     // 51: mihomo_desktop.control.v1.SubscribeTrafficRequest
+	(*SubscribeConnectionsRequest)(nil), // 52: mihomo_desktop.control.v1.SubscribeConnectionsRequest
+	(*SubscribeResponse)(nil),           // 53: mihomo_desktop.control.v1.SubscribeResponse
+	(*PollEventsRequest)(nil),           // 54: mihomo_desktop.control.v1.PollEventsRequest
+	(*PollEventsResponse)(nil),          // 55: mihomo_desktop.control.v1.PollEventsResponse
+	(*UnsubscribeRequest)(nil),          // 56: mihomo_desktop.control.v1.UnsubscribeRequest
+	(*Event)(nil),                       // 57: mihomo_desktop.control.v1.Event
+	(*LogEntry)(nil),                    // 58: mihomo_desktop.control.v1.LogEntry
+	(*TrafficSample)(nil),               // 59: mihomo_desktop.control.v1.TrafficSample
+	(*Connection)(nil),                  // 60: mihomo_desktop.control.v1.Connection
+	(*ConnectionSnapshot)(nil),          // 61: mihomo_desktop.control.v1.ConnectionSnapshot
+	(*InspectSourceRequest)(nil),        // 62: mihomo_desktop.control.v1.InspectSourceRequest
+	(*InspectSourceResponse)(nil),       // 63: mihomo_desktop.control.v1.InspectSourceResponse
+	(*SourceNode)(nil),                  // 64: mihomo_desktop.control.v1.SourceNode
+	(*ListGeoCategoriesRequest)(nil),    // 65: mihomo_desktop.control.v1.ListGeoCategoriesRequest
+	(*ListGeoCategoriesResponse)(nil),   // 66: mihomo_desktop.control.v1.ListGeoCategoriesResponse
+	(*GeoCategories)(nil),               // 67: mihomo_desktop.control.v1.GeoCategories
 }
 var file_mihomo_desktop_protocol_control_proto_depIdxs = []int32{
-	10, // 0: mihomo_desktop.control.v1.Request.get_info:type_name -> mihomo_desktop.control.v1.GetInfoRequest
-	12, // 1: mihomo_desktop.control.v1.Request.claim:type_name -> mihomo_desktop.control.v1.ClaimRequest
-	14, // 2: mihomo_desktop.control.v1.Request.validate:type_name -> mihomo_desktop.control.v1.ValidateRequest
-	15, // 3: mihomo_desktop.control.v1.Request.start:type_name -> mihomo_desktop.control.v1.StartRequest
-	16, // 4: mihomo_desktop.control.v1.Request.reload:type_name -> mihomo_desktop.control.v1.ReloadRequest
-	17, // 5: mihomo_desktop.control.v1.Request.stop:type_name -> mihomo_desktop.control.v1.StopRequest
-	18, // 6: mihomo_desktop.control.v1.Request.set_system_proxy:type_name -> mihomo_desktop.control.v1.SetSystemProxyRequest
-	19, // 7: mihomo_desktop.control.v1.Request.get_status:type_name -> mihomo_desktop.control.v1.GetStatusRequest
-	21, // 8: mihomo_desktop.control.v1.Request.set_mode:type_name -> mihomo_desktop.control.v1.SetModeRequest
-	24, // 9: mihomo_desktop.control.v1.Request.list_groups:type_name -> mihomo_desktop.control.v1.ListGroupsRequest
-	26, // 10: mihomo_desktop.control.v1.Request.get_group:type_name -> mihomo_desktop.control.v1.GetGroupRequest
-	28, // 11: mihomo_desktop.control.v1.Request.select_proxy:type_name -> mihomo_desktop.control.v1.SelectProxyRequest
-	29, // 12: mihomo_desktop.control.v1.Request.health_check:type_name -> mihomo_desktop.control.v1.HealthCheckRequest
-	30, // 13: mihomo_desktop.control.v1.Request.test_delay:type_name -> mihomo_desktop.control.v1.TestDelayRequest
-	33, // 14: mihomo_desktop.control.v1.Request.list_providers:type_name -> mihomo_desktop.control.v1.ListProvidersRequest
-	35, // 15: mihomo_desktop.control.v1.Request.update_provider:type_name -> mihomo_desktop.control.v1.UpdateProviderRequest
-	37, // 16: mihomo_desktop.control.v1.Request.list_rules:type_name -> mihomo_desktop.control.v1.ListRulesRequest
-	39, // 17: mihomo_desktop.control.v1.Request.close_connection:type_name -> mihomo_desktop.control.v1.CloseConnectionRequest
-	40, // 18: mihomo_desktop.control.v1.Request.close_all_connections:type_name -> mihomo_desktop.control.v1.CloseAllConnectionsRequest
-	41, // 19: mihomo_desktop.control.v1.Request.flush_fake_ip:type_name -> mihomo_desktop.control.v1.FlushFakeIPRequest
-	42, // 20: mihomo_desktop.control.v1.Request.flush_dns_cache:type_name -> mihomo_desktop.control.v1.FlushDNSCacheRequest
-	43, // 21: mihomo_desktop.control.v1.Request.subscribe_logs:type_name -> mihomo_desktop.control.v1.SubscribeLogsRequest
-	44, // 22: mihomo_desktop.control.v1.Request.subscribe_traffic:type_name -> mihomo_desktop.control.v1.SubscribeTrafficRequest
-	45, // 23: mihomo_desktop.control.v1.Request.subscribe_connections:type_name -> mihomo_desktop.control.v1.SubscribeConnectionsRequest
-	47, // 24: mihomo_desktop.control.v1.Request.poll_events:type_name -> mihomo_desktop.control.v1.PollEventsRequest
-	49, // 25: mihomo_desktop.control.v1.Request.unsubscribe:type_name -> mihomo_desktop.control.v1.UnsubscribeRequest
-	9,  // 26: mihomo_desktop.control.v1.Response.error:type_name -> mihomo_desktop.control.v1.Error
-	8,  // 27: mihomo_desktop.control.v1.Response.empty:type_name -> mihomo_desktop.control.v1.Empty
-	11, // 28: mihomo_desktop.control.v1.Response.get_info:type_name -> mihomo_desktop.control.v1.GetInfoResponse
-	20, // 29: mihomo_desktop.control.v1.Response.get_status:type_name -> mihomo_desktop.control.v1.GetStatusResponse
-	25, // 30: mihomo_desktop.control.v1.Response.list_groups:type_name -> mihomo_desktop.control.v1.ListGroupsResponse
-	27, // 31: mihomo_desktop.control.v1.Response.get_group:type_name -> mihomo_desktop.control.v1.GetGroupResponse
-	31, // 32: mihomo_desktop.control.v1.Response.test_delay:type_name -> mihomo_desktop.control.v1.TestDelayResponse
-	34, // 33: mihomo_desktop.control.v1.Response.list_providers:type_name -> mihomo_desktop.control.v1.ListProvidersResponse
-	38, // 34: mihomo_desktop.control.v1.Response.list_rules:type_name -> mihomo_desktop.control.v1.ListRulesResponse
-	46, // 35: mihomo_desktop.control.v1.Response.subscribe:type_name -> mihomo_desktop.control.v1.SubscribeResponse
-	48, // 36: mihomo_desktop.control.v1.Response.poll_events:type_name -> mihomo_desktop.control.v1.PollEventsResponse
-	0,  // 37: mihomo_desktop.control.v1.GetInfoResponse.state:type_name -> mihomo_desktop.control.v1.RunState
-	1,  // 38: mihomo_desktop.control.v1.GetInfoResponse.ownership:type_name -> mihomo_desktop.control.v1.Ownership
-	13, // 39: mihomo_desktop.control.v1.StartRequest.options:type_name -> mihomo_desktop.control.v1.RunOptions
-	13, // 40: mihomo_desktop.control.v1.ReloadRequest.options:type_name -> mihomo_desktop.control.v1.RunOptions
-	0,  // 41: mihomo_desktop.control.v1.GetStatusResponse.state:type_name -> mihomo_desktop.control.v1.RunState
-	2,  // 42: mihomo_desktop.control.v1.GetStatusResponse.mode:type_name -> mihomo_desktop.control.v1.Mode
-	9,  // 43: mihomo_desktop.control.v1.GetStatusResponse.last_error:type_name -> mihomo_desktop.control.v1.Error
-	2,  // 44: mihomo_desktop.control.v1.SetModeRequest.mode:type_name -> mihomo_desktop.control.v1.Mode
-	22, // 45: mihomo_desktop.control.v1.ProxyGroup.proxies:type_name -> mihomo_desktop.control.v1.Proxy
-	3,  // 46: mihomo_desktop.control.v1.ListGroupsRequest.sort:type_name -> mihomo_desktop.control.v1.GroupSort
-	23, // 47: mihomo_desktop.control.v1.ListGroupsResponse.groups:type_name -> mihomo_desktop.control.v1.ProxyGroup
-	3,  // 48: mihomo_desktop.control.v1.GetGroupRequest.sort:type_name -> mihomo_desktop.control.v1.GroupSort
-	23, // 49: mihomo_desktop.control.v1.GetGroupResponse.group:type_name -> mihomo_desktop.control.v1.ProxyGroup
-	4,  // 50: mihomo_desktop.control.v1.Provider.kind:type_name -> mihomo_desktop.control.v1.ProviderKind
-	32, // 51: mihomo_desktop.control.v1.ListProvidersResponse.providers:type_name -> mihomo_desktop.control.v1.Provider
-	4,  // 52: mihomo_desktop.control.v1.UpdateProviderRequest.kind:type_name -> mihomo_desktop.control.v1.ProviderKind
-	36, // 53: mihomo_desktop.control.v1.ListRulesResponse.rules:type_name -> mihomo_desktop.control.v1.Rule
-	5,  // 54: mihomo_desktop.control.v1.SubscribeLogsRequest.level:type_name -> mihomo_desktop.control.v1.LogLevel
-	50, // 55: mihomo_desktop.control.v1.PollEventsResponse.events:type_name -> mihomo_desktop.control.v1.Event
-	51, // 56: mihomo_desktop.control.v1.Event.log:type_name -> mihomo_desktop.control.v1.LogEntry
-	52, // 57: mihomo_desktop.control.v1.Event.traffic:type_name -> mihomo_desktop.control.v1.TrafficSample
-	54, // 58: mihomo_desktop.control.v1.Event.connections:type_name -> mihomo_desktop.control.v1.ConnectionSnapshot
-	5,  // 59: mihomo_desktop.control.v1.LogEntry.level:type_name -> mihomo_desktop.control.v1.LogLevel
-	53, // 60: mihomo_desktop.control.v1.ConnectionSnapshot.connections:type_name -> mihomo_desktop.control.v1.Connection
-	61, // [61:61] is the sub-list for method output_type
-	61, // [61:61] is the sub-list for method input_type
-	61, // [61:61] is the sub-list for extension type_name
-	61, // [61:61] is the sub-list for extension extendee
-	0,  // [0:61] is the sub-list for field type_name
+	11, // 0: mihomo_desktop.control.v1.Request.get_info:type_name -> mihomo_desktop.control.v1.GetInfoRequest
+	13, // 1: mihomo_desktop.control.v1.Request.claim:type_name -> mihomo_desktop.control.v1.ClaimRequest
+	15, // 2: mihomo_desktop.control.v1.Request.validate:type_name -> mihomo_desktop.control.v1.ValidateRequest
+	16, // 3: mihomo_desktop.control.v1.Request.start:type_name -> mihomo_desktop.control.v1.StartRequest
+	17, // 4: mihomo_desktop.control.v1.Request.reload:type_name -> mihomo_desktop.control.v1.ReloadRequest
+	24, // 5: mihomo_desktop.control.v1.Request.stop:type_name -> mihomo_desktop.control.v1.StopRequest
+	25, // 6: mihomo_desktop.control.v1.Request.set_system_proxy:type_name -> mihomo_desktop.control.v1.SetSystemProxyRequest
+	26, // 7: mihomo_desktop.control.v1.Request.get_status:type_name -> mihomo_desktop.control.v1.GetStatusRequest
+	28, // 8: mihomo_desktop.control.v1.Request.set_mode:type_name -> mihomo_desktop.control.v1.SetModeRequest
+	31, // 9: mihomo_desktop.control.v1.Request.list_groups:type_name -> mihomo_desktop.control.v1.ListGroupsRequest
+	33, // 10: mihomo_desktop.control.v1.Request.get_group:type_name -> mihomo_desktop.control.v1.GetGroupRequest
+	35, // 11: mihomo_desktop.control.v1.Request.select_proxy:type_name -> mihomo_desktop.control.v1.SelectProxyRequest
+	36, // 12: mihomo_desktop.control.v1.Request.health_check:type_name -> mihomo_desktop.control.v1.HealthCheckRequest
+	37, // 13: mihomo_desktop.control.v1.Request.test_delay:type_name -> mihomo_desktop.control.v1.TestDelayRequest
+	40, // 14: mihomo_desktop.control.v1.Request.list_providers:type_name -> mihomo_desktop.control.v1.ListProvidersRequest
+	42, // 15: mihomo_desktop.control.v1.Request.update_provider:type_name -> mihomo_desktop.control.v1.UpdateProviderRequest
+	44, // 16: mihomo_desktop.control.v1.Request.list_rules:type_name -> mihomo_desktop.control.v1.ListRulesRequest
+	46, // 17: mihomo_desktop.control.v1.Request.close_connection:type_name -> mihomo_desktop.control.v1.CloseConnectionRequest
+	47, // 18: mihomo_desktop.control.v1.Request.close_all_connections:type_name -> mihomo_desktop.control.v1.CloseAllConnectionsRequest
+	48, // 19: mihomo_desktop.control.v1.Request.flush_fake_ip:type_name -> mihomo_desktop.control.v1.FlushFakeIPRequest
+	49, // 20: mihomo_desktop.control.v1.Request.flush_dns_cache:type_name -> mihomo_desktop.control.v1.FlushDNSCacheRequest
+	50, // 21: mihomo_desktop.control.v1.Request.subscribe_logs:type_name -> mihomo_desktop.control.v1.SubscribeLogsRequest
+	51, // 22: mihomo_desktop.control.v1.Request.subscribe_traffic:type_name -> mihomo_desktop.control.v1.SubscribeTrafficRequest
+	52, // 23: mihomo_desktop.control.v1.Request.subscribe_connections:type_name -> mihomo_desktop.control.v1.SubscribeConnectionsRequest
+	54, // 24: mihomo_desktop.control.v1.Request.poll_events:type_name -> mihomo_desktop.control.v1.PollEventsRequest
+	56, // 25: mihomo_desktop.control.v1.Request.unsubscribe:type_name -> mihomo_desktop.control.v1.UnsubscribeRequest
+	62, // 26: mihomo_desktop.control.v1.Request.inspect_source:type_name -> mihomo_desktop.control.v1.InspectSourceRequest
+	65, // 27: mihomo_desktop.control.v1.Request.list_geo_categories:type_name -> mihomo_desktop.control.v1.ListGeoCategoriesRequest
+	10, // 28: mihomo_desktop.control.v1.Response.error:type_name -> mihomo_desktop.control.v1.Error
+	9,  // 29: mihomo_desktop.control.v1.Response.empty:type_name -> mihomo_desktop.control.v1.Empty
+	12, // 30: mihomo_desktop.control.v1.Response.get_info:type_name -> mihomo_desktop.control.v1.GetInfoResponse
+	20, // 31: mihomo_desktop.control.v1.Response.composition:type_name -> mihomo_desktop.control.v1.CompositionReport
+	27, // 32: mihomo_desktop.control.v1.Response.get_status:type_name -> mihomo_desktop.control.v1.GetStatusResponse
+	32, // 33: mihomo_desktop.control.v1.Response.list_groups:type_name -> mihomo_desktop.control.v1.ListGroupsResponse
+	34, // 34: mihomo_desktop.control.v1.Response.get_group:type_name -> mihomo_desktop.control.v1.GetGroupResponse
+	38, // 35: mihomo_desktop.control.v1.Response.test_delay:type_name -> mihomo_desktop.control.v1.TestDelayResponse
+	41, // 36: mihomo_desktop.control.v1.Response.list_providers:type_name -> mihomo_desktop.control.v1.ListProvidersResponse
+	45, // 37: mihomo_desktop.control.v1.Response.list_rules:type_name -> mihomo_desktop.control.v1.ListRulesResponse
+	53, // 38: mihomo_desktop.control.v1.Response.subscribe:type_name -> mihomo_desktop.control.v1.SubscribeResponse
+	55, // 39: mihomo_desktop.control.v1.Response.poll_events:type_name -> mihomo_desktop.control.v1.PollEventsResponse
+	63, // 40: mihomo_desktop.control.v1.Response.inspect_source:type_name -> mihomo_desktop.control.v1.InspectSourceResponse
+	66, // 41: mihomo_desktop.control.v1.Response.list_geo_categories:type_name -> mihomo_desktop.control.v1.ListGeoCategoriesResponse
+	0,  // 42: mihomo_desktop.control.v1.GetInfoResponse.state:type_name -> mihomo_desktop.control.v1.RunState
+	1,  // 43: mihomo_desktop.control.v1.GetInfoResponse.ownership:type_name -> mihomo_desktop.control.v1.Ownership
+	18, // 44: mihomo_desktop.control.v1.ValidateRequest.composition:type_name -> mihomo_desktop.control.v1.Composition
+	18, // 45: mihomo_desktop.control.v1.StartRequest.composition:type_name -> mihomo_desktop.control.v1.Composition
+	14, // 46: mihomo_desktop.control.v1.StartRequest.options:type_name -> mihomo_desktop.control.v1.RunOptions
+	18, // 47: mihomo_desktop.control.v1.ReloadRequest.composition:type_name -> mihomo_desktop.control.v1.Composition
+	14, // 48: mihomo_desktop.control.v1.ReloadRequest.options:type_name -> mihomo_desktop.control.v1.RunOptions
+	19, // 49: mihomo_desktop.control.v1.Composition.sources:type_name -> mihomo_desktop.control.v1.CompositionSource
+	21, // 50: mihomo_desktop.control.v1.CompositionReport.warnings:type_name -> mihomo_desktop.control.v1.CompositionWarning
+	22, // 51: mihomo_desktop.control.v1.CompositionReport.groups:type_name -> mihomo_desktop.control.v1.ComposedGroup
+	43, // 52: mihomo_desktop.control.v1.CompositionReport.rules:type_name -> mihomo_desktop.control.v1.Rule
+	23, // 53: mihomo_desktop.control.v1.CompositionReport.nodes:type_name -> mihomo_desktop.control.v1.PoolNode
+	2,  // 54: mihomo_desktop.control.v1.ComposedGroup.kind:type_name -> mihomo_desktop.control.v1.GroupKind
+	0,  // 55: mihomo_desktop.control.v1.GetStatusResponse.state:type_name -> mihomo_desktop.control.v1.RunState
+	3,  // 56: mihomo_desktop.control.v1.GetStatusResponse.mode:type_name -> mihomo_desktop.control.v1.Mode
+	10, // 57: mihomo_desktop.control.v1.GetStatusResponse.last_error:type_name -> mihomo_desktop.control.v1.Error
+	3,  // 58: mihomo_desktop.control.v1.SetModeRequest.mode:type_name -> mihomo_desktop.control.v1.Mode
+	29, // 59: mihomo_desktop.control.v1.ProxyGroup.proxies:type_name -> mihomo_desktop.control.v1.Proxy
+	4,  // 60: mihomo_desktop.control.v1.ListGroupsRequest.sort:type_name -> mihomo_desktop.control.v1.GroupSort
+	30, // 61: mihomo_desktop.control.v1.ListGroupsResponse.groups:type_name -> mihomo_desktop.control.v1.ProxyGroup
+	4,  // 62: mihomo_desktop.control.v1.GetGroupRequest.sort:type_name -> mihomo_desktop.control.v1.GroupSort
+	30, // 63: mihomo_desktop.control.v1.GetGroupResponse.group:type_name -> mihomo_desktop.control.v1.ProxyGroup
+	5,  // 64: mihomo_desktop.control.v1.Provider.kind:type_name -> mihomo_desktop.control.v1.ProviderKind
+	39, // 65: mihomo_desktop.control.v1.ListProvidersResponse.providers:type_name -> mihomo_desktop.control.v1.Provider
+	5,  // 66: mihomo_desktop.control.v1.UpdateProviderRequest.kind:type_name -> mihomo_desktop.control.v1.ProviderKind
+	43, // 67: mihomo_desktop.control.v1.ListRulesResponse.rules:type_name -> mihomo_desktop.control.v1.Rule
+	6,  // 68: mihomo_desktop.control.v1.SubscribeLogsRequest.level:type_name -> mihomo_desktop.control.v1.LogLevel
+	57, // 69: mihomo_desktop.control.v1.PollEventsResponse.events:type_name -> mihomo_desktop.control.v1.Event
+	58, // 70: mihomo_desktop.control.v1.Event.log:type_name -> mihomo_desktop.control.v1.LogEntry
+	59, // 71: mihomo_desktop.control.v1.Event.traffic:type_name -> mihomo_desktop.control.v1.TrafficSample
+	61, // 72: mihomo_desktop.control.v1.Event.connections:type_name -> mihomo_desktop.control.v1.ConnectionSnapshot
+	6,  // 73: mihomo_desktop.control.v1.LogEntry.level:type_name -> mihomo_desktop.control.v1.LogLevel
+	60, // 74: mihomo_desktop.control.v1.ConnectionSnapshot.connections:type_name -> mihomo_desktop.control.v1.Connection
+	64, // 75: mihomo_desktop.control.v1.InspectSourceResponse.nodes:type_name -> mihomo_desktop.control.v1.SourceNode
+	67, // 76: mihomo_desktop.control.v1.ListGeoCategoriesResponse.geosite:type_name -> mihomo_desktop.control.v1.GeoCategories
+	67, // 77: mihomo_desktop.control.v1.ListGeoCategoriesResponse.geoip:type_name -> mihomo_desktop.control.v1.GeoCategories
+	78, // [78:78] is the sub-list for method output_type
+	78, // [78:78] is the sub-list for method input_type
+	78, // [78:78] is the sub-list for extension type_name
+	78, // [78:78] is the sub-list for extension extendee
+	0,  // [0:78] is the sub-list for field type_name
 }
 
 func init() { file_mihomo_desktop_protocol_control_proto_init() }
@@ -3960,11 +5083,14 @@ func file_mihomo_desktop_protocol_control_proto_init() {
 		(*Request_SubscribeConnections)(nil),
 		(*Request_PollEvents)(nil),
 		(*Request_Unsubscribe)(nil),
+		(*Request_InspectSource)(nil),
+		(*Request_ListGeoCategories)(nil),
 	}
 	file_mihomo_desktop_protocol_control_proto_msgTypes[1].OneofWrappers = []any{
 		(*Response_Error)(nil),
 		(*Response_Empty)(nil),
 		(*Response_GetInfo)(nil),
+		(*Response_Composition)(nil),
 		(*Response_GetStatus)(nil),
 		(*Response_ListGroups)(nil),
 		(*Response_GetGroup)(nil),
@@ -3973,10 +5099,24 @@ func file_mihomo_desktop_protocol_control_proto_init() {
 		(*Response_ListRules)(nil),
 		(*Response_Subscribe)(nil),
 		(*Response_PollEvents)(nil),
+		(*Response_InspectSource)(nil),
+		(*Response_ListGeoCategories)(nil),
 	}
-	file_mihomo_desktop_protocol_control_proto_msgTypes[14].OneofWrappers = []any{}
-	file_mihomo_desktop_protocol_control_proto_msgTypes[16].OneofWrappers = []any{}
-	file_mihomo_desktop_protocol_control_proto_msgTypes[44].OneofWrappers = []any{
+	file_mihomo_desktop_protocol_control_proto_msgTypes[8].OneofWrappers = []any{
+		(*ValidateRequest_ConfigYaml)(nil),
+		(*ValidateRequest_Composition)(nil),
+	}
+	file_mihomo_desktop_protocol_control_proto_msgTypes[9].OneofWrappers = []any{
+		(*StartRequest_ConfigYaml)(nil),
+		(*StartRequest_Composition)(nil),
+	}
+	file_mihomo_desktop_protocol_control_proto_msgTypes[10].OneofWrappers = []any{
+		(*ReloadRequest_ConfigYaml)(nil),
+		(*ReloadRequest_Composition)(nil),
+	}
+	file_mihomo_desktop_protocol_control_proto_msgTypes[20].OneofWrappers = []any{}
+	file_mihomo_desktop_protocol_control_proto_msgTypes[22].OneofWrappers = []any{}
+	file_mihomo_desktop_protocol_control_proto_msgTypes[50].OneofWrappers = []any{
 		(*Event_Log)(nil),
 		(*Event_Traffic)(nil),
 		(*Event_Connections)(nil),
@@ -3986,8 +5126,8 @@ func file_mihomo_desktop_protocol_control_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mihomo_desktop_protocol_control_proto_rawDesc), len(file_mihomo_desktop_protocol_control_proto_rawDesc)),
-			NumEnums:      6,
-			NumMessages:   49,
+			NumEnums:      7,
+			NumMessages:   61,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

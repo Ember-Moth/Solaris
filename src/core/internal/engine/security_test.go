@@ -92,7 +92,7 @@ secret: hunter2
 	api := freePort(t)
 	profile := directProfile(freePort(t), "http://127.0.0.1:1/",
 		fmt.Sprintf("external-controller: 127.0.0.1:%d\nexternal-controller-unix: '%s'", api, socket))
-	if err := engine.Start(profile); err != nil {
+	if _, err := engine.Start(profile); err != nil {
 		t.Fatal(err)
 	}
 	defer engine.Stop()
@@ -236,7 +236,7 @@ func TestSecurity5SelectionSurvivesRestart(t *testing.T) {
 	engine := openEngine(t, TunNone)
 	server := target(t)
 	profile = directProfile(freePort(t), server.URL+"/generate_204", "profile: {store-selected: false}")
-	if err := engine.Start(profile); err != nil {
+	if _, err := engine.Start(profile); err != nil {
 		t.Fatal(err)
 	}
 	if err := engine.SelectProxy("PROXY", "direct-b"); err != nil {
@@ -245,7 +245,7 @@ func TestSecurity5SelectionSurvivesRestart(t *testing.T) {
 	if err := engine.Stop(); err != nil {
 		t.Fatal(err)
 	}
-	if err := engine.Start(profile); err != nil {
+	if _, err := engine.Start(profile); err != nil {
 		t.Fatal(err)
 	}
 	group, err := engine.GetGroup("PROXY", 0)

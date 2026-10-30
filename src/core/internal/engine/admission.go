@@ -17,6 +17,9 @@ import (
 	"github.com/metacubex/mihomo/constant/features"
 	"github.com/metacubex/mihomo/hub/executor"
 	"github.com/metacubex/mihomo/listener/inbound"
+
+	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/compose"
+	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/controlpb"
 )
 
 // TunMode decides who owns the TUN and the routes (docs/architecture.md §3.1). It is
@@ -58,9 +61,12 @@ type RunOptions struct {
 	AllowLAN bool
 }
 
-// Profile is one submission from the UI: the final YAML, the overrides and the options.
+// Profile is one submission from the UI: the configuration, the overrides and the options.
 type Profile struct {
-	Config []byte
+	// Config is a subscription's own YAML. Composition, when set, takes its place: the core
+	// assembles the configuration from the node pool and a plan (docs/routing.md §8).
+	Config      []byte
+	Composition *compose.Composition
 	// Overrides are YAML mappings merged in order, the global override first and then
 	// the profile's own (decision D4, Merge only); see applyOverrides.
 	Overrides [][]byte
@@ -99,14 +105,31 @@ func takesOverSystem(listener C.InboundListener) bool {
 
 var errFDModePending = errors.New("fd mode arrives with the macOS extension (M5)")
 
-// admit runs the configuration admission pipeline (docs/architecture.md §3.2): user
-// YAML → overrides → platform patches for the TUN mode → security items, which always
-// come last → executor.ParseWithBytes → a check of the parsed result.
+// admission is a configuration that passed the pipeline.
+type admission struct {
+	cfg *config.Config
+	// report and entries come with a composition.
+	report  *controlpb.CompositionReport
+	entries *ruleEntries
+}
+
 func admit(profile Profile, mode TunMode) (*config.Config, error) {
+	admitted, err := admitProfile(profile, mode)
+	if err != nil {
+		return nil, err
+	}
+	return admitted.cfg, nil
+}
+
+// admitProfile runs the configuration admission pipeline (docs/architecture.md §3.2): user
+// YAML or the composed configuration → overrides → platform patches for the TUN mode →
+// security items, which always come last → executor.ParseWithBytes → a check of the
+// parsed result.
+func admitProfile(profile Profile, mode TunMode) (*admission, error) {
 	if profile.Options.TUN && mode == TunNone {
 		return nil, fmt.Errorf("%w: this host never creates a TUN", ErrUnsupported)
 	}
-	doc, err := decodeDocument(profile.Config)
+	doc, composed, err := document(profile)
 	if err != nil {
 		return nil, invalidConfig(err)
 	}
@@ -145,11 +168,29 @@ func admit(profile Profile, mode TunMode) (*config.Config, error) {
 	if err := verifyAdmitted(cfg, mode, options); err != nil {
 		return nil, invalidConfig(err)
 	}
-	return cfg, nil
+	admitted := &admission{cfg: cfg}
+	if composed != nil {
+		admitted.report = composed.Report
+		admitted.entries = newRuleEntries(composed, doc, cfg)
+	}
+	return admitted, nil
 }
 
 func invalidConfig(err error) error {
 	return fmt.Errorf("%w: %w", ErrInvalidConfig, err)
+}
+
+// document is where the pipeline starts: the profile's YAML, or the composed configuration.
+func document(profile Profile) (map[string]any, *compose.Result, error) {
+	if profile.Composition == nil {
+		doc, err := decodeDocument(profile.Config)
+		return doc, nil, err
+	}
+	composed, err := compose.Compose(*profile.Composition)
+	if err != nil {
+		return nil, nil, err
+	}
+	return composed.Config, composed, nil
 }
 
 // decodeDocument reads the profile as a generic mapping. Decoding into a map resolves

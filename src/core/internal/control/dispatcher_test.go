@@ -13,6 +13,7 @@ import (
 
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/controlpb"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/engine"
+	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/geodata/geodatatest"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/peer"
 	"github.com/Ember-Moth/mihomo-desktop/src/core/internal/product"
 )
@@ -22,6 +23,10 @@ var core *engine.Engine
 
 func TestMain(m *testing.M) {
 	home, err := os.MkdirTemp("", "md-control-")
+	if err == nil {
+		// Composed configurations read GEO data; without it mihomo would download it.
+		err = geodatatest.Write(home)
+	}
 	if err == nil {
 		core, err = engine.New(engine.Options{HomeDir: home, Tun: engine.TunNone})
 	}
@@ -98,13 +103,13 @@ func expectOK(t *testing.T, response *controlpb.Response) {
 
 func startRequest(configYAML string, options *controlpb.RunOptions) func(*controlpb.Request) {
 	return func(r *controlpb.Request) {
-		r.Method = &controlpb.Request_Start{Start: &controlpb.StartRequest{ConfigYaml: configYAML, Options: options}}
+		r.Method = &controlpb.Request_Start{Start: &controlpb.StartRequest{Source: &controlpb.StartRequest_ConfigYaml{ConfigYaml: configYAML}, Options: options}}
 	}
 }
 
 func reloadRequest(configYAML string, options *controlpb.RunOptions) func(*controlpb.Request) {
 	return func(r *controlpb.Request) {
-		r.Method = &controlpb.Request_Reload{Reload: &controlpb.ReloadRequest{ConfigYaml: configYAML, Options: options}}
+		r.Method = &controlpb.Request_Reload{Reload: &controlpb.ReloadRequest{Source: &controlpb.ReloadRequest_ConfigYaml{ConfigYaml: configYAML}, Options: options}}
 	}
 }
 
@@ -202,7 +207,7 @@ func TestHostMethodsDependOnHost(t *testing.T) {
 		systemProxyRequest(false),
 		func(r *controlpb.Request) { r.Method = &controlpb.Request_Claim{Claim: &controlpb.ClaimRequest{}} },
 		func(r *controlpb.Request) {
-			r.Method = &controlpb.Request_Validate{Validate: &controlpb.ValidateRequest{ConfigYaml: profileYAML(1)}}
+			r.Method = &controlpb.Request_Validate{Validate: &controlpb.ValidateRequest{Source: &controlpb.ValidateRequest_ConfigYaml{ConfigYaml: profileYAML(1)}}}
 		},
 	} {
 		expectError(t, call(t, extension, request(uint64(id+1), method)), uint64(id+1), CodeUnsupportedMethod)
@@ -255,7 +260,7 @@ func TestLifecycleAndCoreMethods(t *testing.T) {
 
 	validate := func(yaml string) func(*controlpb.Request) {
 		return func(r *controlpb.Request) {
-			r.Method = &controlpb.Request_Validate{Validate: &controlpb.ValidateRequest{ConfigYaml: yaml}}
+			r.Method = &controlpb.Request_Validate{Validate: &controlpb.ValidateRequest{Source: &controlpb.ValidateRequest_ConfigYaml{ConfigYaml: yaml}}}
 		}
 	}
 	broken := call(t, dispatcher, request(1, validate("rules: ['MATCH,NOWHERE']\n")))
@@ -330,7 +335,7 @@ func TestLogSubscriptionCarriesMihomoLines(t *testing.T) {
 	}))
 	id := subscribe.GetSubscribe().GetSubscriptionId()
 	expectOK(t, call(t, dispatcher, request(2, func(r *controlpb.Request) {
-		r.Method = &controlpb.Request_Validate{Validate: &controlpb.ValidateRequest{ConfigYaml: profileYAML(freePort(t))}}
+		r.Method = &controlpb.Request_Validate{Validate: &controlpb.ValidateRequest{Source: &controlpb.ValidateRequest_ConfigYaml{ConfigYaml: profileYAML(freePort(t))}}}
 	})))
 	var seen []string
 	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
@@ -359,8 +364,8 @@ func TestOverridesReachEveryAdmission(t *testing.T) {
 
 	broken := call(t, dispatcher, request(1, func(r *controlpb.Request) {
 		r.Method = &controlpb.Request_Validate{Validate: &controlpb.ValidateRequest{
-			ConfigYaml: profile,
-			Overrides:  []string{"mode: global\n", "- not a mapping\n"},
+			Source:    &controlpb.ValidateRequest_ConfigYaml{ConfigYaml: profile},
+			Overrides: []string{"mode: global\n", "- not a mapping\n"},
 		}}
 	}))
 	expectError(t, broken, 1, CodeInvalidConfig)
@@ -370,8 +375,8 @@ func TestOverridesReachEveryAdmission(t *testing.T) {
 
 	expectOK(t, call(t, dispatcher, request(2, func(r *controlpb.Request) {
 		r.Method = &controlpb.Request_Start{Start: &controlpb.StartRequest{
-			ConfigYaml: profile,
-			Overrides:  []string{"mode: direct\n", "mode: global\n"},
+			Source:    &controlpb.StartRequest_ConfigYaml{ConfigYaml: profile},
+			Overrides: []string{"mode: direct\n", "mode: global\n"},
 		}}
 	})))
 	if got := mode(3); got != controlpb.Mode_MODE_GLOBAL {
@@ -379,8 +384,8 @@ func TestOverridesReachEveryAdmission(t *testing.T) {
 	}
 	expectOK(t, call(t, dispatcher, request(4, func(r *controlpb.Request) {
 		r.Method = &controlpb.Request_Reload{Reload: &controlpb.ReloadRequest{
-			ConfigYaml: profile,
-			Overrides:  []string{"mode: direct\n"},
+			Source:    &controlpb.ReloadRequest_ConfigYaml{ConfigYaml: profile},
+			Overrides: []string{"mode: direct\n"},
 		}}
 	})))
 	if got := mode(5); got != controlpb.Mode_MODE_DIRECT {
@@ -389,8 +394,8 @@ func TestOverridesReachEveryAdmission(t *testing.T) {
 	// An override cannot turn on what the development server refuses.
 	expectOK(t, call(t, dispatcher, request(6, func(r *controlpb.Request) {
 		r.Method = &controlpb.Request_Reload{Reload: &controlpb.ReloadRequest{
-			ConfigYaml: profile,
-			Overrides:  []string{"tun: {enable: true}\nallow-lan: true\n"},
+			Source:    &controlpb.ReloadRequest_ConfigYaml{ConfigYaml: profile},
+			Overrides: []string{"tun: {enable: true}\nallow-lan: true\n"},
 		}}
 	})))
 	status := call(t, dispatcher, request(7, func(r *controlpb.Request) {
