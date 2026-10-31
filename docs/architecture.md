@@ -255,6 +255,7 @@ mihomo 提供的可选标签有 `with_gvisor`、`with_low_memory`、`no_tailscal
 Solaris 保留 `github.com/metacubex/mihomo` 的导入路径和 v1.19.33 require，通过 go.mod replace 固定到
 [`Ember-Moth/mihomo` 的 Meta 分支](https://github.com/Ember-Moth/mihomo/tree/Meta)提交
 `56c6fc1d5c271b207c8513a583a342b87a2230bc`（`v1.19.33-0.20261031183713-56c6fc1d5c27`，D38）。
+用户侧的配置方式、参数及完整示例见 [内核扩展与配置指南](mihomo-fork.md)。
 它基于上游 `3f27ef3`，增加 Naive、AnyTLS+REALITY，以及与 Xray 26.10.29 对齐的 REALITY 握手版本和
 默认 X25519MLKEM768 行为；显式 `support-x25519mlkem768: false` 仍保留。状态和许可证清单使用实际替换版本。
 Snell v4/v5 改由 sing-snell 实现，保留 v1–v3，并增加 v6、`user-key` 与 `version6-mode`；这些字段在订阅和自定义方案中保留。

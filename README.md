@@ -63,6 +63,8 @@ Solaris 使用 [Ember-Moth/mihomo](https://github.com/Ember-Moth/mihomo) 内核�
 - **AnyTLS + REALITY**：支持使用 REALITY 的 AnyTLS 节点。
 - **Snell v4–v6**：支持用户密钥和连接复用，v6 可选择与服务端一致的传输模式。
 
+节点怎么配置、哪些参数需要服务端支持，以及完整 YAML 示例，见 [内核扩展与配置指南](docs/mihomo-fork.md)。
+
 此外，可以让流量经所选节点接入 **Cloudflare WARP 或 VPN Gate** 链式出口；也可以添加 **Tailscale、ZeroTier、
 EasyTier** 网络，通过分流规则访问网络中的设备。
 

@@ -1,0 +1,24 @@
+# 配置模板：替换示例地址、端口和 CHANGE_ME 参数后再导入。
+# 参数与限制见 ../../mihomo-fork.md。MATCH 规则将流量交给 PROXY。
+mode: rule
+
+proxies:
+  - name: Snell-v5
+    type: snell
+    server: proxy.example.com
+    port: 44046
+    psk: 'CHANGE_ME_SNELL_PSK'
+    version: 5
+    udp: false
+    reuse: false
+    # 多用户服务端需要时取消注释并填写；不需要时保持注释。
+    # user-key: 'CHANGE_ME_USER_KEY'
+
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies:
+      - Snell-v5
+
+rules:
+  - MATCH,PROXY

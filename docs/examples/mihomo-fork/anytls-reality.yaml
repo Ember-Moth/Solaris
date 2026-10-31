@@ -1,0 +1,25 @@
+# 配置模板：替换示例地址、端口和 CHANGE_ME 参数后再导入。
+# 参数与限制见 ../../mihomo-fork.md。MATCH 规则将流量交给 PROXY。
+mode: rule
+
+proxies:
+  - name: AnyTLS-REALITY
+    type: anytls
+    server: proxy.example.com
+    port: 443
+    password: 'CHANGE_ME_ANYTLS_PASSWORD'
+    sni: cover.example.com
+    client-fingerprint: chrome
+    reality-opts:
+      public-key: 'CHANGE_ME_REALITY_PUBLIC_KEY'
+      short-id: '0123456789abcdef'
+      # 不填 support-x25519mlkem768 时使用当前默认行为。
+
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies:
+      - AnyTLS-REALITY
+
+rules:
+  - MATCH,PROXY

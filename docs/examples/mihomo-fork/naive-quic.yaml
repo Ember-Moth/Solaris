@@ -1,0 +1,23 @@
+# 配置模板：替换示例地址、端口和 CHANGE_ME 参数后再导入。
+# 参数与限制见 ../../mihomo-fork.md。MATCH 规则将流量交给 PROXY。
+mode: rule
+
+proxies:
+  - name: Naive-QUIC
+    type: naive
+    server: proxy.example.com
+    port: 443
+    username: 'CHANGE_ME_USERNAME'
+    password: 'CHANGE_ME_PASSWORD'
+    sni: proxy.example.com
+    quic: true
+    # quic-congestion-control: cubic
+
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies:
+      - Naive-QUIC
+
+rules:
+  - MATCH,PROXY

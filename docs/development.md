@@ -30,7 +30,8 @@
 两个脚本都会先下载钉住版本的 GEO 数据（`scripts/fetch_geodata.py`）。发布用的安装包由 GitHub Actions 的发布工作流
 构建（[release.md](release.md)）。
 
-内核通过 go.mod replace 固定到 `Ember-Moth/mihomo` 的 Meta 提交（D38），包含 Naive、AnyTLS+REALITY。
+内核通过 go.mod replace 固定到 `Ember-Moth/mihomo` 的 Meta 提交（D38），包含 Naive、AnyTLS+REALITY 和 Snell v4–v6。
+用户配置与完整示例见 [内核扩展与配置指南](mihomo-fork.md)。
 构建脚本启用 `with_naive`，并取 Go 模块图锁定的 Cronet 原生版本：Windows 携带 `libcronet.dll`，macOS 静态链接。
 绑定与原生库必须一起升级；不要仅替换 DLL。普通无标签的 Go 测试/开发服务不含 Naive，可在 Mac 上这样验证：
 
@@ -118,6 +119,7 @@ uv run python scripts/gen_i18n.py
 
 | 文档 | 内容 |
 | --- | --- |
+| [mihomo-fork.md](mihomo-fork.md) | 用户指南：fork 新增能力、参数、完整 YAML、导入步骤与排错 |
 | [maintenance.md](maintenance.md) | 现状、真机验收、已知问题、发布步骤与工作规则 |
 | [decisions.md](decisions.md) | 设计决策 |
 | [architecture.md](architecture.md) | 系统架构：engine、控制协议、Windows 服务、macOS 扩展、安全模型、构建与测试 |
