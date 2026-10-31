@@ -150,19 +150,14 @@ jobs:
           xcrun stapler validate build/app/Solaris.app
           spctl --assess --type execute --verbose=2 build/app/Solaris.app
 
+      # Solaris.app beside a shortcut to /Applications in a fixed Finder window over
+      # package/dmg's background, HFS+ with LZMA compression; the script checks the image.
       - name: Disk image
         env:
           DMG: ${{ steps.version.outputs.dmg }}
         run: |
-          mkdir -p build/dmg/Solaris build/release
-          ditto build/app/Solaris.app build/dmg/Solaris/Solaris.app
-          ln -s /Applications build/dmg/Solaris/Applications
-          codesign --verify --deep --strict build/dmg/Solaris/Solaris.app
-          # HFS+ with LZMA compression (macOS 10.15 and later), converted from a read-only
-          # image so that no unused space stays in it.
-          hdiutil create -volname Solaris -srcfolder build/dmg/Solaris -fs HFS+ -format UDRO \
-            -ov build/dmg/Solaris-uncompressed.dmg
-          hdiutil convert build/dmg/Solaris-uncompressed.dmg -format ULMO -ov -o "build/release/$DMG"
+          uv run --no-project --with dmgbuild==1.6.7 python scripts/build_dmg.py \
+            build/app/Solaris.app "build/release/$DMG"
           codesign --force --sign "$IDENTITY" --timestamp "build/release/$DMG"
           codesign --verify --strict "build/release/$DMG"
 

@@ -18,7 +18,7 @@ Solaris 从 1.0.0 起进入维护。本文是日常工作的依据：各平台�
 | `python` | macOS、Windows | ruff、pyright、pytest（离屏）；macOS 上还核对生成的协议、主题和翻译是最新的 |
 | `e2e` | macOS | 界面连真实的开发服务（`tests/e2e`）：导入、连接、各页数据、分流与方案、重载不断开连接；节点是本机起的代理，只走回环地址 |
 | `go` | macOS、Windows、Linux | `go vet`、`go test`，再以 `-race` 跑一遍；Linux 上以 `with_gvisor` 带 `-race` 再跑安全项和组网测试，交叉编译 Windows 服务；macOS 上编扩展用的 C archive |
-| `apple` | macOS | 管理库和系统扩展的不签名构建 |
+| `apple` | macOS | 管理库和系统扩展的不签名构建，再用检查用的 app 做一次发布用的磁盘映像（`scripts/build_dmg.py`） |
 | `windows-installer` | Windows | 构建不签名的安装包，在 runner 上安装、打开界面、升级、卸载（`package/windows/smoke-test.ps1`） |
 | `tun` | Linux | 在网络命名空间里建真实的 TUN：自管模式和 fd 模式，四种栈，fd 模式另测 `includeAllNetworks` |
 
@@ -288,8 +288,8 @@ exits.md 第 9 节的待实测项。
    号由 `scripts/build_apple.py` 从 `pyproject.toml` 读取。合并到 main，CI 全绿。
 2. **试运行**：在 Actions 里手动运行 Release 工作流（`workflow_dispatch`，选 main）。它在 `release` Environment
    里，审批后构建、签名、公证两个安装包，存为 workflow artifact，不建 Release。下载 artifact，在测试 Mac 和
-   Windows 虚拟机上装一遍。Environment 里没有 Google OAuth 客户端的两个机密（2.8 节）时，两个构建 job 各给一条
-   警告，安装包里没有 Google Drive 备份。
+   Windows 虚拟机上装一遍；macOS 的磁盘映像打开后应与 `package/dmg/preview.png` 一致。Environment 里没有
+   Google OAuth 客户端的两个机密（2.8 节）时，两个构建 job 各给一条警告，安装包里没有 Google Drive 备份。
 3. **打标签**：`v<版本>`，必须与 `pyproject.toml` 的版本一致。
 
    ```bash
@@ -309,8 +309,8 @@ exits.md 第 9 节的待实测项。
 和 `SHA256SUMS`。下载后核对 SHA-256；macOS 还核对签名、公证和 Team ID；Windows 安装包不签名（D29），只核对
 SHA-256。界面从不静默安装，用户确认后才打开安装包。
 
-第一次运行时另外核对：公证通过；已安装的版本检查更新显示"已是最新版本"；下一个版本发布后，在旧版本上走一遍检查、
-下载、校验、打开安装包。
+第一次运行时另外核对：公证通过；磁盘映像的窗口在深色模式下也看得清（只在开发机的浅色模式下看过）；已安装的版本
+检查更新显示"已是最新版本"；下一个版本发布后，在旧版本上走一遍检查、下载、校验、打开安装包。
 
 ## 5. 工作规则
 
