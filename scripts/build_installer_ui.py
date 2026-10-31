@@ -18,7 +18,7 @@ DEFAULT_OUTPUT = ROOT / "build" / "installer-ui"
 
 
 def theme_header() -> str:
-    design = yaml.safe_load((ROOT / "DESIGN.md").read_text().split("---", 2)[1])
+    design = yaml.safe_load((ROOT / "DESIGN.md").read_text(encoding="utf-8").split("---", 2)[1])
     names = (
         "background",
         "surface",
@@ -200,7 +200,9 @@ def main() -> None:
 
 
 def build_preview(plugin: Path, makensis: Path) -> Path:
-    version = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
+    version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"][
+        "version"
+    ]
     executable = plugin.parent / "Solaris-setup-preview.exe"
     defines = {
         "APP_VERSION": version,
