@@ -26,6 +26,7 @@ import (
 	"github.com/metacubex/mihomo/hub/route"
 
 	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
+	"github.com/Ember-Moth/Solaris/src/core/internal/porttest"
 )
 
 // Regression tests for the requirements of docs/architecture.md §3.3, in order.
@@ -93,8 +94,8 @@ secret: hunter2
 	}
 	defer os.RemoveAll(dir)
 	socket := filepath.Join(dir, "c.sock")
-	api := freePort(t)
-	profile := directProfile(freePort(t), "http://127.0.0.1:1/",
+	api := porttest.Free(t)
+	profile := directProfile(porttest.Free(t), "http://127.0.0.1:1/",
 		fmt.Sprintf("external-controller: 127.0.0.1:%d\nexternal-controller-unix: '%s'", api, socket))
 	if _, err := engine.Start(profile); err != nil {
 		t.Fatal(err)
@@ -239,7 +240,7 @@ func TestSecurity5SelectionSurvivesRestart(t *testing.T) {
 
 	engine := openEngine(t, admission.TunNone)
 	server := target(t)
-	profile = directProfile(freePort(t), server.URL+"/generate_204", "profile: {store-selected: false}")
+	profile = directProfile(porttest.Free(t), server.URL+"/generate_204", "profile: {store-selected: false}")
 	if _, err := engine.Start(profile); err != nil {
 		t.Fatal(err)
 	}

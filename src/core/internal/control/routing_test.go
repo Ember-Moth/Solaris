@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
+	"github.com/Ember-Moth/Solaris/src/core/internal/porttest"
 )
 
 const poolSource = "proxies:\n  - {name: 🇯🇵 东京 01, type: direct}\n  - {name: 剩余流量, type: direct}\n"
@@ -22,7 +23,7 @@ func compositionOf(plan string) *controlpb.Composition {
 // YAML with Empty, as before.
 func TestCompositionsAnswerWithTheirReport(t *testing.T) {
 	dispatcher := development(t)
-	port := freePort(t)
+	port := porttest.Free(t)
 	plan := `{"version": 1, "test_url": "http://127.0.0.1:1/", "rules": [
 		{"id": "us", "items": [{"type": "DOMAIN", "value": "us.example"}], "target": "region:US"}]}`
 	options := &controlpb.RunOptions{MixedPort: uint32(port)}

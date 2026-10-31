@@ -186,16 +186,17 @@ func (e *Engine) runMesh(run *meshRun) {
 	// function it began with.
 	start := startMesh
 	for _, outbound := range run.fresh {
-		go func() {
+		e.meshStarts.Go(func() {
 			if err := start(outbound.adapter); err != nil {
 				log.Warnln("[engine] mesh outbound %s did not start: %s", outbound.name, err)
 				outbound.setStartErr(err)
 			}
-		}()
+		})
 	}
 }
 
-// closeMesh closes every mesh outbound, as the configuration stops.
+// closeMesh closes every mesh outbound, as the configuration stops, and waits for the
+// starts still under way.
 func (e *Engine) closeMesh() {
 	e.meshMu.Lock()
 	running := e.mesh
@@ -204,6 +205,7 @@ func (e *Engine) closeMesh() {
 	for _, outbound := range running {
 		_ = outbound.adapter.Close()
 	}
+	e.meshStarts.Wait()
 }
 
 // meshOutbounds are the running mesh outbounds in configuration order.
