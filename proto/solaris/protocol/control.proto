@@ -126,7 +126,11 @@ message GetInfoResponse {
   Ownership ownership = 5;
 }
 
-message ClaimRequest {}
+message ClaimRequest {
+  // Stop another user's running tunnel and claim the service anyway (decision D5b). Only
+  // an elevated administrator may; anyone else still gets owned_by_other_user.
+  bool take_over = 1;
+}
 
 // mihomo's TUN stacks (docs/architecture.md §3.4). gVisor and mixed need a core built with
 // with_gvisor; the macOS extension replaces system and mixed with gVisor while its tunnel

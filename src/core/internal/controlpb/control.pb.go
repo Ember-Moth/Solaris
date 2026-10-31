@@ -1935,7 +1935,10 @@ func (x *GetInfoResponse) GetOwnership() Ownership {
 }
 
 type ClaimRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Stop another user's running tunnel and claim the service anyway (decision D5b). Only
+	// an elevated administrator may; anyone else still gets owned_by_other_user.
+	TakeOver      bool `protobuf:"varint,1,opt,name=take_over,json=takeOver,proto3" json:"take_over,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1968,6 +1971,13 @@ func (x *ClaimRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ClaimRequest.ProtoReflect.Descriptor instead.
 func (*ClaimRequest) Descriptor() ([]byte, []int) {
 	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ClaimRequest) GetTakeOver() bool {
+	if x != nil {
+		return x.TakeOver
+	}
+	return false
 }
 
 type RunOptions struct {
@@ -7204,8 +7214,9 @@ const file_solaris_protocol_control_proto_rawDesc = "" +
 	"\x0fservice_version\x18\x02 \x01(\tR\x0eserviceVersion\x12!\n" +
 	"\fcore_version\x18\x03 \x01(\tR\vcoreVersion\x122\n" +
 	"\x05state\x18\x04 \x01(\x0e2\x1c.solaris.control.v1.RunStateR\x05state\x12;\n" +
-	"\townership\x18\x05 \x01(\x0e2\x1d.solaris.control.v1.OwnershipR\townership\"\x0e\n" +
-	"\fClaimRequest\"\xd6\x01\n" +
+	"\townership\x18\x05 \x01(\x0e2\x1d.solaris.control.v1.OwnershipR\townership\"+\n" +
+	"\fClaimRequest\x12\x1b\n" +
+	"\ttake_over\x18\x01 \x01(\bR\btakeOver\"\xd6\x01\n" +
 	"\n" +
 	"RunOptions\x12\x1f\n" +
 	"\vtun_enabled\x18\x01 \x01(\bR\n" +

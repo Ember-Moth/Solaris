@@ -702,6 +702,10 @@
         <translation>Another user is using the tunnel</translation>
     </message>
     <message>
+        <source>无法接管隧道</source>
+        <translation>Couldn’t take over the tunnel</translation>
+    </message>
+    <message>
         <source>配置无效</source>
         <translation>Invalid configuration</translation>
     </message>
@@ -1701,8 +1705,20 @@ prepend-rules:
         <translation>No subscriptions yet</translation>
     </message>
     <message>
+        <source>接管其他用户的隧道？</source>
+        <translation>Take over the other user’s tunnel?</translation>
+    </message>
+    <message>
+        <source>另一位用户的连接会断开，隧道改由你使用。需要管理员权限。</source>
+        <translation>The other user’s connection will close and the tunnel will be yours. This needs administrator rights.</translation>
+    </message>
+    <message>
         <source>管理</source>
         <translation>Manage</translation>
+    </message>
+    <message>
+        <source>接管</source>
+        <translation>Take over</translation>
     </message>
     <message>
         <source>导入</source>
@@ -1758,6 +1774,14 @@ prepend-rules:
     <message>
         <source>未连接</source>
         <translation>Not connected</translation>
+    </message>
+    <message>
+        <source>正在接管…</source>
+        <translation>Taking over…</translation>
+    </message>
+    <message>
+        <source>另一位用户已连接</source>
+        <translation>Another user is connected</translation>
     </message>
     <message>
         <source>另一位用户已连接，对方断开后才能在这里连接</source>

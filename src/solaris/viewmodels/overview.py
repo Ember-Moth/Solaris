@@ -56,10 +56,15 @@ class OverviewViewModel(QObject):
         settings: SettingsStore,
         clock: Callable[[], float] = time.time,
         parent: QObject | None = None,
+        *,
+        take_over: Callable[[], Coroutine[Any, Any, None]] | None = None,
     ) -> None:
-        """``settings`` keeps the TUN and system proxy switches for the next connection."""
+        """``settings`` keeps the TUN and system proxy switches for the next connection.
+        ``take_over`` stops another user's running tunnel and makes this user the owner
+        (D5b); None where the user cannot, as on a Windows account that is no administrator."""
         super().__init__(parent)
         self._host = host
+        self._take_over = take_over
         self._library = library
         self._runner = runner
         self._settings = settings
@@ -80,8 +85,10 @@ class OverviewViewModel(QObject):
         self._error = ""  # the last action's failure, until the next action
         self._connection_error = ""  # the last connect's or disconnect's failure
         self._refresh_error = ""  # the last refresh's failure, until one succeeds
-        # Another user's tunnel runs (docs/architecture.md §5.4): only they can disconnect it.
+        # Another user's tunnel runs (docs/architecture.md §5.4): only they can disconnect it,
+        # unless this user is an administrator and takes it over.
         self._other_user = False
+        self._taking_over = False
         self._switch_error = ""
         self._timer = QTimer(self)
         self._timer.setInterval(REFRESH_MS)
@@ -147,7 +154,7 @@ class OverviewViewModel(QObject):
     def _refreshed(self, settles: int) -> None:
         """``settles`` is the action done before this refresh started; 0 for none."""
         if self._settling and settles == self._acted:
-            self._settling = self._busy = False
+            self._settling = self._busy = self._taking_over = False
             self._pending = ""
         self.changed.emit()
         if self._refresh_again:
@@ -178,7 +185,7 @@ class OverviewViewModel(QObject):
             self.refreshGroups()
 
         def failed(error: BaseException) -> None:
-            self._busy = False
+            self._busy = self._taking_over = False
             self._pending = ""
             if pending:
                 self._connection_error = failure_text(error)
@@ -213,6 +220,24 @@ class OverviewViewModel(QObject):
     def toggleConnection(self) -> None:
         """The tray's 连接 / 断开."""
         self.setConnected(not self._connected())
+
+    @Slot()
+    def takeOver(self) -> None:
+        """Stop another user's running tunnel and become the owner, once the user confirmed
+        it here and in UAC (D5b). The tunnel stays down until they connect."""
+        take_over = self._take_over
+        if self._busy or not self._can_take_over() or take_over is None:
+            return
+
+        async def taking_over() -> None:
+            try:
+                await take_over()
+            except HostError as error:
+                if error.code != "cancelled":  # the user declined UAC's prompt
+                    raise
+
+        self._taking_over = True
+        self._act(taking_over())
 
     @Slot(str)
     def setMode(self, mode: str) -> None:
@@ -255,16 +280,29 @@ class OverviewViewModel(QObject):
     def ownedByOtherUser(self) -> bool:
         return self._other_user
 
+    def _can_take_over(self) -> bool:
+        return self._other_user and self._take_over is not None and not self._taking_over
+
+    @Property(bool, notify=changed)
+    def canTakeOver(self) -> bool:
+        """An administrator may take over another user's running tunnel (D5b)."""
+        return self._can_take_over()
+
     @Property(str, notify=changed)
     def statusTitle(self) -> str:
-        if self._other_user:
+        # The service restarts for its new owner while it is taken over.
+        if self._other_user or self._taking_over:
             return self.tr("其他用户正在使用")
         title = STATE_TITLES.get(self._snapshot.status.state) if self._snapshot else None
         return self.tr(title) if title else self.tr("未连接")
 
     @Property(str, notify=changed)
     def statusDetail(self) -> str:
+        if self._taking_over:
+            return self.tr("正在接管…")
         if self._other_user and not self._error:
+            if self._take_over is not None:
+                return self.tr("另一位用户已连接")
             return self.tr("另一位用户已连接，对方断开后才能在这里连接")
         if self._error or self._refresh_error:
             return self._error or self._refresh_error

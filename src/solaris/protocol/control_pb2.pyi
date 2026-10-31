@@ -306,8 +306,10 @@ class GetInfoResponse(_message.Message):
     def __init__(self, protocol_version: _Optional[int] = ..., service_version: _Optional[str] = ..., core_version: _Optional[str] = ..., state: _Optional[_Union[RunState, str]] = ..., ownership: _Optional[_Union[Ownership, str]] = ...) -> None: ...
 
 class ClaimRequest(_message.Message):
-    __slots__ = ()
-    def __init__(self) -> None: ...
+    __slots__ = ("take_over",)
+    TAKE_OVER_FIELD_NUMBER: _ClassVar[int]
+    take_over: bool
+    def __init__(self, take_over: _Optional[bool] = ...) -> None: ...
 
 class RunOptions(_message.Message):
     __slots__ = ("tun_enabled", "system_proxy_enabled", "mixed_port", "allow_lan", "tun_stack")

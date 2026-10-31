@@ -22,6 +22,8 @@ type fakeHost struct {
 	suspended   int
 	systemProxy bool
 	proxyErr    error
+	// tookOver lists who asked to take over; the owner package decides who may.
+	tookOver []string
 }
 
 func (h *fakeHost) Ownership(caller peer.Identity) controlpb.Ownership {
@@ -42,6 +44,14 @@ func (h *fakeHost) Admit(caller peer.Identity) error {
 }
 
 func (h *fakeHost) Claim(peer.Identity) error { return h.claimErr }
+
+func (h *fakeHost) TakeOver(caller peer.Identity, stop func() error) error {
+	h.tookOver = append(h.tookOver, caller.UserID)
+	if err := stop(); err != nil {
+		return err
+	}
+	return h.claimErr
+}
 
 func (h *fakeHost) Applied(start *controlpb.StartRequest) error {
 	h.applied = append(h.applied, start)
@@ -73,6 +83,10 @@ func (h *fakeHost) SystemProxyEnabled() bool { return h.systemProxy }
 
 func claimRequest(r *controlpb.Request) {
 	r.Method = &controlpb.Request_Claim{Claim: &controlpb.ClaimRequest{}}
+}
+
+func takeOverRequest(r *controlpb.Request) {
+	r.Method = &controlpb.Request_Claim{Claim: &controlpb.ClaimRequest{TakeOver: true}}
 }
 
 func getStatus(r *controlpb.Request) {
@@ -176,6 +190,34 @@ func TestHostKeepsWhatTheCoreRuns(t *testing.T) {
 	if host.stopped != 1 || dispatcher.Running() {
 		t.Fatalf("stopped %d times", host.stopped)
 	}
+}
+
+// Claim leaves the core to its owner; a take-over (decision D5b) has the host stop it, under
+// the lock that Claim already holds.
+func TestHostTakeOver(t *testing.T) {
+	host := &fakeHost{owner: "S-1-5-21-1"}
+	dispatcher := New(Options{Engine: core, HostMethods: true, Host: host})
+	t.Cleanup(func() {
+		dispatcher.Close()
+		_ = core.Stop()
+	})
+	owner, admin := peer.Identity{UserID: "S-1-5-21-1"}, peer.Identity{UserID: "S-1-5-21-2", Administrator: true}
+	ctx := context.Background()
+	port := porttest.Free(t)
+	expectOK(t, callAs(t, dispatcher, ctx, owner, request(1, startRequest(profileYAML(port), &controlpb.RunOptions{MixedPort: uint32(port)}))))
+
+	host.claimErr = ErrOwnedByOtherUser
+	expectError(t, callAs(t, dispatcher, ctx, admin, request(2, claimRequest)), 2, CodeOwnedByOtherUser)
+	if len(host.tookOver) != 0 || !dispatcher.Running() {
+		t.Fatalf("a claim took over for %v", host.tookOver)
+	}
+	host.claimErr = ErrRestarting
+	expectError(t, callAs(t, dispatcher, ctx, admin, request(3, takeOverRequest)), 3, CodeServiceRestarting)
+	if len(host.tookOver) != 1 || host.tookOver[0] != admin.UserID || dispatcher.Running() {
+		t.Fatalf("took over for %v, running %v", host.tookOver, dispatcher.Running())
+	}
+	// Taking over the development server is claiming it: its user owns it already.
+	expectOK(t, call(t, development(t), request(4, takeOverRequest)))
 }
 
 // The development server's only user is its owner.

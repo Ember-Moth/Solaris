@@ -40,14 +40,20 @@ const (
 	restartDelay = 200 * time.Millisecond
 	// stopWait bounds how long the restart helper waits for the old process to stop.
 	stopWait = time.Minute
+	// dialWait bounds how long the take-over helper waits for the service's pipe.
+	dialWait = 10 * time.Second
 )
 
 func run() error {
 	console := flag.Bool("console", false, "run in the foreground from an administrator terminal")
 	restart := flag.Bool("restart", false, "start the service again once it has stopped; the service runs this for a new owner")
+	takeOver := flag.Bool("take-over", false, "stop another user's tunnel and make the user running this the owner; the UI runs this elevated")
 	flag.Parse()
 	if *restart {
 		return restartService()
+	}
+	if *takeOver {
+		return takeOverTunnel()
 	}
 	isService, err := svc.IsWindowsService()
 	if err != nil {
@@ -146,7 +152,8 @@ func serve(ctx context.Context, sessions <-chan sessionEvent, restart func()) er
 	if product.SignedRelease == "true" {
 		signer = product.WindowsSigner
 	}
-	verify := peer.PipeClientVerifier(filepath.Join(filepath.Dir(executable), product.UIExecutable), signer)
+	// The service's own executable connects as the take-over helper (decision D5b).
+	verify := peer.PipeClientVerifier(filepath.Join(filepath.Dir(executable), product.UIExecutable), executable, signer)
 	logger.Info("service started", "version", product.Version, "core", engine.Version(), "owned", home != "")
 	return server.Serve(ctx, listener, verify, dispatcher, logger)
 }
@@ -207,6 +214,20 @@ func restartService() error {
 			return errors.New("the service did not stop")
 		}
 	}
+}
+
+// takeOverTunnel is the take-over helper, which the UI runs elevated once the administrator
+// confirmed it through UAC (decision D5b, docs/architecture.md §5.4). The service accepts
+// this executable on its pipe only with an administrator's rights.
+func takeOverTunnel() error {
+	ctx, cancel := context.WithTimeout(context.Background(), dialWait)
+	defer cancel()
+	conn, err := winio.DialPipeContext(ctx, product.PipeName)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return requestTakeOver(conn)
 }
 
 type service struct{}

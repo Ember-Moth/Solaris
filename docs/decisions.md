@@ -16,7 +16,7 @@
 | D3 | Windows 服务带 `with_gvisor` 构建，四种 TUN 栈都提供，由用户在设置里选择；macOS 系统扩展同样带 `with_gvisor`，fd 模式默认 gVisor 栈 | [architecture.md](architecture.md) §3.4 |
 | D4 | 覆写只做 Merge，不做 Script；一份全局覆写，加上每份订阅各一份 | [ui.md](ui.md) §4、[architecture.md](architecture.md) §3.2 |
 | D5 | 属主注销时停止隧道，下次登录后恢复 | [architecture.md](architecture.md) §5.4 |
-| D5b | Windows 上别的用户的隧道在运行时，管理员经 UAC 确认后可以接管：停掉对方的隧道，自己成为属主；不是管理员只能等对方断开或注销。尚未实现 | [architecture.md](architecture.md) §5.4 |
+| D5b | Windows 上别的用户的隧道在运行时，管理员经 UAC 确认后可以接管：停掉对方的隧道、写回对方的系统代理，自己成为属主；不是管理员只能等对方断开或注销。界面经 UAC 启动服务自己的接管辅助进程（`solaris-service.exe -take-over`），服务凭客户端 token 里启用的 Administrators 组认定管理员 | [architecture.md](architecture.md) §5.4、[ui.md](ui.md) §8 |
 | D6 | 订阅一键导入注册 `solaris://install-config?url=…` 和 `clash://install-config` | [release.md](release.md) §7 |
 | D7 | macOS 的配置和 Windows 一样，经控制协议的 `Start` / `Reload` 传入，不经 `startVPNTunnel(options:)` | [architecture.md](architecture.md) §6.2 |
 | D8 | 不给 provider message 分片：配置照旧用一条消息经 `Start` / `Reload` 发给系统扩展。单条消息的上限在测试 Mac 上用大配置核实，真带不动时再重新决定 | [architecture.md](architecture.md) §6.3 |

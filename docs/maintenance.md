@@ -22,13 +22,15 @@ Solaris 从 1.0.0 起进入维护。本文是日常工作的依据：各平台�
 | `windows-installer` | Windows | 构建不签名的安装包，在 runner 上安装、打开界面、升级、卸载（`package/windows/smoke-test.ps1`） |
 | `tun` | Linux | 在网络命名空间里建真实的 TUN：自管模式和 fd 模式，四种栈，fd 模式另测 `includeAllNetworks` |
 
-Windows 上的客户端校验（命名管道、文件 ID、锁住映像）、home 目录的 ACL 和 WinINet 代理设置的读写在 `go` job 的
-Windows runner 上测。服务的属主逻辑（认领、换属主重启、注销停止、登录恢复、系统代理的开启与还原）用替身平台在所有
-平台上测。
+Windows 上的客户端校验（命名管道、文件 ID、锁住映像、服务的可执行文件只在有管理员权限时通过）、管理员权限的判断、
+home 目录的 ACL 和 WinINet 代理设置的读写在 `go` job 的 Windows runner 上测；界面以 `runas` 启动程序、取回退出码在
+`python` job 的 Windows runner 上测（runner 本来就提权，不弹 UAC 提示）。服务的属主逻辑（认领、换属主重启、管理员
+接管、注销停止、登录恢复、系统代理的开启与还原）用替身平台在所有平台上测。
 
 ### 1.2 Windows：没在真机上运行过的
 
 - 服务以 SYSTEM 身份运行时的认领与重启辅助进程、`SessionLogon` / `SessionLogoff`、开机后登录时恢复；
+- 管理员接管（D5b）：UAC 的同意提示、提权的接管辅助进程通过客户端校验、两个登录用户之间的接管；
 - 模拟属主 token 写系统代理，浏览器随之生效；
 - 真实 ProgramData 下的 ACL，Nuitka 构建的界面通过客户端校验；
 - wintun、strict-route、四种 TUN 栈和 DNS 泄漏；Windows 的默认栈还没定（设置页默认"跟随配置"）；
@@ -53,7 +55,6 @@ Windows runner 上测。服务的属主逻辑（认领、换属主重启、注�
 - Tor 出口（D23，[exits.md](exits.md) 第 4 节）：只有设计；
 - Windows 代码签名（D29）：签名方案定下后接上 `product.WindowsSigner`、`SignedRelease` 和界面的
   `signature.WINDOWS_SIGNER`（[release.md](release.md) 第 3 节）；
-- 管理员接管其他用户的隧道（D5b，已定为管理员经 UAC 确认后可以接管）；
 - Windows 服务处理 PowerEvent（唤醒后重置连接），以及界面、服务、内核三层逐层递减的超时
   （[architecture.md](architecture.md) §5.2）；
 - macOS 卸载前停用系统扩展（`deactivationRequest`），扩展说明文字的本地化，"需要批准扩展""需要重启"两种错误的
@@ -93,6 +94,17 @@ Windows runner 上测。服务的属主逻辑（认领、换属主重启、注�
 - 认领：用第二个用户打开界面，属主的隧道在运行时它看到"其他用户正在使用"；隧道停了以后它能认领，服务经辅助进程
   重启；
 - 注销属主时隧道停止，再登录后恢复；开机后先登录的其他用户不走属主的隧道（D5）；
+- 管理员接管（D5b）。准备一个标准用户和一个管理员（UAC 保持默认），标准用户是属主，开着"系统代理"连接：
+  1. 用快速切换用户登录管理员，打开界面：概览页标题栏写"其他用户正在使用 · 另一位用户已连接"，右侧有"接管"。
+     再登录一个标准用户，他看到的是"……对方断开后才能在这里连接"，没有"接管"；
+  2. 管理员点"接管"：确认框默认聚焦"取消"。确认后弹出 UAC 的同意提示（程序 `solaris-service.exe`，发布者"未知"），
+     不要求密码。选"否"：什么都不变，也不报错；
+  3. 再点一次，在 UAC 里选"是"：服务重启，管理员的概览页变成"未连接"，可以连接；`service.log` 里有
+     `an administrator took over the tunnel`，`owner.json` 是管理员的 SID；
+  4. 切回原属主：他的系统代理已写回原来的设置，浏览器不再经代理；管理员连接后他的界面写"其他用户正在使用"；
+     管理员断开后他能再连接，他的隧道不会自己恢复；
+  5. 在管理员的普通（不提权）命令提示符里运行 `"C:\Program Files\Solaris\solaris-service.exe" -take-over`：退出码
+     非 0，`service.log` 里是 `rejected control client` 和"without an administrator's rights"，隧道不受影响；
 - 系统代理：开着"系统代理"连接后浏览器经代理；断开、注销、停止服务时写回原来的设置；
 - `C:\ProgramData\Solaris` 和 `users\<SID>` 的 ACL；复制到别处的 `Solaris.exe` 连不上服务；
 - wintun、strict-route，设置页"TUN 协议栈"的四种栈都能连上并转发流量；据此定下 Windows 的默认栈；
