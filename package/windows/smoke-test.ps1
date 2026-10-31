@@ -95,8 +95,8 @@ function Invoke-InteractiveSetup([string] $Path) {
         if (-not $action) { throw 'The custom installer has no accessible Install button' }
         if ($action.Current.IsEnabled) { throw 'Install was enabled without license consent' }
         $pathCondition = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::AutomationIdProperty, '1006')
-        $path = $window.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $pathCondition)
-        $path.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue($Root)
+        $pathElement = $window.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $pathCondition)
+        $pathElement.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue($Root)
         $agreementCondition = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::AutomationIdProperty, '1005')
         $agreement = $window.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $agreementCondition)
         $agreement.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Toggle()
