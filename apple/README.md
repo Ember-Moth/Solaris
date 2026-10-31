@@ -179,7 +179,8 @@ app 做一次映像。改了布局后运行 `uv run python scripts/gen_dmg_backg
 `.github/workflows/release.yml` 由 `v*` 标签和手动触发（`workflow_dispatch`），job 使用 `release`
 Environment，Ember-Moth 批准后才拿到机密。标签必须是 `v<pyproject.toml 的版本>`。步骤：
 
-1. 建临时钥匙串，导入证书（核对 `MACOS_CERTIFICATE_NAME` 属于 `APPLE_TEAM_ID`，且是有效的身份）；两份描述文件
+1. 建临时钥匙串，导入证书和签发它的 Developer ID G2 中间证书（`apple/certificates/DeveloperIDG2CA.cer`，runner 上没有；
+   没有它证书链不完整，身份无效），核对 `MACOS_CERTIFICATE_NAME` 属于 `APPLE_TEAM_ID`，且是有效的身份；两份描述文件
    装进 `~/Library/Developer/Xcode/UserData/Provisioning Profiles`，Xcode 和 `build_apple.py` 按名称找；
 2. `scripts/build_app.py` 构建、签名、校验；
 3. 用 `notarytool`（App Store Connect API Key）公证 app 并 staple，`spctl` 评估；
