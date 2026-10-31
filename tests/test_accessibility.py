@@ -147,7 +147,9 @@ def test_custom_controls_tell_their_role_and_state(qtbot: QtBot, loaded: Loaded)
     assert heading is not None
     status = find(title, lambda i: accessible(i).role == Role.StaticText and i is not heading)
     assert status is not None
-    assert accessible(status).name == loaded.view_models.overview.property("statusDetail")
+    # The detail has the uptime in seconds, which the page reads once a second.
+    overview = loaded.view_models.overview
+    qtbot.waitUntil(lambda: accessible(status).name == overview.property("statusDetail"))
 
     nav = nav_item(loaded, "overview")
     assert (accessible(nav).role, accessible(nav).selected) == (Role.PageTab, True)
@@ -353,9 +355,11 @@ def test_lists_keep_the_focus_while_they_update(qtbot: QtBot, loaded: Loaded) ->
     node.forceActiveFocus(Qt.FocusReason.TabFocusReason)
     with qtbot.waitSignal(view_models.proxies.selectionApplied):
         loaded.key(qtbot, Qt.Key.Key_Space, wait=0)
-    qtbot.waitUntil(lambda: view_models.overview.property("nodeName") == "日本 01")
+    # The overview and the proxies page each read the selection again; wait for both.
+    qtbot.waitUntil(
+        lambda: view_models.overview.property("nodeName") == "日本 01" and node.property("selected")
+    )
     assert loaded.focused() is node
-    assert node.property("selected")
     loaded.key(qtbot, Qt.Key.Key_Down)
     assert loaded.focused().property("name") != "日本 01"  # the arrows move between nodes
     assert loaded.warnings == []

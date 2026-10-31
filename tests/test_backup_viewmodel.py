@@ -541,11 +541,24 @@ def test_icloud_needs_the_systems_account(
 
 
 def run_ticks(qtbot: QtBot, machine: Machine, seconds: float, step: float = 31) -> None:
-    """Move the clock on by ``seconds``, letting automatic backup look at every step."""
-    for _ in range(int(seconds // step)):
-        machine.clock.now += step
-        qtbot.wait(40)  # two ticks
-        qtbot.waitUntil(lambda: not machine.backup._auto_running, timeout=10_000)
+    """Move the clock on by ``seconds``, letting automatic backup look at every step: two
+    ticks each, counted, since a coarse timer may fire less often than asked."""
+    backup = machine.backup
+    ticks = [0]
+
+    def counted() -> None:
+        ticks[0] += 1
+
+    backup._tick_timer.timeout.connect(counted)
+    try:
+        for _ in range(int(seconds // step)):
+            machine.clock.now += step
+            want = ticks[0] + 2
+            qtbot.waitUntil(
+                lambda want=want: ticks[0] >= want and not backup._auto_running, timeout=10_000
+            )
+    finally:
+        backup._tick_timer.timeout.disconnect(counted)
 
 
 def test_icloud_failures_wait_for_the_hourly_catch_up(
@@ -687,6 +700,12 @@ def google(served: Subscriptions) -> Iterator[FakeGoogle]:
     fake.close()
 
 
+def refused(port: int) -> bool:
+    """Whether nothing listens on ``port`` on 127.0.0.1."""
+    with socket.socket() as probe:
+        return probe.connect_ex(("127.0.0.1", port)) != 0
+
+
 def wait_google(qtbot: QtBot, machine: Machine) -> str:
     qtbot.waitUntil(lambda: not prop(machine.backup, "busy"), timeout=30_000)
     return prop(machine.backup, "googleStatus")
@@ -777,8 +796,8 @@ def test_google_drive_sign_in_cancelled_or_declined(
     assert prop(backup, "googleSignInShown")
     port = urlsplit(google.consents[0].query["redirect_uri"]).port
     assert port is not None
-    with socket.socket() as probe:
-        assert probe.connect_ex(("127.0.0.1", port)) != 0  # the listener is gone
+    # The page lets go at once; the listener closes when the sign-in's task unwinds.
+    qtbot.waitUntil(lambda: refused(port))
 
     google.follows = True
     google.consents_to = False
