@@ -545,23 +545,24 @@ void makeControls(State& s) {
   s.brand = control(s, L"STATIC", L"Solaris", SS_NOPREFIX);
   s.versionLabel = control(s, L"STATIC", L"", SS_NOPREFIX);
   s.headline = control(s, L"STATIC", L"", SS_NOPREFIX);
+  // Native EDIT accessibility uses its immediately preceding static label.
+  s.licenseEdit = control(s, L"EDIT", s.license.c_str(), ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL | WS_TABSTOP, 1009);
+  SendMessageW(s.licenseEdit, EM_LIMITTEXT, 131072, 0);
   s.body = control(s, L"STATIC", L"", SS_NOPREFIX);
   s.label = control(s, L"STATIC", L"", SS_NOPREFIX);
+  s.pathEdit = control(s, L"EDIT", s.directory.c_str(), ES_AUTOHSCROLL | WS_TABSTOP, pathID);
+  SetWindowSubclass(s.pathEdit, detailProcedure, 1, 0);
+  SendMessageW(s.pathEdit, EM_LIMITTEXT, 1000, 0);
+  s.browse = control(s, L"BUTTON", s.tr(L"浏览…", L"Browse…"), BS_OWNERDRAW | WS_TABSTOP, browseID);
   s.value = control(s, L"STATIC", L"", SS_NOPREFIX);
   s.note = control(s, L"STATIC", L"", SS_NOPREFIX);
   s.check = control(s, L"BUTTON", s.tr(L"同时清除订阅、设置和日志", L"Also delete profiles, settings and logs"),
                     BS_AUTOCHECKBOX | WS_TABSTOP, purgeID);
   SetWindowSubclass(s.check, checkboxProcedure, 1, reinterpret_cast<DWORD_PTR>(&s));
   SendMessageW(s.check, BM_SETCHECK, s.purgeDefault ? BST_CHECKED : BST_UNCHECKED, 0);
-  s.pathEdit = control(s, L"EDIT", s.directory.c_str(), ES_AUTOHSCROLL | WS_TABSTOP, pathID);
-  SetWindowSubclass(s.pathEdit, detailProcedure, 1, 0);
-  SendMessageW(s.pathEdit, EM_LIMITTEXT, 1000, 0);
-  s.browse = control(s, L"BUTTON", s.tr(L"浏览…", L"Browse…"), BS_OWNERDRAW | WS_TABSTOP, browseID);
   s.agreement = control(s, L"BUTTON", s.tr(L"我已阅读并同意 GPLv3 开源许可协议", L"I agree to the GPLv3 open-source license"), BS_AUTOCHECKBOX | WS_TABSTOP, agreementID);
   SetWindowSubclass(s.agreement, checkboxProcedure, 1, reinterpret_cast<DWORD_PTR>(&s));
   s.licenseButton = control(s, L"BUTTON", s.tr(L"查看协议", L"View license"), BS_OWNERDRAW | WS_TABSTOP, licenseID);
-  s.licenseEdit = control(s, L"EDIT", s.license.c_str(), ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL | WS_TABSTOP, 1009);
-  SendMessageW(s.licenseEdit, EM_LIMITTEXT, 131072, 0);
   s.progress = control(s, PROGRESS_CLASSW, s.tr(L"操作进度", L"Operation progress"), PBS_MARQUEE | PBS_SMOOTH);
   SetWindowTheme(s.progress, L"", L"");
   SetWindowSubclass(s.progress, progressProcedure, 1, reinterpret_cast<DWORD_PTR>(&s));

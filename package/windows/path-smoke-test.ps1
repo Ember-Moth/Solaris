@@ -64,3 +64,6 @@ try {
     Remove-Item -LiteralPath $sandbox -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $pathFile -Force -ErrorAction SilentlyContinue
 }
+# Rejected-path probes intentionally exit 1. Do not propagate the last probe's
+# exit code after all expectations passed (GitHub's PowerShell wrapper reads it).
+exit 0
