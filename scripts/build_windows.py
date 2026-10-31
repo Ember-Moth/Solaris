@@ -39,7 +39,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Run as a script, Python puts scripts/ on the path rather than the root.
 sys.path.insert(0, str(ROOT))
 
-from scripts import build_app, build_apple, fetch_geodata  # noqa: E402
+from scripts import build_app, build_apple, fetch_geodata, symbols  # noqa: E402
 from scripts.build_apple import BuildError  # noqa: E402
 
 BUILD = ROOT / "build" / "windows"
@@ -88,7 +88,7 @@ def installer_name(version: str) -> str:
 
 
 def build_service(version: str) -> Path:
-    """solaris-service.exe for windows/amd64, without cgo, symbols or build paths."""
+    """solaris-service.exe for windows/amd64, with DWARF for retained crash symbols."""
     output = BUILD / "service" / SERVICE
     output.unlink(missing_ok=True)
     environment = os.environ | {
@@ -105,7 +105,7 @@ def build_service(version: str) -> Path:
         "-trimpath",
         "-tags",
         GO_TAGS,
-        f"-ldflags=-s -w -X {build_apple.GO_VERSION_VARIABLE}={version}",
+        f"-ldflags=-X {build_apple.GO_VERSION_VARIABLE}={version}",
         "-o",
         output,
         "./service",
@@ -125,6 +125,7 @@ def build_ui(version: str) -> Path:
         "nuitka",
         # Never onefile: the service accepts the UI only from its install directory.
         "--mode=standalone",
+        "--unstripped",
         "--msvc=latest",
         "--enable-plugins=pyside6",
         "--include-qt-plugins=qml",
@@ -296,6 +297,11 @@ def main() -> None:
             service = build_service(version)
             ui = build_ui(version)
             directory = assemble(ui, service, geodata)
+            symbol_dir = BUILD / "symbols"
+            build_apple._remove(symbol_dir)
+            symbols.windows(directory / CLIENT, directory / SERVICE, BUILD / "nuitka", symbol_dir)
+            for pdb in directory.rglob("*.pdb"):
+                pdb.unlink()  # retained separately, not part of the installer
         count = check(directory)
         size = sum(path.stat().st_size for path in directory.rglob("*") if path.is_file())
         shown = directory.relative_to(ROOT)

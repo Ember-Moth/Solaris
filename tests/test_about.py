@@ -422,6 +422,32 @@ def read_archive(path: Path) -> dict[str, str]:
         return {name: archive.read(name).decode("utf-8") for name in archive.namelist()}
 
 
+def test_crash_summary_and_raw_export_are_separate(
+    qtbot: QtBot, built: ViewModels, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from solaris import crashes
+
+    directory = tmp_path / "crashes"
+    directory.mkdir()
+    report = directory / "ui-exception-1-1.log"
+    report.write_text("private-crash-token")
+    monkeypatch.setattr(crashes, "default_sources", lambda folder: [(folder, "ui")])
+    about = about_for(built, offline_updater(tmp_path), crash_directory=directory)
+    normal = tmp_path / "normal.zip"
+    about.exportDiagnostics(normal.as_uri())
+    qtbot.waitUntil(lambda: not prop(about, "exporting"))
+    files = read_archive(normal)
+    assert "private-crash-token" not in "\n".join(files.values())
+    assert len(json.loads(files["crashes.json"])["reports"]) == 1
+    raw = tmp_path / "raw.zip"
+    about.exportCrashes(raw.as_uri())
+    qtbot.waitUntil(lambda: not prop(about, "crashesBusy"))
+    assert read_archive(raw)["01-ui.log"] == "private-crash-token"
+    about.clearCrashes()
+    qtbot.waitUntil(lambda: not prop(about, "crashesBusy"))
+    assert not report.exists()
+
+
 def test_export_diagnostics(qtbot: QtBot, tmp_path: Path) -> None:
     store = ProfileStore(tmp_path)
     seed_profiles(store, NOW)
@@ -453,7 +479,14 @@ def test_export_diagnostics(qtbot: QtBot, tmp_path: Path) -> None:
     assert not prop(about, "diagnosticsFailed")
 
     files = read_archive(target)
-    assert sorted(files) == ["about.json", "host.json", "mihomo.log", "settings.json"]
+    assert sorted(files) == [
+        "about.json",
+        "crashes.json",
+        "host.json",
+        "mihomo.log",
+        "settings.json",
+    ]
+    assert json.loads(files["crashes.json"])["raw_included"] is False
     info = json.loads(files["about.json"])
     assert info["version"] == __version__
     assert info["language"] == "zh"

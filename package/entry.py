@@ -18,7 +18,7 @@ install directory (docs/architecture.md §5.1).
 # solaris.__version__ reads the package's metadata; without it every release looks newer.
 # nuitka-project: --include-distribution-metadata=solaris
 
-from solaris.app import main
+from solaris.bootstrap import main
 
 if __name__ == "__main__":
     raise SystemExit(main())

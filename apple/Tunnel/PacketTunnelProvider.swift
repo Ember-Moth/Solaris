@@ -15,6 +15,12 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
   /// attach afterwards. Read and written on `lifecycle` only.
   private var stopping = false
 
+  override init() {
+    super.init()
+    do { Core.crashLogs(home: try Self.coreHome()) }
+    catch { logger.error("crash directory unavailable: \(error.localizedDescription, privacy: .public)") }
+  }
+
   override func startTunnel(
     options: [String: NSObject]?, completionHandler: @escaping (Error?) -> Void
   ) {

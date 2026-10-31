@@ -38,6 +38,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 APPLE = ROOT / "apple"
 CORE = ROOT / "src" / "core"
 BUILD = ROOT / "build" / "apple"
@@ -206,11 +207,23 @@ def build_xcode(identity: str | None, version: str, build_number: str) -> Path:
 
 
 def collect(products: Path) -> tuple[Path, Path]:
+    # Native dSYMs are generated before the extension is stripped and signed.
+    # The UUID check prevents attaching symbols from a different build.
+    from scripts import symbols
+
     dylib = BUILD / "SolarisManager.dylib"
     extension = BUILD / f"{TUNNEL_ID}.systemextension"
     for name, target in (("SolarisManager.dylib", dylib), (extension.name, extension)):
         _remove(target)
         _run(["ditto", products / name, target])
+    symbol_dir = BUILD / "symbols"
+    _remove(symbol_dir)
+    symbols.apple(dylib, products / "SolarisManager.dylib.dSYM", symbol_dir)
+    symbols.apple(
+        extension / "Contents" / "MacOS" / TUNNEL_ID,
+        products / f"{extension.name}.dSYM",
+        symbol_dir,
+    )
     return dylib, extension
 
 

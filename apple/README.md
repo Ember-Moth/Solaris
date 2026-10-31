@@ -15,6 +15,10 @@ Xcode 工程由 XcodeGen 从 `project.yml` 生成，包含两个 target（docs/a
 `build_apple.check_localizations` 验证编译资源与源码一致，`test_apple_localization.py` 通过独立进程中的
 Foundation Bundle 验证中文、英文及其他语言回退，不提交系统扩展请求。实际系统弹窗待测试 Mac 验收（D36）。
 
+provider 初始化时即为 Go 注册本地崩溃日志，保存到扩展自己的 `Solaris/core/crashes`；未配置的 TUN 两分钟后
+终止，避免 UI 崩溃后遗留空隧道。系统身份的容器及原生系统报告由管理员提取，不假定它与用户 App Group 相同，
+也不为读日志启动隧道。管理库、扩展与 Nuitka UI 的 dSYM 按 UUID 校验并独立保留，见 D37 与维护文档。
+
 ## 工程结构
 
 ```text

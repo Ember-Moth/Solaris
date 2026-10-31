@@ -58,9 +58,26 @@ home 目录的 ACL 和 WinINet 代理设置的读写在 `go` job 的 Windows run
 - Tor 出口（D23，[exits.md](exits.md) 第 4 节）：只有设计；
 - Windows 代码签名（D29）：签名方案定下后接上 `product.WindowsSigner`、`SignedRelease` 和界面的
   `signature.WINDOWS_SIGNER`（[release.md](release.md) 第 3 节）；
-- 崩溃日志。
 
 ## 2. 真机验收
+
+### 崩溃诊断（D37）
+
+- 自动化使用隔离子进程验证 Python 主线程/线程/asyncio 异常、`faulthandler` 的原生中止和 Go panic；
+  正常退出、取消、存储不可写、清理边界、普通诊断排除原始内容均有测试。测试不修改本机网络或 WER 配置。
+- Windows CI 安装冒烟检查两项 per-image WER 策略及卸载移除。实际 UI/服务故障产生 `.dmp`、符号化和
+  Windows 睡眠/休眠仍需测试机；已有自定义 WER 键不会被安装器覆盖。
+- UI 日志在用户数据目录 `crashes/`。Windows Go 日志在
+  `%ProgramData%\Solaris\users\<当前进程 SID>\crashes`，由原有 ACL 允许本人读取；服务的启动日志与
+  原生转储在 `%ProgramData%\Solaris\crashes`，仅 SYSTEM/管理员可访问。
+- macOS Go 日志在扩展进程实际的 Application Support `Solaris/core/crashes`；系统扩展以系统身份运行时
+  不能拿普通用户的 App Group 容器路径替代。管理员从该容器提取 `go-*.log`，或从
+  `/Library/Logs/DiagnosticReports` 选择标识 `dev.tschen.solaris.tunnel` 的报告；应用自动导出只读当前用户
+  `~/Library/Logs/DiagnosticReports` 中的 Solaris 报告。不会为读日志启用隧道、提权或放宽 ACL。
+- 「清除」只清除 UI 异常日志；OS 报告由系统维护，服务日志由服务清理。专用日志 30 天、20 份、64 MiB，
+  WER 每进程 5 份；限额在启动/维护时执行，崩溃写入可能暂时超出。原始导出最多 20 份、64 MiB、单份32 MiB。
+- 符号位于发布的独立 symbols artifact（90 天），按提交与 Mach-O UUID / Windows 二进制 SHA-256 匹配；
+  用 Xcode/atos 或 WinDbg/Go 工具分析，第三方库私有符号仍依赖其提供方。
 
 需要的环境：
 

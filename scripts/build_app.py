@@ -38,7 +38,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Run as a script, Python puts scripts/ on the path rather than the root.
 sys.path.insert(0, str(ROOT))
 
-from scripts import build_apple  # noqa: E402
+from scripts import build_apple, symbols  # noqa: E402
 from scripts.build_apple import BuildError, Profile  # noqa: E402
 from solaris.models.backup_google import (  # noqa: E402
     CLIENT_FILE_NAME,
@@ -230,6 +230,7 @@ def build_ui(version: str) -> Path:
         "-m",
         "nuitka",
         "--mode=app",
+        "--unstripped",
         "--enable-plugins=pyside6",
         "--include-qt-plugins=qml",
         # The Nuitka plugin pulls in the QtWidgets binding for QtQuick; the UI never imports it.
@@ -251,7 +252,15 @@ def build_ui(version: str) -> Path:
         ENTRY,
     ]
     _run(command, env=environment)
-    return output / f"{ENTRY.stem}.app"
+    ui = output / f"{ENTRY.stem}.app"
+    binary = ui / "Contents" / "MacOS" / EXECUTABLE
+    symbol_dir = BUILD / "symbols"
+    build_apple._remove(symbol_dir)
+    symbol_dir.mkdir(parents=True)
+    dsym = symbol_dir / f"{EXECUTABLE}.dSYM"
+    _run(["xcrun", "dsymutil", binary, "-o", dsym])
+    symbols.apple(binary, dsym, symbol_dir)
+    return ui
 
 
 def assemble(ui: Path, dylib: Path, extension: Path, version: str, core: str, minimum: str) -> Path:

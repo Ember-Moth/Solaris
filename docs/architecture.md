@@ -774,16 +774,31 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   确认后断开所有 Solaris 隧道、调用 `deactivationRequest`，系统确认完成后删除本应用的 VPN 配置，保留订阅、设置和凭据。
   待用户处理、未完成、取消和失败分别显示，可重试；下次显式连接会重新激活扩展。应用不会自行删除自己的安装目录。
 
+### 9.1 本地崩溃记录
+
+`bootstrap` 在 Qt 导入前安装 Python 记录器，捕获主入口、线程、asyncio 的未处理异常及 faulthandler 的
+致命堆栈；取消和已处理的操作失败不记作崩溃。Go 的 `crashlog.Open` 在创建 engine 前注册
+`debug.SetCrashOutput`，Windows 使用当前属主的受保护 home，macOS 在 provider 初始化时注册到自身容器，
+开发服务使用 dev-core home。零字节活动文件不算报告，正常退出清除；记录器失败不阻止连接。
+macOS attach 后如果两分钟内仍未收到可运行的配置，启动保护会终止扩展，使系统拆除空隧道；
+正常 Start 完成或 detach 会取消保护，避免 UI 在 prepare/Start 之间崩溃时遗留空 TUN。
+
+Windows 安装器为两个 Solaris 可执行文件设置独立的 WER mini dump 策略，卸载只移除本次安装拥有的键；
+原生服务转储在 SYSTEM/管理员专用目录，不混入用户可读的日志。macOS 原生报告由系统生成与维护。
+界面只收集本人可读取且标识匹配的报告，禁止链接/重解析点、限制导出大小；不为日志启动隧道或改变权限。
+普通诊断只含类型、时间、大小与来源可用性；原始报告经过独立确认导出。保留与导出限额见 D37 和隐私说明。
+
 ## 10. 构建与发布
 
 | 产物 | 构建方式 |
 | --- | --- |
-| Windows 服务 | `go build -trimpath`，windows/amd64，不用 cgo，按 3.4 节的标签（`with_gvisor`），`-ldflags "-s -w -X …"` 注入版本 |
+| Windows 服务 | `go build -trimpath`，windows/amd64，不用 cgo，按 3.4 节的标签（`with_gvisor`），`-ldflags "-X …"` 注入版本并保留 DWARF |
 | macOS xcframework | 本仓库 Go 模块的 c-archive 构建，包含 engine 与控制分发器，导出供 `handleAppMessage` 调用的 C 函数 |
 | 协议绑定 | 由 `control.proto` 生成 Go 与 Python 代码 |
 | UI | Nuitka standalone（Windows 上是 `--mode=standalone` 的 `Solaris.exe`，用 MSVC；macOS 上是 `--mode=app`） |
 | Windows 安装包 | `scripts/build_windows.py` 构建服务和界面、组装安装目录，用 NSIS 3 编译 `package/windows/installer.nsi` |
 | macOS 包 | `scripts/build_app.py` 组装并签名 `Solaris.app`；发布工作流公证后做成 `.dmg` |
+| 崩溃符号 | Nuitka `--unstripped`；macOS dSYM 校验 UUID；Windows PDB 与精确 Go 服务二进制独立存档，发布 artifact 保留 90 天 |
 
 - **Windows 构建**（`scripts/build_windows.py`，在 Windows 上运行，`uv run --with nuitka==4.2.2`）：拉取 GEO 数据
   （`scripts/fetch_geodata.py`）、构建服务、Nuitka 构建界面（不带界面用不到的 Qt 模块、QML 目录和图片格式插件，与

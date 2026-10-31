@@ -199,6 +199,16 @@ jobs:
           compression-level: 0
           retention-days: 30
 
+      - name: Retain macOS crash symbols
+        uses: actions/upload-artifact@v7
+        with:
+          name: solaris-${{ steps.version.outputs.version }}-macos-symbols-${{ github.sha }}
+          path: |
+            build/apple/symbols/
+            build/app/symbols/
+          if-no-files-found: error
+          retention-days: 90
+
       # When a step after signing fails, the app as it stands goes up for inspection.
       - name: Keep the app for inspection
         if: failure()
@@ -318,6 +328,14 @@ jobs:
           compression-level: 0
           retention-days: 30
 
+      - name: Retain Windows crash symbols
+        uses: actions/upload-artifact@v7
+        with:
+          name: solaris-${{ steps.version.outputs.version }}-windows-symbols-${{ github.sha }}
+          path: build/windows/symbols/
+          if-no-files-found: error
+          retention-days: 90
+
   # The GitHub Release of a v* tag, with exactly the assets of docs/release.md §1. It stays a
   # draft: the updater asks GitHub for the latest published release, which skips drafts, so
   # nothing reaches installed copies until a person has downloaded both installers from the
@@ -363,9 +381,12 @@ jobs:
 
       - uses: actions/download-artifact@v8
         with:
-          pattern: solaris-${{ steps.version.outputs.version }}-*
+          name: solaris-${{ steps.version.outputs.version }}-macos-arm64
           path: build/artifacts
-          merge-multiple: true
+      - uses: actions/download-artifact@v8
+        with:
+          name: solaris-${{ steps.version.outputs.version }}-windows-x64
+          path: build/artifacts
 
       # The build jobs' own sums first: the artifacts arrived as they were built.
       - name: Installers

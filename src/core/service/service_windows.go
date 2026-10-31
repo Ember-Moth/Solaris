@@ -22,6 +22,7 @@ import (
 
 	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/control"
+	"github.com/Ember-Moth/Solaris/src/core/internal/crashlog"
 	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
 	"github.com/Ember-Moth/Solaris/src/core/internal/operation"
 	"github.com/Ember-Moth/Solaris/src/core/internal/owner"
@@ -112,12 +113,31 @@ func serve(ctx context.Context, sessions <-chan sessionEvent, powerEvents *power
 	}
 	defer closeLog()
 	slog.SetDefault(logger)
+	// Native service dumps may include startup state with no owner. Keep them SYSTEM-only,
+	// outside the readable per-owner homes, and leave collection to an administrator.
+	nativeCrashes := filepath.Join(root, "crashes", "native")
+	if err := platform.SecureDir(filepath.Dir(nativeCrashes), ""); err != nil {
+		logger.Warn("native crash directory unavailable", "error", err)
+	} else if err := platform.SecureDir(nativeCrashes, ""); err != nil {
+		logger.Warn("native crash directory unavailable", "error", err)
+	} else if err := crashlog.PruneNative(nativeCrashes, time.Now()); err != nil {
+		logger.Warn("prune native crash reports", "error", err)
+	}
 	host, home, err := owner.Open(ctx, root, filepath.Join(filepath.Dir(executable), geodataDir), platform, logger)
 	if err != nil {
 		logger.Error("open the owner's home", "error", err)
 		return err
 	}
 	// A service with no owner yet has no engine: it answers GetInfo and Claim only.
+	crashHome := home
+	if crashHome == "" {
+		crashHome = root
+	}
+	if closeCrashes, err := crashlog.Open(filepath.Join(crashHome, "crashes")); err != nil {
+		logger.Warn("crash capture unavailable", "error", err)
+	} else {
+		defer closeCrashes()
+	}
 	var core control.Engine
 	if home != "" {
 		opened, err := engine.New(engine.Options{HomeDir: home, Tun: admission.TunOwned})

@@ -100,6 +100,7 @@ function Stop-SolarisService {
 }
 
 function Install-SolarisService {
+    Set-CrashDumps
     $binary = "`"\`"$ServiceExecutable\`"`""
     if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
         Invoke-Sc "config $ServiceName binPath= $binary type= own start= auto obj= LocalSystem DisplayName= Solaris"
@@ -119,6 +120,7 @@ function Install-SolarisService {
 
 function Remove-SolarisService {
     Stop-SolarisService
+    Remove-CrashDumps
     if (-not (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue)) { return }
     Invoke-Sc "delete $ServiceName"
     # Deleted once nothing has it open, such as the Services console.
@@ -129,6 +131,39 @@ function Remove-SolarisService {
             return
         }
         Start-Sleep -Milliseconds 200
+    }
+}
+
+# Per-image WER settings only. Mini dumps, never full process memory; the UI's folder
+# expands in its own account. The service creates its SYSTEM-only folder before running.
+# Preserve a manually configured key which this installer does not own.
+$DumpRoot = 'HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps'
+function Set-CrashDumps {
+    $folders = @{
+        'Solaris.exe' = '%LOCALAPPDATA%\Solaris\crashes\native'
+        'solaris-service.exe' = '%ProgramData%\Solaris\crashes\native'
+    }
+    foreach ($image in $folders.Keys) {
+        $key = Join-Path $DumpRoot $image
+        if (Test-Path -LiteralPath $key) {
+            $existing = Get-ItemProperty -LiteralPath $key
+            if ($existing.SolarisInstallDirectory -ne $InstallDirectory) { continue }
+        }
+        $null = New-Item -Path $key -Force
+        $null = New-ItemProperty -LiteralPath $key -Name 'SolarisInstallDirectory' -Value $InstallDirectory -PropertyType String -Force
+        $null = New-ItemProperty -LiteralPath $key -Name 'DumpFolder' -Value $folders[$image] -PropertyType ExpandString -Force
+        $null = New-ItemProperty -LiteralPath $key -Name 'DumpCount' -Value 5 -PropertyType DWord -Force
+        $null = New-ItemProperty -LiteralPath $key -Name 'DumpType' -Value 1 -PropertyType DWord -Force
+    }
+}
+
+function Remove-CrashDumps {
+    foreach ($image in @('Solaris.exe', 'solaris-service.exe')) {
+        $key = Join-Path $DumpRoot $image
+        if ((Test-Path -LiteralPath $key) -and
+            (Get-ItemProperty -LiteralPath $key).SolarisInstallDirectory -eq $InstallDirectory) {
+            Remove-Item -LiteralPath $key -Recurse
+        }
     }
 }
 

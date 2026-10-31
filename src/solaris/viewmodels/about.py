@@ -19,7 +19,7 @@ from PySide6.QtCore import Property, QObject, QTimer, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
-from solaris import diagnostics, licenses
+from solaris import crashes, diagnostics, licenses
 from solaris.host.base import LogEntry, TunnelHost
 from solaris.i18n import QT_TRANSLATE_NOOP, current_language
 from solaris.models import format as fmt
@@ -126,6 +126,7 @@ class AboutViewModel(QObject):
         opener: Callable[[Path], bool] = open_file,
         manifest: Path = licenses.MANIFEST,
         notices: Path = licenses.NOTICES,
+        crash_directory: Path | None = None,
         parent: QObject | None = None,
     ) -> None:
         """``logs`` returns the core's log lines the logs page holds; it is called on the
@@ -143,6 +144,14 @@ class AboutViewModel(QObject):
         self._opener = opener
         self._manifest = manifest
         self._notices = notices
+        self._crash_directory = crash_directory
+        self._crash_count = 0
+        self._crash_busy = False
+        self._crash_notice = ""
+        self._crash_failed = False
+        self._crash_timer = QTimer(self)
+        self._crash_timer.setInterval(60_000)
+        self._crash_timer.timeout.connect(self.refreshCrashes)
         self._components: tuple[licenses.Component, ...] | None = None
         self._component_query = ""
         self._component_model = KeyedListModel(_roles(ComponentRow), self)
@@ -176,8 +185,11 @@ class AboutViewModel(QObject):
         """Drop installers left from an earlier run, then check at startup if allowed."""
         self._runner.submit(asyncio.to_thread(self._updater.clear))
         self._schedule(self._settings.current, starting=True)
+        self.refreshCrashes()
+        self._crash_timer.start()
 
     def stop(self) -> None:
+        self._crash_timer.stop()
         self._cancel.set()
         self._startup.stop()
         self._periodic.stop()
@@ -478,6 +490,7 @@ class AboutViewModel(QObject):
                 routing=await self._library.routing(),
                 logs=logs,
                 language=language,
+                crashes=(await asyncio.to_thread(self._crashes)).summary(),
             )
             await asyncio.to_thread(diagnostics.write_archive, path, snapshot, now)
 
@@ -505,6 +518,86 @@ class AboutViewModel(QObject):
     def _clear_export_notice(self) -> None:
         self._export_notice = ""
         self.changed.emit()
+
+    # -- local crash reports -----------------------------------------------------------------
+    def _crashes(self) -> crashes.Inventory:
+        if self._crash_directory is None:
+            return crashes.Inventory(())
+        crashes.prune(self._crash_directory)
+        return crashes.collect(self._crash_directory)
+
+    @Property(str, notify=changed)
+    def crashesStatus(self) -> str:
+        if self._crash_busy:
+            return self.tr("正在处理…")
+        if self._crash_notice:
+            return self._crash_notice
+        if not self._crash_count:
+            return self.tr("暂无可导出的崩溃报告")
+        return self.tr("{count} 份本地报告，不会自动上传").format(count=self._crash_count)
+
+    @Property(str, notify=changed)
+    def crashesName(self) -> str:
+        return crashes.archive_name(self._clock())
+
+    @Property(bool, notify=changed)
+    def crashesBusy(self) -> bool:
+        return self._crash_busy
+
+    @Property(bool, notify=changed)
+    def crashesFailed(self) -> bool:
+        return self._crash_failed
+
+    @Slot()
+    def refreshCrashes(self) -> None:
+        if self._crash_busy:
+            return
+
+        def ready(inventory: crashes.Inventory) -> None:
+            self._crash_count = len(inventory.reports)
+            self.changed.emit()
+
+        self._runner.submit(asyncio.to_thread(self._crashes), ready, lambda _: None)
+
+    def _crash_action(self, action: Callable[[], None], success: str) -> None:
+        if self._crash_busy:
+            return
+        self._crash_busy = True
+        self._crash_failed = False
+        self.changed.emit()
+
+        def done(_: object) -> None:
+            self._crash_busy = False
+            self._crash_notice = success
+            self.changed.emit()
+            self.refreshCrashes()
+
+        def failed(error: BaseException) -> None:
+            self._crash_busy = False
+            self._crash_failed = True
+            self._crash_notice = self.tr("未能处理崩溃报告：{detail}").format(
+                detail=error.strerror or str(error)
+                if isinstance(error, OSError)
+                else failure_text(error)
+            )
+            self.changed.emit()
+
+        self._runner.submit(asyncio.to_thread(action), done, failed)
+
+    @Slot(str)
+    def exportCrashes(self, url: str) -> None:
+        path = Path(QUrl(url).toLocalFile() or url)
+        self._crash_action(
+            lambda: crashes.write_archive(path, self._crashes()),
+            self.tr("已导出到 {name}").format(name=path.name),
+        )
+
+    @Slot()
+    def clearCrashes(self) -> None:
+        self._crash_action(
+            lambda: crashes.clear(self._crash_directory) if self._crash_directory else None,
+            self.tr("已清除界面的崩溃日志，系统报告保留"),
+        )
 
     # -- licenses ----------------------------------------------------------------------------
     def _loaded_components(self) -> tuple[licenses.Component, ...]:

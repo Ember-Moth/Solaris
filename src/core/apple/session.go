@@ -12,6 +12,7 @@ import (
 
 	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/control"
+	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
 	"github.com/Ember-Moth/Solaris/src/core/internal/geodata"
 	"github.com/Ember-Moth/Solaris/src/core/internal/operation"
@@ -23,8 +24,9 @@ type session struct {
 	engine     *engine.Engine
 	dispatcher *control.Dispatcher
 	// ctx ends the requests in flight and the subscriptions when the tunnel detaches.
-	ctx    context.Context
-	cancel context.CancelFunc
+	ctx        context.Context
+	cancel     context.CancelFunc
+	configured func()
 }
 
 var (
@@ -69,6 +71,9 @@ func attach(fd int, home, resources string, includeAllNetworks bool) error {
 		ctx:        ctx,
 		cancel:     cancel,
 	}
+	opened.configured = guardInitialConfiguration(2*time.Minute, func() bool {
+		return core.State() == controlpb.RunState_RUN_STATE_RUNNING
+	}, operation.Terminate)
 	mu.Lock()
 	current = opened
 	mu.Unlock()
@@ -86,6 +91,7 @@ func detach() {
 		return
 	}
 	detaching.cancel()
+	detaching.configured()
 	mu.Lock()
 	current = nil
 	mu.Unlock()
@@ -102,7 +108,11 @@ func handle(request []byte) []byte {
 	if current == nil {
 		return control.EncodeFailure(0, control.CodeNotRunning, "the extension has no tunnel attached")
 	}
-	return current.dispatcher.Handle(current.ctx, peer.Identity{}, request)
+	response := current.dispatcher.Handle(current.ctx, peer.Identity{}, request)
+	if current.engine.State() == controlpb.RunState_RUN_STATE_RUNNING {
+		current.configured()
+	}
+	return response
 }
 
 // network is admission.FDNetwork in the shape the extension's network settings take.

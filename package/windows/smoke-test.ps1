@@ -36,6 +36,7 @@ $Pipe = 'ProtectedPrefix\Administrators\solaris'
 $LinkCommand = "`"$Client`" `"%1`""
 $ServiceData = Join-Path $env:ProgramData 'Solaris'
 $UserData = Join-Path $env:LOCALAPPDATA 'Solaris'
+$DumpRoot = 'HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps'
 $UiLock = Join-Path $UserData 'ui.lock'  # src/solaris/desktop/instance.py
 # src/solaris/desktop/login.py's name for this user's task, and one of the same form that
 # starts something else.
@@ -82,6 +83,11 @@ function Find-Shortcuts {
 }
 
 function Assert-Installed {
+    foreach ($image in @('Solaris.exe', 'solaris-service.exe')) {
+        $dump = Get-ItemProperty -LiteralPath (Join-Path $DumpRoot $image)
+        Expect ($dump.DumpType -eq 1 -and $dump.DumpCount -eq 5) "Unexpected WER policy for $image"
+        Expect ($dump.SolarisInstallDirectory -eq $Root) "Unowned WER policy for $image"
+    }
     foreach ($name in @(
             'Solaris.exe', 'solaris-service.exe', 'uninstall.exe', 'LICENSE',
             'geodata\GeoSite.dat', 'geodata\GeoIP.dat', 'solaris\licenses\THIRD_PARTY_NOTICES.txt')) {
@@ -130,6 +136,9 @@ function Assert-Installed {
 }
 
 function Assert-Removed {
+    foreach ($image in @('Solaris.exe', 'solaris-service.exe')) {
+        Expect (-not (Test-Path -LiteralPath (Join-Path $DumpRoot $image))) "WER policy remains for $image"
+    }
     Expect (-not (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue)) "$ServiceName is still there"
     Expect (-not (Test-Path -LiteralPath $UninstallKey)) 'The uninstall entry is still there'
     foreach ($scheme in 'solaris', 'clash') {

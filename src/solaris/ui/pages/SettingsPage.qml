@@ -943,6 +943,45 @@ ScrollView {
                         }
 
                         GroupRow {
+                            verticalPadding: Theme.space2
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+                                UiText {
+                                    Layout.fillWidth: true
+                                    text: qsTr("崩溃报告")
+                                }
+                                AccessibleText {
+                                    Layout.fillWidth: true
+                                    text: page.about.crashesStatus
+                                    role: Theme.type.caption
+                                    color: page.about.crashesFailed ? Theme.danger : Theme.textMuted
+                                    wrapMode: Text.Wrap
+                                    Accessible.role: Accessible.StatusBar
+                                }
+                            }
+                            AppButton {
+                                id: clearCrashesButton
+                                objectName: "clearCrashesButton"
+                                variant: "compact"
+                                text: qsTr("清除…")
+                                enabled: !page.about.crashesBusy
+                                Accessible.name: qsTr("清除界面的崩溃日志")
+                                onClicked: clearCrashesDialog.show(clearCrashesButton)
+                            }
+                            AppButton {
+                                id: exportCrashesButton
+                                objectName: "exportCrashesButton"
+                                variant: "compact"
+                                text: qsTr("导出…")
+                                enabled: !page.about.crashesBusy
+                                Accessible.name: qsTr("导出原始崩溃报告")
+                                Accessible.description: page.about.crashesStatus
+                                onClicked: rawCrashesDialog.show(exportCrashesButton)
+                            }
+                        }
+
+                        GroupRow {
                             rowHeight: Theme.rowSingle
 
                             UiText {
@@ -983,6 +1022,36 @@ ScrollView {
         id: licensesDialog
 
         about: page.about
+    }
+
+    ConfirmDialog {
+        id: rawCrashesDialog
+        title: qsTr("导出原始崩溃报告？")
+        message: qsTr("报告可能包含文件路径、错误内容或少量内存数据。\n只保存到你选择的位置，不会上传。")
+        confirmText: qsTr("继续…")
+        onAccepted: {
+            crashFileDialog.selectedFile = crashFileDialog.currentFolder + "/" + page.about.crashesName
+            crashFileDialog.open()
+        }
+    }
+
+    ConfirmDialog {
+        id: clearCrashesDialog
+        title: qsTr("清除界面的崩溃日志？")
+        message: qsTr("清除后无法恢复。系统和服务保存的报告会保留。")
+        confirmText: qsTr("清除")
+        destructive: true
+        onAccepted: page.about.clearCrashes()
+    }
+
+    FileDialog {
+        id: crashFileDialog
+        title: qsTr("导出原始崩溃报告")
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "zip"
+        currentFolder: StandardPaths.writableLocation(StandardPaths.DocumentsLocation)
+        nameFilters: [qsTr("zip 压缩文件 (*.zip)")]
+        onAccepted: page.about.exportCrashes(selectedFile.toString())
     }
 
     FileDialog {

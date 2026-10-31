@@ -16,6 +16,8 @@ from typing import Any
 
 from PySide6.QtCore import QObject, Qt, Signal
 
+from solaris import crashes
+
 Callback = Callable[[Any], None]
 ErrorCallback = Callable[[BaseException], None]
 
@@ -26,6 +28,7 @@ class AsyncRunner(QObject):
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._loop = asyncio.new_event_loop()
+        self._loop.set_exception_handler(crashes.asyncio_exception)
         self._thread = threading.Thread(target=self._run, name="solaris-asyncio", daemon=True)
         self._started = False
         self._stopping = False
@@ -115,6 +118,8 @@ class AsyncRunner(QObject):
         if future.cancelled():
             callback = on_cancel
         elif (error := future.exception()) is not None:
+            if on_error is None:
+                crashes.record(error, origin="async-task")
             callback = partial(on_error, error) if on_error else None
         elif on_result is not None:
             callback = partial(on_result, future.result())

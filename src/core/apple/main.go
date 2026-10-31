@@ -12,11 +12,24 @@ package main
 import "C"
 
 import (
+	"path/filepath"
+	"sync"
 	"unsafe"
 
 	"github.com/Ember-Moth/Solaris/src/core/internal/control"
+	"github.com/Ember-Moth/Solaris/src/core/internal/crashlog"
 	"github.com/Ember-Moth/Solaris/src/core/internal/frame"
 )
+
+var crashOnce sync.Once
+
+// solaris_crash_logs installs the runtime sink before the provider opens the TUN.
+// The system extension is a process, so the sink stays alive across tunnel sessions.
+//
+//export solaris_crash_logs
+func solaris_crash_logs(home *C.char) {
+	crashOnce.Do(func() { _, _ = crashlog.Open(filepath.Join(C.GoString(home), "crashes")) })
+}
 
 // solaris_tunnel_network describes the tunnel's network (admission.FDNetwork) as JSON for
 // the extension's network settings. The caller releases the buffer with solaris_free.

@@ -17,6 +17,7 @@ import (
 
 	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/control"
+	"github.com/Ember-Moth/Solaris/src/core/internal/crashlog"
 	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
 	"github.com/Ember-Moth/Solaris/src/core/internal/operation"
 	"github.com/Ember-Moth/Solaris/src/core/internal/peer"
@@ -44,6 +45,11 @@ func run() error {
 		if *home, err = developmentHome(); err != nil {
 			return err
 		}
+	}
+	if closeCrashes, err := crashlog.Open(filepath.Join(*home, "crashes")); err != nil {
+		slog.Warn("crash capture unavailable", "error", err)
+	} else {
+		defer closeCrashes()
 	}
 	core, err := newDevelopmentEngine(*home)
 	if err != nil {

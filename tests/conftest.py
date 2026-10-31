@@ -100,6 +100,14 @@ def loaded(
             del engine
 
 
+@pytest.fixture(autouse=True)
+def isolate_crash_sources(monkeypatch: pytest.MonkeyPatch) -> None:
+    """UI tests use fixture reports, never real OS reports or the installed service's home."""
+    from solaris import crashes
+
+    monkeypatch.setattr(crashes, "default_sources", lambda directory: [(directory, "ui")])
+
+
 @pytest.fixture
 def screen_reader(qapp: QCoreApplication) -> Iterator[None]:
     """Accessibility on, as when a screen reader runs: Qt Quick Controls fill in their roles

@@ -16,7 +16,7 @@ import platform
 import sys
 import zipfile
 from collections.abc import Awaitable, Sequence
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass, field, fields
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -67,6 +67,7 @@ class Snapshot:
     routing: Routing
     logs: Sequence[LogEntry]
     language: str  # the UI's, "zh" or "en"
+    crashes: dict[str, Any] = field(default_factory=dict)  # metadata only, never raw reports
 
 
 def archive_name(now: float) -> str:
@@ -173,6 +174,7 @@ def write_archive(path: Path, snapshot: Snapshot, now: float) -> None:
             archive.writestr("host.json", _json(host(snapshot)))
             archive.writestr("settings.json", _json(settings(snapshot)))
             archive.writestr("mihomo.log", export_text(snapshot.logs))
+            archive.writestr("crashes.json", _json(snapshot.crashes))
         partial.replace(path)
     except BaseException:
         with contextlib.suppress(OSError):

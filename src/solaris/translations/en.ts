@@ -147,6 +147,26 @@
         <source>导出失败：{detail}</source>
         <translation>Export failed: {detail}</translation>
     </message>
+    <message>
+        <source>正在处理…</source>
+        <translation>Working…</translation>
+    </message>
+    <message>
+        <source>暂无可导出的崩溃报告</source>
+        <translation>No crash reports to export</translation>
+    </message>
+    <message>
+        <source>{count} 份本地报告，不会自动上传</source>
+        <translation>{count} local reports; never uploaded automatically</translation>
+    </message>
+    <message>
+        <source>未能处理崩溃报告：{detail}</source>
+        <translation>Couldn’t process crash reports: {detail}</translation>
+    </message>
+    <message>
+        <source>已清除界面的崩溃日志，系统报告保留</source>
+        <translation>App crash logs cleared; system reports kept</translation>
+    </message>
     <message numerus="yes">
         <source>%n 个第三方组件</source>
         <translation>
@@ -3635,6 +3655,48 @@ prepend-rules:
     <message>
         <source>停用 Solaris 的网络扩展</source>
         <translation>Deactivate the Solaris network extension</translation>
+    </message>
+    <message>
+        <source>崩溃报告</source>
+        <translation>Crash reports</translation>
+    </message>
+    <message>
+        <source>清除…</source>
+        <translation>Clear…</translation>
+    </message>
+    <message>
+        <source>清除界面的崩溃日志</source>
+        <translation>Clear app crash logs</translation>
+    </message>
+    <message>
+        <source>导出原始崩溃报告</source>
+        <translation>Export raw crash reports</translation>
+    </message>
+    <message>
+        <source>导出原始崩溃报告？</source>
+        <translation>Export raw crash reports?</translation>
+    </message>
+    <message>
+        <source>报告可能包含文件路径、错误内容或少量内存数据。
+只保存到你选择的位置，不会上传。</source>
+        <translation>Reports may contain file paths, error details or small memory snapshots.
+They are saved where you choose and are not uploaded.</translation>
+    </message>
+    <message>
+        <source>继续…</source>
+        <translation>Continue…</translation>
+    </message>
+    <message>
+        <source>清除界面的崩溃日志？</source>
+        <translation>Clear app crash logs?</translation>
+    </message>
+    <message>
+        <source>清除后无法恢复。系统和服务保存的报告会保留。</source>
+        <translation>This can’t be undone. System and service reports will be kept.</translation>
+    </message>
+    <message>
+        <source>清除</source>
+        <translation>Clear</translation>
     </message>
     <message>
         <source>退出登录</source>

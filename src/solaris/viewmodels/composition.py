@@ -185,7 +185,13 @@ def compose(
         settings_store, tray_available=tray_available, start_hidden=start_hidden
     )
     about = AboutViewModel(
-        updater or Updater(store.directory), settings_store, host, library, runner, logs.held
+        updater or Updater(store.directory),
+        settings_store,
+        host,
+        library,
+        runner,
+        logs.held,
+        crash_directory=store.directory / "crashes",
     )
     backup = BackupViewModel(
         Backups(store.database),
