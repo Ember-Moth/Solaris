@@ -133,7 +133,8 @@ jobs:
           $native = go mod download -json "github.com/sagernet/cronet-go/lib/windows_$arch" | ConvertFrom-Json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:PATH = "$($native.Dir);$env:PATH"
-          $race = if ($arch -eq 'amd64') { @('-race') } else { @() }
+          $race = @()
+          if ($arch -eq 'amd64') { $race += '-race' }
           go test @race -tags with_gvisor,with_naive,with_purego -run '^TestFork' ./internal/engine
       # Tailscale's outbound only builds with with_gvisor, so the security and mesh tests run
       # once more with it: its state-dir held to the home (docs/mesh.md §4), and the fields

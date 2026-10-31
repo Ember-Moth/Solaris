@@ -150,6 +150,9 @@ def build_ui(version: str, arch: str = "x64") -> Path:
     output = build / "nuitka"
     if output.exists():
         shutil.rmtree(output)
+    # Qt's 6.12 ARM64 wheel carries an unused ARM32 C++/CX runtime. None of the
+    # retained Qt libraries imports it; keep it out of the native ARM64 payload.
+    excluded = EXCLUDED + (("*vccorlib140.dll",) if arch == "arm64" else ())
     command: list[str | Path] = [
         sys.executable,
         "-m",
@@ -171,8 +174,8 @@ def build_ui(version: str, arch: str = "x64") -> Path:
         f"--file-version={version}",
         f"--output-dir={output}",
         "--assume-yes-for-downloads",
-        *(f"--noinclude-dlls={pattern}" for pattern in EXCLUDED),
-        *(f"--noinclude-data-files={pattern}" for pattern in EXCLUDED),
+        *(f"--noinclude-dlls={pattern}" for pattern in excluded),
+        *(f"--noinclude-data-files={pattern}" for pattern in excluded),
         *build_app.google_client(build),
         ENTRY,
     ]
