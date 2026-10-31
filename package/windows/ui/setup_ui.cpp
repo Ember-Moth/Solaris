@@ -596,7 +596,7 @@ LRESULT CALLBACK windowProcedure(HWND window, UINT message, WPARAM wparam, LPARA
                    SWP_NOZORDER | SWP_NOACTIVATE);
       makeFonts(s);
       layout(s);
-      InvalidateRect(window, nullptr, TRUE);
+      renderState(s);
       return 0;
     }
     case WM_THEMECHANGED:
