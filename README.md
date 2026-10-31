@@ -4,62 +4,108 @@
 
 <h1 align="center">Solaris</h1>
 
-<p align="center">基于 <a href="https://github.com/Ember-Moth/mihomo">mihomo（Ember-Moth fork）</a> 的网络代理客户端，支持 Windows 和 macOS。</p>
+<p align="center"><strong>让 mihomo 融入操作系统。</strong></p>
+
+<p align="center">采用平台原生系统架构的开源网络代理客户端，支持 macOS 和 Windows。</p>
 
 <p align="center">
   <a href="https://github.com/Ember-Moth/Solaris/releases">下载</a> ·
+  <a href="#原生系统集成">产品特点</a> ·
   <a href="PRIVACY.md">隐私说明</a> ·
+  <a href="https://github.com/Ember-Moth/Solaris/issues">反馈问题</a> ·
   <a href="docs/development.md">开发文档</a>
 </p>
 
 ---
 
-Solaris 把 mihomo 内核装进系统服务（Windows）或系统扩展（macOS）里运行：关闭界面后连接照常工作；Windows 上重新登录
-后自动恢复连接。
-界面是原生风格的桌面应用，提供简体中文和英文，跟随系统的浅色与深色外观。
+Solaris 用来管理你的代理订阅、节点和分流规则。它在 macOS 上使用 **Network Extension**，在 Windows 上使用
+**LocalSystem 系统服务**，将 mihomo 内核直接嵌入系统扩展或服务中。
 
-## 功能
+界面负责管理配置，系统扩展或服务负责运行连接。连接建立后，即使退出界面，隧道仍可继续运行。无需注册 Solaris 账户，导入自己的
+订阅或配置即可使用。
 
-- **协议扩展**：Naive（HTTP/2、QUIC、可选 UoT）、AnyTLS+REALITY；内核版本与构建说明见 [架构文档](docs/architecture.md#34-构建标签)。
-- **订阅与配置**：导入 mihomo（Clash）订阅链接或本地配置文件，订阅按时更新；网页上的 `solaris://`、`clash://` 链接
-  一键导入；一份全局覆写，加上每份订阅各一份覆写。
-- **一个开关连接**：用 TUN 还是系统代理接管流量，在设置里选一次；TUN 协议栈也可以选。
-- **自定义分流**：可以直接用订阅自带的规则，也可以用"我的方案"：所有订阅的节点合成一个节点池，按地区自动分组；
-  按服务、域名或 IP 段添加规则；自建策略组并预览成员；用规则测试查看一个网址会走哪里；方案可以导入导出。
-- **链式出口**：流量经你的节点再进入 Cloudflare WARP 或 VPN Gate，换一个出口 IP。
-- **组网**：在应用里添加 Tailscale、ZeroTier、EasyTier 网络，用规则访问网络里的设备。
-- **代理、连接与日志**：策略组与节点选择，HTTP 或 TCP 握手两种延迟测试，实时的连接列表与流量，内核日志。
-- **备份**：导出到文件，从文件恢复（替换或合并）；自动备份到 Google Drive，macOS 上还可以备份到 iCloud。
-- **日常使用**：托盘，登录时打开，检查更新，诊断信息导出。
+## 原生系统集成
+
+Solaris 使用两个平台各自提供的权限和后台运行机制来管理网络连接。
+
+| 项目 | macOS | Windows |
+| --- | --- | --- |
+| 网络宿主 | Network Extension 系统扩展 | 原生 Windows Service，以 LocalSystem 身份运行 |
+| 内核运行 | mihomo 以 Go 库形式直接内嵌 | mihomo 以 Go 库形式直接内嵌 |
+| 界面控制 | Network Extension 提供的消息通道 | Windows 命名管道 |
+| 系统集成 | 系统扩展授权、VPN 配置与隧道生命周期 | 服务管理、用户会话与电源事件 |
+
+**内核独立于界面运行。** mihomo 直接运行在系统扩展或服务进程内，不作为独立 CLI 子进程托管。
+界面通过平台 IPC 和自有控制协议调用内核，无需开放 mihomo 的 HTTP/REST 控制端口。
+
+**权限分工明确。** 日常使用的界面以普通用户权限运行，需要系统权限的网络操作交给系统扩展或服务处理。
+Windows 服务按用户管理连接，处理登录与睡眠唤醒后的恢复；主动断开后不会自动重连。
+macOS 在首次连接时通过系统授权启用扩展，也提供卸载前的扩展停用入口。
+
+控制通道、内核集成与权限边界的详细设计见 [架构文档](docs/architecture.md)。
+
+## 连接与分流
+
+- **一个开关连接**：Windows 可选择 TUN、系统代理或同时启用；macOS 通过 Network Extension 接管流量。
+  在概览页查看连接状态、当前模式和实时流量。
+- **集中管理订阅**：导入 mihomo（Clash）订阅链接或本地配置，设置定时更新，通过 `solaris://`、`clash://` 链接
+  一键导入。支持全局覆写和单份订阅覆写。
+- **使用订阅规则，或建立自己的方案**：把多个订阅的节点合成节点池，按地区组织，自建策略组；按服务、域名和
+  IP 段设置分流。规则测试可以预览目标网站会走哪条规则，方案支持导入与导出。
+- **选择与排查节点**：切换规则、全局和直连模式，选择策略组与节点，进行 HTTP 或 TCP 握手延迟测试，查看连接列表
+  和内核日志。
+
+## 更多网络能力
+
+Solaris 使用 [Ember-Moth/mihomo](https://github.com/Ember-Moth/mihomo) 内核，在 mihomo 的协议能力上加入：
+
+- **Naive**：支持 HTTP/2、QUIC，以及兼容服务端上的 UoT。
+- **AnyTLS + REALITY**：支持使用 REALITY 的 AnyTLS 节点。
+
+此外，可以让流量经所选节点接入 **Cloudflare WARP 或 VPN Gate** 链式出口；也可以添加 **Tailscale、ZeroTier、
+EasyTier** 网络，通过分流规则访问网络中的设备。
+
+## 日常使用
+
+- **贴合桌面习惯**：简体中文与英文，浅色与深色外观，托盘控制和登录时打开。
+- **备份与迁移**：导出本地数据，恢复时选择替换或合并；iCloud（macOS）和 Google Drive 的集成状态见
+  [支持说明](docs/maintenance.md)。
+- **应用内更新**：检查新版本、下载安装包并校验，经你确认后安装。
+- **本地诊断**：查看运行日志，导出诊断信息；原始崩溃报告单独确认导出，不会自动上传。
 
 ## 下载与安装
 
-安装包在 [GitHub Releases](https://github.com/Ember-Moth/Solaris/releases)，只提供下面两种：
+从 [GitHub Releases](https://github.com/Ember-Moth/Solaris/releases) 获取安装包：
 
-| 系统 | 文件 |
+| 支持的平台 | 安装包 |
 | --- | --- |
-| Windows 10 / 11，64 位 | `Solaris-<版本>-windows-x64-setup.exe` |
-| macOS 26 及以上，Apple 芯片 | `Solaris-<版本>-macos-arm64.dmg` |
+| macOS 26 及以上，Apple Silicon | `Solaris-<版本>-macos-arm64.dmg` |
+| Windows 10 / 11，x64 | `Solaris-<版本>-windows-x64-setup.exe` |
 
-每个版本附带 `SHA256SUMS`，可以用它核对下载的文件。
+发布附件中的 `SHA256SUMS` 可用于核对下载文件。
 
-- **Windows**：安装包暂未签名。从浏览器下载后打开时，SmartScreen 可能提示"Windows 已保护你的电脑"，点"更多信息"再点
-  "仍要运行"。安装器会请求管理员权限，确认框里的发布者显示为"未知"。安装位置固定为 `C:\Program Files\Solaris`，
-  同时安装一个系统服务，关闭界面后连接继续运行。在"设置 › 应用"里卸载，卸载时可以选择是否删除订阅、设置和日志。
-- **macOS**：打开磁盘映像，把 Solaris 拖到"应用程序"文件夹。第一次连接时，系统会先提示 Solaris 想要启用系统扩展，
-  到"系统设置 › 通用 › 登录项与扩展"里允许；再询问是否允许添加 VPN 配置，点"允许"。磁盘映像经过 Apple 公证。
-- **更新**：设置页"关于"里检查更新，下载安装包并核对校验和（macOS 还核对签名），经你确认后打开安装包完成升级。
+**macOS**：打开 DMG，将 Solaris 拖入「应用程序」。首次连接时按应用内指引，在「系统设置 › 通用 › 登录项与扩展」
+允许网络扩展，并确认添加 VPN 配置。卸载前可以在 Solaris 设置页停用系统扩展。
+
+**Windows**：运行 EXE 安装向导并允许管理员授权。应用安装在 `C:\Program Files\Solaris`，同时注册后台服务；
+日常使用的界面以普通用户身份运行。当前 Windows 安装包尚未签名。卸载入口位于「设置 › 应用」，默认保留订阅、设置
+和日志，也可选择清除。
 
 ## 隐私
 
-Solaris 不收集使用数据。会离开本机的只有你使用的功能本身需要的连接，比如下载订阅、检查更新、注册 WARP、备份到
-你选的云端；逐项说明见 [PRIVACY.md](PRIVACY.md)。
+Solaris 不收集使用统计，也不会自动上传日志或崩溃报告。订阅、配置和设置保存在本机；访问订阅服务器、代理节点、
+更新服务或所选云备份服务时，会产生对应功能所需的网络请求。
 
-## 参与开发
+诊断文件可能包含访问过的域名、节点名或错误内容，由你决定是否导出和分享。数据存储、云备份和第三方服务的完整说明
+见 [隐私说明](PRIVACY.md)。
 
-从源码构建、运行测试和开发服务，以及各部分的设计文档，见 [docs/development.md](docs/development.md)。
+## 支持与开发
+
+- 使用问题与功能建议：[GitHub Issues](https://github.com/Ember-Moth/Solaris/issues)。
+- 已知限制、云备份接入与平台验证状态：[维护与支持说明](docs/maintenance.md)。
+- 从源码构建、运行测试和参与开发：[开发文档](docs/development.md)。
 
 ## 许可证
 
-本项目以 [GNU General Public License v3.0](LICENSE)（GPL-3.0-only）发布。Windows 服务和 macOS 系统扩展链接了同为
-GPL-3.0 的 [mihomo](https://github.com/MetaCubeX/mihomo)，分发二进制时须同时提供对应的源代码。
+Solaris 以 [GPL-3.0-only](LICENSE) 发布，内核基于 [mihomo](https://github.com/MetaCubeX/mihomo) 及其
+[Ember-Moth fork](https://github.com/Ember-Moth/mihomo)。第三方组件及其许可证可在应用的「设置 › 关于 › 开源许可」中查看。
