@@ -27,6 +27,7 @@ type session struct {
 	ctx        context.Context
 	cancel     context.CancelFunc
 	configured func()
+	contact    func()
 }
 
 var (
@@ -71,7 +72,7 @@ func attach(fd int, home, resources string, includeAllNetworks bool) error {
 		ctx:        ctx,
 		cancel:     cancel,
 	}
-	opened.configured = guardInitialConfiguration(2*time.Minute, func() bool {
+	opened.contact, opened.configured = guardInitialConfiguration(2*time.Minute, func() bool {
 		return core.State() == controlpb.RunState_RUN_STATE_RUNNING
 	}, operation.Terminate)
 	mu.Lock()
@@ -108,6 +109,7 @@ func handle(request []byte) []byte {
 	if current == nil {
 		return control.EncodeFailure(0, control.CodeNotRunning, "the extension has no tunnel attached")
 	}
+	current.contact()
 	response := current.dispatcher.Handle(current.ctx, peer.Identity{}, request)
 	if current.engine.State() == controlpb.RunState_RUN_STATE_RUNNING {
 		current.configured()

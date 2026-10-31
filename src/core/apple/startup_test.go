@@ -13,7 +13,7 @@ func TestInitialConfigurationGuard(t *testing.T) {
 	for _, mode := range []string{"abandoned", "configured", "detached"} {
 		t.Run(mode, func(t *testing.T) {
 			failed := make(chan operation.Failure, 1)
-			done := guardInitialConfiguration(5*time.Millisecond, func() bool {
+			_, done := guardInitialConfiguration(5*time.Millisecond, func() bool {
 				return mode == "configured"
 			}, func(f operation.Failure) { failed <- f })
 			defer done()
@@ -35,5 +35,24 @@ func TestInitialConfigurationGuard(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestPreparationActivityRefreshesTheIdleBudget(t *testing.T) {
+	failed := make(chan operation.Failure, 1)
+	touch, done := guardInitialConfiguration(time.Second, func() bool { return false },
+		func(f operation.Failure) { failed <- f })
+	defer done()
+	time.Sleep(600 * time.Millisecond)
+	touch()
+	select {
+	case <-failed:
+		t.Fatal("active preparation used the original deadline")
+	case <-time.After(600 * time.Millisecond):
+	}
+	select {
+	case <-failed: // the UI disappeared after its last message
+	case <-time.After(2 * time.Second):
+		t.Fatal("abandoned preparation did not expire")
 	}
 }

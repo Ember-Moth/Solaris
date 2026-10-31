@@ -780,8 +780,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 致命堆栈；取消和已处理的操作失败不记作崩溃。Go 的 `crashlog.Open` 在创建 engine 前注册
 `debug.SetCrashOutput`，Windows 使用当前属主的受保护 home，macOS 在 provider 初始化时注册到自身容器，
 开发服务使用 dev-core home。零字节活动文件不算报告，正常退出清除；记录器失败不阻止连接。
-macOS attach 后如果两分钟内仍未收到可运行的配置，启动保护会终止扩展，使系统拆除空隧道；
-正常 Start 完成或 detach 会取消保护，避免 UI 在 prepare/Start 之间崩溃时遗留空 TUN。
+macOS attach 后如果尚无可运行配置且连续两分钟没有界面消息，启动保护会终止扩展，使系统拆除空隧道；
+解析多份订阅时，消息持续刷新空闲预算。正常 Start 或 detach 永久取消保护，已运行隧道无需界面心跳。
 
 Windows 安装器为两个 Solaris 可执行文件设置独立的 WER mini dump 策略，卸载只移除本次安装拥有的键；
 原生服务转储在 SYSTEM/管理员专用目录，不混入用户可读的日志。macOS 原生报告由系统生成与维护。
