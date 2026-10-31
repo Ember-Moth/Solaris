@@ -17,6 +17,7 @@ import (
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
 	"github.com/Ember-Moth/Solaris/src/core/internal/peer"
+	"github.com/Ember-Moth/Solaris/src/core/internal/porttest"
 	"github.com/Ember-Moth/Solaris/src/core/internal/product"
 )
 
@@ -92,16 +93,6 @@ rules: ['MATCH,DIRECT']
 `, mixedPort)
 }
 
-func freePort(t *testing.T) int {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer listener.Close()
-	return listener.Addr().(*net.TCPAddr).Port
-}
-
 func TestDevelopmentServerRunsWithoutTUN(t *testing.T) {
 	core, _ := developmentServer(t)
 	if core.TunMode() != engine.TunNone {
@@ -111,7 +102,7 @@ func TestDevelopmentServerRunsWithoutTUN(t *testing.T) {
 
 func TestDevelopmentServerRejectsTUNAndSystemProxy(t *testing.T) {
 	core, dispatcher := developmentServer(t)
-	profile := hostileProfile(freePort(t))
+	profile := hostileProfile(porttest.Free(t))
 	for name, request := range map[string]*controlpb.Request{
 		"start with TUN":          start(profile, &controlpb.RunOptions{TunEnabled: true}),
 		"start with system proxy": start(profile, &controlpb.RunOptions{SystemProxyEnabled: true}),
@@ -132,7 +123,7 @@ func TestDevelopmentServerRejectsTUNAndSystemProxy(t *testing.T) {
 // neither, on 127.0.0.1 only.
 func TestDevelopmentServerKeepsTheProfileOnLoopback(t *testing.T) {
 	_, dispatcher := developmentServer(t)
-	port := freePort(t)
+	port := porttest.Free(t)
 	if response := handle(t, dispatcher, start(hostileProfile(port), nil)); response.GetError() != nil {
 		t.Fatalf("start = %v", response.GetError())
 	}

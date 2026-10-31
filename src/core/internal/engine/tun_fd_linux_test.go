@@ -235,20 +235,6 @@ func requireTUNDescriptors(t *testing.T, want int) {
 	}
 }
 
-// throughTUN fetches the target, which the route sends into the TUN, and checks that
-// mihomo carried the traffic.
-func throughTUN(t *testing.T, engine *Engine, target string) {
-	t.Helper()
-	before := engine.Traffic()
-	if body := plainGet(t, target); !strings.Contains(body, "through-tun") {
-		t.Fatalf("body = %q", body)
-	}
-	after := engine.Traffic()
-	if after.GetDownTotalBytes() <= before.GetDownTotalBytes() || after.GetUpTotalBytes() <= before.GetUpTotalBytes() {
-		t.Fatalf("mihomo carried no traffic: %v -> %v", before, after)
-	}
-}
-
 // lookupThroughTUN asks the address the extension makes the system's resolver.
 func lookupThroughTUN(t *testing.T, name string) []string {
 	t.Helper()

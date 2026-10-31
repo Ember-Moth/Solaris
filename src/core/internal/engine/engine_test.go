@@ -20,6 +20,7 @@ import (
 	C "github.com/metacubex/mihomo/constant"
 
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
+	"github.com/Ember-Moth/Solaris/src/core/internal/porttest"
 )
 
 func proxiedGet(t *testing.T, mixedPort int, target string) string {
@@ -90,7 +91,7 @@ func requiredVersion(t *testing.T, module string) string {
 func TestStartProxiesTrafficAndStopClosesThePort(t *testing.T) {
 	engine := openEngine(t, TunNone)
 	server := target(t)
-	port := freePort(t)
+	port := porttest.Free(t)
 	if _, err := engine.Start(directProfile(port, server.URL+"/generate_204")); err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +134,7 @@ func TestStartProxiesTrafficAndStopClosesThePort(t *testing.T) {
 func TestReloadMovesThePort(t *testing.T) {
 	engine := openEngine(t, TunNone)
 	server := target(t)
-	first, second := freePort(t), freePort(t)
+	first, second := porttest.Free(t), porttest.Free(t)
 	if _, err := engine.Start(directProfile(first, server.URL)); err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +179,7 @@ func TestStartFailsWhenThePortIsTaken(t *testing.T) {
 func TestReloadToATakenPortKeepsTheOldOne(t *testing.T) {
 	engine := openEngine(t, TunNone)
 	server := target(t)
-	port := freePort(t)
+	port := porttest.Free(t)
 	if _, err := engine.Start(directProfile(port, server.URL)); err != nil {
 		t.Fatal(err)
 	}
@@ -223,7 +224,7 @@ proxy-groups:
   - {name: PROXY, type: select, url: %s, proxies: [DIRECT, dead]}
 rules:
   - MATCH,PROXY
-`, freePort(t), freePort(t), server.URL+"/generate_204")
+`, porttest.Free(t), porttest.Free(t), server.URL+"/generate_204")
 	if _, err := engine.Start(Profile{Config: []byte(source)}); err != nil {
 		t.Fatal(err)
 	}
@@ -256,7 +257,7 @@ func isListenError(err error) bool {
 func TestQueriesAndOperations(t *testing.T) {
 	engine := openEngine(t, TunNone)
 	server := target(t)
-	port := freePort(t)
+	port := porttest.Free(t)
 	testURL := server.URL + "/generate_204"
 	if _, err := engine.Start(directProfile(port, testURL)); err != nil {
 		t.Fatal(err)
@@ -389,7 +390,7 @@ func TestWatchLogsSeesParseErrors(t *testing.T) {
 		lines = append(lines, entry.GetMessage())
 		mu.Unlock()
 	})
-	_, _ = engine.Validate(directProfile(freePort(t), "http://127.0.0.1:1/"))
+	_, _ = engine.Validate(directProfile(porttest.Free(t), "http://127.0.0.1:1/"))
 	deadline := time.Now().Add(5 * time.Second)
 	for {
 		mu.Lock()
@@ -414,7 +415,7 @@ func TestStartStopDoesNotLeak(t *testing.T) {
 	}
 	engine := openEngine(t, TunNone)
 	server := target(t)
-	port := freePort(t)
+	port := porttest.Free(t)
 	profile := directProfile(port, server.URL+"/generate_204")
 	cycle := func() {
 		if _, err := engine.Start(profile); err != nil {

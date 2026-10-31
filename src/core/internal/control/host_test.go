@@ -10,6 +10,7 @@ import (
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
 	"github.com/Ember-Moth/Solaris/src/core/internal/peer"
+	"github.com/Ember-Moth/Solaris/src/core/internal/porttest"
 )
 
 // fakeHost owns the service for owner and records what the dispatcher tells it.
@@ -135,7 +136,7 @@ func TestHostKeepsWhatTheCoreRuns(t *testing.T) {
 	})
 	owner := peer.Identity{UserID: "S-1-5-21-1"}
 	ctx := context.Background()
-	port := freePort(t)
+	port := porttest.Free(t)
 	withProxy := &controlpb.RunOptions{SystemProxyEnabled: true, MixedPort: uint32(port)}
 
 	expectOK(t, callAs(t, dispatcher, ctx, owner, request(1, startRequest(profileYAML(port), withProxy))))

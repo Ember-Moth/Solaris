@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
+	"github.com/Ember-Moth/Solaris/src/core/internal/porttest"
 	"github.com/Ember-Moth/Solaris/src/core/internal/warp"
 )
 
@@ -59,7 +60,7 @@ proxy-groups:
   - {name: BLOCKED, type: select, proxies: [REJECT]}
 rules:
   - MATCH,VIA
-`, freePort(t))
+`, porttest.Free(t))
 	if _, err := engine.Start(Profile{Config: []byte(source)}); err != nil {
 		t.Fatal(err)
 	}

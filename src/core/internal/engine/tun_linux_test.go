@@ -101,14 +101,7 @@ tun:
 	// The test's own request is not mihomo's, so the routes send it into the TUN;
 	// mihomo's DIRECT dial is bound to the veth and leaves through it. The target must be
 	// off the namespace's link: auto-route leaves on-link destinations to the main table.
-	before := engine.Traffic()
-	if body := plainGet(t, target); !strings.Contains(body, "through-tun") {
-		t.Fatalf("body = %q", body)
-	}
-	after := engine.Traffic()
-	if after.GetDownTotalBytes() <= before.GetDownTotalBytes() || after.GetUpTotalBytes() <= before.GetUpTotalBytes() {
-		t.Fatalf("mihomo carried no traffic: %v -> %v", before, after)
-	}
+	throughTUN(t, engine, target)
 
 	// An unchanged TUN survives a reload.
 	if _, err := engine.Reload(profile); err != nil {
@@ -139,6 +132,29 @@ tun:
 	waitForInterface(t, false)
 	if state := networkState(t); state != baseline {
 		t.Fatalf("routes after Stop:\n%s\nwant:\n%s", state, baseline)
+	}
+}
+
+// throughTUN fetches the target, which the routes send into the TUN, and checks that
+// mihomo carried the traffic. mihomo counts the bytes it relays once it has passed them
+// on, and with gVisor the response can reach the client before its bytes are counted, so
+// the counts get a moment to catch up. A request that went around the TUN never shows up
+// in them.
+func throughTUN(t *testing.T, engine *Engine, target string) {
+	t.Helper()
+	before := engine.Traffic()
+	if body := plainGet(t, target); !strings.Contains(body, "through-tun") {
+		t.Fatalf("body = %q", body)
+	}
+	for deadline := time.Now().Add(5 * time.Second); ; {
+		after := engine.Traffic()
+		if after.GetDownTotalBytes() > before.GetDownTotalBytes() && after.GetUpTotalBytes() > before.GetUpTotalBytes() {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("mihomo carried no traffic: %v -> %v", before, after)
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
 }
 

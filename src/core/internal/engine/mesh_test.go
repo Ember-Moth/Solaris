@@ -17,6 +17,7 @@ import (
 
 	"github.com/Ember-Moth/Solaris/src/core/internal/compose"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
+	"github.com/Ember-Moth/Solaris/src/core/internal/porttest"
 )
 
 // Networks whose peers nothing ever dials: the tests replace startMesh.
@@ -140,7 +141,7 @@ func TestNetworksAreOutboundsMihomoBuilds(t *testing.T) {
 func TestMeshOutboundsStartAndCarryOver(t *testing.T) {
 	starts := replaceStartMesh(t)
 	engine := openEngine(t, TunNone)
-	port := freePort(t)
+	port := porttest.Free(t)
 	if _, err := engine.Start(meshProfile(port, easyTierNetwork("et1", "一", "s"), easyTierNetwork("et2", "二", "s"))); err != nil {
 		t.Fatal(err)
 	}
@@ -208,7 +209,7 @@ func TestMeshStateOfRemovedNetworksGoes(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, "gone")); err != nil {
 		t.Fatalf("Validate removed state: %v", err)
 	}
-	if _, err := engine.Start(meshProfile(freePort(t), easyTierNetwork("kept", "留下", "s"))); err != nil {
+	if _, err := engine.Start(meshProfile(porttest.Free(t), easyTierNetwork("kept", "留下", "s"))); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = engine.Stop() })
@@ -232,7 +233,7 @@ func TestMeshStatus(t *testing.T) {
 	if _, err := engine.MeshStatus(context.Background()); !errors.Is(err, ErrNotRunning) {
 		t.Fatalf("MeshStatus while stopped = %v", err)
 	}
-	profile := meshProfile(freePort(t), easyTierNetwork("et", "实验室", "s"), zeroTierNetwork("zt", "公司"))
+	profile := meshProfile(porttest.Free(t), easyTierNetwork("et", "实验室", "s"), zeroTierNetwork("zt", "公司"))
 	if _, err := engine.Start(profile); err != nil {
 		t.Fatal(err)
 	}
@@ -347,7 +348,7 @@ func TestEasyTierAddress(t *testing.T) {
 func TestSubscriptionMeshOutboundsWaitForTraffic(t *testing.T) {
 	starts := replaceStartMesh(t)
 	engine := openEngine(t, TunNone)
-	profile := meshProfile(freePort(t), easyTierNetwork("et", "实验室", "s"))
+	profile := meshProfile(porttest.Free(t), easyTierNetwork("et", "实验室", "s"))
 	profile.Composition.Sources = append(profile.Composition.Sources, compose.Source{ID: "m", Name: "M", YAML: []byte(`
 proxies:
   - {name: 公司, type: zerotier, network: 8056c2e21c000001}
@@ -390,7 +391,7 @@ proxies:
 func TestMeshStatusDuringReloads(t *testing.T) {
 	replaceStartMesh(t)
 	engine := openEngine(t, TunNone)
-	port := freePort(t)
+	port := porttest.Free(t)
 	if _, err := engine.Start(meshProfile(port, easyTierNetwork("et", "实验室", "s"))); err != nil {
 		t.Fatal(err)
 	}
