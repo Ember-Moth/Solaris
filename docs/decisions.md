@@ -49,3 +49,4 @@
 | D35 | macOS 扩展停用是显式维护动作：先断开所有本应用隧道，再请求系统停用，确认完成后仅清理 Solaris 的 VPN 配置，保留订阅、设置与凭据。待处理不显示完成，允许重试；下次连接重新激活。维护与连接、配置修改串行，预算包括排队 | [architecture.md](architecture.md) §9、[ui.md](ui.md) §8 |
 | D36 | macOS 系统提示中项目控制的扩展名称与用途说明由 InfoPlist.strings 提供中英文，英文回退，按系统语言偏好解析；应用内指引按应用语言。构建检查最终扩展的语言资源，不改变系统按钮 | [ui.md](ui.md) §5 |
 | D37 | 崩溃记录仅本地保存，Python 未处理异常与致命堆栈、Go 运行时输出、Windows 按进程配置的小型转储各有来源。普通诊断仅含概况，原始内容单独确认导出。保持用户和权限边界，不为日志连接 VPN 或提权；受保护的系统扩展及服务原生报告由管理员提取。保留匹配构建符号，日志与导出均有数量、时间及空间限制 | [PRIVACY.md](../PRIVACY.md)、[release.md](release.md) §4 |
+| D38 | mihomo 通过 replace 固定到 Ember-Moth/mihomo 的 Meta 提交 8a977434bcff，保留上游导入路径；发布构建启用 Naive，Windows 携带并限定加载同版 Cronet DLL，macOS 静态合并同版 Cronet。AnyTLS+REALITY 及握手版本行为采用该 fork；升级时同步原生模块、版本标识与许可证清单并运行协议回归 | [architecture.md](architecture.md) §3.4 |

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"golang.org/x/mod/modfile"
 	"io"
 	"net"
 	"net/http"
@@ -75,21 +76,27 @@ func TestCoreVersionIsTheMihomoInGoMod(t *testing.T) {
 	}
 }
 
-// requiredVersion reads the version of a required module from the module's go.mod.
+// requiredVersion follows replacements as the binary's build info does.
 func requiredVersion(t *testing.T, module string) string {
 	t.Helper()
 	source, err := os.ReadFile(filepath.Join("..", "..", "go.mod"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for line := range strings.Lines(string(source)) {
-		fields := strings.Fields(line)
-		if len(fields) > 0 && fields[0] == "require" {
-			fields = fields[1:]
+	parsed, err := modfile.Parse("go.mod", source, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, requirement := range parsed.Require {
+		if requirement.Mod.Path != module {
+			continue
 		}
-		if len(fields) >= 2 && fields[0] == module {
-			return fields[1]
+		for _, replacement := range parsed.Replace {
+			if replacement.Old.Path == module && (replacement.Old.Version == "" || replacement.Old.Version == requirement.Mod.Version) {
+				return replacement.New.Version
+			}
 		}
+		return requirement.Mod.Version
 	}
 	t.Fatalf("go.mod does not require %s", module)
 	return ""

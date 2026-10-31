@@ -110,6 +110,16 @@ jobs:
       # (internal/engine/race.go), so the plain run above stays.
       - name: Race detector
         run: go test -race ./...
+      - name: Fork outbounds (macOS native Cronet)
+        if: runner.os == 'macOS'
+        run: go test -race -tags with_gvisor,with_naive -run '^TestFork' ./internal/engine
+      - name: Fork outbounds (Windows native Cronet)
+        if: runner.os == 'Windows'
+        run: |
+          $native = go mod download -json github.com/sagernet/cronet-go/lib/windows_amd64 | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:PATH = "$($native.Dir);$env:PATH"
+          go test -race -tags with_gvisor,with_naive,with_purego -run '^TestFork' ./internal/engine
       # Tailscale's outbound only builds with with_gvisor, so the security and mesh tests run
       # once more with it: its state-dir held to the home (docs/mesh.md §4), and the fields
       # its status is read from (§10.1).
@@ -146,9 +156,9 @@ jobs:
           path: build/geodata
           key: geodata-${{ hashFiles('scripts/fetch_geodata.py') }}
       # The script needs only the standard library, so skip installing the project. It builds
-      # the Go archive with the extension's tags, with_gvisor.
+      # Build the actual release tags, including the statically linked Naive runtime.
       - name: Build (unsigned)
-        run: uv run --no-project python scripts/build_apple.py --tags with_gvisor
+        run: uv run --no-project python scripts/build_apple.py
       # The release's disk image around the check app, signed ad hoc so that the image's own
       # checks pass: dmgbuild, the window and the background work on the release's runner.
       - name: Disk image

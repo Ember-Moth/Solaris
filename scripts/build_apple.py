@@ -58,7 +58,7 @@ DEPLOYMENT_TARGET = "15.0"  # as in apple/project.yml
 GOPROXY = "https://goproxy.cn,direct"
 GO_VERSION_VARIABLE = "github.com/Ember-Moth/Solaris/src/core/internal/product.Version"
 # All four TUN stacks, as on Windows (D3); fd mode defaults to gVisor (docs/architecture.md §3.4).
-GO_TAGS = "with_gvisor"
+GO_TAGS = "with_gvisor,with_naive"
 LOCALIZATIONS = ("en", "zh-Hans")
 PROFILE_DIRECTORIES = (
     Path.home() / "Library/Developer/Xcode/UserData/Provisioning Profiles",
@@ -156,7 +156,25 @@ def build_go(tags: str, version: str) -> None:
         command += ["-tags", tags]
     _run([*command, "-o", go / "libsolaris.a", "./apple"], env=environment)
     (go / "libsolaris.h").rename(include / "libsolaris.h")
-    (include / "module.modulemap").write_text(MODULE_MAP)
+    module_map = MODULE_MAP
+    if "with_naive" in re.split(r"[,\s]+", tags):
+        from scripts import cronet
+
+        native = cronet.library("darwin", ARCH)
+        archive = go / "libsolaris.a"
+        combined = go / "libsolaris-with-cronet.a"
+        _run(["xcrun", "libtool", "-static", "-o", combined, archive, native.binary])
+        combined.replace(archive)
+        links = [
+            *(f'  link "{name}"' for name in cronet.APPLE_LIBRARIES),
+            *(f'  link framework "{name}"' for name in cronet.APPLE_FRAMEWORKS),
+        ]
+        module_map = (
+            'module SolarisCore {\n  header "libsolaris.h"\n'
+            + "\n".join(links)
+            + "\n  export *\n}\n"
+        )
+    (include / "module.modulemap").write_text(module_map)
     framework = BUILD / "SolarisCore.xcframework"
     _remove(framework)
     _run(

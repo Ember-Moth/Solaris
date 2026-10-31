@@ -24,7 +24,9 @@ def _install_directory(root: Path) -> Path:
     for name in build_windows.REQUIRED:
         path = directory / name
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(_pe(build_windows.PE_MACHINE_AMD64) if name.endswith(".exe") else b"x")
+        path.write_bytes(
+            _pe(build_windows.PE_MACHINE_AMD64) if name.endswith((".exe", ".dll")) else b"x"
+        )
     qml = directory / "PySide6" / "qml" / "QtQuick"
     qml.mkdir(parents=True)
     (qml / "qtquick2plugin.dll").write_bytes(_pe(build_windows.PE_MACHINE_AMD64))
@@ -45,7 +47,7 @@ def test_pe_machine(tmp_path: Path) -> None:
 
 
 def test_check_counts_the_x64_binaries(tmp_path: Path) -> None:
-    assert build_windows.check(_install_directory(tmp_path)) == 3
+    assert build_windows.check(_install_directory(tmp_path)) == 4
 
 
 def test_check_wants_every_required_file(tmp_path: Path) -> None:

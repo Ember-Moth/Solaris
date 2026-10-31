@@ -412,7 +412,7 @@ jobs:
           git archive --format=tar --prefix="$SOURCE/" HEAD | tar -x -C "$staging"
           go -C "$staging/$SOURCE/src/core" mod vendor
           GOOS=windows GOARCH=amd64 GOFLAGS=-mod=vendor GOPROXY=off \
-            go -C "$staging/$SOURCE/src/core" build -tags with_gvisor -o /dev/null ./service
+            go -C "$staging/$SOURCE/src/core" build -tags with_gvisor,with_naive,with_purego -o /dev/null ./service
           tar --sort=name --mtime="$(git log -1 --format=%cI)" --owner=0 --group=0 \
             --numeric-owner --pax-option=exthdr.name=%d/PaxHeaders/%f,delete=atime,delete=ctime \
             -C "$staging" -cf - "$SOURCE" | gzip -9n > "build/release/$SOURCE.tar.gz"

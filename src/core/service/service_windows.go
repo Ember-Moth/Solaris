@@ -138,6 +138,10 @@ func serve(ctx context.Context, sessions <-chan sessionEvent, powerEvents *power
 	} else {
 		defer closeCrashes()
 	}
+	if err := loadNativeRuntime(filepath.Dir(executable)); err != nil {
+		// Keep other outbounds usable, but Naive will return this same load failure.
+		logger.Warn("Naive native runtime unavailable", "error", err)
+	}
 	var core control.Engine
 	if home != "" {
 		opened, err := engine.New(engine.Options{HomeDir: home, Tun: admission.TunOwned})

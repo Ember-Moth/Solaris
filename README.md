@@ -4,7 +4,7 @@
 
 <h1 align="center">Solaris</h1>
 
-<p align="center">基于 <a href="https://github.com/MetaCubeX/mihomo">mihomo</a> 的网络代理客户端，支持 Windows 和 macOS。</p>
+<p align="center">基于 <a href="https://github.com/Ember-Moth/mihomo">mihomo（Ember-Moth fork）</a> 的网络代理客户端，支持 Windows 和 macOS。</p>
 
 <p align="center">
   <a href="https://github.com/Ember-Moth/Solaris/releases">下载</a> ·
@@ -20,6 +20,7 @@ Solaris 把 mihomo 内核装进系统服务（Windows）或系统扩展（macOS�
 
 ## 功能
 
+- **协议扩展**：Naive（HTTP/2、QUIC、可选 UoT）、AnyTLS+REALITY；内核版本与构建说明见 [架构文档](docs/architecture.md#34-构建标签)。
 - **订阅与配置**：导入 mihomo（Clash）订阅链接或本地配置文件，订阅按时更新；网页上的 `solaris://`、`clash://` 链接
   一键导入；一份全局覆写，加上每份订阅各一份覆写。
 - **一个开关连接**：用 TUN 还是系统代理接管流量，在设置里选一次；TUN 协议栈也可以选。

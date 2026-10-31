@@ -34,6 +34,7 @@ from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 CORE = ROOT / "src" / "core"
 INPUTS = ROOT / "package" / "licenses"
 QT_INPUT = INPUTS / "qt.json"
@@ -48,10 +49,17 @@ GOPROXY = "https://goproxy.cn,direct"
 
 # Go builds that ship (docs/architecture.md §3.4): the service and the extension's library.
 GO_TARGETS = (
-    ({"GOOS": "windows", "GOARCH": "amd64"}, "./service"),
-    ({"GOOS": "darwin", "GOARCH": "arm64", "CGO_ENABLED": "1"}, "./apple"),
+    (
+        {"GOOS": "windows", "GOARCH": "amd64", "CGO_ENABLED": "0"},
+        "./service",
+        "with_gvisor,with_naive,with_purego",
+    ),
+    (
+        {"GOOS": "darwin", "GOARCH": "arm64", "CGO_ENABLED": "1"},
+        "./apple",
+        "with_gvisor,with_naive",
+    ),
 )
-GO_TAGS = "with_gvisor"
 # sing-tun embeds Wintun's prebuilt DLL, which comes under its own license, kept in
 # WINTUN_LICENSE from wintun-0.14.1.zip. Another DLL means checking that license again.
 WINTUN_PACKAGE = ("github.com/metacubex/sing-tun", "internal/wintun")
@@ -316,16 +324,24 @@ def _go(*args: str, env: dict[str, str] | None = None) -> str:
 
 def _linked_modules() -> dict[str, _Module]:
     modules: dict[str, _Module] = {}
-    fields = "{{.Module.Path}}\t{{.Module.Version}}\t{{.Module.Dir}}\t{{.Dir}}"
+    fields = (
+        "{{if .Module.Replace}}{{.Module.Replace.Path}}\t{{.Module.Replace.Version}}"
+        "{{else}}{{.Module.Path}}\t{{.Module.Version}}{{end}}\t{{.Module.Dir}}\t{{.Dir}}"
+    )
     template = "{{if .Module}}" + fields + "{{end}}"
-    for env, target in GO_TARGETS:
-        output = _go("list", "-deps", "-tags", GO_TAGS, "-f", template, target, env=env)
+    for env, target, tags in GO_TARGETS:
+        output = _go("list", "-deps", "-tags", tags, "-f", template, target, env=env)
         for line in output.splitlines():
             path, version, root, package = line.split("\t")
             if not version:  # the main module
                 continue
             module = modules.setdefault(path, _Module(path, version, Path(root), set()))
             module.packages.add(Path(package))
+    # Purego dynamically loads this DLL; it is shipped but absent from go list -deps.
+    from scripts import cronet
+
+    native = cronet.library("windows", "amd64")
+    modules[native.module] = _Module(native.module, native.version, native.root, {native.root})
     return modules
 
 

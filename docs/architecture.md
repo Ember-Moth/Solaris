@@ -252,8 +252,19 @@ mihomo 提供的可选标签有 `with_gvisor`、`with_low_memory`、`no_tailscal
 - 各标签组合在两个平台上都能编译。真实 TUN 下，四种栈在 Linux 的自管模式里都能建立 TUN 并转发流量（CI 的
   网络命名空间测试，见第 11 节）；Windows 上 wintun 的真机验收见 [maintenance.md](maintenance.md) 2.1 节。
 
-mihomo 的 GitHub 默认分支 `main` 是伪装项目，真正的代码在 `Alpha`（开发）和 `Meta`（稳定）分支。
-发布构建钉在 `Meta` 的 tag 上，当前为 v1.19.33（即 `Meta` 的 `3f27ef3`）。mihomo 的 go.mod 把
+Solaris 保留 `github.com/metacubex/mihomo` 的导入路径和 v1.19.33 require，通过 go.mod replace 固定到
+[`Ember-Moth/mihomo` 的 Meta 分支](https://github.com/Ember-Moth/mihomo/tree/Meta)提交
+`8a977434bcff6a674ae630d6fddfd26223927b7b`（`v1.19.33-0.20261031140757-8a977434bcff`，D38）。
+它基于上游 `3f27ef3`，增加 Naive、AnyTLS+REALITY，以及与 Xray 26.10.29 对齐的 REALITY 握手版本和
+默认 X25519MLKEM768 行为；显式 `support-x25519mlkem768: false` 仍保留。状态和许可证清单使用实际替换版本。
+
+发布标签在 macOS 为 `with_gvisor,with_naive`，Windows 为 `with_gvisor,with_naive,with_purego`。
+Naive 默认 HTTP/2，可用 `quic: true` 选 QUIC；UDP 需要 `udp-over-tcp: true` 及兼容服务端。
+Windows 随服务带 `libcronet.dll`，从安装目录的绝对路径加载，不回退 PATH；macOS 把静态 Cronet 合并进
+Go archive，并传递它所需的系统库和 framework。两端的原生版本均从 `cronet-go/all` 选中的 Go 模块图读取，
+与绑定一起锁定，不能另找不同版本的 DLL 替换。Naive 节点和 REALITY 字段照常通过订阅、自定义方案和准入校验。
+
+mihomo 的 go.mod 把
 `google.golang.org/protobuf` 替换为 `metacubex/protobuf-go`；依赖里的 replace 不会传递，本模块用的是上游
 protobuf，编译和测试都正常。
 
@@ -396,7 +407,7 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
     `HealthCheck` 每个节点只测一次，最多同时 32 个握手，整体仍是 5 秒：轮到之前就到时的节点保留上次的结果，
     被截断的记为失败；`TestDelay` 用请求的超时。
   - 只测总是经 TCP 连服务器的类型：Shadowsocks、ShadowsocksR、Snell、SOCKS5、HTTP、VMess、VLESS、Trojan、SSH、
-    AnyTLS、Sudoku。其余没有 TCP 服务器可拨，`tcp_delay_ms` 不带：走 UDP 的 Hysteria、Hysteria2、TUIC、
+    AnyTLS、Sudoku。其余没有固定 TCP 接入方式，`tcp_delay_ms` 不带：可选择 QUIC 的 Naive，走 UDP 的 Hysteria、Hysteria2、TUIC、
     WireGuard、ShadowQUIC，按选项可能走 UDP 的 Mieru、OpenVPN、MASQUE、TrustTunnel，组网出站，直连、拒绝；
     经 `dialer-proxy` 连服务器的节点也不测，直接握手走的不是它的路径（如 WARP、VPN Gate 出口）。成员是组时，
     测量和报告的都是它此刻所用的节点；load-balance 组没有单一节点，不带。`TestDelay` 对这些返回 `invalid_request`。

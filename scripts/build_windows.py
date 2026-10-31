@@ -39,7 +39,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Run as a script, Python puts scripts/ on the path rather than the root.
 sys.path.insert(0, str(ROOT))
 
-from scripts import build_app, build_apple, fetch_geodata, symbols  # noqa: E402
+from scripts import build_app, build_apple, cronet, fetch_geodata, symbols  # noqa: E402
 from scripts.build_apple import BuildError  # noqa: E402
 
 BUILD = ROOT / "build" / "windows"
@@ -56,11 +56,12 @@ CLIENT = "Solaris.exe"
 SERVICE = "solaris-service.exe"
 GEODATA = "geodata"  # beside the service, under mihomo's names
 # All four TUN stacks (D3); the version is what GetInfo reports.
-GO_TAGS = "with_gvisor"
+GO_TAGS = "with_gvisor,with_naive,with_purego"
 # The files an installed Solaris cannot do without; check() looks for each.
 REQUIRED = (
     CLIENT,
     SERVICE,
+    "libcronet.dll",
     "LICENSE",
     "solaris/licenses/THIRD_PARTY_NOTICES.txt",
     *(f"{GEODATA}/{name}" for name in build_apple.GEO_FILES),
@@ -157,6 +158,7 @@ def assemble(ui: Path, service: Path, geodata: dict[str, Path]) -> Path:
         shutil.rmtree(directory)
     shutil.copytree(ui, directory)
     shutil.copyfile(service, directory / SERVICE)
+    shutil.copyfile(cronet.library("windows", "amd64").binary, directory / "libcronet.dll")
     (directory / GEODATA).mkdir()
     for name in build_apple.GEO_FILES:
         shutil.copyfile(geodata[name], directory / GEODATA / name)

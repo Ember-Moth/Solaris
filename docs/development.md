@@ -30,6 +30,18 @@
 两个脚本都会先下载钉住版本的 GEO 数据（`scripts/fetch_geodata.py`）。发布用的安装包由 GitHub Actions 的发布工作流
 构建（[release.md](release.md)）。
 
+内核通过 go.mod replace 固定到 `Ember-Moth/mihomo` 的 Meta 提交（D38），包含 Naive、AnyTLS+REALITY。
+构建脚本启用 `with_naive`，并取 Go 模块图锁定的 Cronet 原生版本：Windows 携带 `libcronet.dll`，macOS 静态链接。
+绑定与原生库必须一起升级；不要仅替换 DLL。普通无标签的 Go 测试/开发服务不含 Naive，可在 Mac 上这样验证：
+
+```bash
+go -C src/core test -race -tags with_gvisor,with_naive -run '^TestFork' ./internal/engine
+go -C src/core run -tags with_gvisor,with_naive ./service -socket /tmp/solaris-dev.sock
+```
+
+Windows 原生配置测试使用 `with_gvisor,with_naive,with_purego`，测试进程的 PATH 需要包含锁定版本的 Cronet DLL
+目录；已安装的服务只加载自身目录里的 DLL。CI 已包含两种构建的验证。
+
 ## 测试与开发服务
 
 ```bash

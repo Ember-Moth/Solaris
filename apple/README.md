@@ -86,7 +86,9 @@ Developer ID 证书签名并校验。脚本依次：
 
 - 版本号取自 `pyproject.toml`；`CFBundleVersion` 默认是构建时的 UTC 时间（`--build-number` 可改）。
   系统只会用不同版本的扩展替换已激活的扩展，这样测试 Mac 上每次构建都能替换上去。
-- Go 构建标签默认 `with_gvisor`（D3 在 macOS 上的决定，docs/architecture.md §3.4），`--tags` 可以改。
+- Go 构建标签默认 `with_gvisor,with_naive`（D3、D38），`--tags` 可以改。Naive 的 Cronet 静态库版本由
+  Go 模块图选择；脚本将它合并进 `libsolaris.a`，module map 声明它需要的系统库和 framework，再生成 xcframework。
+  扩展包不依赖额外的 Cronet dylib。
 - 想在 Xcode 里打开工程，先跑一次脚本（生成 xcframework 和工程），再打开 `apple/Solaris.xcodeproj`；
   改了 `project.yml` 后重跑脚本，或者 `xcodegen generate --spec apple/project.yml --project apple`。
 

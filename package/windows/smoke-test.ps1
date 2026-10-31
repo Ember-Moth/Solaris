@@ -89,7 +89,7 @@ function Assert-Installed {
         Expect ($dump.SolarisInstallDirectory -eq $Root) "Unowned WER policy for $image"
     }
     foreach ($name in @(
-            'Solaris.exe', 'solaris-service.exe', 'uninstall.exe', 'LICENSE',
+            'Solaris.exe', 'solaris-service.exe', 'libcronet.dll', 'uninstall.exe', 'LICENSE',
             'geodata\GeoSite.dat', 'geodata\GeoIP.dat', 'solaris\licenses\THIRD_PARTY_NOTICES.txt')) {
         if (-not (Test-Path -LiteralPath (Join-Path $Root $name) -PathType Leaf)) { throw "$name is missing" }
     }
@@ -103,6 +103,8 @@ function Assert-Installed {
     Expect ($service.StartMode -eq 'Auto') "$ServiceName starts $($service.StartMode)"
     Expect ($service.StartName -eq 'LocalSystem') "$ServiceName runs as $($service.StartName)"
     Expect ($service.State -eq 'Running') "$ServiceName is $($service.State)"
+    $serviceLog = Get-Content -LiteralPath (Join-Path $ServiceData 'service.log') -Raw
+    Expect ($serviceLog -notmatch 'Naive native runtime unavailable') 'The service could not load its packaged Cronet DLL'
     $recovery = (& sc.exe qfailure $ServiceName) -join "`n"
     foreach ($delay in 5000, 15000, 60000) {
         Expect ($recovery -match "RESTART -- Delay = $delay milliseconds") "$ServiceName does not restart after $delay ms:`n$recovery"

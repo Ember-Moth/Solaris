@@ -173,7 +173,7 @@ macOS 允许系统扩展和 VPN 配置）、源代码与许可、隐私说明的
 | 类别 | 来源 |
 | --- | --- |
 | Python | 从 `solaris` 的 `Requires-Dist` 递归求出的运行时依赖（protobuf、PySide6 及其拆分出的包、shiboken6、keyring 等），读安装的包元数据和 `.dist-info` 里的许可证文件；再加上 CPython 自身（Nuitka 把解释器打进包里）和它的构建链接进解释器的第三方库，见下文 |
-| Go | `go list -deps` 列出 Windows 服务（`./service`，`GOOS=windows`）和 macOS 扩展的 Go 库（`./apple`，`GOOS=darwin`）实际链接的模块，标签 `with_gvisor`，含 mihomo；许可证文件取自模块缓存里模块的根目录，根目录没有时取被链接的包所在目录。另加 Go 标准库（`$GOROOT/LICENSE`），以及 sing-tun 嵌入 Windows 服务的 `wintun.dll`，见下文 |
+| Go | `go list -deps` 使用两平台真实发布标签（D38）列出实际链接的模块，并跟随 replace 记录来源和版本；许可证文件取自模块缓存里模块的根目录，根目录没有时取被链接的包所在目录。另加 Go 标准库、Wintun，以及 purego 动态加载而不出现在 Go 包依赖中的 Windows Cronet 原生模块 |
 | Qt | Qt 6.12.0 本身（LGPL-3.0-only，全文在 `package/licenses/LGPL-3.0-only.txt`），以及随附的 Qt 模块（Core、GUI、Network、Qml、Quick、Quick Controls、Image Formats）里的第三方代码。后者来自 Qt 文档的《Third-Party Code Used in Qt》和各组件的说明页，由 `--qt-docs <Qt 文档目录>` 读取后存成 `package/licenses/qt.json`，平时生成时直接用它；升级 Qt 时用新版本的文档重新生成 |
 | 字体 | `ui/fonts/` 下的 Inter 和 JetBrains Mono，版本读自字体文件的 name 表，全文是各自的 `OFL.txt` |
 

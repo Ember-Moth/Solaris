@@ -6,6 +6,11 @@ Solaris 从 1.0.0 起进入维护。本文是日常工作的依据：各平台�
 
 ## 1. 现状
 
+内核固定在用户的 mihomo fork Meta 提交 `8a977434bcff`（D38）。更新 replace 后同时检查 go.sum、Cronet 绑定和
+原生库版本、许可证清单、macOS 最终链接和 Windows 安装目录的 `libcronet.dll`。`go` CI 另带发布标签验证
+Naive 原生加载与配置拼装；不带 `with_naive` 的普通 Go 开发构建会明确拒绝 Naive 节点。Naive HTTP/2、QUIC/UoT
+及 AnyTLS+REALITY 已用测试服务端验证；真实节点与系统 TUN 下的端到端行为仍需实机验收。
+
 除 1.4 节列出的以外，功能都已实现。现有 macOS 安装包已由用户确认安装可用；本轮新增功能的验证来自 CI、
 替身和本机的假服务器，尚未执行新版签名发布或实机验收。第 2 节列出仍需专项验证的项目，完成后更新相应条目。
 
