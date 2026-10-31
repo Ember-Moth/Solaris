@@ -188,3 +188,16 @@ def test_another_launch_does_not_unlink_a_live_fatal_sink(tmp_path: Path) -> Non
     sink.touch()
     crashes.prune(tmp_path, now=time.time() + crashes.MAX_AGE_S + 1)
     assert sink.exists()
+
+
+def test_quit_probe_does_not_create_user_data(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from solaris import app, bootstrap
+
+    directory = tmp_path / "never-created"
+    monkeypatch.setattr(sys, "argv", ["Solaris", "--quit"])
+    monkeypatch.setattr(bootstrap, "default_data_dir", lambda: directory)
+    monkeypatch.setattr(app, "main", lambda: 0)
+    assert bootstrap.main() == 0
+    assert not directory.exists()
