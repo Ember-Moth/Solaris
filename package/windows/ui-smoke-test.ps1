@@ -93,8 +93,10 @@ function Element([IntPtr] $Window, [int] $Id) {
 
 function Invoke-Button([IntPtr] $Window, [int] $Id) {
     $element = Element $Window $Id
-    if ($element.Current.ControlType -ne [System.Windows.Automation.ControlType]::Button) {
-        throw "Control $Id is not accessible as a button"
+    $current = $element.Current
+    Write-Output "Control $Id`: $($current.ClassName), $($current.ControlType.ProgrammaticName) ($($current.ControlType.Id)), patterns: $(($element.GetSupportedPatterns() | ForEach-Object ProgrammaticName) -join ', ')"
+    if ($current.ControlType.Id -ne [System.Windows.Automation.ControlType]::Button.Id) {
+        throw "Control $Id is not accessible as a button: $($current.ControlType.ProgrammaticName)"
     }
     if (-not $element.Current.Name) { throw "Control $Id has no accessible name" }
     $pattern = $element.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
