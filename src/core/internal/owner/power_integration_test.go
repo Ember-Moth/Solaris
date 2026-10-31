@@ -87,6 +87,9 @@ rules: ["MATCH,OUT"]
 	if err := core.SelectProxy("OUT", "direct-b"); err != nil {
 		t.Fatal(err)
 	}
+	if err := core.SetMode(controlpb.Mode_MODE_GLOBAL); err != nil {
+		t.Fatal(err)
+	}
 	host.PowerChanged(power.Event{Cycle: 1, Sleeping: true})
 	eventually(t, func() bool { return !dispatcher.Running() && !host.SystemProxyEnabled() })
 	host.PowerChanged(power.Event{Cycle: 1})
@@ -97,6 +100,9 @@ rules: ["MATCH,OUT"]
 	group, err := core.GetGroup("OUT", controlpb.GroupSort_GROUP_SORT_UNSPECIFIED)
 	if err != nil || group.GetNow() != "direct-b" {
 		t.Fatalf("selection after wake: %v, %v", group, err)
+	}
+	if mode := core.Status().GetMode(); mode != controlpb.Mode_MODE_GLOBAL {
+		t.Fatalf("mode after wake: %v", mode)
 	}
 	if (kept{home}).resumeInterrupted() {
 		t.Fatal("successful wake retained its crash-loop guard")

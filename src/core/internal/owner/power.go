@@ -217,6 +217,14 @@ func (s *Service) recoverPower(ctx context.Context, generation uint64, sid strin
 		if errors.Is(err, engine.ErrInvalidConfig) || errors.Is(err, engine.ErrUnsupported) || errors.Is(err, engine.ErrInvalidArgument) {
 			break
 		}
+		if err != nil && s.running() {
+			// The core may be up although applying the owner's system proxy failed.
+			// Resume leaves an already-running core alone, so reset before retrying.
+			if stopErr := s.core.SuspendContext(ctx); stopErr != nil {
+				s.finishPower(generation, "suspend_failed")
+				return
+			}
+		}
 	}
 	s.finishPower(generation, reason)
 }

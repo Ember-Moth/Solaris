@@ -2,6 +2,7 @@ package control
 
 import (
 	"context"
+	"errors"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -115,7 +116,22 @@ func TestHungStartCannotPersistLateOrAdmitAnotherMutation(t *testing.T) {
 	// The worker can return late, but it must never write a successful running profile.
 	time.Sleep(30 * time.Millisecond)
 	if host.writes.Load() != 0 || blocked.stops.Load() != 0 {
-		t.Fatal("a timed-out result committed or another mutation entered the runtime")
+		t.Fatalf("late mutation: persisted=%d stops=%d", host.writes.Load(), blocked.stops.Load())
+	}
+}
+
+func TestPoisonedRuntimeDoesNotRunLateRollbackOrPersistence(t *testing.T) {
+	blocked, host := &blockedCore{}, &deadlineHost{}
+	d := New(Options{Engine: blocked, Host: host})
+	defer d.Close()
+	ctx := context.WithValue(context.Background(), intentKey{}, requestIntent{generation: 0})
+	d.stopGeneration.Store(1) // a later Stop would normally require rolling Start back
+	d.unresponsive.Store(true)
+	if err := d.commitApplied(ctx, &controlpb.StartRequest{}); !errors.Is(err, operation.ErrUnresponsive) {
+		t.Fatal(err)
+	}
+	if blocked.stops.Load() != 0 || host.writes.Load() != 0 {
+		t.Fatal("poisoned runtime was reused")
 	}
 }
 

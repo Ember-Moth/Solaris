@@ -115,6 +115,7 @@ type Host interface {
 	// Stopped follows Stop, after which the tunnel stays down; Suspended follows Suspend,
 	// after which it comes back at the owner's next sign-in. Both restore their proxy.
 	Stopped() error
+	Suspending(controlpb.Mode)
 	Suspended() error
 	SetSystemProxy(enabled bool) error
 	SystemProxyEnabled() bool
@@ -214,13 +215,16 @@ func (d *Dispatcher) dispatch(ctx context.Context, caller peer.Identity, request
 			return failure(CodeUnsupportedMethod, "claim is only served by the Windows service")
 		}
 		takeOver := request.GetClaim().GetTakeOver()
-		return d.claim(caller, takeOver)
+		return d.claim(ctx, caller, takeOver)
 	}
 	// Only the owner reaches the core (§5.4).
 	if d.host != nil {
 		if err := d.host.Admit(caller); err != nil {
 			return hostFailure(err)
 		}
+	}
+	if err := d.operationActive(ctx); err != nil {
+		return engineFailure(err)
 	}
 	if d.engine == nil {
 		return failure(CodeNotClaimed, ErrNotClaimed.Error())
@@ -260,8 +264,8 @@ func (d *Dispatcher) hostMethod(ctx context.Context, request *controlpb.Request)
 			return response
 		}
 		report, err := d.engine.Start(profile)
-		if ctx.Err() != nil {
-			return engineFailure(ctx.Err())
+		if err := d.operationActive(ctx); err != nil {
+			return engineFailure(err)
 		}
 		if err == nil {
 			err = d.commitApplied(ctx, start)
@@ -269,8 +273,8 @@ func (d *Dispatcher) hostMethod(ctx context.Context, request *controlpb.Request)
 		return d.applied(report, err)
 	case *controlpb.Request_Stop:
 		err := d.engine.Stop()
-		if ctx.Err() != nil {
-			return engineFailure(ctx.Err())
+		if err := d.operationActive(ctx); err != nil {
+			return engineFailure(err)
 		}
 		if err == nil && d.host != nil {
 			err = d.host.Stopped()
@@ -287,7 +291,10 @@ func (d *Dispatcher) hostMethod(ctx context.Context, request *controlpb.Request)
 
 // claim answers Claim. The development socket only admits the user running the server, who
 // owns it already. A take-over stops the core as Stop does, under the same lock.
-func (d *Dispatcher) claim(caller peer.Identity, takeOver bool) *controlpb.Response {
+func (d *Dispatcher) claim(ctx context.Context, caller peer.Identity, takeOver bool) *controlpb.Response {
+	if err := d.operationActive(ctx); err != nil {
+		return engineFailure(err)
+	}
 	switch {
 	case d.development:
 		return empty()
@@ -296,7 +303,12 @@ func (d *Dispatcher) claim(caller peer.Identity, takeOver bool) *controlpb.Respo
 	}
 	var err error
 	if takeOver {
-		err = d.host.TakeOver(caller, func() error { return d.engine.Stop() })
+		err = d.host.TakeOver(caller, func() error {
+			if err := d.engine.Stop(); err != nil {
+				return err
+			}
+			return d.operationActive(ctx)
+		})
 	} else {
 		err = d.host.Claim(caller)
 	}
@@ -315,8 +327,8 @@ func (d *Dispatcher) reload(ctx context.Context, reload *controlpb.ReloadRequest
 		return response
 	}
 	report, err := d.engine.Reload(profile)
-	if ctx.Err() != nil {
-		return engineFailure(ctx.Err())
+	if err := d.operationActive(ctx); err != nil {
+		return engineFailure(err)
 	}
 	if err == nil {
 		err = d.commitApplied(ctx, asStart(reload))
@@ -373,7 +385,7 @@ func (d *Dispatcher) resume(ctx context.Context, start *controlpb.StartRequest) 
 	if _, err := d.engine.Start(profile); err != nil {
 		return err
 	}
-	if err := ctx.Err(); err != nil {
+	if err := d.operationActive(ctx); err != nil {
 		return err
 	}
 	return d.commitApplied(ctx, start)
@@ -387,10 +399,16 @@ func (d *Dispatcher) Suspend() error {
 
 func (d *Dispatcher) SuspendContext(ctx context.Context) error {
 	return d.runLifecycle(ctx, "stop", func(work context.Context) error {
+		if d.Running() && d.host != nil {
+			d.host.Suspending(d.engine.Status().GetMode())
+		}
+		if err := d.operationActive(work); err != nil {
+			return err
+		}
 		if err := d.engine.Stop(); err != nil {
 			return err
 		}
-		if err := work.Err(); err != nil {
+		if err := d.operationActive(work); err != nil {
 			return err
 		}
 		return d.host.Suspended()

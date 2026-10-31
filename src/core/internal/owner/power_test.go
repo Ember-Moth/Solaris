@@ -16,6 +16,7 @@ import (
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 	"github.com/Ember-Moth/Solaris/src/core/internal/operation"
 	"github.com/Ember-Moth/Solaris/src/core/internal/power"
+	"github.com/Ember-Moth/Solaris/src/core/internal/sysproxy"
 )
 
 type powerMachine struct {
@@ -45,6 +46,9 @@ func (c *powerCore) ResumeContext(ctx context.Context, profile *controlpb.StartR
 	}
 	defer c.gate.Unlock()
 	if !c.host.ResumeAllowed() {
+		return nil
+	}
+	if c.running.Load() {
 		return nil
 	}
 	c.resumes.Add(1)
@@ -257,5 +261,71 @@ func TestInterruptedAutomaticResumeDoesNotCreateACrashLoop(t *testing.T) {
 	}
 	if (kept{home}).resumeInterrupted() || !restarted.ResumeAllowed() {
 		t.Fatal("manual connection did not clear the guard")
+	}
+}
+
+type proxyFailureMachine struct {
+	*powerMachine
+	block   atomic.Bool
+	fail    atomic.Int32
+	entered chan struct{}
+	release chan struct{}
+}
+
+func (m *proxyFailureMachine) WriteProxy(session uint32, settings sysproxy.Settings) error {
+	if settings == sysproxy.Core(7890) {
+		if m.block.Swap(false) {
+			close(m.entered)
+			<-m.release
+		}
+		if m.fail.Add(-1) >= 0 {
+			return errors.New("proxy settings temporarily unavailable")
+		}
+	}
+	return m.machine.WriteProxy(session, settings)
+}
+
+func TestResumeGuardSurvivesUntilOSProxyApplicationFinishes(t *testing.T) {
+	s, core, machine, home := powered(t, true)
+	if err := core.SuspendContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	platform := &proxyFailureMachine{powerMachine: machine, entered: make(chan struct{}), release: make(chan struct{})}
+	platform.block.Store(true)
+	s.platform = platform
+	var once sync.Once
+	release := func() { once.Do(func() { close(platform.release) }) }
+	defer release()
+	done := make(chan error, 1)
+	go func() { done <- s.resume(context.Background(), profile(true)) }()
+	select {
+	case <-platform.entered:
+	case <-time.After(time.Second):
+		t.Fatal("proxy application did not start")
+	}
+	if !(kept{home}).resumeInterrupted() {
+		t.Fatal("guard cleared before the OS operation finished")
+	}
+	release()
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if (kept{home}).resumeInterrupted() {
+		t.Fatal("successful resume retained its guard")
+	}
+}
+
+func TestRecoveryRetriesTheProxyWhenTheCoreWasAlreadyStarted(t *testing.T) {
+	s, core, machine, _ := powered(t, true)
+	platform := &proxyFailureMachine{powerMachine: machine}
+	platform.fail.Store(1)
+	s.platform = platform
+	s.PowerChanged(power.Event{Cycle: 1})
+	eventually(t, func() bool {
+		state, _ := s.RecoveryStatus()
+		return state == controlpb.RecoveryState_RECOVERY_STATE_NONE
+	})
+	if core.resumes.Load() != 2 || !s.SystemProxyEnabled() {
+		t.Fatal("partial resume was treated as complete")
 	}
 }

@@ -8,6 +8,38 @@ import (
 	"time"
 )
 
+// A deadline whose cancellation callback has not run yet, as can happen when a runtime
+// is busy or the OS coalesces timers. Checking Err alone would still admit this work.
+type laggingDeadline struct {
+	context.Context
+	deadline time.Time
+}
+
+func (c laggingDeadline) Deadline() (time.Time, bool) { return c.deadline, true }
+
+func TestExpiredClockPreventsWorkBeforeCancellationCallback(t *testing.T) {
+	ctx := laggingDeadline{Context: context.Background(), deadline: time.Now().Add(-time.Second)}
+	if ctx.Err() != nil {
+		t.Fatal("test context already cancelled")
+	}
+	if !errors.Is(Check(ctx), context.DeadlineExceeded) {
+		t.Fatal("missed expired clock")
+	}
+	var gate Gate
+	if !errors.Is(gate.Lock(ctx), context.DeadlineExceeded) {
+		t.Fatal("expired gate acquired")
+	}
+	executor := New(1, nil)
+	called := false
+	_, err := Run(executor, ctx, "expired", time.Second, 0, func(context.Context) (int, error) {
+		called = true
+		return 0, nil
+	})
+	if !errors.Is(err, context.DeadlineExceeded) || called || executor.Unresponsive() {
+		t.Fatalf("err=%v called=%v unresponsive=%v", err, called, executor.Unresponsive())
+	}
+}
+
 func TestQueuedCancellationDoesNotStartOrPoison(t *testing.T) {
 	executor := New(1, nil)
 	entered, release, ended := make(chan struct{}), make(chan struct{}), make(chan struct{})

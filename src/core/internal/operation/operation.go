@@ -14,6 +14,19 @@ import (
 
 var ErrUnresponsive = errors.New("the core is unresponsive; its host must recover")
 
+// Check does not rely solely on the cancellation timer's callback having run. On a
+// busy runtime (notably Windows' timer granularity), the deadline can already be past
+// while ctx.Err still returns nil. No queued work or commit may exploit that interval.
+func Check(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if deadline, ok := ctx.Deadline(); ok && !time.Now().Before(deadline) {
+		return context.DeadlineExceeded
+	}
+	return nil
+}
+
 // Gate is a cancellable mutex. Its zero value is ready to use.
 type Gate struct {
 	once sync.Once
@@ -22,13 +35,13 @@ type Gate struct {
 
 func (g *Gate) Lock(ctx context.Context) error {
 	g.once.Do(func() { g.free = make(chan struct{}, 1) })
-	if err := ctx.Err(); err != nil {
+	if err := Check(ctx); err != nil {
 		return err
 	}
 	select {
 	case g.free <- struct{}{}:
 		// Cancellation and acquiring the token may have become ready together.
-		if err := ctx.Err(); err != nil {
+		if err := Check(ctx); err != nil {
 			g.Unlock()
 			return err
 		}
@@ -88,7 +101,7 @@ func Run[T any](e *Executor, caller context.Context, method string, limit, grace
 	}
 	queued, cancelQueue := context.WithTimeout(caller, limit)
 	defer cancelQueue()
-	if err := queued.Err(); err != nil {
+	if err := Check(queued); err != nil {
 		return zero, err
 	}
 	select {
@@ -96,7 +109,7 @@ func Run[T any](e *Executor, caller context.Context, method string, limit, grace
 	case <-queued.Done():
 		return zero, queued.Err()
 	}
-	if err := queued.Err(); err != nil {
+	if err := Check(queued); err != nil {
 		<-e.slots
 		return zero, err
 	}
@@ -122,14 +135,14 @@ func Run[T any](e *Executor, caller context.Context, method string, limit, grace
 		defer func() { <-e.slots }()
 		defer cancelWork()
 		defer watchdog.Stop()
-		if err := ctx.Err(); err != nil {
+		if err := Check(ctx); err != nil {
 			finished.Store(true)
 			done <- outcome{err: err}
 			return
 		}
 		started.Store(true)
 		value, err := work(ctx)
-		if timeout := ctx.Err(); timeout != nil {
+		if timeout := Check(ctx); timeout != nil {
 			if grace == 0 {
 				e.Poison(method, timeout)
 			}

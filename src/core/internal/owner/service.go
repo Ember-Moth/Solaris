@@ -279,6 +279,18 @@ func (s *Service) Applied(start *controlpb.StartRequest) error {
 	}
 	s.profile = start
 	s.wantRunning = true
+	s.keepLocked(true)
+	var applied error
+	if options := start.GetOptions(); options.GetSystemProxyEnabled() {
+		applied = s.proxyOnLocked(uint16(options.GetMixedPort()))
+	} else {
+		applied = s.proxyOffLocked()
+	}
+	if applied != nil {
+		return applied
+	}
+	// Keep the crash-loop guard until persistence and the OS proxy operation have
+	// both returned. Either can stall after the core itself has already started.
 	s.resumeBlocked = false
 	s.resumeToken++
 	if err := s.home.clearResumeAttempt(); err != nil {
@@ -287,11 +299,7 @@ func (s *Service) Applied(start *controlpb.StartRequest) error {
 	if !s.power.event.Sleeping {
 		s.cancelPowerLocked()
 	}
-	s.keepLocked(true)
-	if options := start.GetOptions(); options.GetSystemProxyEnabled() {
-		return s.proxyOnLocked(uint16(options.GetMixedPort()))
-	}
-	return s.proxyOffLocked()
+	return nil
 }
 
 func (s *Service) Stopped() error {
@@ -315,6 +323,32 @@ func (s *Service) Suspended() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.proxyOffLocked()
+}
+
+// Suspending captures a live mode change in the service's runtime copy, not in the
+// subscription. Stop clears mihomo's runtime mode, so a wake must restore it explicitly.
+func (s *Service) Suspending(mode controlpb.Mode) {
+	name := map[controlpb.Mode]string{
+		controlpb.Mode_MODE_RULE: "rule", controlpb.Mode_MODE_GLOBAL: "global", controlpb.Mode_MODE_DIRECT: "direct",
+	}[mode]
+	if name == "" {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed || !s.wantRunning || s.profile == nil {
+		return
+	}
+	const prefix = "# Solaris automatic recovery mode\nmode: "
+	profile := proto.Clone(s.profile).(*controlpb.StartRequest)
+	profile.Overrides = slices.DeleteFunc(profile.Overrides, func(value string) bool {
+		return value == prefix+"rule\n" || value == prefix+"global\n" || value == prefix+"direct\n"
+	})
+	profile.Overrides = append(profile.Overrides, prefix+name+"\n")
+	s.profile = profile
+	if err := s.home.saveProfile(profile); err != nil {
+		s.log.Warn("keep mode for automatic recovery", "error", err)
+	}
 }
 
 // SetSystemProxy turns the owner's system proxy on or off while the core runs; the choice

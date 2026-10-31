@@ -96,6 +96,8 @@ func (h *fakeHost) Suspended() error {
 	return nil
 }
 
+func (h *fakeHost) Suspending(controlpb.Mode) {}
+
 func (h *fakeHost) SetSystemProxy(enabled bool) error {
 	if h.proxyErr != nil {
 		return h.proxyErr

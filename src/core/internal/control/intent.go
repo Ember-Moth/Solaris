@@ -24,7 +24,7 @@ func (d *Dispatcher) prepareStop(ctx context.Context, caller peer.Identity) (req
 		func(work context.Context) (requestIntent, error) {
 			d.intentMu.Lock()
 			defer d.intentMu.Unlock()
-			if err := work.Err(); err != nil {
+			if err := operation.Check(work); err != nil {
 				return requestIntent{}, err
 			}
 			var keepError error
@@ -46,12 +46,19 @@ func (d *Dispatcher) currentIntent(ctx context.Context) bool {
 	return !ok || intent.generation == d.stopGeneration.Load()
 }
 
+func (d *Dispatcher) operationActive(ctx context.Context) error {
+	if d.unresponsive.Load() {
+		return operation.ErrUnresponsive
+	}
+	return operation.Check(ctx)
+}
+
 // commitApplied orders the running-state write against a user's Stop. If Stop won while
 // the library was applying a profile, finish stopping it here even if the queued Stop's
 // caller disconnected. A late Start/Reload must never turn auto-resume back on.
 func (d *Dispatcher) commitApplied(ctx context.Context, start *controlpb.StartRequest) error {
 	d.intentMu.Lock()
-	if err := ctx.Err(); err != nil {
+	if err := d.operationActive(ctx); err != nil {
 		d.intentMu.Unlock()
 		return err
 	}
