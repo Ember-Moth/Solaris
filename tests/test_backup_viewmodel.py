@@ -222,8 +222,6 @@ def test_export_then_restore_on_an_empty_machine(
     machines.append(second)
     served.requests.clear()
     served.bodies["nodes"] = BROKEN_CONFIG  # the second subscription went bad meanwhile
-    profiles_changed: list[bool] = []
-    second.vms.profiles.changed.connect(lambda: profiles_changed.append(True))
 
     second.backup.openBackup(backup.as_uri())  # no profiles here: restored as it is
 
@@ -249,10 +247,14 @@ def test_export_then_restore_on_an_empty_machine(
     assert second.host.config.composition is not None
     sources = [source.name for source in second.host.config.composition.sources]
     assert sources == ["机场", "home"]
-    # The other pages show what came back.
-    qtbot.waitUntil(lambda: bool(profiles_changed))
-    rows = prop(second.vms.profiles, "model").rows
-    assert [row.updateFailed for row in rows] == [False, True, False]
+
+    # The other pages show what came back. The profiles page reads the list again once the
+    # restore is done; its update check, which read the empty list before, also signals a
+    # change, so wait for the rows themselves.
+    def update_failed() -> list[bool]:
+        return [row.updateFailed for row in prop(second.vms.profiles, "model").rows]
+
+    qtbot.waitUntil(lambda: update_failed() == [False, True, False])
 
 
 def test_restore_asks_on_a_machine_with_profiles(
