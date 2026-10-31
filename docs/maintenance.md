@@ -6,7 +6,7 @@ Solaris 从 1.0.0 起进入维护。本文是日常工作的依据：各平台�
 
 ## 1. 现状
 
-内核固定在用户的 mihomo fork Meta 提交 `8a977434bcff`（D38）。更新 replace 后同时检查 go.sum、Cronet 绑定和
+内核固定在用户的 mihomo fork Meta 提交 `56c6fc1d5c27`（D38）。更新 replace 后同时检查 go.sum、Cronet 绑定和
 原生库版本、许可证清单、macOS 最终链接和 Windows 安装目录的 `libcronet.dll`。`go` CI 另带发布标签验证
 Naive 原生加载与配置拼装；不带 `with_naive` 的普通 Go 开发构建会明确拒绝 Naive 节点。Naive HTTP/2、QUIC/UoT
 及 AnyTLS+REALITY 已用测试服务端验证；真实节点与系统 TUN 下的端到端行为仍需实机验收。
@@ -396,7 +396,7 @@ SHA-256。界面从不静默安装，用户确认后才打开安装包。
 
 ### 5.4 依赖升级
 
-- **mihomo**：钉在 `Meta` 分支的 tag 上（`src/core/go.mod`）。mihomo 的运行时（`hub`、`executor`、`tunnel` 等
+- **mihomo**：钉在用户 fork 的 `Meta` 分支明确提交或 tag 上（`src/core/go.mod`），不使用浮动分支作为构建输入。mihomo 的运行时（`hub`、`executor`、`tunnel` 等
   包级状态）只在 engine 里用（`imports_test.go` 检查）；`admission`、`compose`、`vpngate` 用 mihomo 无状态的解析
   函数、类型和常量，升级时这几处也要核对。升级前跑完整测试，并按 [architecture.md](architecture.md) §3.3 逐条复核
   安全要求；3.4 节的体积表随之更新。

@@ -324,7 +324,7 @@
     },
     {
       "name": "github.com/Ember-Moth/mihomo",
-      "version": "v1.19.33-0.20261031140757-8a977434bcff",
+      "version": "v1.19.33-0.20261031183713-56c6fc1d5c27",
       "license": "GPL-3.0-only",
       "kind": "go",
       "url": "https://github.com/Ember-Moth/mihomo",
@@ -1199,10 +1199,20 @@
     },
     {
       "name": "github.com/sagernet/sing",
-      "version": "v0.8.9",
+      "version": "v0.8.12-0.20260727003324-d096a164bc7f",
       "license": "GPL-3.0-or-later",
       "kind": "go",
       "url": "https://github.com/sagernet/sing",
+      "notices": [
+        59
+      ]
+    },
+    {
+      "name": "github.com/sagernet/sing-snell",
+      "version": "v0.0.0-20260904135315-bc5a12ac736f",
+      "license": "GPL-3.0-or-later",
+      "kind": "go",
+      "url": "https://github.com/sagernet/sing-snell",
       "notices": [
         59
       ]

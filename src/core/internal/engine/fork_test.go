@@ -2,6 +2,7 @@ package engine
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/metacubex/mihomo/common/yaml"
@@ -72,6 +73,63 @@ func TestForkAnyTLSRealitySurvivesAdmissionAndComposition(t *testing.T) {
 		node["ech-opts"] = map[string]any{"enable": true}
 		if _, err := admitProfile(forkProfile(t, node, composed), noTUN); err == nil {
 			t.Fatal("accepted ECH together with REALITY")
+		}
+	}
+}
+
+func TestForkSnellSurvivesAdmissionAndComposition(t *testing.T) {
+	for _, composed := range []bool{false, true} {
+		for _, sample := range []struct {
+			version int
+			mode    string
+		}{{3, ""}, {4, ""}, {5, ""}, {6, "default"}, {6, "unshaped"}, {6, "unsafe-raw"}} {
+			t.Run(fmt.Sprintf("composed=%t/v%d/%s", composed, sample.version, sample.mode), func(t *testing.T) {
+				node := map[string]any{
+					"name": "node", "type": "snell", "server": "127.0.0.1", "port": 443,
+					"psk": "test-snell-password", "version": sample.version, "udp": true,
+				}
+				var retained []string
+				if sample.version >= 4 {
+					node["user-key"], node["reuse"] = "test-user-key", true
+					retained = append(retained, "user-key: test-user-key", "reuse: true")
+				}
+				if sample.mode != "" {
+					node["version6-mode"] = sample.mode
+					retained = append(retained, "version6-mode: "+sample.mode)
+				}
+				admitted, err := admitProfile(forkProfile(t, node, composed), noTUN)
+				if err != nil {
+					t.Fatal(err)
+				}
+				proxy := forkNode(admitted.cfg)
+				if proxy == nil || proxy.Type() != C.Snell || !proxy.SupportUDP() {
+					t.Fatal("Snell/UDP capabilities were not retained")
+				}
+				defer proxy.Close()
+				raw, err := yaml.Marshal(admitted.doc)
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, field := range retained {
+					if !bytes.Contains(raw, []byte(field)) {
+						t.Fatalf("Snell option %q was lost: %s", field, raw)
+					}
+				}
+			})
+		}
+		for _, sample := range []struct {
+			version int
+			key     string
+			value   any
+		}{{3, "user-key", "test-user-key"}, {5, "version6-mode", "unshaped"}, {6, "version6-mode", "invalid"}, {6, "psk", "short"}} {
+			node := map[string]any{
+				"name": "node", "type": "snell", "server": "127.0.0.1", "port": 443,
+				"psk": "test-snell-password", "version": sample.version,
+			}
+			node[sample.key] = sample.value
+			if _, err := admitProfile(forkProfile(t, node, composed), noTUN); err == nil {
+				t.Errorf("accepted incompatible Snell v%d %s (composed=%t)", sample.version, sample.key, composed)
+			}
 		}
 	}
 }

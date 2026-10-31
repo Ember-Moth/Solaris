@@ -1,5 +1,5 @@
-github.com/Ember-Moth/mihomo v1.19.33-0.20261031140757-8a977434bcff h1:5eiNRBHzicmttIrHrZCG43tUM3OfaCxGE1rmXu6giNQ=
-github.com/Ember-Moth/mihomo v1.19.33-0.20261031140757-8a977434bcff/go.mod h1:+l4NngCENvrK6XmMHK1m7hQMW5DkTUAQ+3Dd+5ZWl6s=
+github.com/Ember-Moth/mihomo v1.19.33-0.20261031183713-56c6fc1d5c27 h1:n0W0CRtc/HirUa5KPUbIC5fiBJYkkssIg//BsL3YfPE=
+github.com/Ember-Moth/mihomo v1.19.33-0.20261031183713-56c6fc1d5c27/go.mod h1:nQQ8sJJj9lFo1JY6bCgeeAZfoS+15CuuXr92n2jMYkw=
 github.com/Microsoft/go-winio v0.6.4 h1:kJF2pamtYCWXf0xAT8sAkwKC0pMl2HYBrRPHAqyUc+g=
 github.com/Microsoft/go-winio v0.6.4/go.mod h1:1xl5JXG4ze/m74GH6Dc4Mwxfc3VL5siRVQjIAlHH07U=
 github.com/RyuaNerin/go-krypto v1.3.0 h1:smavTzSMAx8iuVlGb4pEwl9MD2qicqMzuXR2QWp2/Pg=
@@ -295,8 +295,10 @@ github.com/sagernet/cronet-go/lib/windows_arm64 v0.0.0-20261023055542-d5437a0df0
 github.com/sagernet/cronet-go/lib/windows_arm64 v0.0.0-20261023055542-d5437a0df01a/go.mod h1:n34YyLgapgjWdKa0IoeczjAFCwD3/dxbsH5sucKw0bw=
 github.com/sagernet/netlink v0.0.0-20240612041022-b9a21c07ac6a h1:ObwtHN2VpqE0ZNjr6sGeT00J8uU7JF4cNUdb44/Duis=
 github.com/sagernet/netlink v0.0.0-20240612041022-b9a21c07ac6a/go.mod h1:xLnfdiJbSp8rNqYEdIW/6eDO4mVoogml14Bh2hSiFpM=
-github.com/sagernet/sing v0.8.9 h1:iX8FyMrWNl/divVgTe7cLT9n36v6bfzfnCYlcM1cLaU=
-github.com/sagernet/sing v0.8.9/go.mod h1:ARkL0gM13/Iv5VCZmci/NuoOlePoIsW0m7BWfln/Hak=
+github.com/sagernet/sing v0.8.12-0.20260727003324-d096a164bc7f h1:st30RP1MztvP/aIOvmx2S8t4XNBHNju/OgXseeKnEnw=
+github.com/sagernet/sing v0.8.12-0.20260727003324-d096a164bc7f/go.mod h1:olXxWQNqRW/l2Q6JI3b2Qmz8iQnIFlOeeH8bx6JhgUA=
+github.com/sagernet/sing-snell v0.0.0-20260904135315-bc5a12ac736f h1:tbTCI+iis5sTmua7a6Q7vebcSRURok/LGgnEafnQAsc=
+github.com/sagernet/sing-snell v0.0.0-20260904135315-bc5a12ac736f/go.mod h1:et8Lws4f5QbOrY65DmjevHGup3mijJkhswkto6cwciM=
 github.com/samber/lo v1.53.0 h1:t975lj2py4kJPQ6haz1QMgtId2gtmfktACxIXArw3HM=
 github.com/samber/lo v1.53.0/go.mod h1:4+MXEGsJzbKGaUEQFKBq2xtfuznW9oz/WrgyzMzRoM0=
 github.com/sina-ghaderi/poly1305 v0.0.0-20220724002748-c5926b03988b h1:rXHg9GrUEtWZhEkrykicdND3VPjlVbYiLdX9J7gimS8=

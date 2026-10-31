@@ -55,7 +55,7 @@ github.com/dlclark/regexp2 v1.12.0 -- MIT -- https://github.com/dlclark/regexp2 
 github.com/dunglas/httpsfv v1.0.2 -- BSD-3-Clause -- https://github.com/dunglas/httpsfv [25]
 github.com/easytier/easytier/easytier-go v0.0.0-20260910071355-3d0c9c3ca5e2 -- LGPL-3.0-only -- https://github.com/easytier/easytier [6]
 github.com/ebitengine/purego v0.10.0 -- Apache-2.0 -- https://github.com/ebitengine/purego [26]
-github.com/Ember-Moth/mihomo v1.19.33-0.20261031140757-8a977434bcff -- GPL-3.0-only -- https://github.com/Ember-Moth/mihomo [27]
+github.com/Ember-Moth/mihomo v1.19.33-0.20261031183713-56c6fc1d5c27 -- GPL-3.0-only -- https://github.com/Ember-Moth/mihomo [27]
 github.com/enfein/mieru/v3 v3.38.1 -- GPL-3.0-only -- https://github.com/enfein/mieru [27]
 github.com/ericlagergren/aegis v0.0.0-20250325060835-cd0defd64358 -- BSD-2-Clause -- https://github.com/ericlagergren/aegis [28]
 github.com/ericlagergren/polyval v0.0.0-20220411101811-e25bc10ba391 -- BSD-2-Clause -- https://github.com/ericlagergren/polyval [29]
@@ -142,7 +142,8 @@ github.com/sagernet/cronet-go v0.0.0-20261023060337-b3c2ed82ac97 -- GPL-3.0-or-l
 github.com/sagernet/cronet-go/all v0.0.0-20261023060337-b3c2ed82ac97 -- GPL-3.0-or-later -- https://github.com/sagernet/cronet-go [59]
 github.com/sagernet/cronet-go/lib/darwin_arm64 v0.0.0-20261023055542-d5437a0df01a -- GPL-3.0-or-later -- https://github.com/sagernet/cronet-go [59]
 github.com/sagernet/cronet-go/lib/windows_amd64 v0.0.0-20261023055542-d5437a0df01a -- GPL-3.0-or-later -- https://github.com/sagernet/cronet-go [59]
-github.com/sagernet/sing v0.8.9 -- GPL-3.0-or-later -- https://github.com/sagernet/sing [59]
+github.com/sagernet/sing v0.8.12-0.20260727003324-d096a164bc7f -- GPL-3.0-or-later -- https://github.com/sagernet/sing [59]
+github.com/sagernet/sing-snell v0.0.0-20260904135315-bc5a12ac736f -- GPL-3.0-or-later -- https://github.com/sagernet/sing-snell [59]
 github.com/samber/lo v1.53.0 -- MIT -- https://github.com/samber/lo [87]
 github.com/sina-ghaderi/poly1305 v0.0.0-20220724002748-c5926b03988b -- GPL-3.0-only -- https://github.com/sina-ghaderi/poly1305 [27]
 github.com/sina-ghaderi/rabaead v0.0.0-20220730151906-ab6e06b96e8c -- GPL-3.0-only -- https://github.com/sina-ghaderi/rabaead [27]
@@ -2563,7 +2564,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
----- [27] used by: github.com/Ember-Moth/mihomo v1.19.33-0.20261031140757-8a977434bcff, github.com/enfein/mieru/v3 v3.38.1, github.com/metacubex/randv2 v0.2.0, github.com/metacubex/sing-wireguard v0.0.0-20261002050126-e5fa1a607406, github.com/sina-ghaderi/poly1305 v0.0.0-20220724002748-c5926b03988b, github.com/sina-ghaderi/rabaead v0.0.0-20220730151906-ab6e06b96e8c
+---- [27] used by: github.com/Ember-Moth/mihomo v1.19.33-0.20261031183713-56c6fc1d5c27, github.com/enfein/mieru/v3 v3.38.1, github.com/metacubex/randv2 v0.2.0, github.com/metacubex/sing-wireguard v0.0.0-20261002050126-e5fa1a607406, github.com/sina-ghaderi/poly1305 v0.0.0-20220724002748-c5926b03988b, github.com/sina-ghaderi/rabaead v0.0.0-20220730151906-ab6e06b96e8c
 
 GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
@@ -5019,7 +5020,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [59] used by: github.com/metacubex/fswatch v0.1.1, github.com/metacubex/sing v0.5.8, github.com/metacubex/sing-mux v0.3.12, github.com/metacubex/sing-quic v0.0.0-20260904234848-1c242664697a, github.com/metacubex/sing-shadowsocks v0.2.13, github.com/metacubex/sing-shadowsocks2 v0.2.8, github.com/metacubex/sing-tun v0.4.28, github.com/metacubex/sing-vmess v0.2.5, github.com/sagernet/cronet-go v0.0.0-20261023060337-b3c2ed82ac97, github.com/sagernet/cronet-go/all v0.0.0-20261023060337-b3c2ed82ac97, github.com/sagernet/cronet-go/lib/darwin_arm64 v0.0.0-20261023055542-d5437a0df01a, github.com/sagernet/cronet-go/lib/windows_amd64 v0.0.0-20261023055542-d5437a0df01a, github.com/sagernet/sing v0.8.9
+---- [59] used by: github.com/metacubex/fswatch v0.1.1, github.com/metacubex/sing v0.5.8, github.com/metacubex/sing-mux v0.3.12, github.com/metacubex/sing-quic v0.0.0-20260904234848-1c242664697a, github.com/metacubex/sing-shadowsocks v0.2.13, github.com/metacubex/sing-shadowsocks2 v0.2.8, github.com/metacubex/sing-tun v0.4.28, github.com/metacubex/sing-vmess v0.2.5, github.com/sagernet/cronet-go v0.0.0-20261023060337-b3c2ed82ac97, github.com/sagernet/cronet-go/all v0.0.0-20261023060337-b3c2ed82ac97, github.com/sagernet/cronet-go/lib/darwin_arm64 v0.0.0-20261023055542-d5437a0df01a, github.com/sagernet/cronet-go/lib/windows_amd64 v0.0.0-20261023055542-d5437a0df01a, github.com/sagernet/sing v0.8.12-0.20260727003324-d096a164bc7f, github.com/sagernet/sing-snell v0.0.0-20260904135315-bc5a12ac736f
 
 Copyright (C) 2022 by nekohasekai <contact-sagernet@sekai.icu>
 

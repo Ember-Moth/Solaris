@@ -223,21 +223,21 @@ Windows 服务以 SYSTEM 身份运行内核，下面每一项都必须满足，�
 mihomo 提供的可选标签有 `with_gvisor`、`with_low_memory`、`no_tailscale`、`no_zerotier`、
 `no_easytier`、`no_fake_tcp`。任何情况下都不带 `cmfa`。Windows 服务带 `with_gvisor` 构建，四种 TUN 栈都提供，
 由用户在设置里选择（决策 D3）；macOS NE 同样带 `with_gvisor` 构建（D3 在 macOS 上的决定，`scripts/build_apple.py`
-的默认标签），fd 模式默认用 gVisor 栈。各标签组合下 `./service` 的二进制体积（v1.19.33，Go 1.27.3，
-`-trimpath -ldflags "-s -w"`）：
+的默认标签），fd 模式默认用 gVisor 栈。各标签组合下 `./service` 的二进制体积（fork `56c6fc1d5c27`，Go 1.27.3，
+`CGO_ENABLED=0`、`-trimpath -ldflags "-s -w"`；此对比不带 `with_naive`）：
 
 | 标签 | Windows amd64 | macOS arm64 |
 | --- | --- | --- |
-| （无） | 53.9 MiB | 49.7 MiB |
-| `with_gvisor` | 67.6 MiB | 61.6 MiB |
-| `with_gvisor,no_tailscale` | 57.7 MiB | 53.6 MiB |
-| `no_easytier` | 43.3 MiB | 39.2 MiB |
-| `no_zerotier` | 52.7 MiB | 48.7 MiB |
+| （无） | 55.7 MiB | 51.2 MiB |
+| `with_gvisor` | 69.4 MiB | 64.2 MiB |
+| `with_gvisor,no_tailscale` | 59.6 MiB | 55.1 MiB |
+| `no_easytier` | 46.4 MiB | 41.9 MiB |
+| `no_zerotier` | 54.7 MiB | 50.3 MiB |
 | `no_tailscale`、`no_fake_tcp`、`with_low_memory`（单独） | 不变 | 不变 |
-| `no_tailscale,no_zerotier,no_easytier,no_fake_tcp` | 42.1 MiB | 38.2 MiB |
-| 上一行加 `with_gvisor`（再加 `with_low_memory` 体积不变） | 46.0 MiB | 42.0 MiB |
+| `no_tailscale,no_zerotier,no_easytier,no_fake_tcp` | 45.4 MiB | 41.0 MiB |
+| 上一行加 `with_gvisor`（再加 `with_low_memory` 体积不变） | 49.2 MiB | 44.8 MiB |
 
-- 体积大头是 easytier 出站（约 10.6 MiB）和 tailscale 出站（约 9.9 MiB）。tailscale 出站只在 `with_gvisor`
+- 体积大头是 easytier 出站（约 9.3 MiB）和 tailscale 出站（约 9.1–9.8 MiB）。tailscale 出站只在 `with_gvisor`
   构建里编入，所以单独加 `no_tailscale` 没有效果；gVisor 栈本身约 3.8 MiB。
 - TUN 栈：`system` 和 `mips`（mihomo 的默认栈）总是可用；`gvisor` 和 `mixed` 需要 `with_gvisor`，否则要到创建
   TUN 时才报错，所以准入流水线在缺少该标签时直接以 `invalid_config` 拒绝这两种栈，不论它来自配置、覆写还是
@@ -247,16 +247,19 @@ mihomo 提供的可选标签有 `with_gvisor`、`with_low_memory`、`no_tailscal
   对应的检查（`StackOptions.IncludeAllNetworks`），但 mihomo 不传这个选项，所以由准入流水线在 fd 模式下把这两种栈
   换成 gVisor（3.1 节）。`includeAllNetworks` 默认关闭，用户可以在设置页打开（D19，ui.md §8），下次连接时生效；
   设置页同时把这两种栈置灰，已选的改成 gVisor。CI 的 fd 模式测试对这两种栈再各跑一次打开它的情形。
-- 系统扩展的可执行文件（Release，`with_gvisor`）由 Xcode 在签名前做 `strip -x`（`STRIP_STYLE: non-global`），
-  从 73.3 MiB 减到 61.3 MiB，与上表的服务相当。
+- 系统扩展的可执行文件（Release，`with_gvisor,with_naive`）由 Xcode 在签名前做 `strip -x`（`STRIP_STYLE: non-global`），
+  最终体积包含下文静态链接的 Cronet 原生库。
 - 各标签组合在两个平台上都能编译。真实 TUN 下，四种栈在 Linux 的自管模式里都能建立 TUN 并转发流量（CI 的
   网络命名空间测试，见第 11 节）；Windows 上 wintun 的真机验收见 [maintenance.md](maintenance.md) 2.1 节。
 
 Solaris 保留 `github.com/metacubex/mihomo` 的导入路径和 v1.19.33 require，通过 go.mod replace 固定到
 [`Ember-Moth/mihomo` 的 Meta 分支](https://github.com/Ember-Moth/mihomo/tree/Meta)提交
-`8a977434bcff6a674ae630d6fddfd26223927b7b`（`v1.19.33-0.20261031140757-8a977434bcff`，D38）。
+`56c6fc1d5c271b207c8513a583a342b87a2230bc`（`v1.19.33-0.20261031183713-56c6fc1d5c27`，D38）。
 它基于上游 `3f27ef3`，增加 Naive、AnyTLS+REALITY，以及与 Xray 26.10.29 对齐的 REALITY 握手版本和
 默认 X25519MLKEM768 行为；显式 `support-x25519mlkem768: false` 仍保留。状态和许可证清单使用实际替换版本。
+Snell v4/v5 改由 sing-snell 实现，保留 v1–v3，并增加 v6、`user-key` 与 `version6-mode`；这些字段在订阅和自定义方案中保留。
+Snell v3–v6 的 UDP 经 TCP 承载，不支持 v5 QUIC proxy；v4/v5 数据报仍受单条记录的载荷上限约束。
+v6 模式需与服务端一致，显式 `unsafe-raw` 模式不提供加密及 PSK 验证；默认模式不变。Cronet 绑定和原生库版本未随本次 Snell 更新改变。
 
 发布标签在 macOS 为 `with_gvisor,with_naive`，Windows 为 `with_gvisor,with_naive,with_purego`。
 Naive 默认 HTTP/2，可用 `quic: true` 选 QUIC；UDP 需要 `udp-over-tcp: true` 及兼容服务端。
