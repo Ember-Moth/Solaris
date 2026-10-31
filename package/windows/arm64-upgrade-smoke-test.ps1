@@ -121,6 +121,17 @@ try {
         (Get-Service SolarisService -ErrorAction SilentlyContinue)) { throw 'Migration cleanup left application state behind' }
     Write-Output 'x64 to ARM64 migration passed: native payload, running service/GUI, preserved data and clean uninstall.'
 } catch {
+    $nativeLibrary = Join-Path $root 'libcronet.dll'
+    if (Test-Path -LiteralPath $nativeLibrary) {
+        Get-Item -LiteralPath $nativeLibrary | Select-Object FullName, Attributes, Length | Format-List | Out-String | Write-Output
+        try {
+            $probe = [IO.File]::Open($nativeLibrary, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+            $probe.Dispose()
+            Write-Output 'Cronet DLL is writable and has no incompatible open handle.'
+        } catch {
+            Write-Output "Cronet DLL write probe: $($_.Exception.ToString())"
+        }
+    }
     $serviceLog = Join-Path $serviceData 'service.log'
     if (Test-Path -LiteralPath $serviceLog) { Get-Content -LiteralPath $serviceLog -Tail 60 | Write-Output }
     Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -like "$root\*" } |
