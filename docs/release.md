@@ -10,9 +10,9 @@ Windows 安装包目前不签名（D29），更新时只核对校验和（第 3 
 系统注册（macOS 的 Info.plist，Windows 安装器写在 HKLM，第 6 节）。
 
 Windows 安装器采用自定义 Win32 界面（D39），由 MSVC 编译为 NSIS 的 x86 Unicode 插件；它只随安装器/卸载器
-解压到临时目录，不成为应用运行时依赖。原有静默参数保留，发布冒烟测试同时覆盖交互安装和静默升级/卸载。
+解压到临时目录，不成为应用运行时依赖。原有静默参数保留，发布冒烟测试同时覆盖交互安装和静默升级/卸载。ARM64 上该 x86 安装引导由系统仿真运行，安装后的应用与服务原生运行。
 交互安装/升级提供 GPLv3 全文与默认不选的同意项。首次安装可选择受保护的本地目录；静默安装的 `/D=<完整路径>` 必须
-放在最后且不加引号，升级始终使用已登记的位置。冒烟测试覆盖含空格的自定义路径、默认路径及目录权限检查。
+放在最后且不加引号，升级始终使用已登记的位置。ARM64 安装包支持替换已有 x64 安装并保留数据。冒烟测试覆盖含空格的自定义路径、默认路径及目录权限检查。
 
 ## 1. 发布物
 
@@ -25,34 +25,35 @@ Windows 安装器采用自定义 Win32 界面（D39），由 MSVC 编译为 NSIS
 | 标题与说明 | `Solaris <版本>`；说明取自 `.github/release-notes.md`，`{{version}}` 换成版本，"更新内容"在草稿里手写 |
 | macOS 安装包 | `Solaris-<版本>-macos-arm64.dmg`：由 `scripts/build_dmg.py` 制作，挂载后是一个固定的窗口，左边 `Solaris.app`、右边“应用程序”的快捷方式（apple/README.md 的“磁盘映像”）；磁盘映像用 Developer ID（Team `GY9ZKZMAZA`）签名、公证并 staple |
 | Windows 安装包 | `Solaris-<版本>-windows-x64-setup.exe`：NSIS 安装器（architecture.md 第 9 节）。目前不签名（D29），更新时只核对校验和（第 3 节第 4 步）；加入签名后用 Authenticode 签名 |
+| Windows ARM64 安装包 | `Solaris-<版本>-windows-arm64-setup.exe`：Windows 11 ARM64 原生应用、服务及匹配的 Cronet/Wintun；NSIS 引导仍为 x86，安装逻辑与 x64 版相同 |
 | 校验和 | `SHA256SUMS`：`sha256sum` 的输出格式，每行 `<64 位小写十六进制>  <文件名>`，覆盖本次发布的其他每个文件 |
 | 源代码 | `Solaris-<版本>-source.tar.gz`：本仓库在这个标签的代码，加上 `go mod vendor` 得到的全部 Go 依赖（第 5 节） |
 
-Release 上只有这四个文件。只做 Windows x64 和 macOS arm64（D2）。其他平台、其他架构的界面不提供
+Release 上有三个安装包、SHA256SUMS 和源代码包，共五个文件。支持 Windows x64、Windows 11 ARM64 和 macOS arm64（D2、D40）。其他平台的界面不提供
 下载，「检查更新」照常显示有没有新版本。
 
 ### 1.1 发布工作流
 
 `.github/workflows/release.yml` 在推送 `v*` 标签时运行（也可以手动运行，但只有标签才创建 Release）。每个 job 都在
-`release` Environment 里，由它的审批人批准后才开始：先批准两个构建 job，它们成功后再批准创建 Release 的 job。
+`release` Environment 里，由它的审批人批准后才开始：先批准 macOS 和两个 Windows 架构的构建 job，它们成功后再批准创建 Release 的 job。
 
-1. **macOS**、**Windows** 两个 job 构建、签名（Windows 目前不签名）、公证安装包，Windows 的安装包还在 runner 上装一遍、
-   升级、卸载（architecture.md 第 10 节）。产物连同各自的 `.sha256` 存为 workflow artifact。两个 job 都把 Environment
+1. **macOS arm64** 和 **Windows x64 / ARM64** 三个构建任务分别构建、签名（Windows 目前不签名）、公证安装包，Windows 的安装包还在 runner 上装一遍、
+   升级、卸载（architecture.md 第 10 节）。产物连同各自的 `.sha256` 存为 workflow artifact。各构建任务都把 Environment
    的机密 `SOLARIS_GOOGLE_CLIENT_ID`、`SOLARIS_GOOGLE_CLIENT_SECRET` 交给构建脚本，打包进 Google Drive 备份用的 OAuth
    客户端（storage.md 第 4 节）；没有这两个机密时给出警告，照常构建，安装包里没有 Google Drive 备份。客户端在 Google
    Cloud 里的设置见 [maintenance.md](maintenance.md) 2.8 节。
 2. **release** job（只对标签运行，`contents: write`）：
    - 确认标签是 `v<pyproject.toml 的版本>`，版本是三段数字（界面只认这种，第 2 节）；
-   - 取回两个 artifact，用构建 job 写的 `.sha256` 核对两个安装包；`.sha256` 文件不上传；
+   - 取回三个安装包 artifact，用构建 job 写的 `.sha256` 核对三个安装包；`.sha256` 文件不上传；
    - 源代码包：`git archive` 取出标签的代码，在 `src/core` 里 `go mod vendor`，再以 `GOPROXY=off` 用 vendor 的依赖
      构建一次 Windows 服务，确认不联网也能构建；打包时文件按名称排序、属主为 root、时间取标签所在提交的时间、gzip 不写
      时间戳，同一个标签得到同样的包；
-   - 用 `sha256sum` 为两个安装包和源代码包写 `SHA256SUMS`；
-   - `gh release create --draft --verify-tag` 创建**草稿**，上传这四个文件。同一个标签已有 Release 时这一步失败，要先
+   - 用 `sha256sum` 为三个安装包和源代码包写 `SHA256SUMS`；
+   - `gh release create --draft --verify-tag` 创建**草稿**，上传这五个文件。同一个标签已有 Release 时这一步失败，要先
      删掉旧的草稿再重新运行。
 
 **为什么是草稿**：界面检查更新用的 `releases/latest` 跳过草稿，Release 一旦发布，所有装了 Solaris 的机器就会看到它。
-审批发生在构建之前，审批人那时还看不到产物；本机又不能运行组装好的 app。所以由人从草稿下载两个安装包在真机上
+审批发生在构建之前，审批人那时还看不到产物；本机又不能运行组装好的 app。所以由人从草稿下载三个安装包在真机上
 试过、写好"更新内容"再发布；草稿有错可以直接删掉重来。发版的步骤见 [maintenance.md](maintenance.md) 第 4 节。
 
 **发布说明**：模板 `.github/release-notes.md` 写下载、两个平台的安装提示（Windows 未签名、SmartScreen 与"未知发布者"；
@@ -209,7 +210,7 @@ macOS 允许系统扩展和 VPN 配置）、源代码与许可、隐私说明的
 - **Wintun**：sing-tun 用 `go:embed` 把 `wintun.dll` 0.14.1 嵌进 Windows 服务，用 memmod 加载。这个 DLL 不是 sing-tun
   的 GPL 代码，而是 WireGuard LLC 的预编译文件，有自己的许可证（Prebuilt Binaries License），全文从
   `wintun-0.14.1.zip` 取出，存在 `package/licenses/wintun.txt`，记为 `LicenseRef-Wintun-Prebuilt-Binaries`。它允许
-  随"只通过 `wintun.h` 的接口使用它的软件"一起分发，sing-tun 正是这样用的。脚本核对嵌入的 amd64 DLL 的 SHA-256
+  随"只通过 `wintun.h` 的接口使用它的软件"一起分发，sing-tun 正是这样用的。脚本核对嵌入的 amd64 和 arm64 DLL 的 SHA-256
   （与官方 zip 里的相同），sing-tun 换了 DLL 就报错，要重新核对许可证。
 - **Qt Image Formats**：本机没有它的文档，libtiff 4.7.2 和 libwebp 1.6.0 两项的全文按 Qt 文档的写法（`qt_attribution.json`
   的 `Copyright` 加上 `LicenseFile`）取自 qtimageformats v6.12.0 的源码，直接写在 `qt.json` 里。`--qt-docs`

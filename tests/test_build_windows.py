@@ -20,17 +20,15 @@ def _pe(machine: int) -> bytes:
     return b"MZ" + bytes(58) + struct.pack("<I", 64) + b"PE\0\0" + struct.pack("<H", machine)
 
 
-def _install_directory(root: Path) -> Path:
+def _install_directory(root: Path, machine: int = build_windows.PE_MACHINE_AMD64) -> Path:
     directory = root / "Solaris"
     for name in build_windows.REQUIRED:
         path = directory / name
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(
-            _pe(build_windows.PE_MACHINE_AMD64) if name.endswith((".exe", ".dll")) else b"x"
-        )
+        path.write_bytes(_pe(machine) if name.endswith((".exe", ".dll")) else b"x")
     qml = directory / "PySide6" / "qml" / "QtQuick"
     qml.mkdir(parents=True)
-    (qml / "qtquick2plugin.dll").write_bytes(_pe(build_windows.PE_MACHINE_AMD64))
+    (qml / "qtquick2plugin.dll").write_bytes(_pe(machine))
     (qml / "price$1.qml").write_text("Item {}")
     return directory
 
@@ -49,6 +47,32 @@ def test_pe_machine(tmp_path: Path) -> None:
 
 def test_check_counts_the_x64_binaries(tmp_path: Path) -> None:
     assert build_windows.check(_install_directory(tmp_path)) == 4
+
+
+def test_arm64_package_rejects_mixed_binaries(tmp_path: Path) -> None:
+    directory = _install_directory(tmp_path, build_windows.PE_MACHINE_ARM64)
+    assert build_windows.check(directory, "arm64") == 4
+    (directory / "libcronet.dll").write_bytes(_pe(build_windows.PE_MACHINE_AMD64))
+    with pytest.raises(BuildError, match=r"libcronet\.dll.*not arm64"):
+        build_windows.check(directory, "arm64")
+
+
+@pytest.mark.parametrize("arch", ["x64", "arm64"])
+def test_python_architecture_comes_from_the_interpreter_image(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, arch: str
+) -> None:
+    interpreter = tmp_path / "python.exe"
+    interpreter.write_bytes(_pe(build_windows.target(arch)[1]))
+    monkeypatch.setattr(sys, "executable", str(interpreter))
+    assert build_windows.python_architecture() == arch
+
+
+def test_gui_build_refuses_an_emulated_python_for_the_native_target(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(build_windows, "python_architecture", lambda: "x64")
+    with pytest.raises(BuildError, match="native arm64 Python"):
+        build_windows.build_ui("1.0.0", "arm64")
 
 
 def test_check_wants_every_required_file(tmp_path: Path) -> None:
@@ -91,15 +115,19 @@ def test_nsis_string() -> None:
 def test_installer_name() -> None:
     # docs/release.md §1, which the updater looks for.
     assert build_windows.installer_name("0.2.0") == "Solaris-0.2.0-windows-x64-setup.exe"
+    assert build_windows.installer_name("0.2.0", "arm64") == "Solaris-0.2.0-windows-arm64-setup.exe"
+    with pytest.raises(BuildError, match="unsupported Windows architecture"):
+        build_windows.installer_name("0.2.0", "x86")
 
 
 @pytest.mark.skipif(
     sys.platform != "win32" or shutil.which("makensis") is None,
     reason="needs NSIS and the Windows MSVC installer UI toolchain",
 )
-def test_installer_compiles(tmp_path: Path) -> None:
+@pytest.mark.parametrize("arch", ["x64", "arm64"])
+def test_installer_compiles(tmp_path: Path, arch: str) -> None:
     makensis = Path(shutil.which("makensis") or "")
-    directory = _install_directory(tmp_path)
-    installer = build_windows.build_installer(directory, "0.2.0", makensis, tmp_path / "out")
-    assert installer.name == "Solaris-0.2.0-windows-x64-setup.exe"
+    directory = _install_directory(tmp_path, build_windows.target(arch)[1])
+    installer = build_windows.build_installer(directory, "0.2.0", makensis, tmp_path / "out", arch)
+    assert installer.name == f"Solaris-0.2.0-windows-{arch}-setup.exe"
     assert installer.read_bytes()[:2] == b"MZ"

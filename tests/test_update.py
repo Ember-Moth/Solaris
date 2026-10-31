@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 
+from solaris import platforms
 from solaris.update import download
 from solaris.update.releases import (
     CHECKSUMS_NAME,
@@ -39,6 +40,7 @@ from tests.support.releases import FakeGitHub, FakeVerifier, fake_github
 MAC_DMG = "Solaris-1.1.0-macos-arm64.dmg"
 SIGNER = "Ember Moth"  # a Windows signer, for the signed path
 WINDOWS_EXE = "Solaris-1.1.0-windows-x64-setup.exe"
+WINDOWS_ARM64_EXE = "Solaris-1.1.0-windows-arm64-setup.exe"
 BODY = b"installer " * 100_000  # a little under 1 MB: several chunks
 
 
@@ -100,7 +102,9 @@ def test_versions_compare_as_numbers() -> None:
         ("darwin", "arm64", MAC_DMG),
         ("win32", "AMD64", WINDOWS_EXE),
         ("darwin", "x86_64", None),
-        ("win32", "ARM64", None),
+        ("win32", "ARM64", WINDOWS_ARM64_EXE),
+        ("win32", "aarch64", WINDOWS_ARM64_EXE),
+        ("win32", "x64", WINDOWS_EXE),
         ("linux", "x86_64", None),
     ],
 )
@@ -150,6 +154,20 @@ def test_check_finds_the_newer_release(github: FakeGitHub, tmp_path: Path) -> No
 def test_check_when_already_current(github: FakeGitHub, tmp_path: Path) -> None:
     assert not updater(github, tmp_path, current="1.1.0").check().newer
     assert not updater(github, tmp_path, current="1.2.0").check().newer
+
+
+def test_emulated_windows_downloads_the_native_arm64_package(
+    github: FakeGitHub, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    body = b"MZ native ARM64 installer fixture"
+    github.add(WINDOWS_ARM64_EXE, body)
+    github.add_checksums(MAC_DMG, WINDOWS_EXE, WINDOWS_ARM64_EXE)
+    monkeypatch.setattr(platforms.platform, "machine", lambda: "AMD64")
+    monkeypatch.setattr(platforms, "_windows_native_machine", lambda: "arm64")
+    update = Updater(tmp_path, ReleaseSource(github.latest_url), FakeVerifier(), system="win32")
+    check = update.check()
+    assert check.installer == WINDOWS_ARM64_EXE
+    assert update.download(check).path.read_bytes() == body
 
 
 def test_check_without_an_installer_for_this_machine(github: FakeGitHub, tmp_path: Path) -> None:

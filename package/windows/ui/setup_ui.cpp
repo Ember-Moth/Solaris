@@ -42,7 +42,7 @@ struct State {
   bool chinese = false, uninstall = false, upgrade = false, purgeDefault = false, preview = false;
   bool dark = false, highContrast = false, motion = true, details = false;
   bool privateFont = false, privateMono = false, licenseView = false;
-  std::wstring version, directory, assets, theme, log, license;
+  std::wstring version, architecture, directory, assets, theme, log, license;
   std::vector<std::wstring> loadedFonts;
   Phase phase = Phase::Ready;
   Palette palette = kLight;
@@ -275,7 +275,7 @@ void renderState(State& s) {
   const bool failed = s.phase == Phase::Failed;
   SendMessageW(s.value, WM_SETFONT, reinterpret_cast<WPARAM>((ready || done) && !s.uninstall ? s.monoFont : s.bodyFont), FALSE);
   SendMessageW(s.label, WM_SETFONT, reinterpret_cast<WPARAM>(busy ? s.bodyFont : s.captionFont), FALSE);
-  const std::wstring version = std::wstring(s.tr(L"版本 ", L"Version ")) + s.version + L" · Windows x64";
+  const std::wstring version = std::wstring(s.tr(L"版本 ", L"Version ")) + s.version + L" · Windows " + s.architecture;
   text(s.versionLabel, version);
   if (ready) {
     text(s.headline, s.uninstall ? s.tr(L"卸载 Solaris", L"Uninstall Solaris")
@@ -543,7 +543,7 @@ bool selectedDirectory(State& s) {
 
 void makeControls(State& s) {
   s.brand = control(s, L"STATIC", L"Solaris", SS_NOPREFIX);
-  s.versionLabel = control(s, L"STATIC", L"", SS_NOPREFIX);
+  s.versionLabel = control(s, L"STATIC", L"", SS_NOPREFIX, 1010);
   s.headline = control(s, L"STATIC", L"", SS_NOPREFIX);
   // Native EDIT accessibility uses its immediately preceding static label.
   s.licenseEdit = control(s, L"EDIT", s.license.c_str(), ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL | WS_TABSTOP, 1009);
@@ -887,7 +887,8 @@ extern "C" void __cdecl Begin(HWND, int size, wchar_t*, stack_t** stack, extra_p
   try {
     auto mode = call.pop();
     const auto language = call.pop(), version = call.pop();
-    const auto directory = call.pop(), assets = call.pop(), theme = call.pop();
+    const auto directory = call.pop(), assets = call.pop(), theme = call.pop(), architecture = call.pop();
+    if (architecture != L"x64" && architecture != L"arm64") throw std::runtime_error("installer architecture");
     state = std::make_unique<State>();
     if (mode.rfind(L"preview:", 0) == 0) { state->preview = true; mode.erase(0, 8); }
     state->uninstall = mode == L"uninstall" || mode == L"uninstall-purge";
@@ -895,6 +896,7 @@ extern "C" void __cdecl Begin(HWND, int size, wchar_t*, stack_t** stack, extra_p
     state->upgrade = mode == L"upgrade";
     state->chinese = language == L"2052";
     state->version = version;
+    state->architecture = architecture == L"arm64" ? L"ARM64" : L"x64";
     state->directory = directory;
     state->assets = assets;
     state->theme = theme;

@@ -19,7 +19,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, windows-latest]
+        include:
+          - os: macos-15
+            python_arch: aarch64
+          - os: windows-latest
+            python_arch: x86_64
+          - os: windows-11-arm
+            python_arch: aarch64
+    env:
+      UV_PYTHON_ARCH: ${{ matrix.python_arch }}
+      CGO_ENABLED: ${{ matrix.os == 'windows-11-arm' && '0' || '1' }}
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
@@ -89,7 +98,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, windows-latest, ubuntu-latest]
+        os: [macos-15, windows-latest, windows-11-arm, ubuntu-latest]
+    env:
+      CGO_ENABLED: ${{ matrix.os == 'windows-11-arm' && '0' || '1' }}
     defaults:
       run:
         working-directory: src/core
@@ -109,6 +120,8 @@ jobs:
       # Race builds also wait for mihomo's finalizers before each configuration applies
       # (internal/engine/race.go), so the plain run above stays.
       - name: Race detector
+        # Go 1.27's race runtime supports Windows amd64, not Windows arm64.
+        if: runner.os != 'Windows' || runner.arch != 'ARM64'
         run: go test -race ./...
       - name: Fork outbounds (macOS native Cronet)
         if: runner.os == 'macOS'
@@ -116,10 +129,12 @@ jobs:
       - name: Fork outbounds (Windows native Cronet)
         if: runner.os == 'Windows'
         run: |
-          $native = go mod download -json github.com/sagernet/cronet-go/lib/windows_amd64 | ConvertFrom-Json
+          $arch = go env GOARCH
+          $native = go mod download -json "github.com/sagernet/cronet-go/lib/windows_$arch" | ConvertFrom-Json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:PATH = "$($native.Dir);$env:PATH"
-          go test -race -tags with_gvisor,with_naive,with_purego -run '^TestFork' ./internal/engine
+          $race = if ($arch -eq 'amd64') { @('-race') } else { @() }
+          go test @race -tags with_gvisor,with_naive,with_purego -run '^TestFork' ./internal/engine
       # Tailscale's outbound only builds with with_gvisor, so the security and mesh tests run
       # once more with it: its state-dir held to the home (docs/mesh.md §4), and the fields
       # its status is read from (§10.1).
@@ -128,7 +143,10 @@ jobs:
         run: go test -race -tags with_gvisor -run '^(TestSecurity|TestMesh|TestNetworks)' ./internal/engine
       - name: Windows service cross-build
         if: runner.os == 'Linux'
-        run: GOOS=windows GOARCH=amd64 go build -o /dev/null ./service
+        run: |
+          for arch in amd64 arm64; do
+            GOOS=windows GOARCH="$arch" CGO_ENABLED=0 go build -tags with_gvisor,with_naive,with_purego -o /dev/null ./service
+          done
       - name: macOS extension archive
         if: runner.os == 'macOS'
         run: go build -buildmode=c-archive -o "$RUNNER_TEMP/libsolaris.a" ./apple
@@ -168,8 +186,20 @@ jobs:
             build/apple/check/Solaris.app "$RUNNER_TEMP/Solaris.dmg"
 
   installer-ui:
-    runs-on: windows-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            arch: x64
+            python_arch: x86_64
+          - os: windows-11-arm
+            arch: arm64
+            python_arch: aarch64
+    env:
+      UV_PYTHON_ARCH: ${{ matrix.python_arch }}
     steps:
       - uses: actions/checkout@v7
       - name: Verify custom install directory security
@@ -181,14 +211,14 @@ jobs:
       - name: NSIS
         run: choco install nsis --yes --no-progress
       - name: Build the custom Win32 surface and read-only harness
-        run: uv run --frozen python scripts/build_installer_ui.py --preview
+        run: uv run --frozen python scripts/build_installer_ui.py --preview --arch ${{ matrix.arch }}
       - name: Exercise installer UI and capture screenshots
         shell: powershell
-        run: ./package/windows/ui-smoke-test.ps1 -Preview build/installer-ui/Solaris-setup-preview.exe -Output build/installer-ui/screenshots
+        run: ./package/windows/ui-smoke-test.ps1 -Preview build/installer-ui/Solaris-setup-preview.exe -Output build/installer-ui/screenshots -Architecture ${{ matrix.arch }}
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: installer-ui-${{ github.sha }}
+          name: installer-ui-${{ matrix.arch }}-${{ github.sha }}
           path: |
             build/installer-ui/screenshots/
             build/installer-ui/SolarisSetupUI.dll
@@ -201,10 +231,23 @@ jobs:
   # uninstalled on the runner by package/windows/smoke-test.ps1: the service starts and listens
   # on its pipe, the UI opens its window. No TUN, no connection.
   windows-installer:
-    runs-on: windows-latest
-    timeout-minutes: 75
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            arch: x64
+            python_arch: x86_64
+            build: build/windows
+          - os: windows-11-arm
+            arch: arm64
+            python_arch: aarch64
+            build: build/windows-arm64
     env:
-      NUITKA_CACHE_DIR: ${{ github.workspace }}\build\nuitka-cache
+      UV_PYTHON_ARCH: ${{ matrix.python_arch }}
+      NUITKA_CACHE_DIR: ${{ github.workspace }}\build\nuitka-cache-${{ matrix.arch }}
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
@@ -225,13 +268,38 @@ jobs:
       # Nuitka's compiled C: most of it is the dependencies', which change with the lock.
       - uses: actions/cache@v6
         with:
-          path: build/nuitka-cache
-          key: nuitka-windows-${{ hashFiles('uv.lock', 'scripts/build_windows.py') }}
+          path: build/nuitka-cache-${{ matrix.arch }}
+          key: nuitka-windows-${{ matrix.arch }}-${{ hashFiles('uv.lock', 'scripts/build_windows.py') }}
       - name: Build (unsigned)
-        run: uv run --frozen --with nuitka==4.2.2 python scripts/build_windows.py
+        run: uv run --frozen --with nuitka==4.2.2 python scripts/build_windows.py --arch ${{ matrix.arch }}
       - name: Install, upgrade and uninstall
         shell: powershell
-        run: ./package/windows/smoke-test.ps1 -Installer (Get-Item build/windows/Solaris-*-windows-x64-setup.exe).FullName
+        run: ./package/windows/smoke-test.ps1 -Installer (Get-Item ${{ matrix.build }}/Solaris-*-windows-${{ matrix.arch }}-setup.exe).FullName
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows-installer-${{ matrix.arch }}-${{ github.sha }}
+          path: ${{ matrix.build }}/Solaris-*-windows-${{ matrix.arch }}-setup.exe
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  windows-arm64-upgrade:
+    needs: windows-installer
+    runs-on: windows-11-arm
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: windows-installer-x64-${{ github.sha }}
+          path: build/migration/x64
+      - uses: actions/download-artifact@v8
+        with:
+          name: windows-installer-arm64-${{ github.sha }}
+          path: build/migration/arm64
+      - name: Upgrade an emulated x64 installation to native ARM64
+        shell: powershell
+        run: ./package/windows/arm64-upgrade-smoke-test.ps1 -X64Installer (Get-Item build/migration/x64/*.exe).FullName -ARM64Installer (Get-Item build/migration/arm64/*.exe).FullName
 
   # The owned-TUN and fd-mode tests create a real TUN, so they run only here, inside network
   # namespaces (docs/architecture.md §11). md-tun holds the engine; md-srv, on the

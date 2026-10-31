@@ -25,7 +25,16 @@
   uv run --with nuitka==4.2.2 python scripts/build_windows.py
   ```
 
-  构建步骤见 [architecture.md](architecture.md) §10。
+  Windows 11 ARM64 上使用原生 ARM64 Python 构建，产物位于 `build/windows-arm64/`：
+
+  ```powershell
+  $env:UV_PYTHON_ARCH = 'aarch64'
+  uv sync --frozen --python cpython-3.14.7-windows-aarch64
+  uv run --frozen --with nuitka==4.2.2 python scripts/build_windows.py --arch arm64
+  ```
+
+  GUI 的 Python、PySide6 和原生扩展必须同架构；构建器会检查解释器及全部打包 PE 文件。Go 服务可交叉编译，GUI 使用
+  对应架构的 Windows 构建环境。构建步骤见 [architecture.md](architecture.md) §10。
 
 两个脚本都会先下载钉住版本的 GEO 数据（`scripts/fetch_geodata.py`）。发布用的安装包由 GitHub Actions 的发布工作流
 构建（[release.md](release.md)）。
@@ -40,8 +49,9 @@ go -C src/core test -race -tags with_gvisor,with_naive -run '^TestFork' ./intern
 go -C src/core run -tags with_gvisor,with_naive ./service -socket /tmp/solaris-dev.sock
 ```
 
-Windows 原生配置测试使用 `with_gvisor,with_naive,with_purego`，测试进程的 PATH 需要包含锁定版本的 Cronet DLL
-目录；已安装的服务只加载自身目录里的 DLL。CI 已包含两种构建的验证。
+Windows x64 / ARM64 原生配置测试使用 `with_gvisor,with_naive,with_purego`，测试进程的 PATH 需要包含同架构、锁定版本的 Cronet DLL
+目录；已安装的服务只加载自身目录里的 DLL。各目标的构建与验证均已接入 CI。
+Go 1.27 的竞态运行时不支持 Windows ARM64，该平台运行普通测试与原生配置测试；竞态检查继续在其他受支持平台运行。
 
 ## 测试与开发服务
 

@@ -4,7 +4,8 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)][string] $Preview,
-    [Parameter(Mandatory = $true)][string] $Output
+    [Parameter(Mandatory = $true)][string] $Output,
+    [ValidateSet('x64', 'arm64')][string] $Architecture = 'x64'
 )
 $ErrorActionPreference = 'Stop'
 $Preview = (Resolve-Path -LiteralPath $Preview).Path
@@ -118,6 +119,7 @@ function Start-Preview([string] $Mode, [string] $Language, [string] $Theme, [str
     if ($Language -eq 'zh' -and (Element $window 1001).Current.Name -notmatch '[\u4e00-\u9fff]') {
         throw 'Chinese UI did not load'
     }
+    if ((Element $window 1010).Current.Name -notmatch "Windows $Architecture$") { throw 'Wrong application architecture in the installer header' }
     return @{ Process = $process; Window = $window }
 }
 

@@ -8,7 +8,6 @@ Every method blocks: the ViewModel runs them on a worker thread.
 
 from __future__ import annotations
 
-import platform
 import sys
 import threading
 from collections.abc import Callable
@@ -16,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from solaris import __version__
+from solaris.platforms import native_machine
 from solaris.update import download
 from solaris.update.download import Progress
 from solaris.update.releases import (
@@ -55,7 +55,7 @@ class Updater:
         *,
         current: str = __version__,
         system: str = sys.platform,
-        machine: str = platform.machine(),
+        machine: str | None = None,
     ) -> None:
         """``verifier`` defaults to the platform's; without one nothing can be installed."""
         self.directory = data_dir / DIRECTORY_NAME
@@ -63,7 +63,7 @@ class Updater:
         self._verifier = verifier if verifier is not None else default_verifier(system)
         self.current = current
         self._system = system
-        self._machine = machine
+        self._machine = native_machine(system) if machine is None else machine
 
     def check(self) -> Check:
         release = self._source.latest()

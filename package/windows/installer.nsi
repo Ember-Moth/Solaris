@@ -73,8 +73,15 @@ LangString RemovingFiles ${LANG_SIMPCHINESE} "正在移除应用文件…"
 LangString ClearingData ${LANG_ENGLISH} "Clearing selected application data…"
 LangString ClearingData ${LANG_SIMPCHINESE} "正在清除所选应用数据…"
 
-LangString NeedsWindows ${LANG_ENGLISH} "${PRODUCT} needs 64-bit Windows 10 or later."
-LangString NeedsWindows ${LANG_SIMPCHINESE} "${PRODUCT} 需要 64 位的 Windows 10 或更高版本。"
+!if "${APP_ARCH}" == "arm64"
+LangString NeedsWindows ${LANG_ENGLISH} "This ${PRODUCT} package needs Windows 11 on ARM64."
+LangString NeedsWindows ${LANG_SIMPCHINESE} "此 ${PRODUCT} 安装包需要 ARM64 版 Windows 11。"
+!else if "${APP_ARCH}" == "x64"
+LangString NeedsWindows ${LANG_ENGLISH} "This ${PRODUCT} package needs x64 Windows 10 or later, or Windows 11 on ARM64."
+LangString NeedsWindows ${LANG_SIMPCHINESE} "此 ${PRODUCT} 安装包需要 x64 版 Windows 10 或更高版本，或 ARM64 版 Windows 11。"
+!else
+!error "Unsupported APP_ARCH"
+!endif
 LangString SetupFailed ${LANG_ENGLISH} "${PRODUCT} could not complete the operation."
 LangString SetupFailed ${LANG_SIMPCHINESE} "${PRODUCT} 未能完成操作。"
 LangString UninstallerFailed ${LANG_ENGLISH} "The installed version of ${PRODUCT} could not be removed (result: $0). Uninstall it in Settings > Apps, then run this installer again."
@@ -95,7 +102,7 @@ LangString DataSection ${LANG_SIMPCHINESE} "订阅、设置和日志"
 VIProductVersion "${APP_VERSION}.0"
 VIAddVersionKey /LANG=${LANG_ENGLISH} "ProductName" "${PRODUCT}"
 VIAddVersionKey /LANG=${LANG_ENGLISH} "ProductVersion" "${APP_VERSION}"
-VIAddVersionKey /LANG=${LANG_ENGLISH} "FileDescription" "${PRODUCT} Setup"
+VIAddVersionKey /LANG=${LANG_ENGLISH} "FileDescription" "${PRODUCT} Setup (${APP_ARCH})"
 VIAddVersionKey /LANG=${LANG_ENGLISH} "FileVersion" "${APP_VERSION}"
 VIAddVersionKey /LANG=${LANG_ENGLISH} "LegalCopyright" "GPL-3.0-only"
 
@@ -152,10 +159,24 @@ VIAddVersionKey /LANG=${LANG_ENGLISH} "LegalCopyright" "GPL-3.0-only"
 Function .onInit
   StrCpy $UiEnabled 0
   Delete "${ERROR_LOG}"
-  ${IfNot} ${RunningX64}
-  ${OrIfNot} ${AtLeastWin10}
+!if "${APP_ARCH}" == "arm64"
+  ${IfNot} ${IsNativeARM64}
+  ${OrIfNot} ${AtLeastWin11}
     !insertmacro Fail "$(NeedsWindows)" 1633
   ${EndIf}
+!else
+  ${IfNot} ${AtLeastWin10}
+    !insertmacro Fail "$(NeedsWindows)" 1633
+  ${EndIf}
+  ${If} ${IsNativeARM64}
+    ; Keep x64-on-ARM updates possible; the new updater selects the native package.
+    ${IfNot} ${AtLeastWin11}
+      !insertmacro Fail "$(NeedsWindows)" 1633
+    ${EndIf}
+  ${ElseIfNot} ${IsNativeAMD64}
+    !insertmacro Fail "$(NeedsWindows)" 1633
+  ${EndIf}
+!endif
   SetRegView 64
   SetShellVarContext all
   StrCpy $Upgrade 0
@@ -207,6 +228,7 @@ Section
   WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayVersion" "${APP_VERSION}"
   WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayIcon" '"$INSTDIR\${CLIENT}",0'
   WriteRegStr HKLM "${UNINSTALL_KEY}" "InstallLocation" "$INSTDIR"
+  WriteRegStr HKLM "${UNINSTALL_KEY}" "InstallArchitecture" "${APP_ARCH}"
   WriteRegStr HKLM "${UNINSTALL_KEY}" "UninstallString" '"$INSTDIR\${UNINSTALLER}"'
   WriteRegStr HKLM "${UNINSTALL_KEY}" "QuietUninstallString" '"$INSTDIR\${UNINSTALLER}" /S'
   WriteRegStr HKLM "${UNINSTALL_KEY}" "URLInfoAbout" "https://github.com/Ember-Moth/Solaris"

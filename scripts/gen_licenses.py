@@ -55,6 +55,11 @@ GO_TARGETS = (
         "with_gvisor,with_naive,with_purego",
     ),
     (
+        {"GOOS": "windows", "GOARCH": "arm64", "CGO_ENABLED": "0"},
+        "./service",
+        "with_gvisor,with_naive,with_purego",
+    ),
+    (
         {"GOOS": "darwin", "GOARCH": "arm64", "CGO_ENABLED": "1"},
         "./apple",
         "with_gvisor,with_naive",
@@ -63,8 +68,10 @@ GO_TARGETS = (
 # sing-tun embeds Wintun's prebuilt DLL, which comes under its own license, kept in
 # WINTUN_LICENSE from wintun-0.14.1.zip. Another DLL means checking that license again.
 WINTUN_PACKAGE = ("github.com/metacubex/sing-tun", "internal/wintun")
-WINTUN_DLL = "amd64/wintun.dll"
-WINTUN_SHA256 = "e5da8447dc2c320edc0fc52fa01885c103de8c118481f683643cacc3220dafce"
+WINTUN_DLLS = {
+    "amd64/wintun.dll": "e5da8447dc2c320edc0fc52fa01885c103de8c118481f683643cacc3220dafce",
+    "arm64/wintun.dll": "f7ba89005544be9d85231a9e0d5f23b2d15b3311667e2dad0debd344918a3f80",
+}
 WINTUN_VERSION = "0.14.1"
 
 # PySide6 names these, but the UI never imports them, so Nuitka leaves them out.
@@ -340,8 +347,9 @@ def _linked_modules() -> dict[str, _Module]:
     # Purego dynamically loads this DLL; it is shipped but absent from go list -deps.
     from scripts import cronet
 
-    native = cronet.library("windows", "amd64")
-    modules[native.module] = _Module(native.module, native.version, native.root, {native.root})
+    for arch in ("amd64", "arm64"):
+        native = cronet.library("windows", arch)
+        modules[native.module] = _Module(native.module, native.version, native.root, {native.root})
     return modules
 
 
@@ -410,11 +418,12 @@ def _wintun(module: _Module) -> list[Entry]:
     package = module.root / WINTUN_PACKAGE[1]
     if package not in module.packages:
         return []
-    digest = hashlib.sha256((package / WINTUN_DLL).read_bytes()).hexdigest()
-    if digest != WINTUN_SHA256:
-        raise SystemExit(
-            f"{module.path} embeds another {WINTUN_DLL} ({digest}); check Wintun's license again"
-        )
+    for filename, expected in WINTUN_DLLS.items():
+        digest = hashlib.sha256((package / filename).read_bytes()).hexdigest()
+        if digest != expected:
+            raise SystemExit(
+                f"{module.path} embeds another {filename} ({digest}); check Wintun's license again"
+            )
     return [
         Entry(
             f"Wintun (wintun.dll in {module.path})",

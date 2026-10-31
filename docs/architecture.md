@@ -267,6 +267,7 @@ Naive 默认 HTTP/2，可用 `quic: true` 选 QUIC；UDP 需要 `udp-over-tcp: t
 Windows 随服务带 `libcronet.dll`，从安装目录的绝对路径加载，不回退 PATH；macOS 把静态 Cronet 合并进
 Go archive，并传递它所需的系统库和 framework。两端的原生版本均从 `cronet-go/all` 选中的 Go 模块图读取，
 与绑定一起锁定，不能另找不同版本的 DLL 替换。Naive 节点和 REALITY 字段照常通过订阅、自定义方案和准入校验。
+Windows x64 和 ARM64 分别使用 `windows_amd64`、`windows_arm64` 原生模块；Wintun 也按 Go 目标架构嵌入对应 DLL。
 
 mihomo 的 go.mod 把
 `google.golang.org/protobuf` 替换为 `metacubex/protobuf-go`；依赖里的 replace 不会传递，本模块用的是上游
@@ -815,31 +816,36 @@ Windows 安装器为两个 Solaris 可执行文件设置独立的 WER mini dump 
 
 | 产物 | 构建方式 |
 | --- | --- |
-| Windows 服务 | `go build -trimpath`，windows/amd64，不用 cgo，按 3.4 节的标签（`with_gvisor`），`-ldflags "-X …"` 注入版本并保留 DWARF |
+| Windows 服务 | `go build -trimpath`，windows/amd64 或 windows/arm64，不用 cgo，使用 `with_gvisor,with_naive,with_purego`，注入版本并保留 DWARF |
 | macOS xcframework | 本仓库 Go 模块的 c-archive 构建，包含 engine 与控制分发器，导出供 `handleAppMessage` 调用的 C 函数 |
 | 协议绑定 | 由 `control.proto` 生成 Go 与 Python 代码 |
 | UI | Nuitka standalone（Windows 上是 `--mode=standalone` 的 `Solaris.exe`，用 MSVC；macOS 上是 `--mode=app`） |
-| Windows 安装包 | MSVC x86 编译自定义安装器 UI 插件，NSIS 3 封装它与 x64 应用；`scripts/build_windows.py` 统一组装 |
+| Windows 安装包 | MSVC x86 编译自定义安装器 UI 插件，NSIS 3 封装它与 x64 或 ARM64 原生应用；`scripts/build_windows.py --arch` 选择目标 |
 | macOS 包 | `scripts/build_app.py` 组装并签名 `Solaris.app`；发布工作流公证后做成 `.dmg` |
 | 崩溃符号 | Nuitka `--unstripped`；macOS dSYM 校验 UUID；Windows PDB 与精确 Go 服务二进制独立存档，发布 artifact 保留 90 天 |
 
 - **Windows 构建**（`scripts/build_windows.py`，在 Windows 上运行，`uv run --with nuitka==4.2.2`）：拉取 GEO 数据
   （`scripts/fetch_geodata.py`）、构建服务、Nuitka 构建界面（不带界面用不到的 Qt 模块、QML 目录和图片格式插件，与
   macOS 相同；Qt 的 OpenSSL 后端也不带，TLS 用 Schannel，CPython 自带的 libssl 和 libcrypto 留着给 `ssl` 模块），
-  组装成 5.1 节的 `build/windows/Solaris/`，检查必需的文件都在、没有链接、每个 exe、dll、pyd 都是 x64，再生成只含
-  这些文件的卸载清单并编译 `build/windows/Solaris-<版本>-windows-x64-setup.exe`。`--skip-installer` 停在安装目录，
+  x64 组装到 `build/windows/Solaris/`，ARM64 组装到 `build/windows-arm64/Solaris/`；检查必需文件、链接及每个 PE 的目标架构，
+  再生成卸载清单与 `Solaris-<版本>-windows-<x64|arm64>-setup.exe`。`--skip-installer` 停在安装目录，
   `--installer-only` 只从已有的安装目录编译安装包，有了签名后，签名步骤插在两者之间。
 - 需要的证书：Apple Developer ID。Windows 安装包目前不签名（D29），还不需要 Authenticode 证书。
 - **发布工作流** `.github/workflows/release.yml`：`v*` 标签或手动触发，在 `release` Environment 里经审批后运行；
   macOS 上建临时钥匙串、签名、`notarytool` 公证、staple，产出 `Solaris-<版本>-macos-arm64.dmg` 和它的 `.sha256`；
   Windows 上构建安装目录、签名、编译安装包，用 `smoke-test.ps1` 在 runner 上装一遍、升级、卸载，产出
-  `Solaris-<版本>-windows-x64-setup.exe` 和它的 `.sha256`。Windows 目前不签名（D29），签名这一步只打一条警告；有了
+  两种 Windows 架构的安装包和各自的 `.sha256`。Windows 目前不签名（D29），签名这一步只打一条警告；有了
   签名后，先给安装目录里的 exe、dll、pyd 签名并在链接服务时打开 `SignedRelease`（服务要求界面与它同一签名者，5.3 节），
-  再经 makensis 的 `!finalize`、`!uninstfinalize` 给安装器和卸载器签名。两个安装包存为 workflow artifact；对标签，最后一个
-  job 再经一次审批，核对两个安装包，打出含 vendor 依赖的源代码包，写 `SHA256SUMS`，把这四个文件放进一个**草稿**
+  再经 makensis 的 `!finalize`、`!uninstfinalize` 给安装器和卸载器签名。三个安装包存为 workflow artifact；对标签，最后一个
+  job 再经一次审批，核对三个安装包，打出含 vendor 依赖的源代码包，写 `SHA256SUMS`，把这五个文件放进一个**草稿**
   GitHub Release，由人试过安装包、写好说明后发布（release.md 第 1.1 节）。
 - 许可：本项目以 GPL-3.0-only 发布（[LICENSE](../LICENSE)）；服务和扩展链接的 mihomo 同为 GPL-3.0。
   发布二进制时须同时提供对应的源代码；新增依赖须与 GPL-3.0 兼容。
+
+Windows ARM64（D40）最低支持 Windows 11。GUI 必须用 ARM64 Python/Nuitka 构建，Go 服务、Cronet 和 Wintun 同为 ARM64；
+NSIS 及自定义安装窗口是 x86 引导组件，由系统仿真运行。更新器通过 `IsWow64Process2` 优先识别原生 OS 架构，
+即使当前 GUI 是仿真运行的 x64 版本，也会选择 ARM64 更新包。安装器沿用已有目录，先停止旧 GUI/服务并调用旧卸载清单，
+再替换为同架构新文件；用户与服务数据保持原位。`windows-arm64-upgrade` 在原生 ARM runner 验证 x64 → ARM64 迁移。
 
 ## 11. 开发与测试
 

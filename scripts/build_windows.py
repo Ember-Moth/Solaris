@@ -11,6 +11,9 @@ Everything lands in build/windows:
     Solaris/                                  the install directory, as the installer lays it out
     Solaris-<version>-windows-x64-setup.exe
 
+Native Windows ARM64 builds use --arch arm64 and build/windows-arm64 instead.
+The GUI must be built with a Python interpreter of the selected architecture.
+
 The installer is package/windows/installer.nsi, compiled by makensis (NSIS 3.08 or later)
 against Solaris/ and an uninstall list of exactly its files; package/windows/setup.ps1 is the
 part that closes the UI and registers, stops and removes the service. wintun is not shipped on
@@ -67,7 +70,30 @@ REQUIRED = (
     *(f"{GEODATA}/{name}" for name in build_apple.GEO_FILES),
 )
 PE_SUFFIXES = (".exe", ".dll", ".pyd")
-PE_MACHINE_AMD64 = 0x8664  # D2: x64 only
+PE_MACHINE_AMD64 = 0x8664
+PE_MACHINE_ARM64 = 0xAA64
+TARGETS = {"x64": ("amd64", PE_MACHINE_AMD64), "arm64": ("arm64", PE_MACHINE_ARM64)}
+
+
+def target(arch: str) -> tuple[str, int]:
+    try:
+        return TARGETS[arch]
+    except KeyError:
+        raise BuildError(f"unsupported Windows architecture: {arch}") from None
+
+
+def build_directory(arch: str) -> Path:
+    target(arch)
+    return BUILD if arch == "x64" else ROOT / "build" / "windows-arm64"
+
+
+def python_architecture() -> str:
+    machine = pe_machine(Path(sys.executable))
+    for arch, (_, expected) in TARGETS.items():
+        if machine == expected:
+            return arch
+    raise BuildError("the Windows build needs native x64 or ARM64 Python")
+
 
 # The UI shows SVG; PNG is built in. Qt names its image format plugins q<name>.dll.
 UNUSED_IMAGE_FORMATS = ("gif", "icns", "ico", "jpeg", "pdf", "tga", "tiff", "wbmp", "webp")
@@ -83,19 +109,20 @@ EXCLUDED = (
 )
 
 
-def installer_name(version: str) -> str:
+def installer_name(version: str, arch: str = "x64") -> str:
     """As docs/release.md §1 names it, which the UI's updater looks for."""
-    return f"{APP_NAME}-{version}-windows-x64-setup.exe"
+    target(arch)
+    return f"{APP_NAME}-{version}-windows-{arch}-setup.exe"
 
 
-def build_service(version: str) -> Path:
-    """solaris-service.exe for windows/amd64, with DWARF for retained crash symbols."""
-    output = BUILD / "service" / SERVICE
+def build_service(version: str, arch: str = "x64") -> Path:
+    """Native Windows service, with DWARF for retained crash symbols."""
+    output = build_directory(arch) / "service" / SERVICE
     output.unlink(missing_ok=True)
     environment = os.environ | {
         "GOPROXY": build_apple.GOPROXY,
         "GOOS": "windows",
-        "GOARCH": "amd64",
+        "GOARCH": target(arch)[0],
         "CGO_ENABLED": "0",
     }
     command: list[str | Path] = [
@@ -115,9 +142,12 @@ def build_service(version: str) -> Path:
     return output
 
 
-def build_ui(version: str) -> Path:
+def build_ui(version: str, arch: str = "x64") -> Path:
     """The Nuitka standalone directory of package/entry.py; its own options are in that file."""
-    output = BUILD / "nuitka"
+    if python_architecture() != arch:
+        raise BuildError(f"use native {arch} Python to build the {arch} GUI")
+    build = build_directory(arch)
+    output = build / "nuitka"
     if output.exists():
         shutil.rmtree(output)
     command: list[str | Path] = [
@@ -143,22 +173,22 @@ def build_ui(version: str) -> Path:
         "--assume-yes-for-downloads",
         *(f"--noinclude-dlls={pattern}" for pattern in EXCLUDED),
         *(f"--noinclude-data-files={pattern}" for pattern in EXCLUDED),
-        *build_app.google_client(BUILD),
+        *build_app.google_client(build),
         ENTRY,
     ]
     build_apple._run(command)
     return output / f"{ENTRY.stem}.dist"
 
 
-def assemble(ui: Path, service: Path, geodata: dict[str, Path]) -> Path:
+def assemble(ui: Path, service: Path, geodata: dict[str, Path], arch: str = "x64") -> Path:
     """The install directory: the UI's standalone directory with the service beside Solaris.exe
     and the GEO data in geodata/."""
-    directory = BUILD / APP_NAME
+    directory = build_directory(arch) / APP_NAME
     if directory.exists():
         shutil.rmtree(directory)
     shutil.copytree(ui, directory)
     shutil.copyfile(service, directory / SERVICE)
-    shutil.copyfile(cronet.library("windows", "amd64").binary, directory / "libcronet.dll")
+    shutil.copyfile(cronet.library("windows", target(arch)[0]).binary, directory / "libcronet.dll")
     (directory / GEODATA).mkdir()
     for name in build_apple.GEO_FILES:
         shutil.copyfile(geodata[name], directory / GEODATA / name)
@@ -178,9 +208,10 @@ def pe_machine(path: Path) -> int | None:
     return int.from_bytes(signature[4:6], "little")
 
 
-def check(directory: Path) -> int:
+def check(directory: Path, arch: str = "x64") -> int:
     """Every required file is there, nothing is a link, and every executable, DLL and
-    extension module is x64. Returns how many of those there are."""
+    extension module matches the target. Returns how many of those there are."""
+    expected = target(arch)[1]
     for name in REQUIRED:
         if not (directory / name).is_file():
             raise BuildError(f"{directory.name} has no {name}")
@@ -192,9 +223,9 @@ def check(directory: Path) -> int:
         if not path.is_file() or path.suffix.lower() not in PE_SUFFIXES:
             continue
         machine = pe_machine(path)
-        if machine != PE_MACHINE_AMD64:
+        if machine != expected:
             shown = "not a PE file" if machine is None else f"machine {machine:#06x}"
-            raise BuildError(f"{name} is {shown}, not x64")
+            raise BuildError(f"{name} is {shown}, not {arch}")
         count += 1
     return count
 
@@ -234,7 +265,9 @@ def find_makensis(given: str | None) -> Path:
     raise BuildError("makensis (NSIS 3) is missing; install NSIS or pass --makensis")
 
 
-def build_installer(directory: Path, version: str, makensis: Path, output: Path) -> Path:
+def build_installer(
+    directory: Path, version: str, makensis: Path, output: Path, arch: str = "x64"
+) -> Path:
     """Compile installer.nsi against ``directory`` into ``output``/<installer name>. The
     definitions and the uninstall list go into ``output``/nsis."""
     work = output / "nsis"
@@ -244,11 +277,12 @@ def build_installer(directory: Path, version: str, makensis: Path, output: Path)
     # makensis reads a file without a byte order mark in the system's code page, unless an
     # !include names the charset: the generated files get the mark, installer.nsi the option.
     files.write_text(uninstall_list(directory), encoding="utf-8-sig")
-    installer = output / installer_name(version)
+    installer = output / installer_name(version, arch)
     installer.unlink(missing_ok=True)
     definitions = {
         "APP_DIRECTORY": directory,
         "APP_VERSION": version,
+        "APP_ARCH": arch,
         "OUTPUT_FILE": installer,
         "SETUP_SCRIPT": SETUP_SCRIPT,
         "APP_ICON": ICON,
@@ -291,30 +325,37 @@ def main() -> None:
         help=f"compile the installer from an existing build/windows/{APP_NAME}",
     )
     parser.add_argument("--makensis", help="the NSIS compiler (default: on PATH)")
+    parser.add_argument(
+        "--arch", choices=tuple(TARGETS), help="target architecture (default: native Python)"
+    )
     arguments = parser.parse_args()
     if sys.platform != "win32":
         sys.exit("build_windows: the Windows installer is built on Windows")
     version = build_apple._version()
-    directory = BUILD / APP_NAME
     try:
+        arch = arguments.arch or python_architecture()
+        if not arguments.installer_only and python_architecture() != arch:
+            raise BuildError(f"use native {arch} Python to build the {arch} package")
+        build = build_directory(arch)
+        directory = build / APP_NAME
         makensis = None if arguments.skip_installer else find_makensis(arguments.makensis)
         if not arguments.installer_only:
             _check_nuitka()
             geodata = fetch_geodata.fetch()
-            service = build_service(version)
-            ui = build_ui(version)
-            directory = assemble(ui, service, geodata)
-            symbol_dir = BUILD / "symbols"
+            service = build_service(version, arch)
+            ui = build_ui(version, arch)
+            directory = assemble(ui, service, geodata, arch)
+            symbol_dir = build / "symbols"
             build_apple._remove(symbol_dir)
-            symbols.windows(directory / CLIENT, directory / SERVICE, BUILD / "nuitka", symbol_dir)
+            symbols.windows(directory / CLIENT, directory / SERVICE, build / "nuitka", symbol_dir)
             for pdb in directory.rglob("*.pdb"):
                 pdb.unlink()  # retained separately, not part of the installer
-        count = check(directory)
+        count = check(directory, arch)
         size = sum(path.stat().st_size for path in directory.rglob("*") if path.is_file())
         shown = directory.relative_to(ROOT)
-        print(f"build_windows: {shown}, {count} x64 binaries, {size / 2**20:.1f} MiB")
+        print(f"build_windows: {shown}, {count} {arch} binaries, {size / 2**20:.1f} MiB")
         if makensis is not None:
-            installer = build_installer(directory, version, makensis, BUILD)
+            installer = build_installer(directory, version, makensis, build, arch)
             megabytes = installer.stat().st_size / 2**20
             print(f"build_windows: {installer.relative_to(ROOT)}, {megabytes:.1f} MiB (unsigned)")
     except (BuildError, OSError, subprocess.CalledProcessError) as error:

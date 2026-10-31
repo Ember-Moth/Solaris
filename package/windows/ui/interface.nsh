@@ -20,7 +20,7 @@ Var UiEnabled
 ; (proceed/purge) so un.onInit can set its optional data-removal section.
 !macro UiBegin MODE
   !insertmacro UiAssets
-  SolarisSetupUI::Begin "${MODE}" "$LANGUAGE" "${APP_VERSION}" "$INSTDIR" "$PLUGINSDIR" "auto"
+  SolarisSetupUI::Begin "${MODE}" "$LANGUAGE" "${APP_VERSION}" "$INSTDIR" "$PLUGINSDIR" "auto" "${APP_ARCH}"
   Pop $0
   ${If} $0 == "cancel"
     SetErrorLevel 1223

@@ -21,7 +21,7 @@ class NativeLibrary:
 
 
 def library(system: str, arch: str) -> NativeLibrary:
-    if (system, arch) not in (("darwin", "arm64"), ("windows", "amd64")):
+    if (system, arch) not in (("darwin", "arm64"), ("windows", "amd64"), ("windows", "arm64")):
         raise ValueError(f"unsupported Solaris native target: {system}/{arch}")
     module = MODULE + f"{system}_{arch}"
 

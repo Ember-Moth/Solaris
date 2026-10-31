@@ -9,7 +9,6 @@ from __future__ import annotations
 import http.client
 import ipaddress
 import json
-import platform
 import re
 import sys
 import urllib.error
@@ -20,6 +19,7 @@ from typing import IO, Any
 from urllib.parse import urlsplit
 
 from solaris import __version__
+from solaris.platforms import native_machine, normalize_machine
 from solaris.product import DISPLAY_NAME, PRODUCT_ID
 
 REPOSITORY = "Ember-Moth/Solaris"
@@ -67,14 +67,14 @@ def is_newer(version: str, than: str) -> bool:
 
 
 def installer_name(
-    version: str, system: str = sys.platform, machine: str = platform.machine()
+    version: str, system: str = sys.platform, machine: str | None = None
 ) -> str | None:
     """The asset this machine installs, or None where no installer is built (D2)."""
-    machine = machine.lower()
+    machine = native_machine(system) if machine is None else normalize_machine(machine)
     if system == "darwin" and machine == "arm64":
         return f"{DISPLAY_NAME}-{version}-macos-arm64.dmg"
-    if system == "win32" and machine in ("amd64", "x86_64"):
-        return f"{DISPLAY_NAME}-{version}-windows-x64-setup.exe"
+    if system == "win32" and machine in ("x64", "arm64"):
+        return f"{DISPLAY_NAME}-{version}-windows-{machine}-setup.exe"
     return None
 
 

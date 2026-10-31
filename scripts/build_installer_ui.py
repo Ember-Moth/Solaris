@@ -135,7 +135,7 @@ def build(output: Path) -> Path:
     if not compiler:
         raise RuntimeError("MSVC x86 compiler could not be located")
     dll = output / "SolarisSetupUI.dll"
-    # NSIS's Unicode engine is x86 even when the installed application is x64.
+    # NSIS's Unicode engine is x86 for both x64 and ARM64 application packages.
     command = [
         compiler,
         "/nologo",
@@ -184,6 +184,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument(
+        "--arch",
+        choices=("x64", "arm64"),
+        default="x64",
+        help="application architecture shown by the preview",
+    )
+    parser.add_argument(
         "--preview", action="store_true", help="also build the read-only UI test harness"
     )
     arguments = parser.parse_args()
@@ -199,16 +205,19 @@ def main() -> None:
     plugin = build(arguments.output.resolve())
     print(plugin, flush=True)
     if arguments.preview:
-        print(build_preview(plugin, Path(makensis)), flush=True)
+        print(build_preview(plugin, Path(makensis), arguments.arch), flush=True)
 
 
-def build_preview(plugin: Path, makensis: Path) -> Path:
+def build_preview(plugin: Path, makensis: Path, arch: str = "x64") -> Path:
+    if arch not in ("x64", "arm64"):
+        raise ValueError(f"unsupported preview architecture: {arch}")
     version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"][
         "version"
     ]
     executable = plugin.parent / "Solaris-setup-preview.exe"
     defines = {
         "APP_VERSION": version,
+        "APP_ARCH": arch,
         "OUTPUT_FILE": executable,
         "APP_ICON": ROOT / "package/icons/solaris.ico",
         "INSTALLER_UI_DIR": plugin.parent,

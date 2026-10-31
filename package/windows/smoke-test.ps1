@@ -21,10 +21,12 @@ if ($env:GITHUB_ACTIONS -ne 'true') {
 }
 
 $Installer = (Resolve-Path -LiteralPath $Installer).Path
-if ((Split-Path $Installer -Leaf) -notmatch '^Solaris-(\d+\.\d+\.\d+)-windows-x64-setup\.exe$') {
+if ((Split-Path $Installer -Leaf) -notmatch '^Solaris-(\d+\.\d+\.\d+)-windows-(x64|arm64)-setup\.exe$') {
     throw "Not an installer as docs/release.md names it: $Installer"
 }
 $Version = $Matches[1]
+$Architecture = $Matches[2]
+$Machine = if ($Architecture -eq 'arm64') { 0xAA64 } else { 0x8664 }
 $Root = Join-Path $env:SystemDrive 'Solaris CI Custom'
 $Client = Join-Path $Root 'Solaris.exe'
 $ServiceExecutable = Join-Path $Root 'solaris-service.exe'
@@ -125,6 +127,17 @@ function Get-SolarisService {
     Get-CimInstance Win32_Service -Filter "Name='$ServiceName'"
 }
 
+function Get-PEMachine([string] $Path) {
+    $reader = [IO.BinaryReader]::new([IO.File]::OpenRead($Path))
+    try {
+        $reader.BaseStream.Position = 0x3c
+        $offset = $reader.ReadInt32()
+        $reader.BaseStream.Position = $offset
+        if ($reader.ReadUInt32() -ne 0x4550) { throw "Invalid PE file: $Path" }
+        return $reader.ReadUInt16()
+    } finally { $reader.Dispose() }
+}
+
 # Where shortcuts named Solaris*.lnk are, in every Start menu: tells a misplaced shortcut from
 # a missing one.
 function Find-Shortcuts {
@@ -138,6 +151,9 @@ function Find-Shortcuts {
 }
 
 function Assert-Installed {
+    foreach ($binary in @($Client, $ServiceExecutable, (Join-Path $Root 'libcronet.dll'))) {
+        Expect ((Get-PEMachine $binary) -eq $Machine) "Wrong architecture in $binary; expected $Architecture"
+    }
     foreach ($image in @('Solaris.exe', 'solaris-service.exe')) {
         $dump = Get-ItemProperty -LiteralPath (Join-Path $DumpRoot $image)
         Expect ($dump.DumpType -eq 1 -and $dump.DumpCount -eq 5) "Unexpected WER policy for $image"
@@ -176,6 +192,7 @@ function Assert-Installed {
     }
 
     $entry = Get-ItemProperty -LiteralPath $UninstallKey
+    Expect ($entry.InstallArchitecture -eq $Architecture) "The uninstall entry has the wrong architecture: $($entry.InstallArchitecture)"
     Expect ($entry.DisplayVersion -eq $Version -and $entry.InstallLocation -eq $Root) "The uninstall entry says $($entry.DisplayVersion) in $($entry.InstallLocation)"
     foreach ($scheme in 'solaris', 'clash') {
         $key = "HKLM:\Software\Classes\$scheme"

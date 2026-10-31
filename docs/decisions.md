@@ -12,7 +12,7 @@
 | # | 决定 | 详见 |
 | --- | --- | --- |
 | D1 | 产品名与应用名都是 Solaris。GitHub 仓库为 `Ember-Moth/Solaris`，macOS bundle id 前缀 `dev.tschen.solaris`；产品标识集中在 `src/core/internal/product/product.go` 与 `src/solaris/product.py` | [architecture.md](architecture.md) |
-| D2 | Windows 只做 x64，macOS 只做 arm64 | [architecture.md](architecture.md) §6.1、[release.md](release.md) §1 |
+| D2 | macOS 提供 arm64；Windows 提供 x64，并按 D40 扩展到 ARM64 | [architecture.md](architecture.md) §6.1、[release.md](release.md) §1 |
 | D3 | Windows 服务带 `with_gvisor` 构建，四种 TUN 栈都提供，由用户在设置里选择；macOS 系统扩展同样带 `with_gvisor`，fd 模式默认 gVisor 栈 | [architecture.md](architecture.md) §3.4 |
 | D4 | 覆写只做 Merge，不做 Script；一份全局覆写，加上每份订阅各一份 | [ui.md](ui.md) §4、[architecture.md](architecture.md) §3.2 |
 | D5 | 属主注销时停止隧道，下次登录后恢复 | [architecture.md](architecture.md) §5.4 |
@@ -51,3 +51,4 @@
 | D37 | 崩溃记录仅本地保存，Python 未处理异常与致命堆栈、Go 运行时输出、Windows 按进程配置的小型转储各有来源。普通诊断仅含概况，原始内容单独确认导出。保持用户和权限边界，不为日志连接 VPN 或提权；受保护的系统扩展及服务原生报告由管理员提取。保留匹配构建符号，日志与导出均有数量、时间及空间限制 | [PRIVACY.md](../PRIVACY.md)、[release.md](release.md) §4 |
 | D38 | mihomo 通过 replace 固定到 Ember-Moth/mihomo 的 Meta 提交 56c6fc1d5c27，保留上游导入路径；发布构建启用 Naive，Windows 携带并限定加载同版 Cronet DLL，macOS 静态合并同版 Cronet。AnyTLS+REALITY、REALITY 握手版本及 Snell v4–v6 行为采用该 fork；升级时同步原生模块、版本标识与许可证清单并运行协议回归 | [architecture.md](architecture.md) §3.4 |
 | D39 | Windows 安装器使用自定义 Win32 UI，沿用 Solaris 设计规范；NSIS 保留为安装事务引擎。首次安装可选经权限检查的本地目录，升级沿用已有位置；交互安装/升级需主动同意随包 GPLv3 原文。保留 `/S`、`/PURGE`、`/UPGRADE` 和普通权限启动应用的行为。卸载默认取消且默认保留数据，执行事务期间禁止中途关闭 | [architecture.md](architecture.md) §9、[DESIGN.md](../DESIGN.md) |
+| D40 | Windows 11 ARM64 使用原生 ARM64 GUI、Go 服务、Cronet 与 Wintun；NSIS 引导程序及其 UI 插件仍是 x86。构建按架构隔离并检查 PE，更新按原生 OS 架构选择安装包，x64 到 ARM64 原位升级保留数据；CI 在原生 ARM runner 检查安装与迁移 | [architecture.md](architecture.md) §10、[release.md](release.md) §1 |

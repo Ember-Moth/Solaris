@@ -6,7 +6,8 @@
 
 | 系统 | 文件 |
 | --- | --- |
-| Windows 10 / 11，64 位 | `Solaris-{{version}}-windows-x64-setup.exe` |
+| Windows 10 / 11，x64 | `Solaris-{{version}}-windows-x64-setup.exe` |
+| Windows 11，ARM64 | `Solaris-{{version}}-windows-arm64-setup.exe` |
 | macOS 26 及以上，Apple 芯片 | `Solaris-{{version}}-macos-arm64.dmg` |
 
 `SHA256SUMS` 是本页每个文件的 SHA-256。已安装的 Solaris 在设置页的"关于"里检查更新，下载后核对校验和再打开安装包。

@@ -31,7 +31,7 @@ Function .onInit
     StrCpy $LANGUAGE ${LANG_SIMPCHINESE}
   ${EndIf}
   !insertmacro UiAssets
-  SolarisSetupUI::Begin "preview:$Mode" "$LANGUAGE" "${APP_VERSION}" "$INSTDIR" "$PLUGINSDIR" "$Theme"
+  SolarisSetupUI::Begin "preview:$Mode" "$LANGUAGE" "${APP_VERSION}" "$INSTDIR" "$PLUGINSDIR" "$Theme" "${APP_ARCH}"
   Pop $Decision
   ${If} $Decision == "cancel"
     SetErrorLevel 1223

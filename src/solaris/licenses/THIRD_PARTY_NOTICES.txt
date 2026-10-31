@@ -142,6 +142,7 @@ github.com/sagernet/cronet-go v0.0.0-20261023060337-b3c2ed82ac97 -- GPL-3.0-or-l
 github.com/sagernet/cronet-go/all v0.0.0-20261023060337-b3c2ed82ac97 -- GPL-3.0-or-later -- https://github.com/sagernet/cronet-go [59]
 github.com/sagernet/cronet-go/lib/darwin_arm64 v0.0.0-20261023055542-d5437a0df01a -- GPL-3.0-or-later -- https://github.com/sagernet/cronet-go [59]
 github.com/sagernet/cronet-go/lib/windows_amd64 v0.0.0-20261023055542-d5437a0df01a -- GPL-3.0-or-later -- https://github.com/sagernet/cronet-go [59]
+github.com/sagernet/cronet-go/lib/windows_arm64 v0.0.0-20261023055542-d5437a0df01a -- GPL-3.0-or-later -- https://github.com/sagernet/cronet-go [59]
 github.com/sagernet/sing v0.8.12-0.20260727003324-d096a164bc7f -- GPL-3.0-or-later -- https://github.com/sagernet/sing [59]
 github.com/sagernet/sing-snell v0.0.0-20260904135315-bc5a12ac736f -- GPL-3.0-or-later -- https://github.com/sagernet/sing-snell [59]
 github.com/samber/lo v1.53.0 -- MIT -- https://github.com/samber/lo [87]
@@ -5020,7 +5021,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [59] used by: github.com/metacubex/fswatch v0.1.1, github.com/metacubex/sing v0.5.8, github.com/metacubex/sing-mux v0.3.12, github.com/metacubex/sing-quic v0.0.0-20260904234848-1c242664697a, github.com/metacubex/sing-shadowsocks v0.2.13, github.com/metacubex/sing-shadowsocks2 v0.2.8, github.com/metacubex/sing-tun v0.4.28, github.com/metacubex/sing-vmess v0.2.5, github.com/sagernet/cronet-go v0.0.0-20261023060337-b3c2ed82ac97, github.com/sagernet/cronet-go/all v0.0.0-20261023060337-b3c2ed82ac97, github.com/sagernet/cronet-go/lib/darwin_arm64 v0.0.0-20261023055542-d5437a0df01a, github.com/sagernet/cronet-go/lib/windows_amd64 v0.0.0-20261023055542-d5437a0df01a, github.com/sagernet/sing v0.8.12-0.20260727003324-d096a164bc7f, github.com/sagernet/sing-snell v0.0.0-20260904135315-bc5a12ac736f
+---- [59] used by: github.com/metacubex/fswatch v0.1.1, github.com/metacubex/sing v0.5.8, github.com/metacubex/sing-mux v0.3.12, github.com/metacubex/sing-quic v0.0.0-20260904234848-1c242664697a, github.com/metacubex/sing-shadowsocks v0.2.13, github.com/metacubex/sing-shadowsocks2 v0.2.8, github.com/metacubex/sing-tun v0.4.28, github.com/metacubex/sing-vmess v0.2.5, github.com/sagernet/cronet-go v0.0.0-20261023060337-b3c2ed82ac97, github.com/sagernet/cronet-go/all v0.0.0-20261023060337-b3c2ed82ac97, github.com/sagernet/cronet-go/lib/darwin_arm64 v0.0.0-20261023055542-d5437a0df01a, github.com/sagernet/cronet-go/lib/windows_amd64 v0.0.0-20261023055542-d5437a0df01a, github.com/sagernet/cronet-go/lib/windows_arm64 v0.0.0-20261023055542-d5437a0df01a, github.com/sagernet/sing v0.8.12-0.20260727003324-d096a164bc7f, github.com/sagernet/sing-snell v0.0.0-20260904135315-bc5a12ac736f
 
 Copyright (C) 2022 by nekohasekai <contact-sagernet@sekai.icu>
 

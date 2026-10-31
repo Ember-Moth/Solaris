@@ -4,7 +4,7 @@ name: Release
 # notarized and stapled, in a notarized disk image with its SHA-256. And the Windows installer
 # from scripts/build_windows.py with its SHA-256, unsigned (D29). Runs for v* tags and
 # by hand, in the release environment: its reviewers approve each run before the jobs get the
-# signing secrets and the Google OAuth client. For a tag, a last job puts both installers,
+# signing secrets and the Google OAuth client. For a tag, a last job puts all three installers,
 # SHA256SUMS and the source archive into a draft GitHub Release (docs/release.md §1), which a
 # person publishes.
 on:
@@ -240,10 +240,24 @@ jobs:
           rm -rf "$signing"
 
   windows:
-    name: Windows x64 (unsigned, D29)
-    runs-on: windows-latest
+    name: Windows ${{ matrix.arch }} (unsigned, D29)
+    runs-on: ${{ matrix.os }}
     environment: release
-    timeout-minutes: 90
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            arch: x64
+            python_arch: x86_64
+            build: build/windows
+          - os: windows-11-arm
+            arch: arm64
+            python_arch: aarch64
+            build: build/windows-arm64
+    env:
+      UV_PYTHON_ARCH: ${{ matrix.python_arch }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -272,7 +286,7 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "installer=Solaris-$version-windows-x64-setup.exe" >> "$GITHUB_OUTPUT"
+          echo "installer=Solaris-$version-windows-${{ matrix.arch }}-setup.exe" >> "$GITHUB_OUTPUT"
 
       - name: Google OAuth client
         shell: bash
@@ -288,7 +302,7 @@ jobs:
         env:
           SOLARIS_GOOGLE_CLIENT_ID: ${{ secrets.SOLARIS_GOOGLE_CLIENT_ID }}
           SOLARIS_GOOGLE_CLIENT_SECRET: ${{ secrets.SOLARIS_GOOGLE_CLIENT_SECRET }}
-        run: uv run --frozen --with nuitka==4.2.2 python scripts/build_windows.py --skip-installer
+        run: uv run --frozen --with nuitka==4.2.2 python scripts/build_windows.py --arch ${{ matrix.arch }} --skip-installer
 
       # Releases are unsigned (D29), and this step marks where signing goes: it would sign
       # Solaris.exe, solaris-service.exe and the other executables, DLLs and .pyd files in
@@ -301,21 +315,22 @@ jobs:
         run: echo "::warning::Windows releases are unsigned (D29); so is this installer."
 
       - name: Installer
-        run: uv run --frozen python scripts/build_windows.py --installer-only
+        run: uv run --frozen python scripts/build_windows.py --arch ${{ matrix.arch }} --installer-only
 
       - name: Install, upgrade and uninstall
         shell: powershell
         env:
-          INSTALLER: build/windows/${{ steps.version.outputs.installer }}
+          INSTALLER: ${{ matrix.build }}/${{ steps.version.outputs.installer }}
         run: ./package/windows/smoke-test.ps1 -Installer $env:INSTALLER
 
       - name: Checksum
         shell: bash
         env:
           INSTALLER: ${{ steps.version.outputs.installer }}
+          BUILD_DIR: ${{ matrix.build }}
         run: |
           mkdir -p build/release
-          cp "build/windows/$INSTALLER" build/release/
+          cp "$BUILD_DIR/$INSTALLER" build/release/
           cd build/release
           sha256sum "$INSTALLER" > "$INSTALLER.sha256"
           cat "$INSTALLER.sha256"
@@ -323,7 +338,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: solaris-${{ steps.version.outputs.version }}-windows-x64
+          name: solaris-${{ steps.version.outputs.version }}-windows-${{ matrix.arch }}
           path: build/release/
           if-no-files-found: error
           compression-level: 0
@@ -332,14 +347,16 @@ jobs:
       - name: Retain Windows crash symbols
         uses: actions/upload-artifact@v7
         with:
-          name: solaris-${{ steps.version.outputs.version }}-windows-symbols-${{ github.sha }}
-          path: build/windows/symbols/
+          name: solaris-${{ steps.version.outputs.version }}-windows-${{ matrix.arch }}-symbols-${{ github.sha }}
+          path: |
+            ${{ matrix.build }}/symbols/
+            ${{ matrix.build }}/nsis/ui/*.pdb
           if-no-files-found: error
           retention-days: 90
 
   # The GitHub Release of a v* tag, with exactly the assets of docs/release.md §1. It stays a
   # draft: the updater asks GitHub for the latest published release, which skips drafts, so
-  # nothing reaches installed copies until a person has downloaded both installers from the
+  # nothing reaches installed copies until a person has downloaded the installers from the
   # draft, tried them and written the notes, then publishes it. In the release environment
   # like the builds, so that only its reviewers' runs write to the repository's releases.
   release:
@@ -377,6 +394,7 @@ jobs:
             echo "version=$version"
             echo "dmg=Solaris-$version-macos-arm64.dmg"
             echo "installer=Solaris-$version-windows-x64-setup.exe"
+            echo "installer_arm64=Solaris-$version-windows-arm64-setup.exe"
             echo "source=Solaris-$version-source"
           } >> "$GITHUB_OUTPUT"
 
@@ -388,17 +406,22 @@ jobs:
         with:
           name: solaris-${{ steps.version.outputs.version }}-windows-x64
           path: build/artifacts
+      - uses: actions/download-artifact@v8
+        with:
+          name: solaris-${{ steps.version.outputs.version }}-windows-arm64
+          path: build/artifacts
 
       # The build jobs' own sums first: the artifacts arrived as they were built.
       - name: Installers
         env:
           DMG: ${{ steps.version.outputs.dmg }}
           INSTALLER: ${{ steps.version.outputs.installer }}
+          INSTALLER_ARM64: ${{ steps.version.outputs.installer_arm64 }}
         run: |
           cd build/artifacts
-          sha256sum --check --strict "$DMG.sha256" "$INSTALLER.sha256"
+          sha256sum --check --strict "$DMG.sha256" "$INSTALLER.sha256" "$INSTALLER_ARM64.sha256"
           mkdir -p ../release
-          mv "$DMG" "$INSTALLER" ../release/
+          mv "$DMG" "$INSTALLER" "$INSTALLER_ARM64" ../release/
 
       # The tagged tree and every Go module the service and the extension link, so that
       # the archive builds without the network (GPL-3.0's corresponding source). Ordered,
@@ -412,8 +435,10 @@ jobs:
           mkdir -p "$staging"
           git archive --format=tar --prefix="$SOURCE/" HEAD | tar -x -C "$staging"
           go -C "$staging/$SOURCE/src/core" mod vendor
-          GOOS=windows GOARCH=amd64 GOFLAGS=-mod=vendor GOPROXY=off \
-            go -C "$staging/$SOURCE/src/core" build -tags with_gvisor,with_naive,with_purego -o /dev/null ./service
+          for arch in amd64 arm64; do
+            GOOS=windows GOARCH="$arch" GOFLAGS=-mod=vendor GOPROXY=off \
+              go -C "$staging/$SOURCE/src/core" build -tags with_gvisor,with_naive,with_purego -o /dev/null ./service
+          done
           tar --sort=name --mtime="$(git log -1 --format=%cI)" --owner=0 --group=0 \
             --numeric-owner --pax-option=exthdr.name=%d/PaxHeaders/%f,delete=atime,delete=ctime \
             -C "$staging" -cf - "$SOURCE" | gzip -9n > "build/release/$SOURCE.tar.gz"
@@ -422,10 +447,11 @@ jobs:
         env:
           DMG: ${{ steps.version.outputs.dmg }}
           INSTALLER: ${{ steps.version.outputs.installer }}
+          INSTALLER_ARM64: ${{ steps.version.outputs.installer_arm64 }}
           SOURCE: ${{ steps.version.outputs.source }}
         run: |
           cd build/release
-          sha256sum "$DMG" "$INSTALLER" "$SOURCE.tar.gz" > SHA256SUMS
+          sha256sum "$DMG" "$INSTALLER" "$INSTALLER_ARM64" "$SOURCE.tar.gz" > SHA256SUMS
           cat SHA256SUMS
           ls -l
 
@@ -437,6 +463,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
           DMG: ${{ steps.version.outputs.dmg }}
           INSTALLER: ${{ steps.version.outputs.installer }}
+          INSTALLER_ARM64: ${{ steps.version.outputs.installer_arm64 }}
           SOURCE: ${{ steps.version.outputs.source }}
         run: |
           sed "s/{{version}}/$VERSION/g" .github/release-notes.md > "$RUNNER_TEMP/notes.md"
@@ -446,5 +473,5 @@ jobs:
           fi
           gh release create "$GITHUB_REF_NAME" --draft --verify-tag \
             --title "Solaris $VERSION" --notes-file "$RUNNER_TEMP/notes.md" \
-            "build/release/$DMG" "build/release/$INSTALLER" \
+            "build/release/$DMG" "build/release/$INSTALLER" "build/release/$INSTALLER_ARM64" \
             build/release/SHA256SUMS "build/release/$SOURCE.tar.gz"

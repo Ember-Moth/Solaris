@@ -21,12 +21,13 @@ Naive 原生加载与配置拼装；不带 `with_naive` 的普通 Go 开发构�
 
 | job | 平台 | 内容 |
 | --- | --- | --- |
-| `python` | macOS、Windows | ruff、pyright、pytest（离屏）；macOS 上还核对生成的协议、主题和翻译是最新的 |
+| `python` | macOS、Windows x64 / ARM64 | ruff、pyright、pytest（离屏）；macOS 上还核对生成的协议、主题和翻译是最新的 |
 | `e2e` | macOS | 界面连真实的开发服务（`tests/e2e`）：导入、连接、各页数据、分流与方案、重载不断开连接；节点是本机起的代理，只走回环地址 |
-| `go` | macOS、Windows、Linux | `go vet`、`go test`，再以 `-race` 跑一遍；Linux 上以 `with_gvisor` 带 `-race` 再跑安全项和组网测试，交叉编译 Windows 服务；macOS 上编扩展用的 C archive |
+| `go` | macOS、Windows x64 / ARM64、Linux | `go vet`、`go test`，再在支持的架构以 `-race` 跑一遍（Go 1.27 不支持 Windows ARM64 race）；Linux 上以 `with_gvisor` 带 `-race` 再跑安全项和组网测试，交叉编译 Windows 服务；macOS 上编扩展用的 C archive |
 | `apple` | macOS | 管理库和系统扩展的不签名构建，再用检查用的 app 做一次发布用的磁盘映像（`scripts/build_dmg.py`） |
-| `windows-installer` | Windows | 构建不签名的安装包，在 runner 上安装、打开界面、升级、卸载（`package/windows/smoke-test.ps1`） |
-| `installer-ui` | Windows | 检查自定义路径的 ACL、所有者及链接拒绝；编译真实 Win32 界面，在只读宿主中验证 GPL 全文与同意项、路径输入、中英文、浅深色、键盘默认动作、数据选项、进度、成功/失败和 DPI 布局；保存窗口截图 artifact |
+| `windows-installer` | Windows x64 / ARM64 | 构建不签名的安装包，在 runner 上安装、打开界面、升级、卸载（`package/windows/smoke-test.ps1`） |
+| `installer-ui` | Windows x64 / ARM64 | 检查自定义路径的 ACL、所有者及链接拒绝；编译真实 Win32 界面，在只读宿主中验证 GPL 全文与同意项、路径输入、中英文、浅深色、键盘默认动作、数据选项、进度、成功/失败和 DPI 布局；保存窗口截图 artifact |
+| `windows-arm64-upgrade` | Windows ARM64 | 安装 x64 版后原位升级 ARM64，检查服务、GUI、同架构文件、数据保留及卸载 |
 | `tun` | Linux | 在网络命名空间里建真实的 TUN：自管模式和 fd 模式，四种栈，fd 模式另测 `includeAllNetworks` |
 
 Windows 上的客户端校验（命名管道、文件 ID、锁住映像、服务的可执行文件只在有管理员权限时通过）、管理员权限的判断、
@@ -35,6 +36,8 @@ home 目录的 ACL 和 WinINet 代理设置的读写在 `go` job 的 Windows run
 接管、注销停止、登录恢复、系统代理的开启与还原）用替身平台在所有平台上测。
 
 ### 1.2 Windows：没在真机上运行过的
+
+Windows 11 ARM64 的原生构建、安装和 x64 原位迁移由 ARM runner 验证；真实 ARM 设备的 TUN/驱动、电源和多用户专项验收仍按本节进行。
 
 安装器界面由 `installer-ui` 自动化生成原生窗口截图，并由 `windows-installer` 执行一次交互式真实安装。
 多显示器切换、实际显示缩放和 Narrator 的完整阅读体验仍需实机验证；CI 的 DPI 探针验证的是布局处理路径。
@@ -92,7 +95,7 @@ home 目录的 ACL 和 WinINet 代理设置的读写在 `go` job 的 Windows run
 
 | 环境 | 用于 |
 | --- | --- |
-| 一台全新的 Windows 10 / 11 x64 虚拟机 | 2.1、2.4 |
+| 全新的 Windows 10 / 11 x64 和 Windows 11 ARM64 测试机 | 2.1、2.4 |
 | 一台单独的 Apple Silicon 测试 Mac 或 macOS 虚拟机，装 macOS 26 | 2.2、2.3、2.4 |
 | 一个测试用的 Apple 账户 | 2.3 |
 | 一个测试用的 Google 账户，以及 Google Cloud 里的项目和 OAuth 客户端 | 2.8 |
@@ -337,19 +340,19 @@ exits.md 第 9 节的待实测项。
 1. **改版本**：`pyproject.toml` 的 `version`，三段数字（`X.Y.Z`）。`uv lock` 更新锁文件里的版本；macOS 构建的版本
    号由 `scripts/build_apple.py` 从 `pyproject.toml` 读取。合并到 main，CI 全绿。
 2. **试运行**：在 Actions 里手动运行 Release 工作流（`workflow_dispatch`，选 main）。它在 `release` Environment
-   里，审批后构建、签名、公证两个安装包，存为 workflow artifact，不建 Release。下载 artifact，在测试 Mac 和
+   里，审批后构建三个安装包（Windows x64 / ARM64，macOS 签名与公证），存为 workflow artifact，不建 Release。下载 artifact，在测试 Mac 和
    Windows 虚拟机上装一遍；macOS 的磁盘映像打开后应与 `package/dmg/preview.png` 一致。Environment 里没有
-   Google OAuth 客户端的两个机密（2.8 节）时，两个构建 job 各给一条警告，安装包里没有 Google Drive 备份。
+   Google OAuth 客户端的两个机密（2.8 节）时，各构建任务分别给出警告，安装包里没有 Google Drive 备份。
 3. **打标签**：`v<版本>`，必须与 `pyproject.toml` 的版本一致。
 
    ```bash
    git tag v1.0.0 && git push origin v1.0.0
    ```
 
-   标签触发同一个工作流：先批准两个构建 job，它们成功后再批准 release job。release job 核对安装包，打出源代码包，
-   写 `SHA256SUMS`，把这四个文件放进一个**草稿** Release。同一个标签已有 Release 时这一步失败，要先删掉旧的草稿
+   标签触发同一个工作流：先批准 macOS 和两个 Windows 架构的构建任务，它们成功后再批准 release job。release job 核对安装包，打出源代码包，
+   写 `SHA256SUMS`，把这五个文件放进一个**草稿** Release。同一个标签已有 Release 时这一步失败，要先删掉旧的草稿
    再重新运行。
-4. **草稿**：从草稿下载两个安装包，在测试机上再装一遍；在"更新内容"下写这个版本的变化，删掉模板里的注释行。
+4. **草稿**：从草稿下载三个安装包，在测试机上再装一遍；在"更新内容"下写这个版本的变化，删掉模板里的注释行。
 5. **发布**，二选一：
    - **正式发布**，保留"Set as the latest release"：已安装的 Solaris 检查更新时会提示这个版本；
    - **预发布**，勾"Set as a pre-release"：检查更新不会提示它（界面只看 `releases/latest`，它跳过草稿和预发布），

@@ -1198,6 +1198,16 @@
       ]
     },
     {
+      "name": "github.com/sagernet/cronet-go/lib/windows_arm64",
+      "version": "v0.0.0-20261023055542-d5437a0df01a",
+      "license": "GPL-3.0-or-later",
+      "kind": "go",
+      "url": "https://github.com/sagernet/cronet-go",
+      "notices": [
+        59
+      ]
+    },
+    {
       "name": "github.com/sagernet/sing",
       "version": "v0.8.12-0.20260727003324-d096a164bc7f",
       "license": "GPL-3.0-or-later",
