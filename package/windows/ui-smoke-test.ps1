@@ -10,12 +10,7 @@ $ErrorActionPreference = 'Stop'
 $Preview = (Resolve-Path -LiteralPath $Preview).Path
 $null = New-Item -ItemType Directory -Path $Output -Force
 $Output = (Resolve-Path -LiteralPath $Output).Path
-Add-Type -AssemblyName UIAutomationClient
-Add-Type -AssemblyName UIAutomationTypes
-# PowerShell does not load WPF's standard Win32 proxies automatically on every
-# runner. Without them, native buttons appear as generic panes with no patterns.
-Add-Type -AssemblyName UIAutomationClientsideProviders
-[System.Windows.Automation.ClientSettings]::RegisterClientSideProviders([UIAutomationClientsideProviders.UIAutomationClientSideProviders]::ClientSideProviderDescriptionTable)
+. "$PSScriptRoot/automation.ps1"
 Add-Type -AssemblyName System.Drawing
 Add-Type -TypeDefinition @'
 using System;

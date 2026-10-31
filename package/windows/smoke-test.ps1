@@ -69,10 +69,7 @@ function Invoke-Setup([string] $Path, [string] $Arguments) {
 # The first install exercises the real custom UI -> NSIS engine bridge. The later
 # upgrade/uninstall cases continue to exercise /S. Only run on this disposable runner.
 function Invoke-InteractiveSetup([string] $Path) {
-    Add-Type -AssemblyName UIAutomationClient
-    Add-Type -AssemblyName UIAutomationTypes
-    Add-Type -AssemblyName UIAutomationClientsideProviders
-    [System.Windows.Automation.ClientSettings]::RegisterClientSideProviders([UIAutomationClientsideProviders.UIAutomationClientSideProviders]::ClientSideProviderDescriptionTable)
+    . "$PSScriptRoot/automation.ps1"
     $process = Start-Process -FilePath $Path -PassThru
     $null = $process.Handle
     try {
