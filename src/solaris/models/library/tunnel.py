@@ -51,6 +51,21 @@ class Tunnel:
     def __init__(self, core: LibraryCore) -> None:
         self._core = core
 
+    async def deactivate_extension(self) -> None:
+        """Serialize maintenance with profile changes and connecting; retain all local data."""
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + 90
+        try:
+            async with asyncio.timeout(90), self._core.lock:
+                remaining = deadline - loop.time() - 2
+                if remaining <= 0:
+                    raise TimeoutError("extension maintenance expired in the queue")
+                await self._core.host.deactivate_extension(timeout=min(60, remaining))
+        except TimeoutError as error:
+            raise HostError(
+                "timeout", "extension maintenance did not finish in time", retryable=True
+            ) from error
+
     async def start(self) -> None:
         """Start the routing in use with the settings' run options. Profiles stored while no
         core could read them are read first, with the tunnel up for Start (D27); when that

@@ -17,6 +17,7 @@ ScrollView {
     required property OverviewViewModel overview
     // The 备份与同步 group.
     required property BackupViewModel backup
+    required property SystemExtensionViewModel systemExtension
 
     contentWidth: availableWidth
     clip: true
@@ -706,6 +707,56 @@ ScrollView {
 
                 ColumnLayout {
                     Layout.fillWidth: true
+                    visible: page.systemExtension.available
+                    spacing: Theme.space2
+
+                    SectionLabel {
+                        text: qsTr("系统扩展")
+                    }
+
+                    Group {
+                        Layout.fillWidth: true
+
+                        GroupRow {
+                            divider: false
+                            verticalPadding: Theme.space2
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+
+                                UiText {
+                                    Layout.fillWidth: true
+                                    text: qsTr("网络扩展")
+                                }
+
+                                AccessibleText {
+                                    Layout.fillWidth: true
+                                    text: page.systemExtension.detail
+                                    role: Theme.type.caption
+                                    color: page.systemExtension.state === "failed" ? Theme.danger
+                                        : ["pending", "busy", "connection_busy"].includes(page.systemExtension.state) ? Theme.warning : Theme.textMuted
+                                    wrapMode: Text.Wrap
+                                    Accessible.role: Accessible.StatusBar
+                                }
+                            }
+
+                            AppButton {
+                                id: deactivateExtensionButton
+
+                                text: ["failed", "pending", "busy", "connection_busy"].includes(page.systemExtension.state) ? qsTr("重试…") : qsTr("停用…")
+                                variant: "compact"
+                                enabled: !page.systemExtension.busy && !page.overview.busy && !page.overview.connectionChanging
+                                Accessible.name: qsTr("停用 Solaris 的网络扩展")
+                                Accessible.description: page.systemExtension.detail
+                                onClicked: deactivateExtensionDialog.show(deactivateExtensionButton)
+                            }
+                        }
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
                     spacing: Theme.space2
 
                     SectionLabel {
@@ -1036,5 +1087,15 @@ ScrollView {
         confirmText: qsTr("删除")
         destructive: true
         onAccepted: page.backup.deleteCloudBackups(kind)
+    }
+
+    ConfirmDialog {
+        id: deactivateExtensionDialog
+
+        title: qsTr("停用 Solaris 的网络扩展？")
+        message: qsTr("当前连接会断开，并移除 Solaris 的 VPN 配置。\n订阅、设置和凭据会保留，下次连接时会重新启用扩展。")
+        confirmText: qsTr("停用")
+        destructive: true
+        onAccepted: page.systemExtension.deactivate()
     }
 }

@@ -473,6 +473,12 @@ class LogEntry:
 
 
 class TunnelHost(Protocol):
+    can_manage_extension: bool
+
+    async def deactivate_extension(self, timeout: float = 60.0) -> None:
+        """Deactivate this app's system extension and remove its VPN preferences, on macOS."""
+        ...
+
     @property
     def core_available(self) -> bool:
         """A core answers now, so the methods that need one work (docs/architecture.md §6.3).

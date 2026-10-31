@@ -28,6 +28,7 @@ from solaris.host.base import (
     EXPORT_SHARE,
     LOG_LEVELS,
     TAKEOVER_SETTINGS,
+    TAKEOVER_TUN,
     TUN_STACKS,
     Composition,
     CompositionReport,
@@ -432,6 +433,8 @@ class SimulatedHost:
         what connecting takes over, as on the platform's host (TunnelHost.takeover); the
         app's development service is ``development`` with TAKEOVER_NONE."""
         self.takeover = takeover
+        self.can_manage_extension = takeover == TAKEOVER_TUN
+        self.deactivations = 0
         self._random = random.Random(seed)
         # Connections and logs draw from their own generator, so traffic stays the same.
         self._churn = random.Random(seed + 1)
@@ -709,6 +712,12 @@ class SimulatedHost:
         self._tunnel_up = False
         self._failed = False
         self._connections.clear()
+
+    async def deactivate_extension(self, timeout: float = 60.0) -> None:
+        if not self.can_manage_extension:
+            raise HostError("unsupported_method", "this host has no system extension")
+        self.deactivations += 1
+        await self.stop()
 
     async def set_mode(self, mode: str) -> None:
         if mode not in ("rule", "global", "direct"):

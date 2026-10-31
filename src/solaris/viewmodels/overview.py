@@ -80,6 +80,7 @@ class OverviewViewModel(QObject):
         # An action stays busy after it is done until a refresh shows what it did, so the
         # controls do not go back to the state before it for a moment.
         self._busy = False
+        self._maintenance_busy = False
         self._settling = False  # the action is done; the next refresh ends it
         self._acted = 0  # actions done so far, so a refresh knows which one it settles
         self._refresh_again = False  # a refresh was asked for while one was on its way
@@ -334,7 +335,10 @@ class OverviewViewModel(QObject):
 
     def _can_toggle_connection(self) -> bool:
         return (
-            not self._busy and not self._other_user and (not self._changing() or self._recovering())
+            not self._busy
+            and not self._maintenance_busy
+            and not self._other_user
+            and (not self._changing() or self._recovering())
         )
 
     @Property(bool, notify=changed)
@@ -351,7 +355,21 @@ class OverviewViewModel(QObject):
 
     @Property(bool, notify=changed)
     def busy(self) -> bool:
-        return self._busy
+        return self._busy or self._maintenance_busy
+
+    @Slot(bool)
+    def setMaintenanceBusy(self, busy: bool) -> None:
+        if busy != self._maintenance_busy:
+            self._maintenance_busy = busy
+            self._pending = "stop"
+            self._extension_setup = self._connection_error = ""
+            if not busy:
+                # A status read started before deactivation may still be in flight.
+                # Settle against a fresh read, just like the ordinary connection switch.
+                self._acted += 1
+                self._settling = self._busy = True
+                self.refreshGroups()
+            self.changed.emit()
 
     @Property(bool, notify=changed)
     def ownedByOtherUser(self) -> bool:

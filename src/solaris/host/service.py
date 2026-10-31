@@ -360,6 +360,10 @@ def _connection(c: pb.Connection) -> Connection:
 
 class ServiceHost:
     core_available = True  # the service runs while the tunnel is stopped
+    can_manage_extension = False
+
+    async def deactivate_extension(self, timeout: float = 60.0) -> None:
+        raise HostError("unsupported_method", "this host has no system extension")
 
     def __init__(self, opener: Opener, *, takeover: str = TAKEOVER_SETTINGS) -> None:
         """``takeover`` is TAKEOVER_NONE for the development service."""

@@ -45,6 +45,7 @@ home 目录的 ACL 和 WinINet 代理设置的读写在 `go` job 的 Windows run
 - 扩展找 utun 描述符、四种栈经过 utun 的流量、DNS 劫持、重连时描述符的归属；macOS 的默认栈还没定；
 - `includeAllNetworks`（D19），provider message 的大小上限（D8）；
 - 隧道断开时导入订阅、连接后再读（D27）；
+- 新增停用入口的系统授权、取消、待处理结果、VPN 配置清理，以及停用后重新启用（D35）；
 - iCloud 备份：CloudKit 从没真正运行过，Production 的 schema 也还没部署（2.3 节）。
 
 两个平台都没做过的：真实订阅（e2e 的节点是本机起的代理）、WARP 与 VPN Gate 出口和组网（只对假服务器、构造的出站和
@@ -56,7 +57,7 @@ home 目录的 ACL 和 WinINet 代理设置的读写在 `go` job 的 Windows run
 - Tor 出口（D23，[exits.md](exits.md) 第 4 节）：只有设计；
 - Windows 代码签名（D29）：签名方案定下后接上 `product.WindowsSigner`、`SignedRelease` 和界面的
   `signature.WINDOWS_SIGNER`（[release.md](release.md) 第 3 节）；
-- macOS 卸载前停用系统扩展（`deactivationRequest`），扩展说明文字的本地化；
+- macOS 扩展用途说明的本地化；
 - 崩溃日志。
 
 ## 2. 真机验收

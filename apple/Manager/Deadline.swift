@@ -18,6 +18,12 @@ struct Deadline {
     }
   }
 
+  func remaining(_ action: String) throws -> TimeInterval {
+    let now = DispatchTime.now().uptimeNanoseconds
+    guard now < end.uptimeNanoseconds else { throw ManagerError.timedOut("Timed out trying to \(action)") }
+    return TimeInterval(end.uptimeNanoseconds - now) / 1_000_000_000
+  }
+
   func withLock<T>(_ gate: DispatchSemaphore, _ action: String, _ work: () throws -> T) throws -> T {
     try check(action)
     guard gate.wait(timeout: end) == .success else {

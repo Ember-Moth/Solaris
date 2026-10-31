@@ -37,20 +37,25 @@ final class TunnelController {
       }
       if connection.status == .connected { return }
       let changes = StatusChanges(connection)
-      if [.disconnected, .invalid].contains(connection.status) {
-        try deadline.check("start the tunnel")
-        logger.info("starting the tunnel")
-        // No options: the engine's configuration arrives later as a Start message (D7).
-        try connection.startVPNTunnel()
-      }
-      while connection.status != .connected {
-        // Right after the request the status may still read disconnected; once it has moved,
-        // falling back to disconnected means the extension gave up.
-        if changes.seen && [.disconnected, .invalid].contains(connection.status) {
-          throw ManagerError.failed(try disconnectReason(connection, before: deadline))
+      do {
+        if [.disconnected, .invalid].contains(connection.status) {
+          try deadline.check("start the tunnel")
+          logger.info("starting the tunnel")
+          // No options: the engine's configuration arrives later as a Start message (D7).
+          try connection.startVPNTunnel()
         }
-        try deadline.check("connect the tunnel")
-        changes.next(before: min(deadline.end, .now() + 0.25))
+        while connection.status != .connected {
+          if changes.seen && [.disconnected, .invalid].contains(connection.status) {
+            throw ManagerError.failed(try disconnectReason(connection, before: deadline))
+          }
+          try deadline.check("connect the tunnel")
+          changes.next(before: min(deadline.end, .now() + 0.25))
+        }
+      } catch {
+        // Cancel a late native connect before returning a failure to the UI. Otherwise
+        // it could bring up a TUN later, after nobody remains to send its configuration.
+        if ![.disconnected, .invalid].contains(connection.status) { connection.stopVPNTunnel() }
+        throw error
       }
     }
   }
@@ -66,6 +71,32 @@ final class TunnelController {
         connection.stopVPNTunnel()
       }
       try waitUntilDown(connection, changes, before: deadline)
+    }
+  }
+
+  /// Deactivation is an explicit maintenance action. A pending system request keeps the
+  /// VPN preferences intact for a retry; only confirmed completion removes our entries.
+  func deactivate(timeout: TimeInterval) throws {
+    let deadline = try Deadline(seconds: timeout)
+    try deadline.withLock(lifecycle, "deactivate the system extension") {
+      for manager in try loadOwned(before: deadline) {
+        let connection = manager.connection
+        let changes = StatusChanges(connection)
+        if ![.disconnected, .disconnecting, .invalid].contains(connection.status) {
+          try deadline.check("disconnect before deactivation")
+          connection.stopVPNTunnel()
+        }
+        try waitUntilDown(connection, changes, before: deadline)
+      }
+      try SystemExtensionRequests.shared.deactivate(timeout: deadline.remaining("deactivate the extension"))
+      cacheLock.withLock { cached = nil }
+      // Read again: macOS may have removed some entries itself. Only this provider's
+      // configurations are eligible, regardless of their user-visible names.
+      for manager in try loadOwned(before: deadline) {
+        try deadline.wait("remove the Solaris VPN configuration") { done in
+          manager.removeFromPreferences { done($0.map { .failure($0) } ?? .success(())) }
+        }
+      }
     }
   }
 
@@ -150,6 +181,12 @@ final class TunnelController {
   }
 
   private func load(before deadline: Deadline) throws -> NETunnelProviderManager? {
+    let manager = try loadOwned(before: deadline).first
+    cacheLock.withLock { cached = manager }
+    return manager
+  }
+
+  private func loadOwned(before deadline: Deadline) throws -> [NETunnelProviderManager] {
     let managers: [NETunnelProviderManager] = try deadline.wait(
       "load the VPN configuration"
     ) { done in
@@ -157,12 +194,10 @@ final class TunnelController {
         done(error.map { .failure($0) } ?? .success(managers ?? []))
       }
     }
-    let manager = managers.first {
+    return managers.filter {
       ($0.protocolConfiguration as? NETunnelProviderProtocol)?.providerBundleIdentifier
         == tunnelBundleIdentifier
     }
-    cacheLock.withLock { cached = manager }
-    return manager
   }
 
   private func waitUntilDown(

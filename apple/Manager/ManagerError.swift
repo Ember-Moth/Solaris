@@ -25,7 +25,13 @@ struct ManagerError: Error {
 
   static let needsReboot = ManagerError(
     result: SOLARIS_MANAGER_NEEDS_REBOOT,
-    message: "The Solaris network extension is ready after the Mac restarts")
+    message: "macOS has not completed the system extension request")
+
+  static let busy = ManagerError(
+    result: SOLARIS_MANAGER_BUSY, message: "Another system extension request is still pending")
+
+  static let cancelled = ManagerError(
+    result: SOLARIS_MANAGER_CANCELLED, message: "The system extension request was cancelled")
 
   static func notSignedIn(_ message: String) -> ManagerError {
     ManagerError(result: SOLARIS_MANAGER_NOT_SIGNED_IN, message: message)

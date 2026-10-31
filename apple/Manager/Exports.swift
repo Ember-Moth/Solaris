@@ -2,13 +2,20 @@ import Foundation
 import SolarisManagerHeader
 
 // The C functions declared in SolarisManager.h. Each converts between C and Swift and leaves the
-// work to ExtensionActivation, TunnelController and CloudBackup.
+// work to SystemExtensionRequests, TunnelController and CloudBackup.
 
 @_cdecl("solaris_manager_activate")
 public func solarisManagerActivate(
   _ timeout: Double, _ error: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
 ) -> Int32 {
-  run(error) { try ExtensionActivation.shared.activate(timeout: timeout) }
+  run(error) { try SystemExtensionRequests.shared.activate(timeout: timeout) }
+}
+
+@_cdecl("solaris_manager_deactivate")
+public func solarisManagerDeactivate(
+  _ timeout: Double, _ error: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>?
+) -> Int32 {
+  run(error) { try TunnelController.shared.deactivate(timeout: timeout) }
 }
 
 @_cdecl("solaris_manager_configure")
@@ -180,6 +187,7 @@ private func same<T>(_: T, _: T) {}
 // Never called: it compiles only while each export matches its declaration in SolarisManager.h.
 private func checkHeader() {
   same(solaris_manager_activate, solarisManagerActivate)
+  same(solaris_manager_deactivate, solarisManagerDeactivate)
   same(solaris_manager_configure, solarisManagerConfigure)
   same(solaris_manager_start, solarisManagerStart)
   same(solaris_manager_stop, solarisManagerStop)

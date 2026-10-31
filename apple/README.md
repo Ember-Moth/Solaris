@@ -4,7 +4,7 @@ Xcode 工程由 XcodeGen 从 `project.yml` 生成，包含两个 target（docs/a
 
 | target | 产物 | 职责 |
 | --- | --- | --- |
-| SolarisManager | `SolarisManager.dylib`，C ABI | 激活和替换系统扩展、配置 `NETunnelProviderManager`、启停隧道、查询状态、用 `sendProviderMessage` 收发控制消息；iCloud 备份（CloudKit） |
+| SolarisManager | `SolarisManager.dylib`，C ABI | 激活、替换与停用系统扩展、配置及移除 `NETunnelProviderManager`、启停隧道、查询状态、用 `sendProviderMessage` 收发控制消息；iCloud 备份（CloudKit） |
 | SolarisTunnel | `dev.tschen.solaris.tunnel.systemextension` | `NEPacketTunnelProvider`：设置隧道网络和 DNS、取得 utun fd、运行内核；`handleAppMessage` 把消息交给 Go 分发器 |
 
 只构建 arm64（D2），扩展和管理库的最低系统版本是 macOS 15.0（主应用实际要求的版本见“组装 Solaris.app”）。决策
@@ -20,7 +20,8 @@ apple/
 │   ├── SolarisManager.h             C 接口，见下文
 │   ├── module.modulemap             让 Swift 导入头文件，逐个检查导出函数的签名
 │   ├── Exports.swift                @_cdecl 导出
-│   ├── ExtensionActivation.swift    OSSystemExtensionRequest 的激活与替换
+│   ├── SystemExtensionRequests.swift OSSystemExtensionRequest 的激活、替换与停用
+│   ├── Deadline.swift               共享的单调时钟期限，覆盖排队与回调
 │   ├── TunnelController.swift       VPN 配置、启停、状态、provider message
 │   ├── CloudBackup.swift            iCloud 备份：CloudKit 私有数据库里的快照
 │   └── ManagerError.swift
@@ -235,6 +236,11 @@ mihomo home 在扩展容器的 `Application Support/Solaris/core`，`startTunnel
 - **激活**：系统要用户批准时，`activate` 立即返回 `NEEDS_APPROVAL`，请求继续挂着；之后的调用复用同一个待批准请求，
   仍未允许就立即返回 `NEEDS_APPROVAL`，不再等一分钟。用户允许并完成激活后才能返回 `OK`。替换时总是用包内的扩展，因为只有它和
   这个 app 的控制协议一致。
+- **停用**：`solaris_manager_deactivate` 在同一份期限内停止所有指向 Solaris provider 的 VPN、请求停用扩展，只有系统返回
+  completed（或确认扩展已不存在）后，才重新读取并删除本应用的 VPN 配置。其他 VPN、订阅、设置与凭据不在删除范围内。
+  需要用户处理或系统尚未完成时保留配置，Python 显示待处理状态并允许重试；`BUSY` 表示相反方向的请求仍未完成，
+  `CANCELLED` 表示用户取消。超时请求保持到原回调结束，同方向重试复用它，不重复提交。系统结束请求后允许重新查询，
+  不把未完成结果缓存成永久拒绝。测试用注入的提交器调用 delegate，不向本机提交真实系统请求。
 - **配置**（D7）：`start` 不带内核的配置；连接后，宿主用 `send` 发 `Start` / `Reload`。
 - **包含所有网络**（D19）：`include_all_networks` 是 `bool`。VPN 配置的 `includeAllNetworks` 与它不同时，
   `configure` 和 `start` 重写并保存配置，`excludeLocalNetworks` 随它一起开关，让局域网流量照旧不进隧道。只在隧道

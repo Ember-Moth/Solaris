@@ -769,6 +769,14 @@
         <translation>Operation cancelled</translation>
     </message>
     <message>
+        <source>系统正在处理扩展请求，请稍后重试</source>
+        <translation>macOS is processing an extension request; try again shortly</translation>
+    </message>
+    <message>
+        <source>系统尚未完成停用，请按系统提示操作后重试</source>
+        <translation>macOS hasn’t finished deactivating the extension; follow the system prompts, then retry</translation>
+    </message>
+    <message>
         <source>隧道正由其他用户使用</source>
         <translation>Another user is using the tunnel</translation>
     </message>
@@ -3609,6 +3617,26 @@ prepend-rules:
         <translation>Open at login</translation>
     </message>
     <message>
+        <source>系统扩展</source>
+        <translation>System extension</translation>
+    </message>
+    <message>
+        <source>网络扩展</source>
+        <translation>Network extension</translation>
+    </message>
+    <message>
+        <source>重试…</source>
+        <translation>Retry…</translation>
+    </message>
+    <message>
+        <source>停用…</source>
+        <translation>Deactivate…</translation>
+    </message>
+    <message>
+        <source>停用 Solaris 的网络扩展</source>
+        <translation>Deactivate the Solaris network extension</translation>
+    </message>
+    <message>
         <source>退出登录</source>
         <translation>Sign out</translation>
     </message>
@@ -3619,6 +3647,20 @@ prepend-rules:
     <message>
         <source>%1 中保存的备份会全部删除，无法恢复。本机的数据不受影响。</source>
         <translation>All backups saved in %1 will be deleted. This can’t be undone. Data on this device isn’t affected.</translation>
+    </message>
+    <message>
+        <source>停用 Solaris 的网络扩展？</source>
+        <translation>Deactivate the Solaris network extension?</translation>
+    </message>
+    <message>
+        <source>当前连接会断开，并移除 Solaris 的 VPN 配置。
+订阅、设置和凭据会保留，下次连接时会重新启用扩展。</source>
+        <translation>This disconnects Solaris and removes its VPN configuration.
+Your subscriptions, settings, and credentials are kept; connecting again will reactivate the extension.</translation>
+    </message>
+    <message>
+        <source>停用</source>
+        <translation>Deactivate</translation>
     </message>
     <message>
         <source>打开系统设置</source>
@@ -3848,6 +3890,45 @@ Protocol v{protocol}</translation>
     <message>
         <source>%1，从小到大</source>
         <translation>%1, smallest first</translation>
+    </message>
+</context>
+<context>
+    <name>SystemExtensionViewModel</name>
+    <message>
+        <source>正在停用…</source>
+        <translation>Deactivating…</translation>
+    </message>
+    <message>
+        <source>停用已完成，下次连接时会重新启用</source>
+        <translation>Deactivation completed; connecting again will reactivate the extension</translation>
+    </message>
+    <message>
+        <source>系统尚未完成停用，请按系统提示操作后重试</source>
+        <translation>macOS hasn’t finished deactivating the extension; follow the system prompts, then retry</translation>
+    </message>
+    <message>
+        <source>系统正在处理其他扩展请求，请完成后重试</source>
+        <translation>macOS is processing another extension request; finish it, then retry</translation>
+    </message>
+    <message>
+        <source>停用已取消，连接保持断开</source>
+        <translation>Deactivation cancelled; the tunnel remains disconnected</translation>
+    </message>
+    <message>
+        <source>请等待当前连接操作完成后再停用</source>
+        <translation>Wait for the current connection operation to finish before deactivating</translation>
+    </message>
+    <message>
+        <source>停用超时，请重试</source>
+        <translation>Deactivation timed out; try again</translation>
+    </message>
+    <message>
+        <source>未能停用扩展：{detail}</source>
+        <translation>Couldn’t deactivate the extension: {detail}</translation>
+    </message>
+    <message>
+        <source>卸载应用前可停用扩展，订阅和设置会保留</source>
+        <translation>Deactivate before uninstalling; your subscriptions and settings are kept</translation>
     </message>
 </context>
 <context>

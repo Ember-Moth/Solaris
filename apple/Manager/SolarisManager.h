@@ -10,7 +10,7 @@
 //   releases each with solaris_manager_free.
 // - Threads: calls block until they finish or time out. NetworkExtension completes its work on
 //   the main queue, so call from a background thread while the main thread runs its run loop
-//   (Qt's event loop does); a call on the main thread fails at once. configure, start and stop
+//   (Qt's event loop does); a call on the main thread fails at once. configure, start, stop and deactivate
 //   run one at a time; status and send may run alongside them, and the icloud calls alongside
 //   every call.
 
@@ -36,7 +36,7 @@ enum {
   SOLARIS_MANAGER_NOT_CONNECTED = 4,
   // Activation waits for the user to allow the extension in System Settings.
   SOLARIS_MANAGER_NEEDS_APPROVAL = 5,
-  // Activation completes after the Mac restarts.
+  // The system accepted the request but has not completed it yet.
   SOLARIS_MANAGER_NEEDS_REBOOT = 6,
   // iCloud: the system is not signed in to iCloud, or its account cannot be used right now.
   SOLARIS_MANAGER_NOT_SIGNED_IN = 7,
@@ -46,6 +46,9 @@ enum {
   SOLARIS_MANAGER_QUOTA_EXCEEDED = 9,
   // iCloud: no network, or iCloud does not answer now; a later call may succeed.
   SOLARIS_MANAGER_UNREACHABLE = 10,
+  // An opposing activation/deactivation request is still pending in macOS.
+  SOLARIS_MANAGER_BUSY = 11,
+  SOLARIS_MANAGER_CANCELLED = 12,
 };
 
 // NEVPNStatus of the configuration, plus a value for having none.
@@ -79,6 +82,11 @@ enum {
 // later calls also return NEEDS_APPROVAL at once while approval is pending. Once activation
 // completes, they can return OK. Retrying does not submit a duplicate pending request.
 SolarisManagerResult solaris_manager_activate(double timeout_seconds, char **error);
+
+// Stops every VPN configuration owned by this extension, deactivates it, and only after
+// completion removes those VPN preferences. No subscription, setting or credential is
+// deleted. Already absent is successful; pending approval/completion is not success.
+SolarisManagerResult solaris_manager_deactivate(double timeout_seconds, char **error);
 
 // Creates or repairs the app's VPN configuration (NETunnelProviderManager) and enables it. The
 // first save asks the user to allow adding a VPN configuration. include_all_networks sets the

@@ -33,6 +33,7 @@ from solaris.viewmodels.proxies import ProxiesViewModel
 from solaris.viewmodels.routing import RoutingViewModel
 from solaris.viewmodels.settings import SettingsViewModel
 from solaris.viewmodels.shell import ShellViewModel
+from solaris.viewmodels.system_extension import SystemExtensionViewModel
 
 
 @dataclass
@@ -53,6 +54,7 @@ class ViewModels:
     appearance: Appearance
     about: AboutViewModel
     backup: BackupViewModel
+    system_extension: SystemExtensionViewModel
 
     def initial_properties(self) -> dict[str, object]:
         """Main.qml's required properties."""
@@ -69,6 +71,7 @@ class ViewModels:
             "desktopViewModel": self.desktop,
             "aboutViewModel": self.about,
             "backupViewModel": self.backup,
+            "systemExtensionViewModel": self.system_extension,
         }
 
     def start(self) -> None:
@@ -96,6 +99,7 @@ class ViewModels:
         self.settings.retranslate()
         self.about.retranslate()
         self.backup.retranslate()
+        self.system_extension.retranslate()
 
     def open_link(self, link: str) -> None:
         """An install link arrived (docs/release.md §7): show the window and the import form
@@ -157,6 +161,18 @@ def compose(
     )
     shell = ShellViewModel(host, runner)
     overview = OverviewViewModel(host, library, runner, settings_store, take_over=take_over)
+    system_extension = SystemExtensionViewModel(
+        host,
+        library,
+        runner,
+        lambda: not overview.property("busy") and not overview.property("connectionChanging"),
+    )
+    system_extension.busyChanged.connect(overview.setMaintenanceBusy)
+    system_extension.finished.connect(overview.refreshGroups)
+    system_extension.finished.connect(shell.refreshService)
+    overview.changed.connect(
+        lambda: system_extension.tunnel_changed(bool(overview.property("connected")))
+    )
     proxies = ProxiesViewModel(host, runner, settings_store)
     profiles = ProfilesViewModel(library, runner, clock)
     routing = RoutingViewModel(library, runner, settings_store)
@@ -242,4 +258,5 @@ def compose(
         appearance,
         about,
         backup,
+        system_extension,
     )

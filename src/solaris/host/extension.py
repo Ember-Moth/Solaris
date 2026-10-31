@@ -17,7 +17,8 @@ import itertools
 import plistlib
 import sys
 import threading
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
+from contextvars import ContextVar
 from functools import partial
 from pathlib import Path
 from typing import Any, Protocol
@@ -42,7 +43,7 @@ from solaris.host.base import (
     bundled_geo_categories,
 )
 from solaris.host.service import ServiceHost
-from solaris.host.timeouts import request_timeout, set_host_deadline
+from solaris.host.timeouts import remaining_seconds, request_timeout, set_host_deadline
 from solaris.host.transport import Streams
 from solaris.product import PROTOCOL_VERSION
 from solaris.protocol import control_pb2
@@ -61,6 +62,8 @@ NOT_SIGNED_IN = 7
 NOT_FOUND = 8
 QUOTA_EXCEEDED = 9
 UNREACHABLE = 10
+BUSY = 11
+CANCELLED = 12
 
 # SolarisTunnelStatus: NEVPNStatus, plus a value for having no VPN configuration
 TUNNEL_NOT_CONFIGURED = 0
@@ -80,6 +83,7 @@ CORE_VERSION_KEY = "SolarisCoreVersion"
 ACTIVATE_TIMEOUT_S = 60.0
 START_TIMEOUT_S = 30.0
 STOP_TIMEOUT_S = 15.0
+DEACTIVATE_TIMEOUT_S = 60.0
 
 # While no extension answers, the run state follows the tunnel's own status. A connected
 # tunnel without an answer has not attached the core yet.
@@ -94,6 +98,8 @@ _ERRORS = {
     TIMED_OUT: ("timeout", True),
     NEEDS_APPROVAL: ("extension_needs_approval", True),
     NEEDS_REBOOT: ("extension_needs_reboot", False),
+    BUSY: ("extension_busy", True),
+    CANCELLED: ("cancelled", False),
 }
 
 
@@ -111,6 +117,8 @@ class Manager(Protocol):
     ManagerError unless it returns OK; MacExtensionHost makes them on worker threads."""
 
     def activate(self, timeout: float) -> None: ...
+
+    def deactivate(self, timeout: float) -> None: ...
 
     def configure(self, include_all_networks: bool) -> None: ...
 
@@ -138,6 +146,7 @@ class ManagerLibrary:
     def __init__(self, path: Path) -> None:
         library = ctypes.CDLL(str(path))
         self._activate = _bind(library, "solaris_manager_activate", ctypes.c_double, _ErrorOut)
+        self._deactivate = _bind(library, "solaris_manager_deactivate", ctypes.c_double, _ErrorOut)
         self._configure = _bind(library, "solaris_manager_configure", ctypes.c_bool, _ErrorOut)
         self._start = _bind(
             library, "solaris_manager_start", ctypes.c_double, ctypes.c_bool, _ErrorOut
@@ -194,6 +203,9 @@ class ManagerLibrary:
 
     def activate(self, timeout: float) -> None:
         self._call(self._activate, timeout)
+
+    def deactivate(self, timeout: float) -> None:
+        self._call(self._deactivate, timeout)
 
     def configure(self, include_all_networks: bool) -> None:
         self._call(self._configure, include_all_networks)
@@ -341,6 +353,8 @@ class MacExtensionHost(ServiceHost):
     The extension only runs while its tunnel is up, so every config runs with TUN, and
     without the system proxy, which only the Windows service sets (D26)."""
 
+    can_manage_extension = True
+
     def __init__(self, manager: Manager, *, core_version: str = "") -> None:
         super().__init__(_no_stream, takeover=TAKEOVER_TUN)
         self._manager = manager
@@ -349,13 +363,37 @@ class MacExtensionHost(ServiceHost):
         self._activated = False
         self._answered = False  # the extension answered the last request
         self._prepared = False  # the tunnel is up for a Start to follow
+        self._lifecycle = asyncio.Lock()
+        self._operation_deadline: ContextVar[float | None] = ContextVar(
+            "extension_deadline", default=None
+        )
+
+    def _native_timeout(self, maximum: float) -> float:
+        deadline = self._operation_deadline.get()
+        return maximum if deadline is None else min(maximum, remaining_seconds(deadline))
+
+    @contextlib.asynccontextmanager
+    async def _serialized(self, timeout: float) -> AsyncIterator[None]:
+        deadline = asyncio.get_running_loop().time() + timeout
+        try:
+            async with asyncio.timeout_at(deadline + 2), self._lifecycle:
+                remaining_seconds(deadline)
+                token = self._operation_deadline.set(deadline)
+                try:
+                    yield
+                finally:
+                    self._operation_deadline.reset(token)
+        except TimeoutError as error:
+            raise HostError(
+                "timeout", "the native operation exhausted its budget", retryable=True
+            ) from error
 
     @property
     def core_available(self) -> bool:
         return self._answered
 
     async def _call(self, request: pb.Request, timeout: float | None = None) -> pb.Response:
-        timeout = request_timeout(request, timeout)
+        timeout = self._native_timeout(request_timeout(request, timeout))
         deadline = asyncio.get_running_loop().time() + timeout
         request.protocol_version = PROTOCOL_VERSION
         request.id = next(self._ids)
@@ -437,37 +475,67 @@ class MacExtensionHost(ServiceHost):
     async def prepare_start(self, options: RunOptions) -> None:
         """Bring the tunnel up, with the VPN configuration including all networks or not as
         the options say (D19), so that the extension answers before Start."""
+        async with self._serialized(ACTIVATE_TIMEOUT_S + START_TIMEOUT_S):
+            await self._prepare_start(options)
+
+    async def _prepare_start(self, options: RunOptions) -> None:
         if not self._activated:
-            await self._manage(
-                partial(self._manager.activate, ACTIVATE_TIMEOUT_S), ACTIVATE_TIMEOUT_S
-            )
+            timeout = self._native_timeout(ACTIVATE_TIMEOUT_S)
+            await self._manage(partial(self._manager.activate, timeout), timeout)
             self._activated = True
         include_all_networks = options.include_all_networks
-        await self._manage(
-            partial(self._manager.start, START_TIMEOUT_S, include_all_networks), START_TIMEOUT_S
-        )
+        timeout = self._native_timeout(START_TIMEOUT_S)
+        await self._manage(partial(self._manager.start, timeout, include_all_networks), timeout)
         self._prepared = self._answered = True
 
     async def start(self, config: TunnelConfig) -> CompositionReport | None:
         """Bring the tunnel up unless prepare_start did, and send it the configuration. When
         the core refuses it, the tunnel goes down again: traffic must not enter a tunnel with
         no core behind it."""
-        if not self._prepared:
-            await self.prepare_start(config.options)
-        self._prepared = False
-        try:
-            return await super().start(config)
-        except HostError as error:
-            if error.code != "already_running":
-                with contextlib.suppress(HostError):
-                    await self.stop()
-            raise
+        budget = (
+            ACTIVATE_TIMEOUT_S
+            + START_TIMEOUT_S
+            + request_timeout(pb.Request(start=pb.StartRequest()))
+        )
+        async with self._serialized(budget):
+            if not self._prepared:
+                await self._prepare_start(config.options)
+            self._prepared = False
+            try:
+                return await super().start(config)
+            except HostError as error:
+                if error.code != "already_running":
+                    with contextlib.suppress(HostError):
+                        await self._stop()
+                raise
 
     async def stop(self) -> None:
         """Take the tunnel down; the extension stops the core as it detaches."""
+        async with self._serialized(STOP_TIMEOUT_S):
+            await self._stop()
+
+    async def _stop(self) -> None:
         self._prepared = False
-        await self._manage(partial(self._manager.stop, STOP_TIMEOUT_S), STOP_TIMEOUT_S)
+        timeout = self._native_timeout(STOP_TIMEOUT_S)
+        await self._manage(partial(self._manager.stop, timeout), timeout)
         self._forget_extension()
+
+    async def deactivate_extension(self, timeout: float = DEACTIVATE_TIMEOUT_S) -> None:
+        """The native manager stops all our tunnels, deactivates, then removes VPN entries.
+        Local profiles, settings and credentials are never part of this operation."""
+        async with self._serialized(min(timeout, DEACTIVATE_TIMEOUT_S)):
+            self._prepared = self._activated = False
+            try:
+                remaining = self._native_timeout(DEACTIVATE_TIMEOUT_S)
+                await self._manage(partial(self._manager.deactivate, remaining), remaining)
+            except HostError as error:
+                if error.code in ("extension_needs_approval", "extension_needs_reboot"):
+                    raise HostError(
+                        "extension_deactivation_pending", error.message, retryable=True
+                    ) from error
+                raise
+            finally:
+                self._forget_extension()
 
     async def list_geo_categories(self) -> GeoCategories:
         try:

@@ -64,6 +64,11 @@ class FakeManager:
     def activate(self, timeout: float) -> None:
         self._record("activate")
 
+    def deactivate(self, timeout: float) -> None:
+        self.tunnel = extension.TUNNEL_DISCONNECTED
+        self._record("deactivate")
+        self.tunnel = extension.TUNNEL_NOT_CONFIGURED
+
     def configure(self, include_all_networks: bool) -> None:
         self._record("configure")
         self.include_all_networks.append(include_all_networks)
@@ -115,6 +120,84 @@ def test_provider_message_timeout_does_not_wait_for_a_stuck_native_call() -> Non
                 async with asyncio.timeout(1):
                     await host._call(pb.Request(get_info=pb.GetInfoRequest()), timeout=0.02)
             assert raised.value.code == "timeout"
+        finally:
+            release.set()
+            await host.close()
+
+    asyncio.run(scenario())
+
+
+def test_deactivation_forgets_the_old_tunnel_and_next_connect_activates_again() -> None:
+    manager = FakeManager(lambda _: pb.Response(empty=pb.Empty()))
+    host = MacExtensionHost(manager)
+
+    async def scenario() -> None:
+        config = TunnelConfig("proxies: []\n")
+        await host.start(config)
+        host._subscriptions["traffic"] = 42
+        assert host.core_available
+        await host.deactivate_extension()
+        assert manager.tunnel == extension.TUNNEL_NOT_CONFIGURED
+        assert not host.core_available
+        assert host._subscriptions == {}
+        await host.start(config)
+        assert manager.calls == [
+            "activate",
+            "start",
+            "send",
+            "deactivate",
+            "activate",
+            "start",
+            "send",
+        ]
+        await host.close()
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("result", [extension.NEEDS_APPROVAL, extension.NEEDS_REBOOT])
+def test_deactivation_pending_is_not_reported_as_success_and_can_be_retried(result: int) -> None:
+    manager = FakeManager(lambda _: pb.Response(empty=pb.Empty()))
+    manager.failures["deactivate"] = ManagerError(result, "system request pending")
+    host = MacExtensionHost(manager)
+
+    async def scenario() -> None:
+        with pytest.raises(HostError) as raised:
+            await host.deactivate_extension()
+        assert raised.value.code == "extension_deactivation_pending"
+        assert raised.value.retryable
+        assert not host.core_available
+        await host.deactivate_extension()
+        assert manager.calls == ["deactivate", "deactivate"]
+        assert manager.tunnel == extension.TUNNEL_NOT_CONFIGURED
+        await host.close()
+
+    asyncio.run(scenario())
+
+
+def test_connect_cannot_overtake_deactivation() -> None:
+    manager = FakeManager(lambda _: pb.Response(empty=pb.Empty()))
+    entered, release = threading.Event(), threading.Event()
+    original = manager.deactivate
+
+    def blocked(timeout: float) -> None:
+        entered.set()
+        release.wait(2)
+        original(timeout)
+
+    manager.deactivate = blocked
+    host = MacExtensionHost(manager)
+
+    async def scenario() -> None:
+        deactivating = asyncio.create_task(host.deactivate_extension())
+        assert await asyncio.to_thread(entered.wait, 1)
+        connecting = asyncio.create_task(host.start(TunnelConfig("proxies: []\n")))
+        try:
+            await asyncio.sleep(0.02)
+            assert "activate" not in manager.calls
+            release.set()
+            await asyncio.gather(deactivating, connecting)
+            assert manager.calls == ["deactivate", "activate", "start", "send"]
         finally:
             release.set()
             await host.close()
@@ -291,6 +374,8 @@ def test_pending_activation_is_asked_again_on_the_next_start(
         (extension.FAILED, "tunnel_failed", True),
         (extension.TIMED_OUT, "timeout", True),
         (extension.NEEDS_REBOOT, "extension_needs_reboot", False),
+        (extension.BUSY, "extension_busy", True),
+        (extension.CANCELLED, "cancelled", False),
     ],
 )
 def test_lifecycle_failures_become_host_errors(result: int, code: str, retryable: bool) -> None:
@@ -391,7 +476,7 @@ def test_result_codes_match_the_header() -> None:
         module = backup_icloud if name.startswith("ICLOUD_") else extension
         python = name.removeprefix("MANAGER_").removeprefix("ICLOUD_")
         assert getattr(module, python) == int(value), name
-    assert len(declared) == 24
+    assert len(declared) == 26
 
 
 FAKE_MANAGER_C = r"""
@@ -427,6 +512,11 @@ double fake_last_timeout(void) { return last_timeout; }
 int fake_last_include_all_networks(void) { return last_include_all_networks; }
 
 SolarisManagerResult solaris_manager_activate(double timeout_seconds, char **error) {
+  last_timeout = timeout_seconds;
+  return finish(error);
+}
+
+SolarisManagerResult solaris_manager_deactivate(double timeout_seconds, char **error) {
   last_timeout = timeout_seconds;
   return finish(error);
 }
@@ -561,6 +651,8 @@ def test_manager_library_calls_and_releases_every_buffer(fake_library: Path) -> 
     manager.configure(True)
     assert fake.fake_last_include_all_networks() == 1
     manager.activate(60.0)
+    manager.deactivate(60.0)
+    assert fake.fake_last_timeout() == 60.0
     manager.start(30.0, False)
     assert (fake.fake_last_timeout(), fake.fake_last_include_all_networks()) == (30.0, 0)
     manager.start(30.0, True)
