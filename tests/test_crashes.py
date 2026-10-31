@@ -180,3 +180,11 @@ def test_wer_retention_is_scoped_to_our_process(
     crashes.prune_native(tmp_path)
     assert not ours.exists()
     assert other.exists()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows locks open files against deletion")
+def test_another_launch_does_not_unlink_a_live_fatal_sink(tmp_path: Path) -> None:
+    sink = tmp_path / f"ui-fatal-1-{os.getpid()}.log"
+    sink.touch()
+    crashes.prune(tmp_path, now=time.time() + crashes.MAX_AGE_S + 1)
+    assert sink.exists()

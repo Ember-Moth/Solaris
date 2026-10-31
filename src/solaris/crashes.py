@@ -34,7 +34,7 @@ MAX_REPORT_BYTES = 32 * 1024 * 1024
 MAX_AGE_S = 30 * 86400
 MAX_TRACE_BYTES = 1024 * 1024
 _active: Recorder | None = None
-_OWN_NAME = re.compile(r"(?:ui-(?:exception|fatal)|go)-[0-9-]+\.log\Z")
+_OWN_NAME = re.compile(r"(?:ui-(?:exception|fatal)|go)-[0-9]+-[1-9][0-9]*\.log\Z")
 
 
 def _regular(path: Path) -> os.stat_result | None:
@@ -78,6 +78,19 @@ def prune(directory: Path, *, now: float | None = None, active: Path | None = No
         if path == active or not _OWN_NAME.fullmatch(path.name):
             continue
         if (info := _regular(path)) is not None:
+            # A second launch/--quit helper has its own Recorder. On Unix unlink would
+            # silently detach the first UI's still-open fatal sink, even after days of
+            # uptime. Windows already prevents deletion while that descriptor is open.
+            if not info.st_size and path.name.startswith("ui-fatal-") and sys.platform != "win32":
+                pid = int(path.stem.rsplit("-", 1)[1])
+                try:
+                    os.kill(pid, 0)
+                except ProcessLookupError:
+                    pass
+                except PermissionError, OverflowError:
+                    continue
+                else:
+                    continue
             files.append((info.st_mtime, info.st_size, path))
     count = size = 0
     for modified, length, path in sorted(files, reverse=True):

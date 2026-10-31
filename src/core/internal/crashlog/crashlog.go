@@ -18,7 +18,7 @@ const (
 	MaxAge         = 30 * 24 * time.Hour
 )
 
-var namePattern = regexp.MustCompile(`^go-[0-9-]+\.log$`)
+var namePattern = regexp.MustCompile(`^go-[0-9]+-[1-9][0-9]*\.log$`)
 var nativePattern = regexp.MustCompile(`(?i)^solaris-service\.exe\.[0-9]+\.dmp$`)
 
 // Open installs the one runtime crash sink. The caller must only call it once per
