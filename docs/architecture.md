@@ -321,9 +321,9 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 | --- | --- |
 | `GetStatus` | 运行状态、模式、运行时长、内存用量、连接数 |
 | `SetMode` | 切换 rule / global / direct |
-| `ListGroups` / `GetGroup` | 代理组及节点，支持排序 |
+| `ListGroups` / `GetGroup` | 代理组及节点，支持排序；节点带两种测速各自最近的结果 |
 | `SelectProxy` | 在 selector 组中选择节点 |
-| `HealthCheck` / `TestDelay` | 组健康检查、单节点测速 |
+| `HealthCheck` / `TestDelay` | 组健康检查、单节点测速；`test` 选 HTTP（默认）或 TCP 握手（D32） |
 | `ListProviders` / `UpdateProvider` | provider 列表与更新 |
 | `ListRules` | 规则列表 |
 | `CloseConnection` / `CloseAllConnections` | 关闭连接 |
@@ -354,6 +354,22 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
   三个方法返回 `CompositionReport`，用 `config_yaml` 时返回 Empty。
   `mixed_port` 超过 65535、`tun_stack` 不是已知的值时返回 `invalid_request`。`RunOptions` 不带
   `includeAllNetworks`：它属于 macOS 的 VPN 配置，连接时才生效，由扩展在 attach 时告诉 engine（6.2 节）。
+- `HealthCheck`、`TestDelay` 的 `test` 选测速方式（D32），未知的值返回 `invalid_request`：
+  - HTTP（`DELAY_TEST_UNSPECIFIED`）是 mihomo 的 URL 测试：经节点请求组的测试地址（`TestDelay` 用请求里的
+    `test_url`），结果记在 mihomo 的历史里，即 `Proxy.delay_ms`。`HealthCheck` 还像 mihomo 自己的组测速一样取消
+    url-test、fallback 组的固定选择，让它们按新结果重新选。
+  - TCP 握手（`DELAY_TEST_TCP`）：内核用 mihomo 的拨号器直接连节点的服务器和端口，计到连接建立为止，像 mihomo 的
+    出站一样绑定出口网卡，不进 TUN；界面进程不拨号，开着 TUN 时它的连接会被接管。服务器名先用拨号同一个解析器
+    解析，不计入时间。只说明服务器能连上，不说明代理可用。结果由 engine 按节点名保存（连同拨的地址，地址变了的
+    不算），应用下一份配置（`Start`、`Reload`）时清空，即 `Proxy.tcp_delay_ms`：同样没测过不带、失败为 0。它不改
+    任何组的选择：url-test、fallback、load-balance 组只按 mihomo 的 URL 测试选择，URL 测试没有 TCP 方式。
+    `HealthCheck` 每个节点只测一次，最多同时 32 个握手，整体仍是 5 秒：轮到之前就到时的节点保留上次的结果，
+    被截断的记为失败；`TestDelay` 用请求的超时。
+  - 只测总是经 TCP 连服务器的类型：Shadowsocks、ShadowsocksR、Snell、SOCKS5、HTTP、VMess、VLESS、Trojan、SSH、
+    AnyTLS、Sudoku。其余没有 TCP 服务器可拨，`tcp_delay_ms` 不带：走 UDP 的 Hysteria、Hysteria2、TUIC、
+    WireGuard、ShadowQUIC，按选项可能走 UDP 的 Mieru、OpenVPN、MASQUE、TrustTunnel，组网出站，直连、拒绝；
+    经 `dialer-proxy` 连服务器的节点也不测，直接握手走的不是它的路径（如 WARP、VPN Gate 出口）。成员是组时，
+    测量和报告的都是它此刻所用的节点；load-balance 组没有单一节点，不带。`TestDelay` 对这些返回 `invalid_request`。
 - `ListRules` 的 `Rule.entry_id` 和连接快照的 `Connection.rule_entry_id` 是运行中的规则来自哪个规则条目
   （兜底是 `fallback`）；订阅自带的规则和覆写插入的规则为空。
 - `InspectSource`、`ListGeoCategories` 只读，不需要内核在运行，两种宿主都提供（macOS 上仍要隧道已连接，6.3 节）。

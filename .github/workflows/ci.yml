@@ -149,6 +149,13 @@ jobs:
       # the Go archive with the extension's tags, with_gvisor.
       - name: Build (unsigned)
         run: uv run --no-project python scripts/build_apple.py --tags with_gvisor
+      # The release's disk image around the check app, signed ad hoc so that the image's own
+      # checks pass: dmgbuild, the window and the background work on the release's runner.
+      - name: Disk image
+        run: |
+          codesign --force --deep --sign - build/apple/check/Solaris.app
+          uv run --no-project --with dmgbuild==1.6.7 python scripts/build_dmg.py \
+            build/apple/check/Solaris.app "$RUNNER_TEMP/Solaris.dmg"
 
   # The unsigned Windows installer (docs/architecture.md §9, §10), then installed, upgraded and
   # uninstalled on the runner by package/windows/smoke-test.ps1: the service starts and listens

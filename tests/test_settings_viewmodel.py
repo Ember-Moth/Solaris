@@ -84,11 +84,17 @@ def test_choices_are_stored(qtbot: QtBot, view_models: ViewModels, tmp_path: Pat
         settings.setAppearance("dark")  # unchanged
         settings.setAppearance("sepia")  # not a choice
     settings.setCloseAction("quit")
+    assert [o["label"] for o in prop(settings, "delayTestOptions")] == ["HTTP", "TCP 握手"]
+    assert prop(settings, "delayTest") == "http"
+    settings.setDelayTest("tcp")
+    settings.setDelayTest("icmp")  # not a choice
 
     assert (prop(settings, "language"), prop(settings, "appearance")) == ("en", "dark")
     assert prop(settings, "closeAction") == "quit"
+    assert prop(settings, "delayTest") == "tcp"
     stored = DatabaseSettingsStore(open_database(tmp_path)).current  # read back
     assert (stored.language, stored.appearance, stored.close_action) == ("en", "dark", "quit")
+    assert stored.delay_test == "tcp"
 
 
 def test_the_page_follows_changes_made_elsewhere(qtbot: QtBot, view_models: ViewModels) -> None:

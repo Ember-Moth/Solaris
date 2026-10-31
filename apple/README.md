@@ -150,6 +150,30 @@ uv run --with nuitka==4.2.2 python scripts/build_app.py --unsigned
   runtime 下要用（hypervpn 同样需要）；它不需要描述文件授权。
 - 脚本不运行、不安装 app，也不公证。
 
+## 磁盘映像
+
+```bash
+uv run --no-project --with dmgbuild==1.6.7 python scripts/build_dmg.py \
+  build/app/Solaris.app build/release/Solaris-<版本>-macos-arm64.dmg
+```
+
+`scripts/build_dmg.py` 用 dmgbuild 1.6.7 把构建好的 `Solaris.app`（签名的或 `--unsigned` 的都行）做成磁盘映像：
+
+- 卷名 Solaris，卷图标是 `package/icons/solaris.icns`（`scripts/gen_icons.py`）；
+- 挂载后打开一个固定的 Finder 窗口，600 × 360 点，不显示工具栏、侧边栏和状态栏，128 点的大图标：左边 Solaris.app，
+  右边“应用程序”的快捷方式，中间一条细箭头，没有文字。效果见 `package/dmg/preview.png`；
+- 背景是 `package/dmg/background.png` 和 `background@2x.png`，由 `scripts/gen_dmg_background.py` 按
+  `build_dmg.py` 里的布局画出后提交，dmgbuild 把两张合成一个多分辨率 TIFF。Finder 的背景不随深色模式切换，
+  图标名字却是浅色模式黑字、深色模式白字，所以底色取中性灰 `#72767E`，与黑、白的对比度都约 4.6:1；
+- HFS+，LZMA 压缩（ULMO，macOS 10.15 起支持），缩到内容的大小；
+- 不用 dmgbuild 的 `hide_extensions`：它用 SetFile 在 app 上写 Finder 信息，app 的签名就通不过
+  `codesign --verify --strict`。
+
+dmgbuild 自己写 `.DS_Store`，不经过 Finder，所以在 CI 的 runner 上也能做。做完后脚本检查：`hdiutil verify` 通过；
+只读挂载（不在 Finder 里显示）后，app 通过 `codesign --verify --deep --strict`，快捷方式指向 `/Applications`，
+背景、卷图标和 `.DS_Store` 都在，卷带自定义图标标记。脚本不签名、不公证。CI 的 `apple` job 用 ad hoc 签名的检查用
+app 做一次映像。改了布局后运行 `uv run python scripts/gen_dmg_background.py`，挂载映像看一眼。
+
 ## 发布工作流
 
 `.github/workflows/release.yml` 由 `v*` 标签和手动触发（`workflow_dispatch`），job 使用 `release`
@@ -159,8 +183,8 @@ Environment，Ember-Moth 批准后才拿到机密。标签必须是 `v<pyproject
    装进 `~/Library/Developer/Xcode/UserData/Provisioning Profiles`，Xcode 和 `build_apple.py` 按名称找；
 2. `scripts/build_app.py` 构建、签名、校验；
 3. 用 `notarytool`（App Store Connect API Key）公证 app 并 staple，`spctl` 评估；
-4. 做 HFS+、LZMA 压缩的 `Solaris-<版本>-macos-arm64.dmg`（内含 Solaris.app 和“应用程序”的快捷方式），签名、
-   公证、staple，生成 `Solaris-<版本>-macos-arm64.dmg.sha256`；
+4. `scripts/build_dmg.py` 做 `Solaris-<版本>-macos-arm64.dmg`（见“磁盘映像”），签名、公证、staple，生成
+   `Solaris-<版本>-macos-arm64.dmg.sha256`；
 5. 两个文件作为 workflow artifact `solaris-<版本>-macos-arm64` 上传，保留 30 天；
 6. 无论成败都删除钥匙串、描述文件和 API Key。
 

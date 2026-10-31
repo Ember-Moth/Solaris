@@ -142,6 +142,20 @@ def test_pages_show_the_core(app: App) -> None:
     app.until(lambda: app.prop(overview, "nodeDelay").endswith(" ms"))
     app.screenshot("proxies")
 
+    # The same over TCP: the core times handshakes with the nodes' servers (D32).
+    vm.shell.setPage("settings")
+    vm.settings.setDelayTest("tcp")
+    app.screenshot("settings-delay-test")
+    vm.shell.setPage("proxies")
+    assert {n.delay for n in nodes.rows} == {"—"}
+    proxies.testCurrentGroup()
+    app.until(lambda: not app.prop(proxies, "testing"))
+    assert [n.level for n in nodes.rows] == ["good", "good", "none"]
+    assert all(n.delay.endswith(" ms") for n in nodes.rows[:2])
+    app.until(lambda: app.prop(overview, "nodeDelay").endswith(" ms"))
+    app.screenshot("proxies-tcp")
+    vm.settings.setDelayTest("http")
+
     # Connections: the stream, closed alone; then two more, closed together.
     vm.shell.setPage("connections")
     connections = vm.connections

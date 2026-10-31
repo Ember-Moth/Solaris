@@ -62,6 +62,7 @@ WARP_PROTOCOLS = {
     "masque-h3": pb.WARP_PROTOCOL_MASQUE_H3,
     "wireguard": pb.WARP_PROTOCOL_WIREGUARD,
 }
+DELAY_TESTS = {"http": pb.DELAY_TEST_UNSPECIFIED, "tcp": pb.DELAY_TEST_TCP}
 LOG_LEVELS = {
     "debug": pb.LOG_LEVEL_DEBUG,
     "info": pb.LOG_LEVEL_INFO,
@@ -327,7 +328,12 @@ def _group(group: pb.ProxyGroup) -> ProxyGroup:
         type=group.type,
         now=group.now,
         proxies=tuple(
-            Proxy(p.name, p.type, p.delay_ms if p.HasField("delay_ms") else None)
+            Proxy(
+                p.name,
+                p.type,
+                p.delay_ms if p.HasField("delay_ms") else None,
+                p.tcp_delay_ms if p.HasField("tcp_delay_ms") else None,
+            )
             for p in group.proxies
         ),
     )
@@ -587,8 +593,9 @@ class ServiceHost:
         request = pb.Request(select_proxy=pb.SelectProxyRequest(group=group, proxy=proxy))
         await self._call(request)
 
-    async def health_check(self, group: str) -> None:
-        await self._call(pb.Request(health_check=pb.HealthCheckRequest(group=group)))
+    async def health_check(self, group: str, test: str = "http") -> None:
+        check = pb.HealthCheckRequest(group=group, test=DELAY_TESTS[test])
+        await self._call(pb.Request(health_check=check))
 
     async def _poll(self, topic: str, subscribe: pb.Request) -> list[pb.Event]:
         """Drain a subscription, re-subscribing once if the service expired it."""

@@ -153,6 +153,7 @@ def test_dropped_connection_fails_pending_calls() -> None:
 def test_service_host_maps_status_groups_and_traffic() -> None:
     pb = control_pb2
     subscribed: list[int] = []
+    checks: list[control_pb2.HealthCheckRequest] = []
 
     async def answer(request: control_pb2.Request) -> control_pb2.Response:
         method = request.WhichOneof("method")
@@ -170,9 +171,15 @@ def test_service_host_maps_status_groups_and_traffic() -> None:
                 name="节点选择",
                 type="Selector",
                 now="香港 01",
-                proxies=[pb.Proxy(name="香港 01", type="VLESS", delay_ms=68), pb.Proxy(name="X")],
+                proxies=[
+                    pb.Proxy(name="香港 01", type="VLESS", delay_ms=68, tcp_delay_ms=0),
+                    pb.Proxy(name="X"),
+                ],
             )
             return pb.Response(list_groups=pb.ListGroupsResponse(groups=[group]))
+        if method == "health_check":
+            checks.append(request.health_check)
+            return pb.Response(empty=pb.Empty())
         if method == "subscribe_traffic":
             subscribed.append(len(subscribed) + 1)
             return pb.Response(subscribe=pb.SubscribeResponse(subscription_id=subscribed[-1]))
@@ -196,6 +203,13 @@ def test_service_host_maps_status_groups_and_traffic() -> None:
                 (group,) = await host.list_groups()
                 assert group.selectable
                 assert [p.delay_ms for p in group.proxies] == [68, None]
+                assert [p.tcp_delay_ms for p in group.proxies] == [0, None]
+                await host.health_check("节点选择")
+                await host.health_check("节点选择", "tcp")
+                assert [(c.group, c.test) for c in checks] == [
+                    ("节点选择", pb.DELAY_TEST_UNSPECIFIED),
+                    ("节点选择", pb.DELAY_TEST_TCP),
+                ]
                 (sample,) = await host.poll_traffic()
                 assert sample.down_bytes_per_second == 2
                 assert subscribed == [1, 2]

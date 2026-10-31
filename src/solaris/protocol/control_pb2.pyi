@@ -58,6 +58,11 @@ class GroupSort(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     GROUP_SORT_NAME: _ClassVar[GroupSort]
     GROUP_SORT_DELAY: _ClassVar[GroupSort]
 
+class DelayTest(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    DELAY_TEST_UNSPECIFIED: _ClassVar[DelayTest]
+    DELAY_TEST_TCP: _ClassVar[DelayTest]
+
 class ProviderKind(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     PROVIDER_KIND_UNSPECIFIED: _ClassVar[ProviderKind]
@@ -116,6 +121,8 @@ MODE_DIRECT: Mode
 GROUP_SORT_UNSPECIFIED: GroupSort
 GROUP_SORT_NAME: GroupSort
 GROUP_SORT_DELAY: GroupSort
+DELAY_TEST_UNSPECIFIED: DelayTest
+DELAY_TEST_TCP: DelayTest
 PROVIDER_KIND_UNSPECIFIED: ProviderKind
 PROVIDER_KIND_PROXY: ProviderKind
 PROVIDER_KIND_RULE: ProviderKind
@@ -561,14 +568,16 @@ class SetModeRequest(_message.Message):
     def __init__(self, mode: _Optional[_Union[Mode, str]] = ...) -> None: ...
 
 class Proxy(_message.Message):
-    __slots__ = ("name", "type", "delay_ms")
+    __slots__ = ("name", "type", "delay_ms", "tcp_delay_ms")
     NAME_FIELD_NUMBER: _ClassVar[int]
     TYPE_FIELD_NUMBER: _ClassVar[int]
     DELAY_MS_FIELD_NUMBER: _ClassVar[int]
+    TCP_DELAY_MS_FIELD_NUMBER: _ClassVar[int]
     name: str
     type: str
     delay_ms: int
-    def __init__(self, name: _Optional[str] = ..., type: _Optional[str] = ..., delay_ms: _Optional[int] = ...) -> None: ...
+    tcp_delay_ms: int
+    def __init__(self, name: _Optional[str] = ..., type: _Optional[str] = ..., delay_ms: _Optional[int] = ..., tcp_delay_ms: _Optional[int] = ...) -> None: ...
 
 class ProxyGroup(_message.Message):
     __slots__ = ("name", "type", "now", "test_url", "proxies")
@@ -621,20 +630,24 @@ class SelectProxyRequest(_message.Message):
     def __init__(self, group: _Optional[str] = ..., proxy: _Optional[str] = ...) -> None: ...
 
 class HealthCheckRequest(_message.Message):
-    __slots__ = ("group",)
+    __slots__ = ("group", "test")
     GROUP_FIELD_NUMBER: _ClassVar[int]
+    TEST_FIELD_NUMBER: _ClassVar[int]
     group: str
-    def __init__(self, group: _Optional[str] = ...) -> None: ...
+    test: DelayTest
+    def __init__(self, group: _Optional[str] = ..., test: _Optional[_Union[DelayTest, str]] = ...) -> None: ...
 
 class TestDelayRequest(_message.Message):
-    __slots__ = ("proxy", "test_url", "timeout_ms")
+    __slots__ = ("proxy", "test_url", "timeout_ms", "test")
     PROXY_FIELD_NUMBER: _ClassVar[int]
     TEST_URL_FIELD_NUMBER: _ClassVar[int]
     TIMEOUT_MS_FIELD_NUMBER: _ClassVar[int]
+    TEST_FIELD_NUMBER: _ClassVar[int]
     proxy: str
     test_url: str
     timeout_ms: int
-    def __init__(self, proxy: _Optional[str] = ..., test_url: _Optional[str] = ..., timeout_ms: _Optional[int] = ...) -> None: ...
+    test: DelayTest
+    def __init__(self, proxy: _Optional[str] = ..., test_url: _Optional[str] = ..., timeout_ms: _Optional[int] = ..., test: _Optional[_Union[DelayTest, str]] = ...) -> None: ...
 
 class TestDelayResponse(_message.Message):
     __slots__ = ("delay_ms",)

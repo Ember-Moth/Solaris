@@ -157,7 +157,7 @@ def compose(
     )
     shell = ShellViewModel(host, runner)
     overview = OverviewViewModel(host, library, runner, settings_store, take_over=take_over)
-    proxies = ProxiesViewModel(host, runner)
+    proxies = ProxiesViewModel(host, runner, settings_store)
     profiles = ProfilesViewModel(library, runner, clock)
     routing = RoutingViewModel(library, runner, settings_store)
     connections = ConnectionsViewModel(host, runner)

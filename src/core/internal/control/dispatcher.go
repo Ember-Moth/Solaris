@@ -64,8 +64,8 @@ type Engine interface {
 	ListGroups(sort controlpb.GroupSort, excludeNotSelectable bool) []*controlpb.ProxyGroup
 	GetGroup(name string, sort controlpb.GroupSort) (*controlpb.ProxyGroup, error)
 	SelectProxy(group, proxy string) error
-	HealthCheck(ctx context.Context, group string) error
-	TestDelay(ctx context.Context, proxy, url string, timeout time.Duration) (uint32, error)
+	HealthCheck(ctx context.Context, group string, test controlpb.DelayTest) error
+	TestDelay(ctx context.Context, proxy, url string, timeout time.Duration, test controlpb.DelayTest) (uint32, error)
 	ListProviders() []*controlpb.Provider
 	UpdateProvider(kind controlpb.ProviderKind, name string) error
 	ListRules() []*controlpb.Rule
@@ -487,14 +487,14 @@ func (d *Dispatcher) coreMethod(ctx context.Context, caller peer.Identity, reque
 			return d.result(d.engine.SelectProxy(selectProxy.GetGroup(), selectProxy.GetProxy()))
 		})
 	case *controlpb.Request_HealthCheck:
-		return d.result(d.engine.HealthCheck(ctx, method.HealthCheck.GetGroup()))
+		return d.result(d.engine.HealthCheck(ctx, method.HealthCheck.GetGroup(), method.HealthCheck.GetTest()))
 	case *controlpb.Request_TestDelay:
 		test := method.TestDelay
 		if test.GetProxy() == "" {
 			return failure(CodeInvalidRequest, "test_delay needs a proxy")
 		}
 		timeout := time.Duration(test.GetTimeoutMs()) * time.Millisecond
-		delay, err := d.engine.TestDelay(ctx, test.GetProxy(), test.GetTestUrl(), timeout)
+		delay, err := d.engine.TestDelay(ctx, test.GetProxy(), test.GetTestUrl(), timeout, test.GetTest())
 		if err != nil {
 			return engineFailure(err)
 		}

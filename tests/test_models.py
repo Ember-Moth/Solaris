@@ -79,6 +79,16 @@ def test_delay_sort_puts_untested_last() -> None:
     assert [p.name for p in sort_proxies(proxies, "config")] == ["a", "b", "c"]
 
 
+def test_delay_sort_follows_the_test() -> None:
+    proxies = (
+        Proxy("a", "VLESS", 40, 30),
+        Proxy("b", "VLESS", 90, 10),
+        Proxy("c", "Hysteria2", 20, None),  # no TCP server to dial
+    )
+    assert [p.name for p in sort_proxies(proxies, "delay", "http")] == ["c", "a", "b"]
+    assert [p.name for p in sort_proxies(proxies, "delay", "tcp")] == ["b", "a", "c"]
+
+
 def test_session_tracks_history_and_connection_rates() -> None:
     now = [1000.0]
     host = SimulatedHost(clock=lambda: now[0])

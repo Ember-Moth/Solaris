@@ -3454,6 +3454,18 @@ prepend-rules:
         <translation>More actions for Google Drive backup</translation>
     </message>
     <message>
+        <source>代理</source>
+        <translation>Proxies</translation>
+    </message>
+    <message>
+        <source>延迟测试</source>
+        <translation>Latency test</translation>
+    </message>
+    <message>
+        <source>自动选择节点的组仍用 HTTP 测速</source>
+        <translation>Groups that pick their own node still test over HTTP</translation>
+    </message>
+    <message>
         <source>启动</source>
         <translation>Startup</translation>
     </message>
@@ -3611,6 +3623,10 @@ prepend-rules:
     <message>
         <source>跟随配置</source>
         <translation>From profile</translation>
+    </message>
+    <message>
+        <source>TCP 握手</source>
+        <translation>TCP handshake</translation>
     </message>
     <message>
         <source>仅安装版可用</source>

@@ -322,6 +322,17 @@ func TestLifecycleAndCoreMethods(t *testing.T) {
 	expectError(t, call(t, dispatcher, request(17, func(r *controlpb.Request) {
 		r.Method = &controlpb.Request_TestDelay{TestDelay: &controlpb.TestDelayRequest{Proxy: "nowhere"}}
 	})), 17, CodeInvalidRequest)
+	testDelay := func(test controlpb.DelayTest) func(*controlpb.Request) {
+		return func(r *controlpb.Request) {
+			r.Method = &controlpb.Request_TestDelay{TestDelay: &controlpb.TestDelayRequest{Proxy: "direct-a", Test: test}}
+		}
+	}
+	// DIRECT has no server to dial (D32); 7 is no delay test.
+	expectError(t, call(t, dispatcher, request(21, testDelay(controlpb.DelayTest_DELAY_TEST_TCP))), 21, CodeInvalidRequest)
+	expectError(t, call(t, dispatcher, request(22, testDelay(7))), 22, CodeInvalidRequest)
+	expectOK(t, call(t, dispatcher, request(23, func(r *controlpb.Request) {
+		r.Method = &controlpb.Request_HealthCheck{HealthCheck: &controlpb.HealthCheckRequest{Group: "PROXY", Test: controlpb.DelayTest_DELAY_TEST_TCP}}
+	})))
 	expectOK(t, call(t, dispatcher, request(18, func(r *controlpb.Request) {
 		r.Method = &controlpb.Request_CloseAllConnections{CloseAllConnections: &controlpb.CloseAllConnectionsRequest{}}
 	})))
