@@ -1,5 +1,6 @@
-"""Settings ViewModel: the mixed port, LAN access and TUN stack, the UI language and
-appearance, what the desktop does (closing the window, opening at login) and what is installed.
+"""Settings ViewModel: the mixed port, LAN access and TUN stack, how latency is tested, the
+UI language and appearance, what the desktop does (closing the window, opening at login) and
+what is installed.
 
 The page's TUN and system proxy switches come from OverviewViewModel, which knows the
 running tunnel's state (D26).
@@ -17,7 +18,7 @@ from PySide6.QtQml import QmlElement, QmlUncreatable
 
 from solaris import __version__
 from solaris.desktop.login import LoginItem, LoginItemStatus
-from solaris.host.base import HostInfo, TunnelHost
+from solaris.host.base import DELAY_TESTS, HostInfo, TunnelHost
 from solaris.i18n import QT_TRANSLATE_NOOP
 from solaris.models.library import ProfileLibrary
 from solaris.models.settings import (
@@ -67,6 +68,10 @@ TUN_STACK_LABELS = {
     "mips": "Mips",
     "gvisor": "gVisor",
     "mixed": "Mixed",
+}
+DELAY_TEST_LABELS = {
+    "http": "HTTP",
+    "tcp": QT_TRANSLATE_NOOP("SettingsViewModel", "TCP 握手"),
 }
 # Only macOS's NetworkExtension has the setting (D19).
 INCLUDE_ALL_NETWORKS = sys.platform == "darwin"
@@ -364,6 +369,21 @@ class SettingsViewModel(QObject):
 
         settings = replace(self._current(), **changes)
         self._runner.submit(self._library.tunnel.apply_settings(settings), applied, failed)
+
+    # -- latency tests -----------------------------------------------------------------------
+    @Property(str, notify=changed)
+    def delayTest(self) -> str:
+        """How 测速 on the proxies page measures the nodes (D32)."""
+        return self._current().delay_test
+
+    @Property("QVariantList", notify=optionsChanged)  # pyright: ignore[reportArgumentType]
+    def delayTestOptions(self) -> list[dict[str, str]]:
+        return [{"value": v, "label": self.tr(DELAY_TEST_LABELS[v])} for v in DELAY_TESTS]
+
+    @Slot(str)
+    def setDelayTest(self, test: str) -> None:
+        if test in DELAY_TESTS:
+            self._store(delay_test=test)
 
     # -- about -------------------------------------------------------------------------------
     @Slot()

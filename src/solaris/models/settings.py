@@ -18,7 +18,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, fields, replace
 from typing import Any, Protocol
 
-from solaris.host.base import TUN_STACKS, WARP_PROTOCOLS, RunOptions
+from solaris.host.base import DELAY_TESTS, TUN_STACKS, WARP_PROTOCOLS, RunOptions
 from solaris.models.database import Database
 from solaris.models.profiles import ProfileError
 
@@ -65,6 +65,8 @@ class Settings:
     include_all_networks: bool = _setting(False, LOCAL)
     # The WARP exit's protocol (docs/exits.md §3.1): what this machine's account has a key for.
     warp_protocol: str = _setting(WARP_PROTOCOLS[0], LOCAL)
+    # How the latency tests the user starts measure the nodes (D32).
+    delay_test: str = _setting(DELAY_TESTS[0], SYNCED)
     # Look for a new release at startup and then every so many hours.
     update_check: bool = _setting(True, SYNCED)
     update_check_hours: int = _setting(UPDATE_CHECK_HOURS[0], SYNCED)
@@ -119,6 +121,7 @@ _CHOICES: dict[str, tuple[str, ...]] = {
     "close_action": CLOSE_ACTIONS,
     "warp_protocol": WARP_PROTOCOLS,
     "tun_stack": TUN_STACK_CHOICES,
+    "delay_test": DELAY_TESTS,
 }
 
 

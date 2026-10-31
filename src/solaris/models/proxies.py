@@ -26,10 +26,11 @@ def resolve(groups: list[ProxyGroup], name: str) -> Proxy | None:
     return None
 
 
-def sort_proxies(proxies: tuple[Proxy, ...], sort: str) -> list[Proxy]:
+def sort_proxies(proxies: tuple[Proxy, ...], sort: str, test: str = "http") -> list[Proxy]:
+    """``proxies`` in the ``sort`` order; by delay, the delays ``test`` measured."""
     if sort == "name":
         return sorted(proxies, key=lambda p: p.name)
     if sort == "delay":
         # Failed and untested proxies go last.
-        return sorted(proxies, key=lambda p: (not p.delay_ms, p.delay_ms or 0))
+        return sorted(proxies, key=lambda p: (not p.delay(test), p.delay(test) or 0))
     return list(proxies)

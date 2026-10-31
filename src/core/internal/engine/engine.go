@@ -82,6 +82,10 @@ type Engine struct {
 	// entries ties the running rules to the plan's rule entries; nil for a profile's own rules.
 	entries *ruleEntries
 
+	// tcpMu guards the TCP delay results (tcpdelay.go) by node name; nil until a test.
+	tcpMu     sync.Mutex
+	tcpDelays map[string]tcpResult
+
 	// meshMu guards the running mesh outbounds (mesh_run.go), by name and in order.
 	meshMu    sync.Mutex
 	mesh      map[string]*meshOutbound

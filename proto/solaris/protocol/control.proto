@@ -338,10 +338,18 @@ enum GroupSort {
   GROUP_SORT_NAME = 1;
   GROUP_SORT_DELAY = 2;
 }
+// How a delay test measures a proxy.
+enum DelayTest {
+  DELAY_TEST_UNSPECIFIED = 0; // HTTP: a request to the test URL through the proxy
+  DELAY_TEST_TCP = 1;         // a TCP handshake with the proxy's server, dialled directly
+}
 message Proxy {
   string name = 1;
   string type = 2;
   optional uint32 delay_ms = 3; // absent until tested; 0 when the last test failed
+  // The last DELAY_TEST_TCP result, as delay_ms; a group reports the node it uses now.
+  // Absent for what has no TCP server to dial (docs/decisions.md D32).
+  optional uint32 tcp_delay_ms = 4;
 }
 message ProxyGroup {
   string name = 1;
@@ -364,11 +372,15 @@ message SelectProxyRequest {
   string group = 1;
   string proxy = 2;
 }
-message HealthCheckRequest { string group = 1; } // empty checks every group
+message HealthCheckRequest {
+  string group = 1; // empty checks every group
+  DelayTest test = 2;
+}
 message TestDelayRequest {
   string proxy = 1;
-  string test_url = 2;
+  string test_url = 2; // HTTP only
   uint32 timeout_ms = 3;
+  DelayTest test = 4;
 }
 message TestDelayResponse { uint32 delay_ms = 1; }
 

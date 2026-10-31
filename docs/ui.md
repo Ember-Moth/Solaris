@@ -354,6 +354,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 | `allow_lan` | 布尔 | `false` | 本机 | 允许局域网连接（architecture.md §8"局域网暴露"） |
 | `tun_stack` | `profile`、`system`、`mips`、`gvisor`、`mixed` | `profile` | 本机 | "TUN 协议栈"（D3）：`profile` 是"跟随配置"，用配置里的 `tun.stack`；其余写进 `RunOptions.tun_stack`，盖过配置和覆写（architecture.md §3.1、§3.4） |
 | `include_all_networks` | 布尔 | `false` | 本机 | 仅 macOS（D19）："包含所有网络"，把系统默认绕开隧道的流量也送进隧道，局域网流量除外。写进 VPN 配置的 `includeAllNetworks` 和 `excludeLocalNetworks`，下次连接时生效；打开后 TUN 协议栈不能用 `system` 和 `mixed`（architecture.md §3.4） |
+| `delay_test` | `http`、`tcp` | `http` | 同步 | "延迟测试"（D32）：代理页「测速」经节点请求测试地址（HTTP），还是只计到节点服务器的 TCP 握手。代理页、概览页和策略组编辑器显示所选测试的结果（architecture.md §4.3） |
 | `warp_protocol` | `masque-h2`、`masque-h3`、`wireguard` | `masque-h2` | 本机 | WARP 出口的协议，在分流页的出口设置对话框里改，设置页不列出。账户只有一种协议的密钥，改了协议就为它换密钥（exits.md 3.1、3.2 节） |
 | `update_check` | 布尔 | `true` | 同步 | 自动检查更新：启动 30 秒后检查一次，之后按 `update_check_hours` 定期检查（release.md 第 2 节） |
 | `update_check_hours` | `24`、`72`、`168` | `24` | 同步 | 自动检查的间隔：每天、每 3 天、每周 |
@@ -395,6 +396,16 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
     默认打开时开发模式照样能连接，只开放混合端口。直接向开发服务要求时，`ProfileLibrary` 仍把拒绝换成
     `tun_unsupported`、`system_proxy_unsupported` 或两者都有的 `tun_and_system_proxy_unsupported`，界面显示
     「开发模式不支持 TUN 模式」等提示，设置不改。
+- **延迟测试**（D32）：设置页右栏第一个分组「代理」里的一行，分段控件「HTTP」「TCP 握手」，改了立即生效，
+  不重测。选 TCP 握手时第二行写「自动选择节点的组仍用 HTTP 测速」。
+  - HTTP 经节点请求组的测试地址，测得的是经代理的延迟，同时说明节点可用；TCP 握手只计内核到节点服务器的连接
+    时间，说明能连上，不说明代理可用。
+  - 只管用户发起的测速：代理页的「测速」按它调用 `health_check(group, test)`。自动选择、故障转移、负载均衡组照旧
+    按 mihomo 自己的 URL 测试定时检查和选择，URL 测试没有 TCP 方式；TCP 的测速也不像 HTTP 那样让这些组重新选择。
+  - 显示：`Proxy.delay(test)` 取所选测试的结果，代理页的行、按延迟排序、概览页的当前节点和策略组编辑器的预览都用它。
+    两种结果在内核里各自保留，换设置后显示另一种已有的结果，没测过是「—」。内核在应用下一份配置时清空 TCP 结果。
+  - 没有 TCP 服务器可拨的节点（Hysteria2、TUIC、WireGuard 等）、经 `dialer-proxy` 的节点（WARP、VPN Gate 出口）
+    和直连、拒绝在 TCP 下总是「—」；组显示它此刻所用节点的结果。VPN Gate 出口的检查只看 URL 测试的结果。
 - **外观**：设置页只负责选择和保存（`setAppearance` 写设置项 `appearance`），主题跟随第 6 节的外观对象。
 - **托盘**用 `Qt.labs.platform` 的 `SystemTrayIcon`（`ui/components/TrayIcon.qml`）。它在 macOS 和 Windows 上
   有 Qt 平台插件的原生实现，`QGuiApplication` 就够，不必为 `QSystemTrayIcon` 引入 Qt Widgets 和
@@ -551,7 +562,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   - **自建策略组**：`PlanGroups.custom` 列出方案里的自建组，说明写"类型 · 节点数、其他成员数、直连 / 拒绝"，节点数取
     报告里的 `node_count`。编辑器是 `GroupEditor`（`viewmodels/routing_groups.py`）：条件改动停止 0.25 秒后经
     `ProfileLibrary.plans.preview_group` 调用 `PreviewGroup`（组名临时用 id，名称不影响预览），延迟取自运行中内核的
-    `list_groups`。保存走 `PlanGroups.put_group`：编辑的组保持位置，新组排在最后，内核拒绝时对话框不关闭。
+    `list_groups`，按设置「延迟测试」取 HTTP 或 TCP 的结果。保存走 `PlanGroups.put_group`：编辑的组保持位置，新组排在最后，内核拒绝时对话框不关闭。
     删除前列出引用它的规则条目、兜底和其他组（routing.md §5.5），确认后这些规则改走节点选择、其他组去掉它，
     可以撤销。
   - **转换与导出**是 `PlanTransfer`（`viewmodels/routing_transfer.py`）：`convert_profile` / `convert_file`
@@ -604,7 +615,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
     里按 Score 取前 N 台：仍可用的服务器留在原位，空出的位置按分数补上。拼装时只给打开了出口的方案带上服务器
     （`Composition.egress`）；在用的方案拼装时，挑出的服务器成为新的"原位"。
   - 隧道运行时每两分钟一次（`VpnGateExit` 的计时器）：列表超过一小时就重新获取；否则 `check_vpngate` 读
-    `list_groups` 里这些服务器最近一次的延迟，失败（延迟 0）的记一小时并让出位置，挑出的服务器变了就重载；能用的
+    `list_groups` 里这些服务器最近一次 URL 测试的延迟（`delay_ms`），失败（延迟 0）的记一小时并让出位置，挑出的服务器变了就重载；能用的
     不到一半、且上次获取已过十分钟时重新获取列表。
 - **其他页面**：订阅页的行在说明里写"规则使用中""不加入节点池"；概览页"出站"分组的"当前使用"跳到分流页；
   代理页用报告里的节点池标出每个节点的来源订阅，地区组收进可折叠的"地区"小节；连接页用

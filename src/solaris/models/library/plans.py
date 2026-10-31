@@ -192,12 +192,14 @@ class Plans:
             return bundled_geo_categories()
 
     async def node_delays(self) -> dict[str, int | None]:
-        """The delays the running core measured, by node name; empty while it is stopped."""
+        """The delays the running core measured with the test the settings choose, by node
+        name; empty while it is stopped."""
         core = self._core
         if await core.running() is None:
             return {}
         groups = await core.host.list_groups()
-        return {proxy.name: proxy.delay_ms for group in groups for proxy in group.proxies}
+        test = core.settings().delay_test
+        return {proxy.name: proxy.delay(test) for group in groups for proxy in group.proxies}
 
     # -- the routing editor: previews, the rule test, conversion and export ------------------
     async def preview_group(self, plan: Plan, group: PlanGroup) -> GroupPreview:

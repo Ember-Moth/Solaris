@@ -236,7 +236,7 @@ rules:
 		t.Fatal(err)
 	}
 	defer engine.Stop()
-	if err := engine.HealthCheck(context.Background(), "PROXY"); err != nil {
+	if err := engine.HealthCheck(context.Background(), "PROXY", controlpb.DelayTest_DELAY_TEST_UNSPECIFIED); err != nil {
 		t.Fatal(err)
 	}
 	delays := map[string]*uint32{}
@@ -284,7 +284,7 @@ func TestQueriesAndOperations(t *testing.T) {
 			t.Errorf("%s has a delay before any test: %d", proxy.GetName(), proxy.GetDelayMs())
 		}
 	}
-	if err := engine.HealthCheck(context.Background(), "PROXY"); err != nil {
+	if err := engine.HealthCheck(context.Background(), "PROXY", controlpb.DelayTest_DELAY_TEST_UNSPECIFIED); err != nil {
 		t.Fatal(err)
 	}
 	group, err := engine.GetGroup("PROXY", controlpb.GroupSort_GROUP_SORT_DELAY)
@@ -296,10 +296,10 @@ func TestQueriesAndOperations(t *testing.T) {
 			t.Errorf("%s has no delay after a health check", proxy.GetName())
 		}
 	}
-	if delay, err := engine.TestDelay(context.Background(), "direct-b", testURL, time.Second); err != nil || delay == 0 {
+	if delay, err := engine.TestDelay(context.Background(), "direct-b", testURL, time.Second, controlpb.DelayTest_DELAY_TEST_UNSPECIFIED); err != nil || delay == 0 {
 		t.Errorf("TestDelay = %d, %v", delay, err)
 	}
-	if _, err := engine.TestDelay(context.Background(), "nowhere", testURL, time.Second); !errors.Is(err, ErrInvalidArgument) {
+	if _, err := engine.TestDelay(context.Background(), "nowhere", testURL, time.Second, controlpb.DelayTest_DELAY_TEST_UNSPECIFIED); !errors.Is(err, ErrInvalidArgument) {
 		t.Errorf("TestDelay of an unknown proxy = %v", err)
 	}
 

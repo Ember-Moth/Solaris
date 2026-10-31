@@ -46,6 +46,7 @@ SETTINGS_EXPORTED = frozenset(
         "tun_stack",
         "include_all_networks",
         "warp_protocol",
+        "delay_test",
         "update_check",
         "update_check_hours",
     }

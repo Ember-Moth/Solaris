@@ -394,6 +394,53 @@ func (GroupSort) EnumDescriptor() ([]byte, []int) {
 	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{6}
 }
 
+// How a delay test measures a proxy.
+type DelayTest int32
+
+const (
+	DelayTest_DELAY_TEST_UNSPECIFIED DelayTest = 0 // HTTP: a request to the test URL through the proxy
+	DelayTest_DELAY_TEST_TCP         DelayTest = 1 // a TCP handshake with the proxy's server, dialled directly
+)
+
+// Enum value maps for DelayTest.
+var (
+	DelayTest_name = map[int32]string{
+		0: "DELAY_TEST_UNSPECIFIED",
+		1: "DELAY_TEST_TCP",
+	}
+	DelayTest_value = map[string]int32{
+		"DELAY_TEST_UNSPECIFIED": 0,
+		"DELAY_TEST_TCP":         1,
+	}
+)
+
+func (x DelayTest) Enum() *DelayTest {
+	p := new(DelayTest)
+	*p = x
+	return p
+}
+
+func (x DelayTest) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DelayTest) Descriptor() protoreflect.EnumDescriptor {
+	return file_solaris_protocol_control_proto_enumTypes[7].Descriptor()
+}
+
+func (DelayTest) Type() protoreflect.EnumType {
+	return &file_solaris_protocol_control_proto_enumTypes[7]
+}
+
+func (x DelayTest) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DelayTest.Descriptor instead.
+func (DelayTest) EnumDescriptor() ([]byte, []int) {
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{7}
+}
+
 type ProviderKind int32
 
 const (
@@ -427,11 +474,11 @@ func (x ProviderKind) String() string {
 }
 
 func (ProviderKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_solaris_protocol_control_proto_enumTypes[7].Descriptor()
+	return file_solaris_protocol_control_proto_enumTypes[8].Descriptor()
 }
 
 func (ProviderKind) Type() protoreflect.EnumType {
-	return &file_solaris_protocol_control_proto_enumTypes[7]
+	return &file_solaris_protocol_control_proto_enumTypes[8]
 }
 
 func (x ProviderKind) Number() protoreflect.EnumNumber {
@@ -440,7 +487,7 @@ func (x ProviderKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ProviderKind.Descriptor instead.
 func (ProviderKind) EnumDescriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{7}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{8}
 }
 
 type LogLevel int32
@@ -482,11 +529,11 @@ func (x LogLevel) String() string {
 }
 
 func (LogLevel) Descriptor() protoreflect.EnumDescriptor {
-	return file_solaris_protocol_control_proto_enumTypes[8].Descriptor()
+	return file_solaris_protocol_control_proto_enumTypes[9].Descriptor()
 }
 
 func (LogLevel) Type() protoreflect.EnumType {
-	return &file_solaris_protocol_control_proto_enumTypes[8]
+	return &file_solaris_protocol_control_proto_enumTypes[9]
 }
 
 func (x LogLevel) Number() protoreflect.EnumNumber {
@@ -495,7 +542,7 @@ func (x LogLevel) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use LogLevel.Descriptor instead.
 func (LogLevel) EnumDescriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{8}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{9}
 }
 
 type MeshState int32
@@ -540,11 +587,11 @@ func (x MeshState) String() string {
 }
 
 func (MeshState) Descriptor() protoreflect.EnumDescriptor {
-	return file_solaris_protocol_control_proto_enumTypes[9].Descriptor()
+	return file_solaris_protocol_control_proto_enumTypes[10].Descriptor()
 }
 
 func (MeshState) Type() protoreflect.EnumType {
-	return &file_solaris_protocol_control_proto_enumTypes[9]
+	return &file_solaris_protocol_control_proto_enumTypes[10]
 }
 
 func (x MeshState) Number() protoreflect.EnumNumber {
@@ -553,7 +600,7 @@ func (x MeshState) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use MeshState.Descriptor instead.
 func (MeshState) EnumDescriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{9}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{10}
 }
 
 type ExportFormat int32
@@ -593,11 +640,11 @@ func (x ExportFormat) String() string {
 }
 
 func (ExportFormat) Descriptor() protoreflect.EnumDescriptor {
-	return file_solaris_protocol_control_proto_enumTypes[10].Descriptor()
+	return file_solaris_protocol_control_proto_enumTypes[11].Descriptor()
 }
 
 func (ExportFormat) Type() protoreflect.EnumType {
-	return &file_solaris_protocol_control_proto_enumTypes[10]
+	return &file_solaris_protocol_control_proto_enumTypes[11]
 }
 
 func (x ExportFormat) Number() protoreflect.EnumNumber {
@@ -606,7 +653,7 @@ func (x ExportFormat) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ExportFormat.Descriptor instead.
 func (ExportFormat) EnumDescriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{10}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{11}
 }
 
 type Request struct {
@@ -3554,10 +3601,13 @@ func (x *SetModeRequest) GetMode() Mode {
 }
 
 type Proxy struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
-	DelayMs       *uint32                `protobuf:"varint,3,opt,name=delay_ms,json=delayMs,proto3,oneof" json:"delay_ms,omitempty"` // absent until tested; 0 when the last test failed
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Name    string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Type    string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	DelayMs *uint32                `protobuf:"varint,3,opt,name=delay_ms,json=delayMs,proto3,oneof" json:"delay_ms,omitempty"` // absent until tested; 0 when the last test failed
+	// The last DELAY_TEST_TCP result, as delay_ms; a group reports the node it uses now.
+	// Absent for what has no TCP server to dial (docs/decisions.md D32).
+	TcpDelayMs    *uint32 `protobuf:"varint,4,opt,name=tcp_delay_ms,json=tcpDelayMs,proto3,oneof" json:"tcp_delay_ms,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3609,6 +3659,13 @@ func (x *Proxy) GetType() string {
 func (x *Proxy) GetDelayMs() uint32 {
 	if x != nil && x.DelayMs != nil {
 		return *x.DelayMs
+	}
+	return 0
+}
+
+func (x *Proxy) GetTcpDelayMs() uint32 {
+	if x != nil && x.TcpDelayMs != nil {
+		return *x.TcpDelayMs
 	}
 	return 0
 }
@@ -3935,7 +3992,8 @@ func (x *SelectProxyRequest) GetProxy() string {
 
 type HealthCheckRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Group         string                 `protobuf:"bytes,1,opt,name=group,proto3" json:"group,omitempty"`
+	Group         string                 `protobuf:"bytes,1,opt,name=group,proto3" json:"group,omitempty"` // empty checks every group
+	Test          DelayTest              `protobuf:"varint,2,opt,name=test,proto3,enum=solaris.control.v1.DelayTest" json:"test,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3977,11 +4035,19 @@ func (x *HealthCheckRequest) GetGroup() string {
 	return ""
 }
 
+func (x *HealthCheckRequest) GetTest() DelayTest {
+	if x != nil {
+		return x.Test
+	}
+	return DelayTest_DELAY_TEST_UNSPECIFIED
+}
+
 type TestDelayRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Proxy         string                 `protobuf:"bytes,1,opt,name=proxy,proto3" json:"proxy,omitempty"`
-	TestUrl       string                 `protobuf:"bytes,2,opt,name=test_url,json=testUrl,proto3" json:"test_url,omitempty"`
+	TestUrl       string                 `protobuf:"bytes,2,opt,name=test_url,json=testUrl,proto3" json:"test_url,omitempty"` // HTTP only
 	TimeoutMs     uint32                 `protobuf:"varint,3,opt,name=timeout_ms,json=timeoutMs,proto3" json:"timeout_ms,omitempty"`
+	Test          DelayTest              `protobuf:"varint,4,opt,name=test,proto3,enum=solaris.control.v1.DelayTest" json:"test,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4035,6 +4101,13 @@ func (x *TestDelayRequest) GetTimeoutMs() uint32 {
 		return x.TimeoutMs
 	}
 	return 0
+}
+
+func (x *TestDelayRequest) GetTest() DelayTest {
+	if x != nil {
+		return x.Test
+	}
+	return DelayTest_DELAY_TEST_UNSPECIFIED
 }
 
 type TestDelayResponse struct {
@@ -7260,12 +7333,15 @@ const file_solaris_protocol_control_proto_rawDesc = "" +
 	"\x14system_proxy_enabled\x18\b \x01(\bR\x12systemProxyEnabledB\r\n" +
 	"\v_last_error\">\n" +
 	"\x0eSetModeRequest\x12,\n" +
-	"\x04mode\x18\x01 \x01(\x0e2\x18.solaris.control.v1.ModeR\x04mode\"\\\n" +
+	"\x04mode\x18\x01 \x01(\x0e2\x18.solaris.control.v1.ModeR\x04mode\"\x94\x01\n" +
 	"\x05Proxy\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x1e\n" +
-	"\bdelay_ms\x18\x03 \x01(\rH\x00R\adelayMs\x88\x01\x01B\v\n" +
-	"\t_delay_ms\"\x96\x01\n" +
+	"\bdelay_ms\x18\x03 \x01(\rH\x00R\adelayMs\x88\x01\x01\x12%\n" +
+	"\ftcp_delay_ms\x18\x04 \x01(\rH\x01R\n" +
+	"tcpDelayMs\x88\x01\x01B\v\n" +
+	"\t_delay_msB\x0f\n" +
+	"\r_tcp_delay_ms\"\x96\x01\n" +
 	"\n" +
 	"ProxyGroup\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
@@ -7285,14 +7361,16 @@ const file_solaris_protocol_control_proto_rawDesc = "" +
 	"\x05group\x18\x01 \x01(\v2\x1e.solaris.control.v1.ProxyGroupR\x05group\"@\n" +
 	"\x12SelectProxyRequest\x12\x14\n" +
 	"\x05group\x18\x01 \x01(\tR\x05group\x12\x14\n" +
-	"\x05proxy\x18\x02 \x01(\tR\x05proxy\"*\n" +
+	"\x05proxy\x18\x02 \x01(\tR\x05proxy\"]\n" +
 	"\x12HealthCheckRequest\x12\x14\n" +
-	"\x05group\x18\x01 \x01(\tR\x05group\"b\n" +
+	"\x05group\x18\x01 \x01(\tR\x05group\x121\n" +
+	"\x04test\x18\x02 \x01(\x0e2\x1d.solaris.control.v1.DelayTestR\x04test\"\x95\x01\n" +
 	"\x10TestDelayRequest\x12\x14\n" +
 	"\x05proxy\x18\x01 \x01(\tR\x05proxy\x12\x19\n" +
 	"\btest_url\x18\x02 \x01(\tR\atestUrl\x12\x1d\n" +
 	"\n" +
-	"timeout_ms\x18\x03 \x01(\rR\ttimeoutMs\".\n" +
+	"timeout_ms\x18\x03 \x01(\rR\ttimeoutMs\x121\n" +
+	"\x04test\x18\x04 \x01(\x0e2\x1d.solaris.control.v1.DelayTestR\x04test\".\n" +
 	"\x11TestDelayResponse\x12\x19\n" +
 	"\bdelay_ms\x18\x01 \x01(\rR\adelayMs\"\xa4\x01\n" +
 	"\bProvider\x12\x12\n" +
@@ -7536,7 +7614,10 @@ const file_solaris_protocol_control_proto_rawDesc = "" +
 	"\tGroupSort\x12\x1a\n" +
 	"\x16GROUP_SORT_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fGROUP_SORT_NAME\x10\x01\x12\x14\n" +
-	"\x10GROUP_SORT_DELAY\x10\x02*^\n" +
+	"\x10GROUP_SORT_DELAY\x10\x02*;\n" +
+	"\tDelayTest\x12\x1a\n" +
+	"\x16DELAY_TEST_UNSPECIFIED\x10\x00\x12\x12\n" +
+	"\x0eDELAY_TEST_TCP\x10\x01*^\n" +
 	"\fProviderKind\x12\x1d\n" +
 	"\x19PROVIDER_KIND_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13PROVIDER_KIND_PROXY\x10\x01\x12\x16\n" +
@@ -7571,7 +7652,7 @@ func file_solaris_protocol_control_proto_rawDescGZIP() []byte {
 	return file_solaris_protocol_control_proto_rawDescData
 }
 
-var file_solaris_protocol_control_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
+var file_solaris_protocol_control_proto_enumTypes = make([]protoimpl.EnumInfo, 12)
 var file_solaris_protocol_control_proto_msgTypes = make([]protoimpl.MessageInfo, 88)
 var file_solaris_protocol_control_proto_goTypes = []any{
 	(RunState)(0),                       // 0: solaris.control.v1.RunState
@@ -7581,223 +7662,226 @@ var file_solaris_protocol_control_proto_goTypes = []any{
 	(GroupKind)(0),                      // 4: solaris.control.v1.GroupKind
 	(Mode)(0),                           // 5: solaris.control.v1.Mode
 	(GroupSort)(0),                      // 6: solaris.control.v1.GroupSort
-	(ProviderKind)(0),                   // 7: solaris.control.v1.ProviderKind
-	(LogLevel)(0),                       // 8: solaris.control.v1.LogLevel
-	(MeshState)(0),                      // 9: solaris.control.v1.MeshState
-	(ExportFormat)(0),                   // 10: solaris.control.v1.ExportFormat
-	(*Request)(nil),                     // 11: solaris.control.v1.Request
-	(*Response)(nil),                    // 12: solaris.control.v1.Response
-	(*Empty)(nil),                       // 13: solaris.control.v1.Empty
-	(*Error)(nil),                       // 14: solaris.control.v1.Error
-	(*GetInfoRequest)(nil),              // 15: solaris.control.v1.GetInfoRequest
-	(*GetInfoResponse)(nil),             // 16: solaris.control.v1.GetInfoResponse
-	(*ClaimRequest)(nil),                // 17: solaris.control.v1.ClaimRequest
-	(*RunOptions)(nil),                  // 18: solaris.control.v1.RunOptions
-	(*ValidateRequest)(nil),             // 19: solaris.control.v1.ValidateRequest
-	(*StartRequest)(nil),                // 20: solaris.control.v1.StartRequest
-	(*ReloadRequest)(nil),               // 21: solaris.control.v1.ReloadRequest
-	(*Composition)(nil),                 // 22: solaris.control.v1.Composition
-	(*MeshNetwork)(nil),                 // 23: solaris.control.v1.MeshNetwork
-	(*TailscaleNetwork)(nil),            // 24: solaris.control.v1.TailscaleNetwork
-	(*ZeroTierNetwork)(nil),             // 25: solaris.control.v1.ZeroTierNetwork
-	(*EasyTierNetwork)(nil),             // 26: solaris.control.v1.EasyTierNetwork
-	(*Egress)(nil),                      // 27: solaris.control.v1.Egress
-	(*WarpAccount)(nil),                 // 28: solaris.control.v1.WarpAccount
-	(*CompositionSource)(nil),           // 29: solaris.control.v1.CompositionSource
-	(*CompositionReport)(nil),           // 30: solaris.control.v1.CompositionReport
-	(*MeshOutbound)(nil),                // 31: solaris.control.v1.MeshOutbound
-	(*CompositionWarning)(nil),          // 32: solaris.control.v1.CompositionWarning
-	(*ComposedGroup)(nil),               // 33: solaris.control.v1.ComposedGroup
-	(*PoolNode)(nil),                    // 34: solaris.control.v1.PoolNode
-	(*StopRequest)(nil),                 // 35: solaris.control.v1.StopRequest
-	(*SetSystemProxyRequest)(nil),       // 36: solaris.control.v1.SetSystemProxyRequest
-	(*GetStatusRequest)(nil),            // 37: solaris.control.v1.GetStatusRequest
-	(*GetStatusResponse)(nil),           // 38: solaris.control.v1.GetStatusResponse
-	(*SetModeRequest)(nil),              // 39: solaris.control.v1.SetModeRequest
-	(*Proxy)(nil),                       // 40: solaris.control.v1.Proxy
-	(*ProxyGroup)(nil),                  // 41: solaris.control.v1.ProxyGroup
-	(*ListGroupsRequest)(nil),           // 42: solaris.control.v1.ListGroupsRequest
-	(*ListGroupsResponse)(nil),          // 43: solaris.control.v1.ListGroupsResponse
-	(*GetGroupRequest)(nil),             // 44: solaris.control.v1.GetGroupRequest
-	(*GetGroupResponse)(nil),            // 45: solaris.control.v1.GetGroupResponse
-	(*SelectProxyRequest)(nil),          // 46: solaris.control.v1.SelectProxyRequest
-	(*HealthCheckRequest)(nil),          // 47: solaris.control.v1.HealthCheckRequest
-	(*TestDelayRequest)(nil),            // 48: solaris.control.v1.TestDelayRequest
-	(*TestDelayResponse)(nil),           // 49: solaris.control.v1.TestDelayResponse
-	(*Provider)(nil),                    // 50: solaris.control.v1.Provider
-	(*ListProvidersRequest)(nil),        // 51: solaris.control.v1.ListProvidersRequest
-	(*ListProvidersResponse)(nil),       // 52: solaris.control.v1.ListProvidersResponse
-	(*UpdateProviderRequest)(nil),       // 53: solaris.control.v1.UpdateProviderRequest
-	(*Rule)(nil),                        // 54: solaris.control.v1.Rule
-	(*ListRulesRequest)(nil),            // 55: solaris.control.v1.ListRulesRequest
-	(*ListRulesResponse)(nil),           // 56: solaris.control.v1.ListRulesResponse
-	(*CloseConnectionRequest)(nil),      // 57: solaris.control.v1.CloseConnectionRequest
-	(*CloseAllConnectionsRequest)(nil),  // 58: solaris.control.v1.CloseAllConnectionsRequest
-	(*FlushFakeIPRequest)(nil),          // 59: solaris.control.v1.FlushFakeIPRequest
-	(*FlushDNSCacheRequest)(nil),        // 60: solaris.control.v1.FlushDNSCacheRequest
-	(*SubscribeLogsRequest)(nil),        // 61: solaris.control.v1.SubscribeLogsRequest
-	(*SubscribeTrafficRequest)(nil),     // 62: solaris.control.v1.SubscribeTrafficRequest
-	(*SubscribeConnectionsRequest)(nil), // 63: solaris.control.v1.SubscribeConnectionsRequest
-	(*SubscribeResponse)(nil),           // 64: solaris.control.v1.SubscribeResponse
-	(*PollEventsRequest)(nil),           // 65: solaris.control.v1.PollEventsRequest
-	(*PollEventsResponse)(nil),          // 66: solaris.control.v1.PollEventsResponse
-	(*UnsubscribeRequest)(nil),          // 67: solaris.control.v1.UnsubscribeRequest
-	(*Event)(nil),                       // 68: solaris.control.v1.Event
-	(*LogEntry)(nil),                    // 69: solaris.control.v1.LogEntry
-	(*TrafficSample)(nil),               // 70: solaris.control.v1.TrafficSample
-	(*Connection)(nil),                  // 71: solaris.control.v1.Connection
-	(*ConnectionSnapshot)(nil),          // 72: solaris.control.v1.ConnectionSnapshot
-	(*InspectSourceRequest)(nil),        // 73: solaris.control.v1.InspectSourceRequest
-	(*InspectSourceResponse)(nil),       // 74: solaris.control.v1.InspectSourceResponse
-	(*SourceNode)(nil),                  // 75: solaris.control.v1.SourceNode
-	(*RegisterWarpRequest)(nil),         // 76: solaris.control.v1.RegisterWarpRequest
-	(*RegisterWarpResponse)(nil),        // 77: solaris.control.v1.RegisterWarpResponse
-	(*ListVpnGateRequest)(nil),          // 78: solaris.control.v1.ListVpnGateRequest
-	(*ListVpnGateResponse)(nil),         // 79: solaris.control.v1.ListVpnGateResponse
-	(*VpnGateServer)(nil),               // 80: solaris.control.v1.VpnGateServer
-	(*OpenVpnOptions)(nil),              // 81: solaris.control.v1.OpenVpnOptions
-	(*GetMeshStatusRequest)(nil),        // 82: solaris.control.v1.GetMeshStatusRequest
-	(*GetMeshStatusResponse)(nil),       // 83: solaris.control.v1.GetMeshStatusResponse
-	(*MeshStatus)(nil),                  // 84: solaris.control.v1.MeshStatus
-	(*LoginMeshRequest)(nil),            // 85: solaris.control.v1.LoginMeshRequest
-	(*LoginMeshResponse)(nil),           // 86: solaris.control.v1.LoginMeshResponse
-	(*ListGeoCategoriesRequest)(nil),    // 87: solaris.control.v1.ListGeoCategoriesRequest
-	(*ListGeoCategoriesResponse)(nil),   // 88: solaris.control.v1.ListGeoCategoriesResponse
-	(*GeoCategories)(nil),               // 89: solaris.control.v1.GeoCategories
-	(*PreviewGroupRequest)(nil),         // 90: solaris.control.v1.PreviewGroupRequest
-	(*PreviewGroupResponse)(nil),        // 91: solaris.control.v1.PreviewGroupResponse
-	(*MatchRuleRequest)(nil),            // 92: solaris.control.v1.MatchRuleRequest
-	(*MatchRuleResponse)(nil),           // 93: solaris.control.v1.MatchRuleResponse
-	(*ConvertToPlanRequest)(nil),        // 94: solaris.control.v1.ConvertToPlanRequest
-	(*ConvertToPlanResponse)(nil),       // 95: solaris.control.v1.ConvertToPlanResponse
-	(*SkippedRule)(nil),                 // 96: solaris.control.v1.SkippedRule
-	(*ExportPlanRequest)(nil),           // 97: solaris.control.v1.ExportPlanRequest
-	(*ExportPlanResponse)(nil),          // 98: solaris.control.v1.ExportPlanResponse
+	(DelayTest)(0),                      // 7: solaris.control.v1.DelayTest
+	(ProviderKind)(0),                   // 8: solaris.control.v1.ProviderKind
+	(LogLevel)(0),                       // 9: solaris.control.v1.LogLevel
+	(MeshState)(0),                      // 10: solaris.control.v1.MeshState
+	(ExportFormat)(0),                   // 11: solaris.control.v1.ExportFormat
+	(*Request)(nil),                     // 12: solaris.control.v1.Request
+	(*Response)(nil),                    // 13: solaris.control.v1.Response
+	(*Empty)(nil),                       // 14: solaris.control.v1.Empty
+	(*Error)(nil),                       // 15: solaris.control.v1.Error
+	(*GetInfoRequest)(nil),              // 16: solaris.control.v1.GetInfoRequest
+	(*GetInfoResponse)(nil),             // 17: solaris.control.v1.GetInfoResponse
+	(*ClaimRequest)(nil),                // 18: solaris.control.v1.ClaimRequest
+	(*RunOptions)(nil),                  // 19: solaris.control.v1.RunOptions
+	(*ValidateRequest)(nil),             // 20: solaris.control.v1.ValidateRequest
+	(*StartRequest)(nil),                // 21: solaris.control.v1.StartRequest
+	(*ReloadRequest)(nil),               // 22: solaris.control.v1.ReloadRequest
+	(*Composition)(nil),                 // 23: solaris.control.v1.Composition
+	(*MeshNetwork)(nil),                 // 24: solaris.control.v1.MeshNetwork
+	(*TailscaleNetwork)(nil),            // 25: solaris.control.v1.TailscaleNetwork
+	(*ZeroTierNetwork)(nil),             // 26: solaris.control.v1.ZeroTierNetwork
+	(*EasyTierNetwork)(nil),             // 27: solaris.control.v1.EasyTierNetwork
+	(*Egress)(nil),                      // 28: solaris.control.v1.Egress
+	(*WarpAccount)(nil),                 // 29: solaris.control.v1.WarpAccount
+	(*CompositionSource)(nil),           // 30: solaris.control.v1.CompositionSource
+	(*CompositionReport)(nil),           // 31: solaris.control.v1.CompositionReport
+	(*MeshOutbound)(nil),                // 32: solaris.control.v1.MeshOutbound
+	(*CompositionWarning)(nil),          // 33: solaris.control.v1.CompositionWarning
+	(*ComposedGroup)(nil),               // 34: solaris.control.v1.ComposedGroup
+	(*PoolNode)(nil),                    // 35: solaris.control.v1.PoolNode
+	(*StopRequest)(nil),                 // 36: solaris.control.v1.StopRequest
+	(*SetSystemProxyRequest)(nil),       // 37: solaris.control.v1.SetSystemProxyRequest
+	(*GetStatusRequest)(nil),            // 38: solaris.control.v1.GetStatusRequest
+	(*GetStatusResponse)(nil),           // 39: solaris.control.v1.GetStatusResponse
+	(*SetModeRequest)(nil),              // 40: solaris.control.v1.SetModeRequest
+	(*Proxy)(nil),                       // 41: solaris.control.v1.Proxy
+	(*ProxyGroup)(nil),                  // 42: solaris.control.v1.ProxyGroup
+	(*ListGroupsRequest)(nil),           // 43: solaris.control.v1.ListGroupsRequest
+	(*ListGroupsResponse)(nil),          // 44: solaris.control.v1.ListGroupsResponse
+	(*GetGroupRequest)(nil),             // 45: solaris.control.v1.GetGroupRequest
+	(*GetGroupResponse)(nil),            // 46: solaris.control.v1.GetGroupResponse
+	(*SelectProxyRequest)(nil),          // 47: solaris.control.v1.SelectProxyRequest
+	(*HealthCheckRequest)(nil),          // 48: solaris.control.v1.HealthCheckRequest
+	(*TestDelayRequest)(nil),            // 49: solaris.control.v1.TestDelayRequest
+	(*TestDelayResponse)(nil),           // 50: solaris.control.v1.TestDelayResponse
+	(*Provider)(nil),                    // 51: solaris.control.v1.Provider
+	(*ListProvidersRequest)(nil),        // 52: solaris.control.v1.ListProvidersRequest
+	(*ListProvidersResponse)(nil),       // 53: solaris.control.v1.ListProvidersResponse
+	(*UpdateProviderRequest)(nil),       // 54: solaris.control.v1.UpdateProviderRequest
+	(*Rule)(nil),                        // 55: solaris.control.v1.Rule
+	(*ListRulesRequest)(nil),            // 56: solaris.control.v1.ListRulesRequest
+	(*ListRulesResponse)(nil),           // 57: solaris.control.v1.ListRulesResponse
+	(*CloseConnectionRequest)(nil),      // 58: solaris.control.v1.CloseConnectionRequest
+	(*CloseAllConnectionsRequest)(nil),  // 59: solaris.control.v1.CloseAllConnectionsRequest
+	(*FlushFakeIPRequest)(nil),          // 60: solaris.control.v1.FlushFakeIPRequest
+	(*FlushDNSCacheRequest)(nil),        // 61: solaris.control.v1.FlushDNSCacheRequest
+	(*SubscribeLogsRequest)(nil),        // 62: solaris.control.v1.SubscribeLogsRequest
+	(*SubscribeTrafficRequest)(nil),     // 63: solaris.control.v1.SubscribeTrafficRequest
+	(*SubscribeConnectionsRequest)(nil), // 64: solaris.control.v1.SubscribeConnectionsRequest
+	(*SubscribeResponse)(nil),           // 65: solaris.control.v1.SubscribeResponse
+	(*PollEventsRequest)(nil),           // 66: solaris.control.v1.PollEventsRequest
+	(*PollEventsResponse)(nil),          // 67: solaris.control.v1.PollEventsResponse
+	(*UnsubscribeRequest)(nil),          // 68: solaris.control.v1.UnsubscribeRequest
+	(*Event)(nil),                       // 69: solaris.control.v1.Event
+	(*LogEntry)(nil),                    // 70: solaris.control.v1.LogEntry
+	(*TrafficSample)(nil),               // 71: solaris.control.v1.TrafficSample
+	(*Connection)(nil),                  // 72: solaris.control.v1.Connection
+	(*ConnectionSnapshot)(nil),          // 73: solaris.control.v1.ConnectionSnapshot
+	(*InspectSourceRequest)(nil),        // 74: solaris.control.v1.InspectSourceRequest
+	(*InspectSourceResponse)(nil),       // 75: solaris.control.v1.InspectSourceResponse
+	(*SourceNode)(nil),                  // 76: solaris.control.v1.SourceNode
+	(*RegisterWarpRequest)(nil),         // 77: solaris.control.v1.RegisterWarpRequest
+	(*RegisterWarpResponse)(nil),        // 78: solaris.control.v1.RegisterWarpResponse
+	(*ListVpnGateRequest)(nil),          // 79: solaris.control.v1.ListVpnGateRequest
+	(*ListVpnGateResponse)(nil),         // 80: solaris.control.v1.ListVpnGateResponse
+	(*VpnGateServer)(nil),               // 81: solaris.control.v1.VpnGateServer
+	(*OpenVpnOptions)(nil),              // 82: solaris.control.v1.OpenVpnOptions
+	(*GetMeshStatusRequest)(nil),        // 83: solaris.control.v1.GetMeshStatusRequest
+	(*GetMeshStatusResponse)(nil),       // 84: solaris.control.v1.GetMeshStatusResponse
+	(*MeshStatus)(nil),                  // 85: solaris.control.v1.MeshStatus
+	(*LoginMeshRequest)(nil),            // 86: solaris.control.v1.LoginMeshRequest
+	(*LoginMeshResponse)(nil),           // 87: solaris.control.v1.LoginMeshResponse
+	(*ListGeoCategoriesRequest)(nil),    // 88: solaris.control.v1.ListGeoCategoriesRequest
+	(*ListGeoCategoriesResponse)(nil),   // 89: solaris.control.v1.ListGeoCategoriesResponse
+	(*GeoCategories)(nil),               // 90: solaris.control.v1.GeoCategories
+	(*PreviewGroupRequest)(nil),         // 91: solaris.control.v1.PreviewGroupRequest
+	(*PreviewGroupResponse)(nil),        // 92: solaris.control.v1.PreviewGroupResponse
+	(*MatchRuleRequest)(nil),            // 93: solaris.control.v1.MatchRuleRequest
+	(*MatchRuleResponse)(nil),           // 94: solaris.control.v1.MatchRuleResponse
+	(*ConvertToPlanRequest)(nil),        // 95: solaris.control.v1.ConvertToPlanRequest
+	(*ConvertToPlanResponse)(nil),       // 96: solaris.control.v1.ConvertToPlanResponse
+	(*SkippedRule)(nil),                 // 97: solaris.control.v1.SkippedRule
+	(*ExportPlanRequest)(nil),           // 98: solaris.control.v1.ExportPlanRequest
+	(*ExportPlanResponse)(nil),          // 99: solaris.control.v1.ExportPlanResponse
 }
 var file_solaris_protocol_control_proto_depIdxs = []int32{
-	15,  // 0: solaris.control.v1.Request.get_info:type_name -> solaris.control.v1.GetInfoRequest
-	17,  // 1: solaris.control.v1.Request.claim:type_name -> solaris.control.v1.ClaimRequest
-	19,  // 2: solaris.control.v1.Request.validate:type_name -> solaris.control.v1.ValidateRequest
-	20,  // 3: solaris.control.v1.Request.start:type_name -> solaris.control.v1.StartRequest
-	21,  // 4: solaris.control.v1.Request.reload:type_name -> solaris.control.v1.ReloadRequest
-	35,  // 5: solaris.control.v1.Request.stop:type_name -> solaris.control.v1.StopRequest
-	36,  // 6: solaris.control.v1.Request.set_system_proxy:type_name -> solaris.control.v1.SetSystemProxyRequest
-	37,  // 7: solaris.control.v1.Request.get_status:type_name -> solaris.control.v1.GetStatusRequest
-	39,  // 8: solaris.control.v1.Request.set_mode:type_name -> solaris.control.v1.SetModeRequest
-	42,  // 9: solaris.control.v1.Request.list_groups:type_name -> solaris.control.v1.ListGroupsRequest
-	44,  // 10: solaris.control.v1.Request.get_group:type_name -> solaris.control.v1.GetGroupRequest
-	46,  // 11: solaris.control.v1.Request.select_proxy:type_name -> solaris.control.v1.SelectProxyRequest
-	47,  // 12: solaris.control.v1.Request.health_check:type_name -> solaris.control.v1.HealthCheckRequest
-	48,  // 13: solaris.control.v1.Request.test_delay:type_name -> solaris.control.v1.TestDelayRequest
-	51,  // 14: solaris.control.v1.Request.list_providers:type_name -> solaris.control.v1.ListProvidersRequest
-	53,  // 15: solaris.control.v1.Request.update_provider:type_name -> solaris.control.v1.UpdateProviderRequest
-	55,  // 16: solaris.control.v1.Request.list_rules:type_name -> solaris.control.v1.ListRulesRequest
-	57,  // 17: solaris.control.v1.Request.close_connection:type_name -> solaris.control.v1.CloseConnectionRequest
-	58,  // 18: solaris.control.v1.Request.close_all_connections:type_name -> solaris.control.v1.CloseAllConnectionsRequest
-	59,  // 19: solaris.control.v1.Request.flush_fake_ip:type_name -> solaris.control.v1.FlushFakeIPRequest
-	60,  // 20: solaris.control.v1.Request.flush_dns_cache:type_name -> solaris.control.v1.FlushDNSCacheRequest
-	61,  // 21: solaris.control.v1.Request.subscribe_logs:type_name -> solaris.control.v1.SubscribeLogsRequest
-	62,  // 22: solaris.control.v1.Request.subscribe_traffic:type_name -> solaris.control.v1.SubscribeTrafficRequest
-	63,  // 23: solaris.control.v1.Request.subscribe_connections:type_name -> solaris.control.v1.SubscribeConnectionsRequest
-	65,  // 24: solaris.control.v1.Request.poll_events:type_name -> solaris.control.v1.PollEventsRequest
-	67,  // 25: solaris.control.v1.Request.unsubscribe:type_name -> solaris.control.v1.UnsubscribeRequest
-	73,  // 26: solaris.control.v1.Request.inspect_source:type_name -> solaris.control.v1.InspectSourceRequest
-	87,  // 27: solaris.control.v1.Request.list_geo_categories:type_name -> solaris.control.v1.ListGeoCategoriesRequest
-	90,  // 28: solaris.control.v1.Request.preview_group:type_name -> solaris.control.v1.PreviewGroupRequest
-	92,  // 29: solaris.control.v1.Request.match_rule:type_name -> solaris.control.v1.MatchRuleRequest
-	94,  // 30: solaris.control.v1.Request.convert_to_plan:type_name -> solaris.control.v1.ConvertToPlanRequest
-	97,  // 31: solaris.control.v1.Request.export_plan:type_name -> solaris.control.v1.ExportPlanRequest
-	76,  // 32: solaris.control.v1.Request.register_warp:type_name -> solaris.control.v1.RegisterWarpRequest
-	78,  // 33: solaris.control.v1.Request.list_vpn_gate:type_name -> solaris.control.v1.ListVpnGateRequest
-	82,  // 34: solaris.control.v1.Request.get_mesh_status:type_name -> solaris.control.v1.GetMeshStatusRequest
-	85,  // 35: solaris.control.v1.Request.login_mesh:type_name -> solaris.control.v1.LoginMeshRequest
-	14,  // 36: solaris.control.v1.Response.error:type_name -> solaris.control.v1.Error
-	13,  // 37: solaris.control.v1.Response.empty:type_name -> solaris.control.v1.Empty
-	16,  // 38: solaris.control.v1.Response.get_info:type_name -> solaris.control.v1.GetInfoResponse
-	30,  // 39: solaris.control.v1.Response.composition:type_name -> solaris.control.v1.CompositionReport
-	38,  // 40: solaris.control.v1.Response.get_status:type_name -> solaris.control.v1.GetStatusResponse
-	43,  // 41: solaris.control.v1.Response.list_groups:type_name -> solaris.control.v1.ListGroupsResponse
-	45,  // 42: solaris.control.v1.Response.get_group:type_name -> solaris.control.v1.GetGroupResponse
-	49,  // 43: solaris.control.v1.Response.test_delay:type_name -> solaris.control.v1.TestDelayResponse
-	52,  // 44: solaris.control.v1.Response.list_providers:type_name -> solaris.control.v1.ListProvidersResponse
-	56,  // 45: solaris.control.v1.Response.list_rules:type_name -> solaris.control.v1.ListRulesResponse
-	64,  // 46: solaris.control.v1.Response.subscribe:type_name -> solaris.control.v1.SubscribeResponse
-	66,  // 47: solaris.control.v1.Response.poll_events:type_name -> solaris.control.v1.PollEventsResponse
-	74,  // 48: solaris.control.v1.Response.inspect_source:type_name -> solaris.control.v1.InspectSourceResponse
-	88,  // 49: solaris.control.v1.Response.list_geo_categories:type_name -> solaris.control.v1.ListGeoCategoriesResponse
-	91,  // 50: solaris.control.v1.Response.preview_group:type_name -> solaris.control.v1.PreviewGroupResponse
-	93,  // 51: solaris.control.v1.Response.match_rule:type_name -> solaris.control.v1.MatchRuleResponse
-	95,  // 52: solaris.control.v1.Response.convert_to_plan:type_name -> solaris.control.v1.ConvertToPlanResponse
-	98,  // 53: solaris.control.v1.Response.export_plan:type_name -> solaris.control.v1.ExportPlanResponse
-	77,  // 54: solaris.control.v1.Response.register_warp:type_name -> solaris.control.v1.RegisterWarpResponse
-	79,  // 55: solaris.control.v1.Response.list_vpn_gate:type_name -> solaris.control.v1.ListVpnGateResponse
-	83,  // 56: solaris.control.v1.Response.get_mesh_status:type_name -> solaris.control.v1.GetMeshStatusResponse
-	86,  // 57: solaris.control.v1.Response.login_mesh:type_name -> solaris.control.v1.LoginMeshResponse
+	16,  // 0: solaris.control.v1.Request.get_info:type_name -> solaris.control.v1.GetInfoRequest
+	18,  // 1: solaris.control.v1.Request.claim:type_name -> solaris.control.v1.ClaimRequest
+	20,  // 2: solaris.control.v1.Request.validate:type_name -> solaris.control.v1.ValidateRequest
+	21,  // 3: solaris.control.v1.Request.start:type_name -> solaris.control.v1.StartRequest
+	22,  // 4: solaris.control.v1.Request.reload:type_name -> solaris.control.v1.ReloadRequest
+	36,  // 5: solaris.control.v1.Request.stop:type_name -> solaris.control.v1.StopRequest
+	37,  // 6: solaris.control.v1.Request.set_system_proxy:type_name -> solaris.control.v1.SetSystemProxyRequest
+	38,  // 7: solaris.control.v1.Request.get_status:type_name -> solaris.control.v1.GetStatusRequest
+	40,  // 8: solaris.control.v1.Request.set_mode:type_name -> solaris.control.v1.SetModeRequest
+	43,  // 9: solaris.control.v1.Request.list_groups:type_name -> solaris.control.v1.ListGroupsRequest
+	45,  // 10: solaris.control.v1.Request.get_group:type_name -> solaris.control.v1.GetGroupRequest
+	47,  // 11: solaris.control.v1.Request.select_proxy:type_name -> solaris.control.v1.SelectProxyRequest
+	48,  // 12: solaris.control.v1.Request.health_check:type_name -> solaris.control.v1.HealthCheckRequest
+	49,  // 13: solaris.control.v1.Request.test_delay:type_name -> solaris.control.v1.TestDelayRequest
+	52,  // 14: solaris.control.v1.Request.list_providers:type_name -> solaris.control.v1.ListProvidersRequest
+	54,  // 15: solaris.control.v1.Request.update_provider:type_name -> solaris.control.v1.UpdateProviderRequest
+	56,  // 16: solaris.control.v1.Request.list_rules:type_name -> solaris.control.v1.ListRulesRequest
+	58,  // 17: solaris.control.v1.Request.close_connection:type_name -> solaris.control.v1.CloseConnectionRequest
+	59,  // 18: solaris.control.v1.Request.close_all_connections:type_name -> solaris.control.v1.CloseAllConnectionsRequest
+	60,  // 19: solaris.control.v1.Request.flush_fake_ip:type_name -> solaris.control.v1.FlushFakeIPRequest
+	61,  // 20: solaris.control.v1.Request.flush_dns_cache:type_name -> solaris.control.v1.FlushDNSCacheRequest
+	62,  // 21: solaris.control.v1.Request.subscribe_logs:type_name -> solaris.control.v1.SubscribeLogsRequest
+	63,  // 22: solaris.control.v1.Request.subscribe_traffic:type_name -> solaris.control.v1.SubscribeTrafficRequest
+	64,  // 23: solaris.control.v1.Request.subscribe_connections:type_name -> solaris.control.v1.SubscribeConnectionsRequest
+	66,  // 24: solaris.control.v1.Request.poll_events:type_name -> solaris.control.v1.PollEventsRequest
+	68,  // 25: solaris.control.v1.Request.unsubscribe:type_name -> solaris.control.v1.UnsubscribeRequest
+	74,  // 26: solaris.control.v1.Request.inspect_source:type_name -> solaris.control.v1.InspectSourceRequest
+	88,  // 27: solaris.control.v1.Request.list_geo_categories:type_name -> solaris.control.v1.ListGeoCategoriesRequest
+	91,  // 28: solaris.control.v1.Request.preview_group:type_name -> solaris.control.v1.PreviewGroupRequest
+	93,  // 29: solaris.control.v1.Request.match_rule:type_name -> solaris.control.v1.MatchRuleRequest
+	95,  // 30: solaris.control.v1.Request.convert_to_plan:type_name -> solaris.control.v1.ConvertToPlanRequest
+	98,  // 31: solaris.control.v1.Request.export_plan:type_name -> solaris.control.v1.ExportPlanRequest
+	77,  // 32: solaris.control.v1.Request.register_warp:type_name -> solaris.control.v1.RegisterWarpRequest
+	79,  // 33: solaris.control.v1.Request.list_vpn_gate:type_name -> solaris.control.v1.ListVpnGateRequest
+	83,  // 34: solaris.control.v1.Request.get_mesh_status:type_name -> solaris.control.v1.GetMeshStatusRequest
+	86,  // 35: solaris.control.v1.Request.login_mesh:type_name -> solaris.control.v1.LoginMeshRequest
+	15,  // 36: solaris.control.v1.Response.error:type_name -> solaris.control.v1.Error
+	14,  // 37: solaris.control.v1.Response.empty:type_name -> solaris.control.v1.Empty
+	17,  // 38: solaris.control.v1.Response.get_info:type_name -> solaris.control.v1.GetInfoResponse
+	31,  // 39: solaris.control.v1.Response.composition:type_name -> solaris.control.v1.CompositionReport
+	39,  // 40: solaris.control.v1.Response.get_status:type_name -> solaris.control.v1.GetStatusResponse
+	44,  // 41: solaris.control.v1.Response.list_groups:type_name -> solaris.control.v1.ListGroupsResponse
+	46,  // 42: solaris.control.v1.Response.get_group:type_name -> solaris.control.v1.GetGroupResponse
+	50,  // 43: solaris.control.v1.Response.test_delay:type_name -> solaris.control.v1.TestDelayResponse
+	53,  // 44: solaris.control.v1.Response.list_providers:type_name -> solaris.control.v1.ListProvidersResponse
+	57,  // 45: solaris.control.v1.Response.list_rules:type_name -> solaris.control.v1.ListRulesResponse
+	65,  // 46: solaris.control.v1.Response.subscribe:type_name -> solaris.control.v1.SubscribeResponse
+	67,  // 47: solaris.control.v1.Response.poll_events:type_name -> solaris.control.v1.PollEventsResponse
+	75,  // 48: solaris.control.v1.Response.inspect_source:type_name -> solaris.control.v1.InspectSourceResponse
+	89,  // 49: solaris.control.v1.Response.list_geo_categories:type_name -> solaris.control.v1.ListGeoCategoriesResponse
+	92,  // 50: solaris.control.v1.Response.preview_group:type_name -> solaris.control.v1.PreviewGroupResponse
+	94,  // 51: solaris.control.v1.Response.match_rule:type_name -> solaris.control.v1.MatchRuleResponse
+	96,  // 52: solaris.control.v1.Response.convert_to_plan:type_name -> solaris.control.v1.ConvertToPlanResponse
+	99,  // 53: solaris.control.v1.Response.export_plan:type_name -> solaris.control.v1.ExportPlanResponse
+	78,  // 54: solaris.control.v1.Response.register_warp:type_name -> solaris.control.v1.RegisterWarpResponse
+	80,  // 55: solaris.control.v1.Response.list_vpn_gate:type_name -> solaris.control.v1.ListVpnGateResponse
+	84,  // 56: solaris.control.v1.Response.get_mesh_status:type_name -> solaris.control.v1.GetMeshStatusResponse
+	87,  // 57: solaris.control.v1.Response.login_mesh:type_name -> solaris.control.v1.LoginMeshResponse
 	0,   // 58: solaris.control.v1.GetInfoResponse.state:type_name -> solaris.control.v1.RunState
 	1,   // 59: solaris.control.v1.GetInfoResponse.ownership:type_name -> solaris.control.v1.Ownership
 	2,   // 60: solaris.control.v1.RunOptions.tun_stack:type_name -> solaris.control.v1.TunStack
-	22,  // 61: solaris.control.v1.ValidateRequest.composition:type_name -> solaris.control.v1.Composition
-	22,  // 62: solaris.control.v1.StartRequest.composition:type_name -> solaris.control.v1.Composition
-	18,  // 63: solaris.control.v1.StartRequest.options:type_name -> solaris.control.v1.RunOptions
-	22,  // 64: solaris.control.v1.ReloadRequest.composition:type_name -> solaris.control.v1.Composition
-	18,  // 65: solaris.control.v1.ReloadRequest.options:type_name -> solaris.control.v1.RunOptions
-	29,  // 66: solaris.control.v1.Composition.sources:type_name -> solaris.control.v1.CompositionSource
-	27,  // 67: solaris.control.v1.Composition.egress:type_name -> solaris.control.v1.Egress
-	23,  // 68: solaris.control.v1.Composition.mesh:type_name -> solaris.control.v1.MeshNetwork
-	24,  // 69: solaris.control.v1.MeshNetwork.tailscale:type_name -> solaris.control.v1.TailscaleNetwork
-	25,  // 70: solaris.control.v1.MeshNetwork.zerotier:type_name -> solaris.control.v1.ZeroTierNetwork
-	26,  // 71: solaris.control.v1.MeshNetwork.easytier:type_name -> solaris.control.v1.EasyTierNetwork
-	28,  // 72: solaris.control.v1.Egress.warp:type_name -> solaris.control.v1.WarpAccount
-	80,  // 73: solaris.control.v1.Egress.vpn_gate:type_name -> solaris.control.v1.VpnGateServer
+	23,  // 61: solaris.control.v1.ValidateRequest.composition:type_name -> solaris.control.v1.Composition
+	23,  // 62: solaris.control.v1.StartRequest.composition:type_name -> solaris.control.v1.Composition
+	19,  // 63: solaris.control.v1.StartRequest.options:type_name -> solaris.control.v1.RunOptions
+	23,  // 64: solaris.control.v1.ReloadRequest.composition:type_name -> solaris.control.v1.Composition
+	19,  // 65: solaris.control.v1.ReloadRequest.options:type_name -> solaris.control.v1.RunOptions
+	30,  // 66: solaris.control.v1.Composition.sources:type_name -> solaris.control.v1.CompositionSource
+	28,  // 67: solaris.control.v1.Composition.egress:type_name -> solaris.control.v1.Egress
+	24,  // 68: solaris.control.v1.Composition.mesh:type_name -> solaris.control.v1.MeshNetwork
+	25,  // 69: solaris.control.v1.MeshNetwork.tailscale:type_name -> solaris.control.v1.TailscaleNetwork
+	26,  // 70: solaris.control.v1.MeshNetwork.zerotier:type_name -> solaris.control.v1.ZeroTierNetwork
+	27,  // 71: solaris.control.v1.MeshNetwork.easytier:type_name -> solaris.control.v1.EasyTierNetwork
+	29,  // 72: solaris.control.v1.Egress.warp:type_name -> solaris.control.v1.WarpAccount
+	81,  // 73: solaris.control.v1.Egress.vpn_gate:type_name -> solaris.control.v1.VpnGateServer
 	3,   // 74: solaris.control.v1.WarpAccount.protocol:type_name -> solaris.control.v1.WarpProtocol
-	32,  // 75: solaris.control.v1.CompositionReport.warnings:type_name -> solaris.control.v1.CompositionWarning
-	33,  // 76: solaris.control.v1.CompositionReport.groups:type_name -> solaris.control.v1.ComposedGroup
-	54,  // 77: solaris.control.v1.CompositionReport.rules:type_name -> solaris.control.v1.Rule
-	34,  // 78: solaris.control.v1.CompositionReport.nodes:type_name -> solaris.control.v1.PoolNode
-	31,  // 79: solaris.control.v1.CompositionReport.mesh:type_name -> solaris.control.v1.MeshOutbound
+	33,  // 75: solaris.control.v1.CompositionReport.warnings:type_name -> solaris.control.v1.CompositionWarning
+	34,  // 76: solaris.control.v1.CompositionReport.groups:type_name -> solaris.control.v1.ComposedGroup
+	55,  // 77: solaris.control.v1.CompositionReport.rules:type_name -> solaris.control.v1.Rule
+	35,  // 78: solaris.control.v1.CompositionReport.nodes:type_name -> solaris.control.v1.PoolNode
+	32,  // 79: solaris.control.v1.CompositionReport.mesh:type_name -> solaris.control.v1.MeshOutbound
 	4,   // 80: solaris.control.v1.ComposedGroup.kind:type_name -> solaris.control.v1.GroupKind
 	0,   // 81: solaris.control.v1.GetStatusResponse.state:type_name -> solaris.control.v1.RunState
 	5,   // 82: solaris.control.v1.GetStatusResponse.mode:type_name -> solaris.control.v1.Mode
-	14,  // 83: solaris.control.v1.GetStatusResponse.last_error:type_name -> solaris.control.v1.Error
+	15,  // 83: solaris.control.v1.GetStatusResponse.last_error:type_name -> solaris.control.v1.Error
 	5,   // 84: solaris.control.v1.SetModeRequest.mode:type_name -> solaris.control.v1.Mode
-	40,  // 85: solaris.control.v1.ProxyGroup.proxies:type_name -> solaris.control.v1.Proxy
+	41,  // 85: solaris.control.v1.ProxyGroup.proxies:type_name -> solaris.control.v1.Proxy
 	6,   // 86: solaris.control.v1.ListGroupsRequest.sort:type_name -> solaris.control.v1.GroupSort
-	41,  // 87: solaris.control.v1.ListGroupsResponse.groups:type_name -> solaris.control.v1.ProxyGroup
+	42,  // 87: solaris.control.v1.ListGroupsResponse.groups:type_name -> solaris.control.v1.ProxyGroup
 	6,   // 88: solaris.control.v1.GetGroupRequest.sort:type_name -> solaris.control.v1.GroupSort
-	41,  // 89: solaris.control.v1.GetGroupResponse.group:type_name -> solaris.control.v1.ProxyGroup
-	7,   // 90: solaris.control.v1.Provider.kind:type_name -> solaris.control.v1.ProviderKind
-	50,  // 91: solaris.control.v1.ListProvidersResponse.providers:type_name -> solaris.control.v1.Provider
-	7,   // 92: solaris.control.v1.UpdateProviderRequest.kind:type_name -> solaris.control.v1.ProviderKind
-	54,  // 93: solaris.control.v1.ListRulesResponse.rules:type_name -> solaris.control.v1.Rule
-	8,   // 94: solaris.control.v1.SubscribeLogsRequest.level:type_name -> solaris.control.v1.LogLevel
-	68,  // 95: solaris.control.v1.PollEventsResponse.events:type_name -> solaris.control.v1.Event
-	69,  // 96: solaris.control.v1.Event.log:type_name -> solaris.control.v1.LogEntry
-	70,  // 97: solaris.control.v1.Event.traffic:type_name -> solaris.control.v1.TrafficSample
-	72,  // 98: solaris.control.v1.Event.connections:type_name -> solaris.control.v1.ConnectionSnapshot
-	8,   // 99: solaris.control.v1.LogEntry.level:type_name -> solaris.control.v1.LogLevel
-	71,  // 100: solaris.control.v1.ConnectionSnapshot.connections:type_name -> solaris.control.v1.Connection
-	75,  // 101: solaris.control.v1.InspectSourceResponse.nodes:type_name -> solaris.control.v1.SourceNode
-	3,   // 102: solaris.control.v1.RegisterWarpRequest.protocol:type_name -> solaris.control.v1.WarpProtocol
-	28,  // 103: solaris.control.v1.RegisterWarpResponse.account:type_name -> solaris.control.v1.WarpAccount
-	80,  // 104: solaris.control.v1.ListVpnGateResponse.servers:type_name -> solaris.control.v1.VpnGateServer
-	81,  // 105: solaris.control.v1.VpnGateServer.openvpn:type_name -> solaris.control.v1.OpenVpnOptions
-	84,  // 106: solaris.control.v1.GetMeshStatusResponse.networks:type_name -> solaris.control.v1.MeshStatus
-	9,   // 107: solaris.control.v1.MeshStatus.state:type_name -> solaris.control.v1.MeshState
-	89,  // 108: solaris.control.v1.ListGeoCategoriesResponse.geosite:type_name -> solaris.control.v1.GeoCategories
-	89,  // 109: solaris.control.v1.ListGeoCategoriesResponse.geoip:type_name -> solaris.control.v1.GeoCategories
-	22,  // 110: solaris.control.v1.PreviewGroupRequest.composition:type_name -> solaris.control.v1.Composition
-	34,  // 111: solaris.control.v1.PreviewGroupResponse.nodes:type_name -> solaris.control.v1.PoolNode
-	22,  // 112: solaris.control.v1.MatchRuleRequest.composition:type_name -> solaris.control.v1.Composition
-	54,  // 113: solaris.control.v1.MatchRuleResponse.rule:type_name -> solaris.control.v1.Rule
-	96,  // 114: solaris.control.v1.ConvertToPlanResponse.skipped:type_name -> solaris.control.v1.SkippedRule
-	22,  // 115: solaris.control.v1.ExportPlanRequest.composition:type_name -> solaris.control.v1.Composition
-	10,  // 116: solaris.control.v1.ExportPlanRequest.format:type_name -> solaris.control.v1.ExportFormat
-	18,  // 117: solaris.control.v1.ExportPlanRequest.options:type_name -> solaris.control.v1.RunOptions
-	118, // [118:118] is the sub-list for method output_type
-	118, // [118:118] is the sub-list for method input_type
-	118, // [118:118] is the sub-list for extension type_name
-	118, // [118:118] is the sub-list for extension extendee
-	0,   // [0:118] is the sub-list for field type_name
+	42,  // 89: solaris.control.v1.GetGroupResponse.group:type_name -> solaris.control.v1.ProxyGroup
+	7,   // 90: solaris.control.v1.HealthCheckRequest.test:type_name -> solaris.control.v1.DelayTest
+	7,   // 91: solaris.control.v1.TestDelayRequest.test:type_name -> solaris.control.v1.DelayTest
+	8,   // 92: solaris.control.v1.Provider.kind:type_name -> solaris.control.v1.ProviderKind
+	51,  // 93: solaris.control.v1.ListProvidersResponse.providers:type_name -> solaris.control.v1.Provider
+	8,   // 94: solaris.control.v1.UpdateProviderRequest.kind:type_name -> solaris.control.v1.ProviderKind
+	55,  // 95: solaris.control.v1.ListRulesResponse.rules:type_name -> solaris.control.v1.Rule
+	9,   // 96: solaris.control.v1.SubscribeLogsRequest.level:type_name -> solaris.control.v1.LogLevel
+	69,  // 97: solaris.control.v1.PollEventsResponse.events:type_name -> solaris.control.v1.Event
+	70,  // 98: solaris.control.v1.Event.log:type_name -> solaris.control.v1.LogEntry
+	71,  // 99: solaris.control.v1.Event.traffic:type_name -> solaris.control.v1.TrafficSample
+	73,  // 100: solaris.control.v1.Event.connections:type_name -> solaris.control.v1.ConnectionSnapshot
+	9,   // 101: solaris.control.v1.LogEntry.level:type_name -> solaris.control.v1.LogLevel
+	72,  // 102: solaris.control.v1.ConnectionSnapshot.connections:type_name -> solaris.control.v1.Connection
+	76,  // 103: solaris.control.v1.InspectSourceResponse.nodes:type_name -> solaris.control.v1.SourceNode
+	3,   // 104: solaris.control.v1.RegisterWarpRequest.protocol:type_name -> solaris.control.v1.WarpProtocol
+	29,  // 105: solaris.control.v1.RegisterWarpResponse.account:type_name -> solaris.control.v1.WarpAccount
+	81,  // 106: solaris.control.v1.ListVpnGateResponse.servers:type_name -> solaris.control.v1.VpnGateServer
+	82,  // 107: solaris.control.v1.VpnGateServer.openvpn:type_name -> solaris.control.v1.OpenVpnOptions
+	85,  // 108: solaris.control.v1.GetMeshStatusResponse.networks:type_name -> solaris.control.v1.MeshStatus
+	10,  // 109: solaris.control.v1.MeshStatus.state:type_name -> solaris.control.v1.MeshState
+	90,  // 110: solaris.control.v1.ListGeoCategoriesResponse.geosite:type_name -> solaris.control.v1.GeoCategories
+	90,  // 111: solaris.control.v1.ListGeoCategoriesResponse.geoip:type_name -> solaris.control.v1.GeoCategories
+	23,  // 112: solaris.control.v1.PreviewGroupRequest.composition:type_name -> solaris.control.v1.Composition
+	35,  // 113: solaris.control.v1.PreviewGroupResponse.nodes:type_name -> solaris.control.v1.PoolNode
+	23,  // 114: solaris.control.v1.MatchRuleRequest.composition:type_name -> solaris.control.v1.Composition
+	55,  // 115: solaris.control.v1.MatchRuleResponse.rule:type_name -> solaris.control.v1.Rule
+	97,  // 116: solaris.control.v1.ConvertToPlanResponse.skipped:type_name -> solaris.control.v1.SkippedRule
+	23,  // 117: solaris.control.v1.ExportPlanRequest.composition:type_name -> solaris.control.v1.Composition
+	11,  // 118: solaris.control.v1.ExportPlanRequest.format:type_name -> solaris.control.v1.ExportFormat
+	19,  // 119: solaris.control.v1.ExportPlanRequest.options:type_name -> solaris.control.v1.RunOptions
+	120, // [120:120] is the sub-list for method output_type
+	120, // [120:120] is the sub-list for method input_type
+	120, // [120:120] is the sub-list for extension type_name
+	120, // [120:120] is the sub-list for extension extendee
+	0,   // [0:120] is the sub-list for field type_name
 }
 
 func init() { file_solaris_protocol_control_proto_init() }
@@ -7900,7 +7984,7 @@ func file_solaris_protocol_control_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_solaris_protocol_control_proto_rawDesc), len(file_solaris_protocol_control_proto_rawDesc)),
-			NumEnums:      11,
+			NumEnums:      12,
 			NumMessages:   88,
 			NumExtensions: 0,
 			NumServices:   0,
