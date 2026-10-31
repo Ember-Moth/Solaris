@@ -2,7 +2,7 @@
 
 Solaris 从 1.0.0 起进入维护。本文是日常工作的依据：各平台的现状（第 1 节）、要在真机上做的验收（第 2 节）、已知
 问题（第 3 节）、发布步骤（第 4 节）和工作规则（第 5 节）。决策见 [decisions.md](decisions.md)，各部分的设计见
-[README](../README.md#文档) 的文档一览。
+[development.md](development.md#文档) 的文档一览。
 
 ## 1. 现状
 
