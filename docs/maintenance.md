@@ -53,7 +53,7 @@ Windows runner 上测。服务的属主逻辑（认领、换属主重启、注�
 - Tor 出口（D23，[exits.md](exits.md) 第 4 节）：只有设计；
 - Windows 代码签名（D29）：签名方案定下后接上 `product.WindowsSigner`、`SignedRelease` 和界面的
   `signature.WINDOWS_SIGNER`（[release.md](release.md) 第 3 节）；
-- 管理员接管其他用户的隧道（D5b）；
+- 管理员接管其他用户的隧道（D5b，已定为管理员经 UAC 确认后可以接管）；
 - Windows 服务处理 PowerEvent（唤醒后重置连接），以及界面、服务、内核三层逐层递减的超时
   （[architecture.md](architecture.md) §5.2）；
 - macOS 卸载前停用系统扩展（`deactivationRequest`），扩展说明文字的本地化，"需要批准扩展""需要重启"两种错误的
@@ -112,7 +112,7 @@ Windows runner 上测。服务的属主逻辑（认领、换属主重启、注�
   的默认栈；
 - `includeAllNetworks`（D19）：打开后系统默认绕开隧道的流量也进入隧道，局域网流量不进；扩展自己（mihomo 的出站）
   的流量不被卷回隧道；`mips` 和 `gvisor` 栈都能工作；保存配置时系统是否再次请用户允许；
-- provider message 的大小上限（D8）：用一份大配置 `Reload`，记下能带多大；
+- provider message 的大小上限（D8）：用一份大配置 `Reload`，记下能带多大；配置不分片，真带不动时回到 D8 重新决定；
 - 隧道断开时导入订阅，然后连接（D27）：未读的订阅在 `Start` 之前读取并校验，记下要多久；读不了时隧道断开。
 
 ### 2.3 iCloud 备份
@@ -351,5 +351,5 @@ SHA-256。界面从不静默安装，用户确认后才打开安装包。
   安全要求；3.4 节的体积表随之更新。
 - **GEO 数据**的版本和 SHA-256 钉在 `scripts/fetch_geodata.py` 里；改了之后用 `--categories` 重新生成附带的分类名
   清单（`src/solaris/host/geo_categories.py`），CI 用 `--check` 核对。
-- **PySide6** 决定 macOS 的最低版本（D28）。**Nuitka** 的版本是 `scripts/build_app.py` 的 `NUITKA_VERSION`，CI 和
+- **PySide6** 决定 macOS 的最低版本：6.12 要求 macOS 26（D28），升级前先看新版本要求的系统版本。**Nuitka** 的版本是 `scripts/build_app.py` 的 `NUITKA_VERSION`，CI 和
   发布工作流里的 `--with nuitka==` 要一起改。

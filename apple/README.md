@@ -144,8 +144,8 @@ uv run --with nuitka==4.2.2 python scripts/build_app.py --unsigned
   `ditto` 保留；hypervpn 同样的布局能通过公证。
 - **最低系统版本**：PySide6 6.12.0（`uv.lock` 锁定的版本）的 wheel 标着 macOS 14.0，绑定库实际的部署版本却是
   26.0，所以脚本把 app 的 `LSMinimumSystemVersion` 设为 bundle 里所有 Mach-O 要求的最高版本（现在是 26.0），
-  并打印警告；要支持 macOS 15，得把 PySide6 钉在 6.11.x（hypervpn 用的 6.11.2 是 15.0），见待决策的 D28。扩展和
-  管理库仍是 15.0。
+  并打印警告。最低支持 macOS 26（决策 D28），所以不为 macOS 15 把 PySide6 降到 6.11.x。扩展和管理库的部署目标
+  仍是 15.0。
 - **JIT**：主应用的 entitlement 带 `com.apple.security.cs.allow-jit`，Qt Quick 的 JavaScript 引擎在 hardened
   runtime 下要用（hypervpn 同样需要）；它不需要描述文件授权。
 - 脚本不运行、不安装 app，也不公证。

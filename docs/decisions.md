@@ -5,11 +5,7 @@
 
 ## 待决策
 
-| # | 事项 | 影响 |
-| --- | --- | --- |
-| D5b | 内核运行中能否由管理员接管其他用户的隧道（倾向可以，需 UAC 确认）。现在只能等那个用户的隧道停了再认领 | 服务的属主逻辑，接管会加在 `owner.Service.Claim` 里（[architecture.md](architecture.md) §5.4） |
-| D8 | NetworkExtension 的 provider message 单条大小上限，要在测试 Mac 上实测 | `Reload` 能否直接携带大配置；App Group `group.dev.tschen.solaris` 留作大配置的共享容器（[architecture.md](architecture.md) §6.3） |
-| D28 | 支持的最低 macOS。PySide6 6.12.0 的绑定库要求 macOS 26，要支持 macOS 15 得把 PySide6 钉在 6.11.x | 部署目标与依赖版本（[apple/README.md](../apple/README.md)"组装 Solaris.app"） |
+目前没有。
 
 ## 已决定
 
@@ -20,8 +16,10 @@
 | D3 | Windows 服务带 `with_gvisor` 构建，四种 TUN 栈都提供，由用户在设置里选择；macOS 系统扩展同样带 `with_gvisor`，fd 模式默认 gVisor 栈 | [architecture.md](architecture.md) §3.4 |
 | D4 | 覆写只做 Merge，不做 Script；一份全局覆写，加上每份订阅各一份 | [ui.md](ui.md) §4、[architecture.md](architecture.md) §3.2 |
 | D5 | 属主注销时停止隧道，下次登录后恢复 | [architecture.md](architecture.md) §5.4 |
+| D5b | Windows 上别的用户的隧道在运行时，管理员经 UAC 确认后可以接管：停掉对方的隧道，自己成为属主；不是管理员只能等对方断开或注销。尚未实现 | [architecture.md](architecture.md) §5.4 |
 | D6 | 订阅一键导入注册 `solaris://install-config?url=…` 和 `clash://install-config` | [release.md](release.md) §7 |
 | D7 | macOS 的配置和 Windows 一样，经控制协议的 `Start` / `Reload` 传入，不经 `startVPNTunnel(options:)` | [architecture.md](architecture.md) §6.2 |
+| D8 | 不给 provider message 分片：配置照旧用一条消息经 `Start` / `Reload` 发给系统扩展。单条消息的上限在测试 Mac 上用大配置核实，真带不动时再重新决定 | [architecture.md](architecture.md) §6.3 |
 | D9 | 提供深色主题；深色的颜色先在 DESIGN.md 里定义，再由它生成 | [ui.md](ui.md) §6、[DESIGN.md](../DESIGN.md)"深色" |
 | D10 | 许可证：GPL-3.0-only | [LICENSE](../LICENSE) |
 | D11 | 内置检查更新与下载：安装包来自 GitHub Releases，校验后由用户确认安装 | [release.md](release.md) §2、§3 |
@@ -41,6 +39,7 @@
 | D25 | VPN Gate 作为第三种链式出口：经节点拉列表，只用 TCP 的 OpenVPN 服务器，按国家和评分挑选；默认负载均衡组按网站分配服务器并跳过失效的，也可选只用一台；定位是换 IP 和住宅 IP，不宣传隐私 | [exits.md](exits.md) §5 |
 | D26 | 界面上只有一个连接开关（概览页出站分组第一行）；连接时怎样接管流量由设置页"接管方式"决定，TUN 和系统代理默认都开；macOS 上 TUN 是必选的 | [DESIGN.md](../DESIGN.md)"连接开关"、[ui.md](ui.md) §8 |
 | D27 | 订阅由 Python 下载、Go 内核解析和校验，只此一份解析。没有内核能应答时（macOS 隧道断开）先存下原文，连接后、`Start` 之前再解析和校验；界面在没有内核时隐藏需要它的部分 | [ui.md](ui.md) §3 |
+| D28 | 最低支持 macOS 26：PySide6 保持 6.12，不为 macOS 15 降到 6.11 | [apple/README.md](../apple/README.md)"组装 Solaris.app" |
 | D29 | Windows 安装包不签名：服务对客户端只做文件身份校验，检查更新只核对 SHA-256；签名方案定下后再接上签名者常量和 `SignedRelease` | [release.md](release.md) §3、[architecture.md](architecture.md) §5.3 |
 | D30 | 设置页不为备份不加密单独提示：导出、开启 iCloud、登录 Google Drive 都不弹确认框，各行的说明里也不写"不加密"；备份不加密这一事实写在隐私说明里 | [storage.md](storage.md) §3、[ui.md](ui.md) §8、[PRIVACY.md](../PRIVACY.md) |
 | D31 | engine 的方法直接返回控制协议的 protobuf 消息（`controlpb`），从 mihomo 类型的映射留在 engine，分发器不再映射，也不另设一套对应的 Go 类型 | [architecture.md](architecture.md) §3.2 |
