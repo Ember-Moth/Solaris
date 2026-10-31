@@ -25,8 +25,7 @@ env:
 jobs:
   macos:
     name: macOS arm64 (signed and notarized)
-    # The app needs macOS 26 (D28): on an older system Gatekeeper's assessment rejects it, so
-    # the release is built and checked on the system it ships for.
+    # The app needs macOS 26 (D28), so the release is built and checked on that system.
     runs-on: macos-26
     environment: release
     timeout-minutes: 120
@@ -155,7 +154,11 @@ jobs:
           uv run --no-project python scripts/notarize.py "$RUNNER_TEMP/Solaris.zip"
           xcrun stapler staple build/app/Solaris.app
           xcrun stapler validate build/app/Solaris.app
-          spctl --assess --type execute --verbose=2 build/app/Solaris.app
+          # Apple's pre-distribution check names each reason Gatekeeper would refuse the app;
+          # spctl alone only says "rejected".
+          syspolicy_check distribution build/app/Solaris.app
+          spctl --status
+          spctl --assess --type execute -vvv build/app/Solaris.app
 
       # Solaris.app beside a shortcut to /Applications in a fixed Finder window over
       # package/dmg's background, HFS+ with LZMA compression; the script checks the image.
@@ -190,6 +193,21 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 30
+
+      # When a step after signing fails, the app as it stands goes up for inspection.
+      - name: Keep the app for inspection
+        if: failure()
+        run: |
+          [[ -d build/app/Solaris.app ]] || exit 0
+          ditto -c -k --sequesterRsrc --keepParent build/app/Solaris.app "$RUNNER_TEMP/Solaris-inspect.zip"
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: solaris-app-inspect
+          path: ${{ runner.temp }}/Solaris-inspect.zip
+          if-no-files-found: ignore
+          compression-level: 0
+          retention-days: 7
 
       - name: Clean up signing materials
         if: always()
