@@ -97,6 +97,7 @@ def build(output: Path) -> Path:
     installation = subprocess.run(
         [
             str(vswhere),
+            "-utf8",
             "-latest",
             "-products",
             "*",
@@ -108,6 +109,7 @@ def build(output: Path) -> Path:
         check=True,
         capture_output=True,
         text=True,
+        encoding="utf-8",
     ).stdout.strip()
     vcvars = Path(installation) / "VC/Auxiliary/Build/vcvarsall.bat"
     if not installation or not vcvars.is_file():
@@ -115,14 +117,12 @@ def build(output: Path) -> Path:
     # Capture only compiler paths, not the full environment (which may contain signing
     # credentials in release jobs). Invoke cl directly so Unicode/project paths don't
     # depend on a batch file's legacy code page or command-string escaping.
+    # cmd.exe uses its own quoting rules. An argv list would escape these inner
+    # quotes with backslashes for the C runtime, which cmd treats as literal text.
+    command_shell = os.environ.get("COMSPEC", r"C:\Windows\System32\cmd.exe")
     configured = subprocess.run(
-        [
-            "cmd",
-            "/d",
-            "/u",
-            "/c",
-            f'call "{vcvars}" x86 >nul && set PATH && set INCLUDE && set LIB',
-        ],
+        f'"{command_shell}" /d /u /s /c '
+        f'"call "{vcvars}" x86 >nul && set PATH && set INCLUDE && set LIB"',
         check=True,
         capture_output=True,
     ).stdout.decode("utf-16-le")
