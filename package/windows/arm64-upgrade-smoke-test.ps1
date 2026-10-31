@@ -33,6 +33,7 @@ if ((Test-Path $root) -or (Test-Path $key) -or (Get-Service SolarisService -Erro
     (Test-Path $userData) -or (Test-Path $serviceData)) { throw 'The migration test needs a fresh runner.' }
 
 function Run-Installer([string] $Executable, [string] $Arguments) {
+    Write-Output "> $([IO.Path]::GetFileName($Executable)) $Arguments"
     $setupProcess = Start-Process -FilePath $Executable -ArgumentList $Arguments -PassThru
     $null = $setupProcess.Handle
     if (-not $setupProcess.WaitForExit(300000)) { $setupProcess.Kill(); throw 'Installer timed out' }
@@ -41,6 +42,7 @@ function Run-Installer([string] $Executable, [string] $Arguments) {
         if (Test-Path $errorLog) { Get-Content -LiteralPath $errorLog | Write-Output }
         throw "Installer returned $($setupProcess.ExitCode)"
     }
+    Write-Output 'Installer exited successfully.'
 }
 
 function Read-Machine([string] $File) {
@@ -58,7 +60,9 @@ function Assert-Architecture([string] $Architecture, [int] $Machine) {
     $entry = Get-ItemProperty -LiteralPath $key
     if ($entry.InstallLocation -ne $root -or $entry.InstallArchitecture -ne $Architecture) { throw 'The installation registration changed incorrectly' }
     foreach ($file in @($client, $serviceBinary, (Join-Path $root 'libcronet.dll'))) {
-        if ((Read-Machine $file) -ne $Machine) { throw "Unexpected architecture: $file" }
+        $actual = Read-Machine $file
+        Write-Output ('{0}: machine 0x{1:X4}, expected 0x{2:X4}' -f $file, $actual, $Machine)
+        if ($actual -ne $Machine) { throw "Unexpected architecture: $file" }
     }
     $service = Get-CimInstance Win32_Service -Filter "Name='SolarisService'"
     if (-not $service -or $service.State -ne 'Running' -or $service.StartName -ne 'LocalSystem' -or
@@ -84,6 +88,7 @@ function Open-Client {
 $oldUI = $null
 $newUI = $null
 try {
+    Write-Output 'Installing and opening the x64 application.'
     Run-Installer $X64Installer "/S /D=$root"
     Assert-Architecture 'x64' 0x8664
     $oldUI = Open-Client
@@ -92,6 +97,7 @@ try {
         [IO.File]::WriteAllText($marker, 'keep across architecture upgrade')
         $marker
     }
+    Write-Output 'Migrating the running x64 installation to ARM64.'
     Run-Installer $ARM64Installer '/S'
     if (-not $oldUI.WaitForExit(30000) -or $oldUI.ExitCode -ne 0) { throw 'The x64 GUI did not quit cleanly during migration' }
     Assert-Architecture 'arm64' 0xAA64
@@ -106,9 +112,20 @@ try {
     $quit = Start-Process -FilePath $client -ArgumentList '--quit' -PassThru
     if (-not $quit.WaitForExit(30000) -or -not $newUI.WaitForExit(30000) -or $newUI.ExitCode -ne 0) { throw 'The ARM64 GUI did not quit cleanly' }
     Run-Installer $uninstaller "/S /PURGE _?=$root"
-    if ((Test-Path $root) -or (Test-Path $key) -or (Test-Path $userData) -or (Test-Path $serviceData) -or
+    # With _?= the uninstaller runs in place and cannot delete its own executable.
+    $remaining = @(Get-ChildItem -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue)
+    if ($remaining.Count -ne 1 -or $remaining[0].FullName -ne $uninstaller) { throw 'Migration cleanup left runtime files behind' }
+    Remove-Item -LiteralPath $uninstaller
+    Remove-Item -LiteralPath $root
+    if ((Test-Path $key) -or (Test-Path $userData) -or (Test-Path $serviceData) -or
         (Get-Service SolarisService -ErrorAction SilentlyContinue)) { throw 'Migration cleanup left application state behind' }
     Write-Output 'x64 to ARM64 migration passed: native payload, running service/GUI, preserved data and clean uninstall.'
+} catch {
+    $serviceLog = Join-Path $serviceData 'service.log'
+    if (Test-Path -LiteralPath $serviceLog) { Get-Content -LiteralPath $serviceLog -Tail 60 | Write-Output }
+    Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -like "$root\*" } |
+        Select-Object ProcessId, Name, ExecutablePath | Format-Table | Out-String | Write-Output
+    throw
 } finally {
     foreach ($opened in @($oldUI, $newUI)) { if ($opened -and -not $opened.HasExited) { $opened.Kill() } }
 }

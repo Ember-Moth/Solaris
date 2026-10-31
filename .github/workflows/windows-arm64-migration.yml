@@ -1,0 +1,51 @@
+name: Windows ARM64 migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      installer_run_id:
+        description: CI run containing the x64 and ARM64 installer artifacts
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  migrate:
+    runs-on: windows-11-arm
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Identify the installer artifacts
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INSTALLER_RUN_ID: ${{ inputs.installer_run_id }}
+        shell: pwsh
+        run: |
+          $runId = [long]$env:INSTALLER_RUN_ID
+          if ($runId -le 0) { throw 'A positive CI run ID is required.' }
+          $run = gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$runId" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw 'The CI run could not be read.' }
+          if ($run.path -ne '.github/workflows/ci.yml' -or $run.event -ne 'push' -or
+              $run.head_branch -ne 'main' -or $run.head_repository.full_name -ne $env:GITHUB_REPOSITORY -or
+              $run.head_sha -notmatch '^[a-f0-9]{40}$') { throw 'Use an installer build from this repository main branch CI.' }
+          "sha=$($run.head_sha)" >> $env:GITHUB_OUTPUT
+          Write-Output "Testing installers built from $($run.head_sha) in CI run $runId."
+      - uses: actions/download-artifact@v8
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.installer_run_id }}
+          name: windows-installer-x64-${{ steps.source.outputs.sha }}
+          path: build/migration/x64
+      - uses: actions/download-artifact@v8
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.installer_run_id }}
+          name: windows-installer-arm64-${{ steps.source.outputs.sha }}
+          path: build/migration/arm64
+      - name: Upgrade an emulated x64 installation to native ARM64
+        shell: powershell
+        run: ./package/windows/arm64-upgrade-smoke-test.ps1 -X64Installer (Get-Item build/migration/x64/*.exe).FullName -ARM64Installer (Get-Item build/migration/arm64/*.exe).FullName
