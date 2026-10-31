@@ -22,6 +22,11 @@ from solaris.crashes import Recorder, asyncio_exception
 if sys.platform != "win32":
     import resource
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+else:
+    # Keep deliberate faults inside this child: no error dialog or OS crash-report UI.
+    import ctypes
+    ctypes.WinDLL("kernel32").SetErrorMode(0x0002 | 0x8000)
+    ctypes.CDLL("ucrtbase")._set_abort_behavior(0, 3)
 recorder = Recorder(Path(sys.argv[1])).install()
 """
         + code

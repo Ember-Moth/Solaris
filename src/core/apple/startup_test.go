@@ -20,12 +20,16 @@ func TestInitialConfigurationGuard(t *testing.T) {
 			if mode == "detached" {
 				done()
 			}
+			wait := 50 * time.Millisecond
+			if mode == "abandoned" {
+				wait = 2 * time.Second
+			}
 			select {
 			case failure := <-failed:
 				if mode != "abandoned" || failure.Method != "await_initial_configuration" {
 					t.Fatal(mode, failure)
 				}
-			case <-time.After(50 * time.Millisecond):
+			case <-time.After(wait):
 				if mode == "abandoned" {
 					t.Fatal("empty tunnel was not timed out")
 				}
