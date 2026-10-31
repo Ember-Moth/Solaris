@@ -283,16 +283,13 @@ void renderState(State& s) {
   RedrawWindow(window, nullptr, nullptr, RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_ERASE);
 }
 
-void drawButton(State& s, HWND window, HDC dc) {
-  RECT rect{};
-  GetClientRect(window, &rect);
-  const int id = GetDlgCtrlID(window);
-  const LRESULT buttonState = SendMessageW(window, BM_GETSTATE, 0, 0);
-  const bool disabled = !IsWindowEnabled(window);
-  const bool pressed = (buttonState & BST_PUSHED) != 0;
-  const bool hover = s.hovered == window;
-  const bool destructive = id == actionID && s.uninstall && s.phase == Phase::Ready;
-  const bool primary = window == defaultButton(s) && id != detailsID;
+void drawButton(State& s, DRAWITEMSTRUCT& item) {
+  RECT rect = item.rcItem;
+  const bool disabled = (item.itemState & ODS_DISABLED) != 0;
+  const bool pressed = (item.itemState & ODS_SELECTED) != 0;
+  const bool hover = s.hovered == item.hwndItem;
+  const bool destructive = item.CtlID == actionID && s.uninstall && s.phase == Phase::Ready;
+  const bool primary = item.hwndItem == defaultButton(s) && item.CtlID != detailsID;
   COLORREF fill = s.palette.surface, border = s.palette.border_button, ink = s.palette.text;
   if (primary) {
     fill = pressed ? s.palette.primary_pressed : hover ? s.palette.primary_hover : s.palette.primary;
@@ -301,34 +298,23 @@ void drawButton(State& s, HWND window, HDC dc) {
   } else if (pressed || hover) fill = s.palette.surface_subtle;
   if (destructive) ink = s.palette.danger;
   if (disabled) { fill = s.palette.background; ink = s.palette.text_muted; }
-  FillRect(dc, &rect, s.background);
-  roundBox(dc, rect, fill, border, s.px(6));
+  FillRect(item.hDC, &rect, s.background);
+  roundBox(item.hDC, rect, fill, border, s.px(6));
   wchar_t label[256]{};
-  GetWindowTextW(window, label, 256);
-  SetBkMode(dc, TRANSPARENT);
-  SetTextColor(dc, ink);
-  const auto previous = SelectObject(dc, id == detailsID ? s.compactFont : s.labelFont);
-  DrawTextW(dc, label, -1, &rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
-  SelectObject(dc, previous);
-  if ((buttonState & BST_FOCUS) && !(SendMessageW(s.window.load(), WM_QUERYUISTATE, 0, 0) & UISF_HIDEFOCUS)) {
+  GetWindowTextW(item.hwndItem, label, 256);
+  SetBkMode(item.hDC, TRANSPARENT);
+  SetTextColor(item.hDC, ink);
+  const auto previous = SelectObject(item.hDC, item.CtlID == detailsID ? s.compactFont : s.labelFont);
+  DrawTextW(item.hDC, label, -1, &rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+  SelectObject(item.hDC, previous);
+  if ((item.itemState & ODS_FOCUS) && !(SendMessageW(s.window.load(), WM_QUERYUISTATE, 0, 0) & UISF_HIDEFOCUS)) {
     InflateRect(&rect, -s.px(3), -s.px(3));
-    DrawFocusRect(dc, &rect);
+    DrawFocusRect(item.hDC, &rect);
   }
 }
 
 LRESULT CALLBACK buttonProcedure(HWND window, UINT message, WPARAM wparam, LPARAM lparam, UINT_PTR, DWORD_PTR data) {
   auto& s = *reinterpret_cast<State*>(data);
-  // Keep BS_PUSHBUTTON so UI Automation exposes Button + InvokePattern. Only
-  // painting is replaced; Windows still owns mouse, keyboard and accessibility.
-  if (message == WM_ERASEBKGND) return 1;
-  if (message == WM_PAINT) {
-    PAINTSTRUCT paint{};
-    HDC dc = BeginPaint(window, &paint);
-    drawButton(s, window, dc);
-    EndPaint(window, &paint);
-    return 0;
-  }
-  if (message == WM_PRINTCLIENT) { drawButton(s, window, reinterpret_cast<HDC>(wparam)); return 0; }
   if (message == WM_MOUSEMOVE && s.hovered != window) {
     if (s.hovered) InvalidateRect(s.hovered, nullptr, FALSE);
     s.hovered = window;
@@ -412,13 +398,13 @@ void makeControls(State& s) {
   SendMessageW(s.check, BM_SETCHECK, s.purgeDefault ? BST_CHECKED : BST_UNCHECKED, 0);
   s.progress = control(s, PROGRESS_CLASSW, s.tr(L"操作进度", L"Operation progress"), PBS_MARQUEE | PBS_SMOOTH);
   SetWindowTheme(s.progress, L"", L"");
-  s.detailButton = control(s, L"BUTTON", L"", BS_PUSHBUTTON | WS_TABSTOP, detailsID);
+  s.detailButton = control(s, L"BUTTON", L"", BS_OWNERDRAW | WS_TABSTOP, detailsID);
   s.detailLabel = control(s, L"STATIC", s.tr(L"操作详情", L"Operation details"), SS_NOPREFIX);
   s.detailEdit = control(s, L"EDIT", L"", ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL | WS_TABSTOP);
   SetWindowSubclass(s.detailEdit, detailProcedure, 1, 0);
   SendMessageW(s.detailEdit, EM_LIMITTEXT, 32768, 0);
-  s.primary = control(s, L"BUTTON", L"", BS_PUSHBUTTON | WS_TABSTOP, actionID);
-  s.secondary = control(s, L"BUTTON", L"", BS_PUSHBUTTON | WS_TABSTOP, cancelID);
+  s.primary = control(s, L"BUTTON", L"", BS_OWNERDRAW | WS_TABSTOP, actionID);
+  s.secondary = control(s, L"BUTTON", L"", BS_OWNERDRAW | WS_TABSTOP, cancelID);
   for (HWND button : {s.primary, s.secondary, s.detailButton})
     SetWindowSubclass(button, buttonProcedure, 1, reinterpret_cast<DWORD_PTR>(&s));
   makeFonts(s);
@@ -507,6 +493,12 @@ LRESULT CALLBACK windowProcedure(HWND window, UINT message, WPARAM wparam, LPARA
       SetBkColor(dc, inCard ? s.palette.surface : s.palette.background);
       return reinterpret_cast<LRESULT>(inCard ? s.surface : s.background);
     }
+    case WM_DRAWITEM:
+      if (wparam == actionID || wparam == cancelID || wparam == detailsID) {
+        drawButton(s, *reinterpret_cast<DRAWITEMSTRUCT*>(lparam));
+        return TRUE;
+      }
+      break;
     case WM_COMMAND: {
       const int id = LOWORD(wparam);
       if (id == detailsID && HIWORD(wparam) == BN_CLICKED) {

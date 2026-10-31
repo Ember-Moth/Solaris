@@ -12,6 +12,10 @@ $null = New-Item -ItemType Directory -Path $Output -Force
 $Output = (Resolve-Path -LiteralPath $Output).Path
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
+# PowerShell does not load WPF's standard Win32 proxies automatically on every
+# runner. Without them, native buttons appear as generic panes with no patterns.
+$providerTypes = @(Add-Type -AssemblyName UIAutomationClientsideProviders -PassThru)
+[System.Windows.Automation.ClientSettings]::RegisterClientSideProviderAssembly($providerTypes[0].Assembly.GetName())
 Add-Type -AssemblyName System.Drawing
 Add-Type -TypeDefinition @'
 using System;
