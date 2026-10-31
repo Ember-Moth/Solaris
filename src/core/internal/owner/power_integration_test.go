@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
+	"os/exec"
 	"testing"
+	"time"
 
 	"google.golang.org/protobuf/proto"
 
@@ -22,7 +25,21 @@ import (
 // The actual dispatcher and mihomo runtime, but no TUN and an in-memory proxy platform.
 // This verifies selected-node persistence across the exact suspend/resume path used on Windows.
 func TestWakeRestoresSelectionWithTheRealCore(t *testing.T) {
-	root, machine := t.TempDir(), newMachine()
+	const childHome = "SOLARIS_OWNER_POWER_TEST_HOME"
+	root := os.Getenv(childHome)
+	if root == "" {
+		// mihomo's cache.db is process-global and remains open after Engine.Close.
+		// Windows can remove this directory only after the child process has exited.
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		command := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestWakeRestoresSelectionWithTheRealCore$")
+		command.Env = append(os.Environ(), childHome+"="+t.TempDir())
+		if output, err := command.CombinedOutput(); err != nil {
+			t.Fatalf("real-core recovery: %v\n%s", err, output)
+		}
+		return
+	}
+	machine := newMachine()
 	machine.sessions[1] = alice
 	if err := SaveRecord(root, Record{SID: alice, Session: 1}); err != nil {
 		t.Fatal(err)

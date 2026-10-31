@@ -318,7 +318,7 @@ def test_reloads_keep_connections(app: App) -> None:
     finished = stream.done.wait(max(stream.started + 8 + 10 - time.monotonic(), 0))
     assert finished, app.describe(stream, network.proxied)
     assert stream.error == ""
-    assert stream.received > 80 * 1024  # 8 s of 1 KiB every 0.1 s, and the headers
+    assert stream.received == 80 * 1024  # the complete body: 8 s of 1 KiB every 0.1 s
     assert app.prop(vm.overview, "connected")
 
 
@@ -358,7 +358,10 @@ def test_reconnect_and_service_restart(app: App) -> None:
     vm.shell.setPage("connections")
     stream = app.stream(seconds=3)
     app.until(lambda: len(app.rows(vm.connections)) == 1)
-    assert stream.done.wait(5)
+    finished = stream.done.wait(max(stream.started + 3 + 10 - time.monotonic(), 0))
+    assert finished, app.describe(stream, app.network.proxied)
+    assert stream.error == "", app.describe(stream, app.network.proxied)
+    assert stream.received == 30 * 1024
 
 
 def test_mixed_port_and_lan(app: App) -> None:

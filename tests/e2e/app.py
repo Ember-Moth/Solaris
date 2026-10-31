@@ -3,6 +3,7 @@ the mixed port, and the profiles the tests import."""
 
 from __future__ import annotations
 
+import http.client
 import os
 import socket
 import subprocess
@@ -80,7 +81,11 @@ rules:
 
 
 class Stream:
-    """A slow download through the mixed port, read on a thread of its own."""
+    """A slow HTTP body through the mixed port, read on its own thread.
+
+    Completion follows HTTP framing rather than a proxy's TCP keep-alive lifetime.
+    ``received`` counts body bytes, and a truncated Content-Length is an error.
+    """
 
     def __init__(self, mixed_port: int, url: str) -> None:
         self.received = 0
@@ -95,9 +100,18 @@ class Stream:
 
     def _read(self) -> None:
         try:
-            while data := self._socket.recv(65536):
-                self.received += len(data)
-        except OSError as error:
+            with http.client.HTTPResponse(self._socket) as response:
+                response.begin()
+                if response.status != 200:
+                    raise http.client.HTTPException(f"HTTP {response.status}")
+                expected = response.length
+                # read1 reports each available chunk instead of waiting for a 64 KiB
+                # read to fill, so tests observe an active download before reloading.
+                while data := response.read1(65536):
+                    self.received += len(data)
+                if expected is not None and self.received != expected:
+                    raise http.client.IncompleteRead(b"", expected - self.received)
+        except (OSError, http.client.HTTPException) as error:
             self.error = str(error)
         finally:
             self.done.set()
