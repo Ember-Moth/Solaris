@@ -41,6 +41,7 @@ func (e *Engine) apply(admitted *admittedConfig) {
 	applyConfig(admitted.cfg)
 	e.settleTUN()
 	e.setEntries(admitted.entries)
+	e.clearTCPDelays()
 	e.syncGeoUpdater(admitted.cfg)
 	e.runMesh(mesh)
 }
@@ -252,6 +253,7 @@ func idleConfig() (*config.Config, error) {
 func (e *Engine) teardown() {
 	e.syncGeoUpdater(nil)
 	e.setEntries(nil)
+	e.clearTCPDelays()
 	proxies := tunnel.Proxies()
 	providers := tunnel.Providers()
 	ruleProviders := tunnel.RuleProviders()

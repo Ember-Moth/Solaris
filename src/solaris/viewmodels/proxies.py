@@ -14,6 +14,7 @@ from solaris.host.base import ProxyGroup, TunnelHost
 from solaris.i18n import QT_TRANSLATE_NOOP
 from solaris.models import format as fmt
 from solaris.models.proxies import SORTS, sort_proxies
+from solaris.models.settings import Settings, SettingsStore
 from solaris.viewmodels.common.async_runner import AsyncRunner
 from solaris.viewmodels.common.keyed_list import KeyedListModel
 from solaris.viewmodels.feedback import failure_text
@@ -74,11 +75,18 @@ class ProxiesViewModel(QObject):
     selectionApplied = Signal()  # a selection reached the core; the overview re-reads its node
 
     def __init__(
-        self, host: TunnelHost, runner: AsyncRunner, parent: QObject | None = None
+        self,
+        host: TunnelHost,
+        runner: AsyncRunner,
+        settings: SettingsStore,
+        parent: QObject | None = None,
     ) -> None:
+        """``settings`` says how 测速 measures the nodes, and so which delays the rows show."""
         super().__init__(parent)
         self._host = host
         self._runner = runner
+        self._settings = settings
+        settings.subscribe(self._settings_changed)
         self._groups: list[ProxyGroup] = []
         self._current = ""
         self._sort = "config"
@@ -95,6 +103,10 @@ class ProxiesViewModel(QObject):
     @Slot()
     def refresh(self) -> None:
         self._runner.submit(self._host.list_groups(), self._loaded, self._failed)
+
+    def _settings_changed(self, before: Settings, after: Settings) -> None:
+        if before.delay_test != after.delay_test:
+            self.changed.emit()
 
     def retranslate(self) -> None:
         """Re-read the text properties in the language just installed."""
@@ -214,10 +226,11 @@ class ProxiesViewModel(QObject):
         group = self._group()
         if group is None:
             return []
+        test = self._settings.current.delay_test
         result: list[NodeRow] = []
-        for proxy in sort_proxies(group.proxies, self._sort):
+        for proxy in sort_proxies(group.proxies, self._sort, test):
             text, level = (
-                ("—", "none") if proxy.type in NO_DELAY_TYPES else fmt.latency(proxy.delay_ms)
+                ("—", "none") if proxy.type in NO_DELAY_TYPES else fmt.latency(proxy.delay(test))
             )
             selected = proxy.name == group.now
             source = self._sources.get(proxy.name, "")
@@ -246,7 +259,8 @@ class ProxiesViewModel(QObject):
             return
         self._testing = True
         self.changed.emit()
-        self._runner.submit(self._host.health_check(group.name), self._tested, self._failed)
+        check = self._host.health_check(group.name, self._settings.current.delay_test)
+        self._runner.submit(check, self._tested, self._failed)
 
     def _tested(self, _: object) -> None:
         self.selectionApplied.emit()

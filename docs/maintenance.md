@@ -269,6 +269,10 @@ exits.md 第 9 节的待实测项。
   不等；入站的那处没法等，所以测试不要连上入站后紧接着重载。mihomo 的 `route.ReCreateServer` 在协程里关闭、替换
   包级的控制器 server，也不加锁；engine 清掉控制器地址，所以平时只读不写，只有故意直接起控制器的
   `TestSecurity3EmbedModeGuardsAStrayController` 会写，它在 `-race` 下跳过，普通的 `go test` 照跑。
+- **mihomo 读延迟不加锁**：延迟历史的队列（`common/queue` 的 `Last`）先不加锁地读长度，再加锁取值；url-test、
+  fallback、load-balance 组的后台 URL 测试写入时，读节点最近的延迟或 url-test 组此刻所用的节点（`ListGroups`、
+  TCP 测速找组所用的节点，D32）会被 `-race` 报出，读的只是切片长度。测试先等这些组第一次测完
+  （`tcpdelay_test.go` 的 `urlTested`），再读延迟。
 - **GEO 数据的自动更新**在 engine 的协程里调用 mihomo 的 `UpdateGeoDatabases`，它和解析配置共用 mihomo 的包级
   状态，没有加锁（mihomo 自己的定时更新也是这样）。测试不跑真实的更新。
 - **节点数对不上**：订阅行的节点数和删除订阅时提示的"节点池会少 N 个节点"把组网出站算在内，订阅页的合计在有
@@ -330,7 +334,7 @@ SHA-256。界面从不静默安装，用户确认后才打开安装包。
 - **视觉**：先改 [DESIGN.md](../DESIGN.md)，再运行 `scripts/gen_theme.py` 生成 `Theme.qml`。
 - **文案**：中文是源语言；改动文案后运行 `scripts/gen_i18n.py`，并在 `src/solaris/translations/en.ts` 里补齐英文。
   文案保持中立、简短（DESIGN.md 的 Typography 一节）。
-- **决策**：新的设计决策接着编号（D32 起）记进 [decisions.md](decisions.md)；已有的编号不变，代码注释引用它们。
+- **决策**：新的设计决策接着编号（D33 起）记进 [decisions.md](decisions.md)；已有的编号不变，代码注释引用它们。
 - 每个改动先开 PR，CI 全绿再合并；main 变红时先修。
 
 ### 5.3 表结构与存下的格式

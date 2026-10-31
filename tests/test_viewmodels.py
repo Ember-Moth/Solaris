@@ -223,6 +223,34 @@ def test_selecting_a_proxy_updates_both_screens(qtbot: QtBot, view_models: ViewM
     assert rows(proxies, "nodes")[0].name == "香港 02"
 
 
+def test_tcp_delay_tests(qtbot: QtBot, view_models: ViewModels) -> None:
+    """With TCP chosen, 测速 times handshakes and both screens show those results (D32)."""
+    proxies, overview = view_models.proxies, view_models.overview
+
+    def delays() -> dict[str, str]:
+        return {node.name: node.delay for node in rows(proxies, "nodes")}
+
+    qtbot.waitUntil(lambda: prop(overview, "nodeDelay") == "68 ms")
+    qtbot.waitUntil(lambda: prop(proxies, "currentGroup") == "节点选择" and bool(delays()))
+    view_models.settings.setDelayTest("tcp")
+    assert prop(overview, "nodeDelay") == ""  # nothing measured over TCP yet
+    assert set(delays().values()) == {"—"}
+
+    proxies.testCurrentGroup()
+    assert prop(proxies, "testing")
+    qtbot.waitUntil(lambda: not prop(proxies, "testing"))
+    measured = delays()
+    assert measured["香港 01"].endswith(" ms")
+    assert measured["新加坡 02"] == "超时"
+    assert measured["香港 02"] == "—"  # Hysteria2: no TCP server
+    assert measured["自动选择"] == "—"  # a group shows its node, 香港 02 here
+    qtbot.waitUntil(lambda: prop(overview, "nodeDelay") == measured["香港 01"])
+
+    view_models.settings.setDelayTest("http")
+    assert prop(overview, "nodeDelay") == "68 ms"
+    assert delays()["香港 01"] == "68 ms"
+
+
 def test_unreachable_service_is_reported(qtbot: QtBot, tmp_path: Path) -> None:
     async def unavailable() -> Streams:
         raise HostError("service_unavailable", "no service")

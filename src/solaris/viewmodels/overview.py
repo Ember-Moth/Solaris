@@ -97,6 +97,8 @@ class OverviewViewModel(QObject):
     def _settings_changed(self, before: Settings, after: Settings) -> None:
         if (before.tun, before.system_proxy) != (after.tun, after.system_proxy):
             self.changed.emit()  # the switches show the settings while stopped
+        elif before.delay_test != after.delay_test:
+            self.changed.emit()  # the node's delay is the other test's
 
     def retranslate(self) -> None:
         """Re-read the text properties in the language just installed."""
@@ -368,9 +370,10 @@ class OverviewViewModel(QObject):
     def _node_latency(self) -> tuple[str, str]:
         group = main_group(list(self._groups))
         proxy = resolve(list(self._groups), group.name) if group else None
-        if proxy is None or proxy.type in ("Direct", "Reject") or proxy.delay_ms is None:
+        delay = proxy.delay(self._settings.current.delay_test) if proxy else None
+        if proxy is None or proxy.type in ("Direct", "Reject") or delay is None:
             return "", "none"
-        return fmt.latency(proxy.delay_ms)
+        return fmt.latency(delay)
 
     @Property(str, notify=changed)
     def nodeDelay(self) -> str:

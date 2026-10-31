@@ -583,6 +583,53 @@ ScrollView {
                     spacing: Theme.space2
 
                     SectionLabel {
+                        text: qsTr("代理")
+                    }
+
+                    Group {
+                        Layout.fillWidth: true
+
+                        // How 测速 measures the nodes (D32). Groups that choose a node for
+                        // themselves keep mihomo's URL tests, which the second line says.
+                        GroupRow {
+                            divider: false
+                            verticalPadding: Theme.space2
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+
+                                UiText {
+                                    Layout.fillWidth: true
+                                    text: qsTr("延迟测试")
+                                }
+
+                                AccessibleText {
+                                    Layout.fillWidth: true
+                                    visible: page.settings.delayTest === "tcp"
+                                    text: qsTr("自动选择节点的组仍用 HTTP 测速")
+                                    role: Theme.type.caption
+                                    color: Theme.textMuted
+                                    wrapMode: Text.Wrap
+                                }
+                            }
+
+                            SegmentedControl {
+                                options: page.settings.delayTestOptions
+                                current: page.settings.delayTest
+                                accessibleName: qsTr("延迟测试")
+                                Accessible.description: page.settings.delayTest === "tcp" ? qsTr("自动选择节点的组仍用 HTTP 测速") : ""
+                                onPicked: value => page.settings.setDelayTest(value)
+                            }
+                        }
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: Theme.space2
+
+                    SectionLabel {
                         text: qsTr("启动")
                     }
 

@@ -24,6 +24,7 @@ from typing import Any
 import yaml
 
 from solaris.host.base import (
+    DELAY_TESTS,
     EXPORT_SHARE,
     LOG_LEVELS,
     TAKEOVER_SETTINGS,
@@ -92,6 +93,8 @@ NODES: dict[str, tuple[str, int]] = {  # a delay of 0 is a failed test
     "美国 01": ("Hysteria2", 198),
     "美国 02": ("Shadowsocks", 412),
 }
+# The node types a TCP test times a handshake with, as in the core (engine/tcpdelay.go).
+TCP_TYPES = ("VLESS", "Trojan", "Shadowsocks")
 
 
 def _vpngate_server(
@@ -474,6 +477,7 @@ class SimulatedHost:
         self._system_proxy = running.system_proxy_enabled
         self._started_at = clock() - 8076
         self._delays = {name: delay for name, (_, delay) in NODES.items()}
+        self._tcp_delays: dict[str, int] = {}  # the nodes a TCP test measured
         self._groups = {
             "节点选择": _Group("Selector", ["自动选择", *NODES], "香港 01"),
             "自动选择": _Group("URLTest", list(NODES)[:7], "香港 02"),
@@ -745,10 +749,22 @@ class SimulatedHost:
             raise HostError("invalid_request", f"{proxy} is not in {group}")
         target.now = proxy
 
-    async def health_check(self, group: str) -> None:
+    async def health_check(self, group: str, test: str = "http") -> None:
         if group not in self._groups:
             raise HostError("invalid_request", f"unknown group {group}")
+        if test not in DELAY_TESTS:
+            raise HostError("invalid_request", f"unknown delay test {test}")
         await asyncio.sleep(self._health_check_s)
+        if test == "tcp":
+            # A handshake takes one of the three or so round trips of a URL test. Groups go
+            # through the node they use now; nothing lets a group choose again (D32).
+            for member in self._groups[group].members:
+                name = self._final(member)
+                if name in NODES and NODES[name][0] in TCP_TYPES:
+                    base = NODES[name][1]
+                    delay = max(5, base // 3 + self._random.randint(-8, 8)) if base else 0
+                    self._tcp_delays[name] = delay
+            return
         for name in self._groups[group].members:
             if name in NODES and self._delays[name]:
                 base = NODES[name][1]
@@ -934,6 +950,7 @@ class SimulatedHost:
             raise HostError("apply_failed", message, retryable=True)
         self.config = config
         self.report = report
+        self._tcp_delays.clear()  # the core keeps TCP results until the next configuration
         self._show_exit_groups()
         self._tun = config.options.tun_enabled
         self._system_proxy = config.options.system_proxy_enabled
@@ -967,10 +984,11 @@ class SimulatedHost:
             return Proxy("DIRECT", "Direct", None)
         if name in self._groups:
             final = self._final(name)
-            return Proxy(name, self._groups[name].type, self._delays.get(final))
+            kind = self._groups[name].type
+            return Proxy(name, kind, self._delays.get(final), self._tcp_delays.get(final))
         if name in self._openvpn:
             return Proxy(name, "OpenVPN", self._openvpn_delays.get(name))
-        return Proxy(name, NODES[name][0], self._delays[name])
+        return Proxy(name, NODES[name][0], self._delays[name], self._tcp_delays.get(name))
 
     def _final(self, name: str) -> str:
         while name in self._groups:

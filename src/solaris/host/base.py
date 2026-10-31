@@ -381,11 +381,22 @@ class HostStatus:
     system_proxy_enabled: bool
 
 
+# How a latency test measures a node (D32): "http" asks for the test URL through it, "tcp"
+# times the TCP handshake with its server.
+DELAY_TESTS = ("http", "tcp")
+
+
 @dataclass(frozen=True)
 class Proxy:
     name: str
     type: str
     delay_ms: int | None  # None until tested; 0 when the last test failed
+    # The last TCP test, likewise; also None for what has no TCP server to dial (D32).
+    tcp_delay_ms: int | None = None
+
+    def delay(self, test: str) -> int | None:
+        """What the test, one of DELAY_TESTS, measured last."""
+        return self.tcp_delay_ms if test == "tcp" else self.delay_ms
 
 
 @dataclass(frozen=True)
@@ -564,7 +575,10 @@ class TunnelHost(Protocol):
 
     async def select_proxy(self, group: str, proxy: str) -> None: ...
 
-    async def health_check(self, group: str) -> None: ...
+    async def health_check(self, group: str, test: str = "http") -> None:
+        """Test the group's members with ``test``, one of DELAY_TESTS. Only the HTTP test
+        lets url-test and fallback groups choose again (D32)."""
+        ...
 
     async def poll_traffic(self) -> list[TrafficSample]:
         """Samples recorded since the previous poll, oldest first."""

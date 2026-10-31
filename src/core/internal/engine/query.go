@@ -126,7 +126,7 @@ func (e *Engine) ListGroups(sort controlpb.GroupSort, excludeNotSelectable bool)
 		if excludeNotSelectable && !selectable(proxy) {
 			continue
 		}
-		groups = append(groups, groupToProto(proxy, group, sort))
+		groups = append(groups, e.groupToProto(proxy, group, sort))
 	}
 	return groups
 }
@@ -139,7 +139,7 @@ func (e *Engine) GetGroup(name string, sort controlpb.GroupSort) (*controlpb.Pro
 	if err != nil {
 		return nil, err
 	}
-	return groupToProto(proxy, group, sort), nil
+	return e.groupToProto(proxy, group, sort), nil
 }
 
 func findGroup(name string) (C.Proxy, outboundgroup.ProxyGroup, error) {
@@ -169,7 +169,7 @@ func testURL(group outboundgroup.ProxyGroup) string {
 	return fields.TestURL
 }
 
-func groupToProto(proxy C.Proxy, group outboundgroup.ProxyGroup, sort controlpb.GroupSort) *controlpb.ProxyGroup {
+func (e *Engine) groupToProto(proxy C.Proxy, group outboundgroup.ProxyGroup, sort controlpb.GroupSort) *controlpb.ProxyGroup {
 	url := testURL(group)
 	members := group.Proxies()
 	out := &controlpb.ProxyGroup{
@@ -188,6 +188,9 @@ func groupToProto(proxy C.Proxy, group outboundgroup.ProxyGroup, sort controlpb.
 				value = uint32(delay)
 			}
 			entry.DelayMs = &value
+		}
+		if delay, tested := e.tcpDelay(member); tested {
+			entry.TcpDelayMs = &delay
 		}
 		out.Proxies = append(out.Proxies, entry)
 	}
@@ -232,8 +235,12 @@ func (e *Engine) SelectProxy(groupName, proxyName string) error {
 }
 
 // HealthCheck tests every member of a group, or of every group when name is empty.
-// Like mihomo's own group delay test, it unpins url-test and fallback groups.
-func (e *Engine) HealthCheck(ctx context.Context, name string) error {
+// Like mihomo's own group delay test, the HTTP test unpins url-test and fallback groups;
+// the TCP test only measures, since those groups choose by their URL tests (D32).
+func (e *Engine) HealthCheck(ctx context.Context, name string, test controlpb.DelayTest) error {
+	if err := checkDelayTest(test); err != nil {
+		return err
+	}
 	if !e.running() {
 		return ErrNotRunning
 	}
@@ -253,6 +260,10 @@ func (e *Engine) HealthCheck(ctx context.Context, name string) error {
 	}
 	ctx, cancel := context.WithTimeout(ctx, defaultDelayTimeout)
 	defer cancel()
+	if test == controlpb.DelayTest_DELAY_TEST_TCP {
+		e.testTCP(ctx, targets)
+		return nil
+	}
 	var wg sync.WaitGroup
 	for _, proxy := range targets {
 		group, _ := groupOf(proxy)
@@ -266,8 +277,20 @@ func (e *Engine) HealthCheck(ctx context.Context, name string) error {
 	return nil
 }
 
-// TestDelay measures one proxy, configured directly or supplied by a provider.
-func (e *Engine) TestDelay(ctx context.Context, name, url string, timeout time.Duration) (uint32, error) {
+func checkDelayTest(test controlpb.DelayTest) error {
+	switch test {
+	case controlpb.DelayTest_DELAY_TEST_UNSPECIFIED, controlpb.DelayTest_DELAY_TEST_TCP:
+		return nil
+	}
+	return fmt.Errorf("%w: unknown delay test %v", ErrInvalidArgument, test)
+}
+
+// TestDelay measures one proxy, configured directly or supplied by a provider. The TCP
+// test measures a group through the node it uses now.
+func (e *Engine) TestDelay(ctx context.Context, name, url string, timeout time.Duration, test controlpb.DelayTest) (uint32, error) {
+	if err := checkDelayTest(test); err != nil {
+		return 0, err
+	}
 	if !e.running() {
 		return 0, ErrNotRunning
 	}
@@ -283,14 +306,25 @@ func (e *Engine) TestDelay(ctx context.Context, name, url string, timeout time.D
 	}
 	ctx, cancel := context.WithTimeout(ctx, min(timeout, maxDelayTimeout))
 	defer cancel()
-	delay, err := proxy.URLTest(ctx, url, nil)
-	if err != nil {
-		return 0, fmt.Errorf("delay test of %s: %w", name, err)
+	var delay uint32
+	if test == controlpb.DelayTest_DELAY_TEST_TCP {
+		node, ok := tcpNode(proxy)
+		if !ok {
+			return 0, fmt.Errorf("%w: %q has no TCP server to dial", ErrInvalidArgument, name)
+		}
+		delay = dialTCP(ctx, node)
+		e.recordTCPDelay(node, delay)
+	} else {
+		measured, err := proxy.URLTest(ctx, url, nil)
+		if err != nil {
+			return 0, fmt.Errorf("delay test of %s: %w", name, err)
+		}
+		delay = uint32(measured)
 	}
 	if delay == 0 {
 		return 0, fmt.Errorf("delay test of %s failed", name)
 	}
-	return uint32(delay), nil
+	return delay, nil
 }
 
 func findProxy(name string) (C.Proxy, bool) {

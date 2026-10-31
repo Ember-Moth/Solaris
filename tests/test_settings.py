@@ -44,6 +44,7 @@ def test_every_setting_has_a_scope() -> None:
         "tun_stack": LOCAL,
         "include_all_networks": LOCAL,
         "warp_protocol": LOCAL,
+        "delay_test": SYNCED,
         "update_check": SYNCED,
         "update_check_hours": SYNCED,
     }
@@ -110,6 +111,7 @@ def test_run_options_carry_the_stack_and_all_networks(database: Database) -> Non
         {"tun_stack": ""},
         {"tun_stack": "gVisor"},
         {"include_all_networks": 1},
+        {"delay_test": "icmp"},
     ],
 )
 def test_update_refuses_invalid_values(
