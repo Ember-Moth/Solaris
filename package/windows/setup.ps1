@@ -256,6 +256,15 @@ function Prepare-InstallDirectory {
     $installed = (Get-ItemProperty -LiteralPath $key -ErrorAction SilentlyContinue).InstallLocation
     $marker = Join-Path $full '.solaris-install-root'
     $items = @(Get-ChildItem -LiteralPath $full -Force)
+    if ($items.Count -and $installed -ne $full) {
+        # Reject unrelated folders before traversing their contents. Check the
+        # marker itself before reading it so a link cannot redirect that read.
+        if (-not [IO.File]::Exists($marker)) { throw 'Choose an empty folder or the existing Solaris installation folder.' }
+        Assert-Protected $marker
+        if ([IO.File]::ReadAllText($marker).Trim() -ne 'Solaris installation directory v1') {
+            throw 'Choose an empty folder or the existing Solaris installation folder.'
+        }
+    }
     # Refuse unsafe content before close-ui or the old uninstaller can execute it.
     $pending = [Collections.Generic.Stack[string]]::new()
     $pending.Push($full)
@@ -264,10 +273,6 @@ function Prepare-InstallDirectory {
             Assert-Protected $item.FullName
             if ($item.PSIsContainer) { $pending.Push($item.FullName) }
         }
-    }
-    if ($items.Count -and $installed -ne $full -and
-        (-not [IO.File]::Exists($marker) -or [IO.File]::ReadAllText($marker).Trim() -ne 'Solaris installation directory v1')) {
-        throw 'Choose an empty folder or the existing Solaris installation folder.'
     }
     [IO.File]::WriteAllText($marker, 'Solaris installation directory v1')
     Write-Output "Install folder verified: $full"
