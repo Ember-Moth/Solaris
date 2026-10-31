@@ -17,7 +17,7 @@ Solaris 从 1.0.0 起进入维护。本文是日常工作的依据：各平台�
 | --- | --- | --- |
 | `python` | macOS、Windows | ruff、pyright、pytest（离屏）；macOS 上还核对生成的协议、主题和翻译是最新的 |
 | `e2e` | macOS | 界面连真实的开发服务（`tests/e2e`）：导入、连接、各页数据、分流与方案、重载不断开连接；节点是本机起的代理，只走回环地址 |
-| `go` | macOS、Windows、Linux | `go vet`、`go test`；Linux 上以 `with_gvisor` 再跑安全项和组网测试，交叉编译 Windows 服务；macOS 上编扩展用的 C archive |
+| `go` | macOS、Windows、Linux | `go vet`、`go test`，再以 `-race` 跑一遍；Linux 上以 `with_gvisor` 带 `-race` 再跑安全项和组网测试，交叉编译 Windows 服务；macOS 上编扩展用的 C archive |
 | `apple` | macOS | 管理库和系统扩展的不签名构建 |
 | `windows-installer` | Windows | 构建不签名的安装包，在 runner 上安装、打开界面、升级、卸载（`package/windows/smoke-test.ps1`） |
 | `tun` | Linux | 在网络命名空间里建真实的 TUN：自管模式和 fd 模式，四种栈，fd 模式另测 `includeAllNetworks` |
