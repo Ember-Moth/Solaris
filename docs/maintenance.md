@@ -262,11 +262,13 @@ exits.md 第 9 节的待实测项。
 
 ## 3. 已知问题
 
-- **不稳定的测试**：TUN 测试在 gVisor、mixed 栈上偶尔报"mihomo carried no traffic"；Windows runner 保留了一段端口
-  时，Go 测试绑定 UDP 端口失败；`tests/test_backup_viewmodel.py` 的验收在 Windows 上偶尔读到空的订阅行。重跑能过，
-  要逐个修稳。
-- **race 检测**：`go test -race ./internal/engine/` 报出数据竞争（mihomo 的全局状态，如 `log.SetLevel`，和测试
-  之间的 GEO 更新协程），所以 CI 不跑 `-race`；分发器的订阅代码可以单独用 `-race` 检查。
+- **mihomo 内部的数据竞争**：mihomo 用终结器关闭重载换下的出站，关闭时写日志要读日志级别，而下一次
+  `ApplyConfig` 开头的 `log.SetLevel` 不加锁地写它；`ApplyConfig` 还先改写入站对每个连接都要读的局域网、免认证
+  设置，再关闭入站。两处都在 mihomo 里，读写的是一个整数和几个切片。停止时 engine 先关入站、自己关出站，不经过
+  这两处；重载时避不开。`-race` 构建在每次应用配置前等到期的终结器跑完（`internal/engine/race.go`），发布构建
+  不等；入站的那处没法等，所以测试不要连上入站后紧接着重载。
+- **GEO 数据的自动更新**在 engine 的协程里调用 mihomo 的 `UpdateGeoDatabases`，它和解析配置共用 mihomo 的包级
+  状态，没有加锁（mihomo 自己的定时更新也是这样）。测试不跑真实的更新。
 - **节点数对不上**：订阅行的节点数和删除订阅时提示的"节点池会少 N 个节点"把组网出站算在内，订阅页的合计在有
   拼装报告时不算（[mesh.md](mesh.md) 第 3 节）。
 - **macOS 的登录项**由 `SMAppService` 不带参数启动 app，所以登录后界面会显示窗口；Windows 的计划任务带

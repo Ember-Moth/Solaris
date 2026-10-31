@@ -226,6 +226,13 @@ jobs:
           sudo ip -n md-tun link set md-veth0 up
           sudo ip -n md-srv link set md-veth1 up
           sudo ip -n md-tun route add default via 10.200.0.1
+          # The kernel adds the local route of md-veth0's IPv6 link-local address once
+          # duplicate address detection is done, a second or two after the link comes up.
+          # The owned-TUN test compares every table before and after, so wait for it here.
+          for _ in $(seq 100); do
+            sudo ip -n md-tun -6 addr show dev md-veth0 scope link -tentative | grep -q inet6 && break
+            sleep 0.1
+          done
       - name: Owned TUN in md-tun
         run: |
           resolvectl dns > "$RUNNER_TEMP/dns-before"
