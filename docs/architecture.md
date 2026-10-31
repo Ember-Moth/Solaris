@@ -575,7 +575,7 @@ Solaris.app/Contents/
 - 源码、构建与签名见 [apple/README.md](../apple/README.md)：XcodeGen 工程 `apple/project.yml`，原生部分的构建
   脚本 `scripts/build_apple.py`，整个 app 的组装与签名 `scripts/build_app.py`。只构建 arm64（D2）；扩展和管理库的
   最低系统版本是 macOS 15.0，app 取 bundle 里所有库要求的最高版本（PySide6 6.12.0 要求 26.0，见 apple/README.md）；
-  支持的最低 macOS 待定（决策 D28）。
+  支持的最低 macOS 是 26（决策 D28）。
 - 需要 Developer ID 签名、公证，以及 `packet-tunnel-provider-systemextension` entitlement。可执行文件叫
   `SolarisUI`，因为卷不区分大小写，`MacOS/solaris/` 是 Python 包的数据目录。
 - 管理库用 `OSSystemExtensionRequest` 激活扩展（用户需在系统设置中批准；包内的扩展总是替换其他构建激活的
@@ -629,8 +629,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 - **方法**：除 `Claim`、`SetSystemProxy` 外与 Windows 相同。隧道的启停走管理库，配置经 `Start` / `Reload` 走
   provider message；没有 attach 的隧道时，消息得到 `not_running`。`MacExtensionHost` 发出的 `RunOptions` 总是开着
   TUN、关着系统代理，不论设置怎么写（ui.md 第 8 节"接管方式"）。
-- **消息大小**：单条 provider message 的系统上限未知（待定，决策 D8），它决定 `Reload` 能否直接携带大配置。
-  上限不够时，大配置可以改经主应用和扩展共有的 App Group `group.dev.tschen.solaris` 传递，未实现。
+- **消息大小**：配置用一条 provider message 发送，不分片（决策 D8）。单条消息的系统上限未知，要在测试 Mac 上
+  用大配置核实；真带不动时，大配置可以改经主应用和扩展共有的 App Group `group.dev.tschen.solaris` 传递。
 - 做法与 hypervpn 一致，见它的 `NetworkExtensionManager.swift`（`providerExchange`）和
   `PacketTunnelProvider.swift`（`handleAppMessage`）。
 
@@ -807,8 +807,7 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 
 ## 12. 待定事项
 
-决策都记录在 [decisions.md](decisions.md)。与本文有关的待定决策有两项：provider message 的大小上限（D8，6.3 节）
-和支持的最低 macOS（D28，6.1 节）。
+决策都记录在 [decisions.md](decisions.md)，目前没有待定的。
 
 ## 13. 参考
 
