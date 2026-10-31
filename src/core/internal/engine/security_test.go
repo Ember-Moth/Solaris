@@ -113,6 +113,11 @@ secret: hunter2
 // #3: embed mode is on, so even a controller started by mistake cannot restart the
 // process, rewrite the configuration or upgrade the core.
 func TestSecurity3EmbedModeGuardsAStrayController(t *testing.T) {
+	if raceEnabled {
+		// route.ReCreateServer starts and stops the controller in goroutines that swap
+		// mihomo's package-level servers without a lock (docs/maintenance.md §3).
+		t.Skip("mihomo's controller start and stop race; the plain test run covers this")
+	}
 	openEngine(t, admission.TunNone)
 	dir, err := os.MkdirTemp("", "md-ctl-")
 	if err != nil {

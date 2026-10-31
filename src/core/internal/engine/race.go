@@ -9,6 +9,9 @@ import (
 	"time"
 )
 
+// raceEnabled says that this is a race-detector build.
+const raceEnabled = true
+
 // settleFinalizers waits for the finalizers that are due, so that what they did happens
 // before the configuration that follows applies.
 //
