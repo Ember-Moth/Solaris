@@ -35,14 +35,16 @@ if ((Test-Path $root) -or (Test-Path $key) -or (Get-Service SolarisService -Erro
 function Run-Installer([string] $Executable, [string] $Arguments) {
     Write-Output "> $([IO.Path]::GetFileName($Executable)) $Arguments"
     $setupProcess = Start-Process -FilePath $Executable -ArgumentList $Arguments -PassThru
-    $null = $setupProcess.Handle
-    if (-not $setupProcess.WaitForExit(300000)) { $setupProcess.Kill(); throw 'Installer timed out' }
-    if ($setupProcess.ExitCode -ne 0) {
-        $errorLog = Join-Path $env:TEMP 'Solaris-setup-error.log'
-        if (Test-Path $errorLog) { Get-Content -LiteralPath $errorLog | Write-Output }
-        throw "Installer returned $($setupProcess.ExitCode)"
-    }
-    Write-Output 'Installer exited successfully.'
+    try {
+        $null = $setupProcess.Handle
+        if (-not $setupProcess.WaitForExit(300000)) { $setupProcess.Kill(); throw 'Installer timed out' }
+        if ($setupProcess.ExitCode -ne 0) {
+            $errorLog = Join-Path $env:TEMP 'Solaris-setup-error.log'
+            if (Test-Path $errorLog) { Get-Content -LiteralPath $errorLog | Write-Output }
+            throw "Installer returned $($setupProcess.ExitCode)"
+        }
+        Write-Output 'Installer exited successfully.'
+    } finally { $setupProcess.Dispose() }
 }
 
 function Read-Machine([string] $File) {
@@ -115,8 +117,8 @@ try {
     # With _?= the uninstaller runs in place and cannot delete its own executable.
     $remaining = @(Get-ChildItem -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue)
     if ($remaining.Count -ne 1 -or $remaining[0].FullName -ne $uninstaller) { throw 'Migration cleanup left runtime files behind' }
-    Remove-Item -LiteralPath $uninstaller
-    Remove-Item -LiteralPath $root
+    Remove-Item -LiteralPath $uninstaller -Force
+    Remove-Item -LiteralPath $root -Force
     if ((Test-Path $key) -or (Test-Path $userData) -or (Test-Path $serviceData) -or
         (Get-Service SolarisService -ErrorAction SilentlyContinue)) { throw 'Migration cleanup left application state behind' }
     Write-Output 'x64 to ARM64 migration passed: native payload, running service/GUI, preserved data and clean uninstall.'
