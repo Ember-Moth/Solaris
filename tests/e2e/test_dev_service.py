@@ -385,7 +385,9 @@ def test_mixed_port_and_lan(app: App) -> None:
 
     # Stopped, a busy port fails the next connection, which says why.
     overview.toggleConnection()
-    app.until(lambda: app.prop(overview, "statusTitle") == "未连接")
+    app.until(
+        lambda: app.prop(overview, "statusTitle") == "未连接" and not app.prop(overview, "busy")
+    )
     holder, busy = listening_port()
     with holder:
         settings.setMixedPort(str(busy))
