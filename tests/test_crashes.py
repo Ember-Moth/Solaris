@@ -76,7 +76,9 @@ def test_uncaught_failures_are_captured_in_separate_processes(
 def test_normal_exit_and_cancellation_are_not_crashes(tmp_path: Path) -> None:
     result = probe(tmp_path, "recorder.record(asyncio.CancelledError())\nrecorder.close()")
     assert result.returncode == 0, result.stderr
-    assert list(tmp_path.iterdir()) == []
+    # Windows prepares an empty WER subdirectory even on a healthy launch.
+    assert not [path for path in tmp_path.rglob("*") if path.is_file()]
+    assert not crashes.collect(tmp_path, sources=[(tmp_path, "ui")]).reports
 
 
 def test_cannot_write_log_does_not_hide_original_error(tmp_path: Path) -> None:
