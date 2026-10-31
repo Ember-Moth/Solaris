@@ -10,6 +10,10 @@ type Identity struct {
 	UserID    string
 	SessionID uint32
 	ProcessID uint32
+	// Administrator says the caller runs with an administrator's rights: on Windows its
+	// token has the Administrators group enabled, which UAC leaves out of an administrator's
+	// processes until they confirm an elevation (decision D5b). Unix callers never have it.
+	Administrator bool
 }
 
 // Verifier accepts or rejects a freshly accepted connection. The connection it returns is

@@ -81,9 +81,21 @@ type fakeCore struct {
 	host    *Service
 	running bool
 	resumed []*controlpb.StartRequest
+	stops   int // a take-over's stops
+	stopErr error
 }
 
 func (c *fakeCore) Running() bool { return c.running }
+
+// stop is what the dispatcher hands TakeOver: the engine's Stop, under the lock it holds.
+func (c *fakeCore) stop() error {
+	c.stops++
+	if c.stopErr != nil {
+		return c.stopErr
+	}
+	c.running = false
+	return nil
+}
 
 func (c *fakeCore) Resume(start *controlpb.StartRequest) error {
 	c.running = true
@@ -137,6 +149,11 @@ func geoData(t *testing.T, home string) map[string]string {
 
 func as(sid string, session uint32) peer.Identity {
 	return peer.Identity{UserID: sid, SessionID: session}
+}
+
+// elevated is sid with an administrator's rights, as the take-over helper runs.
+func elevated(sid string, session uint32) peer.Identity {
+	return peer.Identity{UserID: sid, SessionID: session, Administrator: true}
 }
 
 func profile(systemProxy bool) *controlpb.StartRequest {
@@ -439,6 +456,118 @@ func TestFormerOwnerGetsTheirProxyBack(t *testing.T) {
 		t.Fatalf("alice's proxy = %+v", m.proxies[alice])
 	}
 	if _, saved, _ := (kept{Home(root, alice)}).previousProxy(); saved {
+		t.Fatal("alice's settings are still kept")
+	}
+}
+
+// An administrator takes over another user's running tunnel (decision D5b): it stops as
+// after Stop, its owner gets their proxy settings back, and the service restarts for the
+// administrator. Anyone else still waits.
+func TestAdministratorTakesOver(t *testing.T) {
+	root, m := t.TempDir(), newMachine()
+	if err := SaveRecord(root, Record{SID: alice, Session: 1}); err != nil {
+		t.Fatal(err)
+	}
+	theirs := sysproxy.Settings{Flags: sysproxy.Direct}
+	m.sessions[1], m.proxies[alice] = alice, theirs
+	m.sessions[2] = bob
+	service, core, home := start(t, root, m)
+	core.running = true
+	if err := service.Applied(profile(true)); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := service.TakeOver(as(bob, 2), core.stop); !errors.Is(err, control.ErrOwnedByOtherUser) {
+		t.Fatalf("a take-over without an administrator's rights: %v", err)
+	}
+	if core.stops != 0 || !core.running || m.restarts != 0 || m.proxies[alice] != sysproxy.Core(7890) {
+		t.Fatalf("%d stops, running %v, %d restarts", core.stops, core.running, m.restarts)
+	}
+	core.stopErr = errors.New("stuck")
+	if err := service.TakeOver(elevated(bob, 2), core.stop); err == nil || errors.Is(err, control.ErrRestarting) {
+		t.Fatalf("a take-over that could not stop the tunnel: %v", err)
+	}
+	if record, _, _ := LoadRecord(root); record.SID != alice || m.restarts != 0 {
+		t.Fatalf("record %+v after %d restarts", record, m.restarts)
+	}
+	core.stopErr = nil
+	if err := service.TakeOver(elevated(bob, 2), core.stop); !errors.Is(err, control.ErrRestarting) {
+		t.Fatalf("take-over = %v", err)
+	}
+	if core.stops != 2 || core.running || m.restarts != 1 {
+		t.Fatalf("%d stops, running %v, %d restarts", core.stops, core.running, m.restarts)
+	}
+	if m.proxies[alice] != theirs || (kept{home}).wasRunning() {
+		t.Fatalf("alice's proxy %+v, was_running %v", m.proxies[alice], (kept{home}).wasRunning())
+	}
+	if _, saved, _ := (kept{home}).previousProxy(); saved {
+		t.Fatal("alice's settings are still kept")
+	}
+	if record, _, _ := LoadRecord(root); record != (Record{SID: bob, Session: 2}) {
+		t.Fatalf("record = %+v", record)
+	}
+	if err := service.Admit(as(alice, 1)); !errors.Is(err, control.ErrRestarting) {
+		t.Fatalf("admit the former owner while restarting: %v", err)
+	}
+
+	// The new process serves bob; alice's UI sees his tunnel the usual way, and hers does
+	// not come back when she signs in again.
+	service, core, home = start(t, root, m)
+	if home != Home(root, bob) {
+		t.Fatalf("home = %q", home)
+	}
+	if err := service.Admit(as(bob, 2)); err != nil {
+		t.Fatal(err)
+	}
+	core.running = true
+	if err := service.Admit(as(alice, 1)); !errors.Is(err, control.ErrOwnedByOtherUser) {
+		t.Fatalf("admit the former owner: %v", err)
+	}
+	m.sessions[3] = alice
+	service.SignedIn(3)
+	if len(core.resumed) != 0 {
+		t.Fatalf("resumed %v", core.resumed)
+	}
+	// With nothing to take over, a take-over is a claim: of a stopped tunnel, or of one's own.
+	if err := service.TakeOver(elevated(bob, 4), core.stop); err != nil || core.stops != 0 {
+		t.Fatalf("the owner's take-over = %v after %d stops", err, core.stops)
+	}
+	core.running = false
+	if err := service.TakeOver(elevated(alice, 3), core.stop); !errors.Is(err, control.ErrRestarting) || core.stops != 0 {
+		t.Fatalf("a take-over of a stopped tunnel = %v after %d stops", err, core.stops)
+	}
+}
+
+// A former owner who is not signed in when an administrator takes over gets their proxy
+// settings back at their next sign-in, as after signing out (D5).
+func TestTakeOverKeepsTheProxyForTheNextSignIn(t *testing.T) {
+	root, m := t.TempDir(), newMachine()
+	if err := SaveRecord(root, Record{SID: alice, Session: 1}); err != nil {
+		t.Fatal(err)
+	}
+	theirs := sysproxy.Settings{Flags: sysproxy.Direct | sysproxy.AutoDetect}
+	m.sessions[1], m.proxies[alice] = alice, theirs
+	service, core, home := start(t, root, m)
+	core.running = true
+	if err := service.Applied(profile(true)); err != nil {
+		t.Fatal(err)
+	}
+	// Her session went away without a sign-out the service heard of.
+	delete(m.sessions, 1)
+	m.sessions[2] = bob
+	if err := service.TakeOver(elevated(bob, 2), core.stop); !errors.Is(err, control.ErrRestarting) {
+		t.Fatalf("take-over = %v", err)
+	}
+	if _, saved, _ := (kept{home}).previousProxy(); !saved || m.proxies[alice] != sysproxy.Core(7890) {
+		t.Fatalf("saved %v, alice's proxy %+v", saved, m.proxies[alice])
+	}
+	service, _, _ = start(t, root, m)
+	m.sessions[3] = alice
+	service.SignedIn(3)
+	if m.proxies[alice] != theirs {
+		t.Fatalf("alice's proxy = %+v", m.proxies[alice])
+	}
+	if _, saved, _ := (kept{home}).previousProxy(); saved {
 		t.Fatal("alice's settings are still kept")
 	}
 }

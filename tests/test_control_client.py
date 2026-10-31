@@ -441,6 +441,49 @@ def test_service_host_leaves_another_users_tunnel_alone() -> None:
     assert "claim" not in seen
 
 
+def test_service_host_takes_over_through_the_helper(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The UI never asks for a take-over itself: the elevated helper does (D5b), and the UI
+    claims the service once it restarted for this user."""
+    monkeypatch.setattr("solaris.host.service.CLAIM_RETRY_S", 0.01)
+    pb = control_pb2
+    taken_over = False
+    claims: list[bool] = []
+
+    async def answer(request: control_pb2.Request) -> control_pb2.Response:
+        if request.WhichOneof("method") == "claim":
+            claims.append(request.claim.take_over)
+        if not taken_over:
+            return _not_ours("owned_by_other_user")
+        return pb.Response(empty=pb.Empty())
+
+    def helper() -> None:
+        nonlocal taken_over
+        taken_over = True
+
+    def declined() -> None:
+        raise HostError("cancelled", "the elevation was declined")
+
+    async def scenario() -> None:
+        server, opener = await serve(answer)
+        async with server:
+            host = ServiceHost(opener)
+            try:
+                with pytest.raises(HostError) as raised:
+                    await host.validate(TunnelConfig("a: 1\n"))
+                assert raised.value.code == "owned_by_other_user"
+                with pytest.raises(HostError) as raised:
+                    await host.take_over(declined)
+                assert raised.value.code == "cancelled"
+                assert claims == []
+                await host.take_over(helper)
+                assert claims == [False]
+                assert await host.validate(TunnelConfig("a: 1\n")) is None
+            finally:
+                await host.close()
+
+    asyncio.run(scenario())
+
+
 def test_service_host_gives_up_on_a_restart_that_does_not_end(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

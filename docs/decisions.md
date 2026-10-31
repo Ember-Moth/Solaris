@@ -7,7 +7,6 @@
 
 | # | 事项 | 影响 |
 | --- | --- | --- |
-| D5b | 内核运行中能否由管理员接管其他用户的隧道（倾向可以，需 UAC 确认）。现在只能等那个用户的隧道停了再认领 | 服务的属主逻辑，接管会加在 `owner.Service.Claim` 里（[architecture.md](architecture.md) §5.4） |
 | D8 | NetworkExtension 的 provider message 单条大小上限，要在测试 Mac 上实测 | `Reload` 能否直接携带大配置；App Group `group.dev.tschen.solaris` 留作大配置的共享容器（[architecture.md](architecture.md) §6.3） |
 | D28 | 支持的最低 macOS。PySide6 6.12.0 的绑定库要求 macOS 26，要支持 macOS 15 得把 PySide6 钉在 6.11.x | 部署目标与依赖版本（[apple/README.md](../apple/README.md)"组装 Solaris.app"） |
 
@@ -20,6 +19,7 @@
 | D3 | Windows 服务带 `with_gvisor` 构建，四种 TUN 栈都提供，由用户在设置里选择；macOS 系统扩展同样带 `with_gvisor`，fd 模式默认 gVisor 栈 | [architecture.md](architecture.md) §3.4 |
 | D4 | 覆写只做 Merge，不做 Script；一份全局覆写，加上每份订阅各一份 | [ui.md](ui.md) §4、[architecture.md](architecture.md) §3.2 |
 | D5 | 属主注销时停止隧道，下次登录后恢复 | [architecture.md](architecture.md) §5.4 |
+| D5b | 隧道运行中，管理员经 UAC 确认后可以接管其他用户的隧道：那个用户的隧道停止、系统代理写回，管理员成为属主；不是管理员的用户仍要等对方断开或注销。界面经 UAC 启动服务自己的接管辅助进程（`solaris-service.exe -take-over`），服务凭客户端 token 里启用的 Administrators 组认定管理员 | [architecture.md](architecture.md) §5.4、[ui.md](ui.md) §8 |
 | D6 | 订阅一键导入注册 `solaris://install-config?url=…` 和 `clash://install-config` | [release.md](release.md) §7 |
 | D7 | macOS 的配置和 Windows 一样，经控制协议的 `Start` / `Reload` 传入，不经 `startVPNTunnel(options:)` | [architecture.md](architecture.md) §6.2 |
 | D9 | 提供深色主题；深色的颜色先在 DESIGN.md 里定义，再由它生成 | [ui.md](ui.md) §6、[DESIGN.md](../DESIGN.md)"深色" |

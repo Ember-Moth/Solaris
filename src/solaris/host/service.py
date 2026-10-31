@@ -4,7 +4,7 @@ development socket on macOS and Linux."""
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Callable
 
 from solaris.host.base import (
     EXPORT_GENERATED,
@@ -398,6 +398,14 @@ class ServiceHost:
                     raise
             await self.close()
             await asyncio.sleep(CLAIM_RETRY_S)
+
+    async def take_over(self, helper: Callable[[], None]) -> None:
+        """Stop another user's running tunnel and become the owner (D5b). ``helper`` has the
+        service do it with an administrator's rights, and blocks until it did; the service
+        then restarts for us, which the claim waits for."""
+        await asyncio.to_thread(helper)
+        await self.close()
+        await self.claim()
 
     @staticmethod
     async def _unclaimed[T](read: Awaitable[T], idle: T) -> T:

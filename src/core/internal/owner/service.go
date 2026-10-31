@@ -154,14 +154,45 @@ func (s *Service) Admit(caller peer.Identity) error {
 
 // Claim takes on caller when the service has no owner, is theirs, or the owner's tunnel is
 // down. Whether that tunnel would come back at the owner's next sign-in does not hold the
-// service: the owner may never sign in again. Administrators taking over a tunnel that runs
-// (decision D5b) is still open; it would go here.
+// service: the owner may never sign in again.
 func (s *Service) Claim(caller peer.Identity) error {
 	if !ValidSID(caller.UserID) {
 		return fmt.Errorf("caller %q has no SID", caller.UserID)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return s.claimLocked(caller)
+}
+
+// TakeOver is Claim for an administrator, who may also take over another user's running
+// tunnel once they confirmed it through UAC (decision D5b). stop brings that tunnel down; it
+// stays down as after Stop, and its owner gets their proxy settings back now, or at their
+// next sign-in when the service cannot write them. Then the service restarts for caller, as
+// for any new owner. Anyone else waits for the tunnel, as with Claim.
+func (s *Service) TakeOver(caller peer.Identity, stop func() error) error {
+	if !ValidSID(caller.UserID) {
+		return fmt.Errorf("caller %q has no SID", caller.UserID)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	err := s.claimLocked(caller)
+	if !errors.Is(err, control.ErrOwnedByOtherUser) {
+		return err
+	}
+	if !caller.Administrator {
+		return fmt.Errorf("taking over needs an administrator's rights: %w", err)
+	}
+	if err := stop(); err != nil {
+		return fmt.Errorf("stop the other user's tunnel: %w", err)
+	}
+	if err := s.stoppedLocked(); err != nil {
+		s.log.Warn("restore the former owner's proxy settings", "error", err)
+	}
+	s.log.Info("an administrator took over the tunnel", "from", s.owner.SID, "sid", caller.UserID)
+	return s.claimLocked(caller)
+}
+
+func (s *Service) claimLocked(caller peer.Identity) error {
 	switch {
 	case s.restarting:
 		return control.ErrRestarting
@@ -198,6 +229,12 @@ func (s *Service) Applied(start *controlpb.StartRequest) error {
 func (s *Service) Stopped() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return s.stoppedLocked()
+}
+
+// stoppedLocked follows the tunnel going down until someone starts it again: it does not
+// come back at the owner's next sign-in.
+func (s *Service) stoppedLocked() error {
 	if err := s.home.setWasRunning(false); err != nil {
 		s.log.Error("keep was_running", "error", err)
 	}

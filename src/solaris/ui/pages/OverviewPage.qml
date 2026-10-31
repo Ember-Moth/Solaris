@@ -31,6 +31,16 @@ ScrollView {
             Layout.rightMargin: Theme.pageX
             title: page.overview.statusTitle
             detail: page.overview.statusDetail
+
+            // An administrator may stop another user's tunnel and use it instead (D5b).
+            AppButton {
+                id: takeOverButton
+
+                visible: page.overview.canTakeOver
+                enabled: !page.overview.busy
+                text: qsTr("接管")
+                onClicked: takeOverDialog.show(takeOverButton)
+            }
         }
 
         GridLayout {
@@ -499,5 +509,15 @@ ScrollView {
                 }
             }
         }
+    }
+
+    ConfirmDialog {
+        id: takeOverDialog
+
+        title: qsTr("接管其他用户的隧道？")
+        message: qsTr("另一位用户的连接会断开，隧道改由你使用。需要管理员权限。")
+        confirmText: qsTr("接管")
+        destructive: true
+        onAccepted: page.overview.takeOver()
     }
 }

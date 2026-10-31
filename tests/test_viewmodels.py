@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
@@ -87,6 +88,73 @@ def test_overview_while_another_user_runs_the_tunnel(
     monkeypatch.undo()
     qtbot.waitUntil(lambda: not prop(overview, "ownedByOtherUser"))
     assert prop(overview, "statusTitle") == "已连接"
+
+
+def test_administrator_takes_over_another_users_tunnel(
+    qtbot: QtBot, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An administrator may stop another user's tunnel and use the service instead (D5b);
+    a declined UAC prompt changes nothing, a failed helper says so."""
+    store = ProfileStore(tmp_path)
+    seed_profiles(store, NOW)
+    host = SimulatedHost()
+    owned = True
+    outcome: HostError | None = None
+    attempts = 0
+
+    async def status() -> HostStatus:
+        if owned:
+            raise HostError("owned_by_other_user", "another user's tunnel is running")
+        return await SimulatedHost.get_status(host)
+
+    async def take_over() -> None:
+        nonlocal owned, attempts
+        attempts += 1
+        await asyncio.sleep(0.2)
+        if outcome is not None:
+            raise outcome
+        await host.stop()
+        owned = False
+
+    monkeypatch.setattr(host, "get_status", status)
+    view_models = compose(host, store, SimulatedFetcher(), lambda: NOW, take_over=take_over)
+    view_models.start()
+    try:
+        overview = view_models.overview
+        qtbot.waitUntil(lambda: prop(overview, "canTakeOver"))
+        assert prop(overview, "statusTitle") == "其他用户正在使用"
+        assert prop(overview, "statusDetail") == "另一位用户已连接"
+
+        outcome = HostError("cancelled", "the elevation was declined")
+        overview.takeOver()
+        assert prop(overview, "statusDetail") == "正在接管…"
+        assert not prop(overview, "canTakeOver")
+        qtbot.waitUntil(lambda: prop(overview, "canTakeOver"))
+        assert prop(overview, "statusDetail") == "另一位用户已连接"
+
+        outcome = HostError("take_over_failed", "the take-over helper exited with status 1")
+        overview.takeOver()
+        qtbot.waitUntil(lambda: prop(overview, "statusDetail") == "无法接管隧道")
+        assert prop(overview, "canTakeOver")
+
+        outcome = None
+        overview.takeOver()
+        qtbot.waitUntil(lambda: prop(overview, "statusTitle") == "未连接")
+        assert not prop(overview, "ownedByOtherUser")
+        assert not prop(overview, "canTakeOver")
+        assert prop(overview, "statusDetail") == ""
+        assert attempts == 3
+    finally:
+        view_models.shutdown()
+
+
+def test_only_an_administrator_may_take_over(qtbot: QtBot, view_models: ViewModels) -> None:
+    overview, host = view_models.overview, view_models.host
+    assert isinstance(host, SimulatedHost)
+    qtbot.waitUntil(lambda: prop(overview, "connected"))
+    assert not prop(overview, "canTakeOver")
+    overview.takeOver()
+    assert not prop(overview, "busy")
 
 
 def test_overview_actions(qtbot: QtBot, view_models: ViewModels) -> None:

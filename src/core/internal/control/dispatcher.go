@@ -99,6 +99,9 @@ type Host interface {
 	// Claim makes caller the owner when the service has none, is theirs already, or its
 	// owner's tunnel is down. ErrRestarting means a new process will serve them.
 	Claim(caller peer.Identity) error
+	// TakeOver is Claim that lets an administrator take over another user's running tunnel
+	// too (decision D5b): stop brings it down first. Anyone else gets what Claim gives them.
+	TakeOver(caller peer.Identity, stop func() error) error
 	// Applied follows Start, Reload and Resume once the core took start: the service keeps
 	// it for the next sign-in and sets the owner's system proxy as its options say.
 	Applied(start *controlpb.StartRequest) error
@@ -185,7 +188,8 @@ func (d *Dispatcher) dispatch(ctx context.Context, caller peer.Identity, request
 		if !d.hostMethods {
 			return failure(CodeUnsupportedMethod, "claim is only served by the Windows service")
 		}
-		return d.locked(func() *controlpb.Response { return d.claim(caller) })
+		takeOver := request.GetClaim().GetTakeOver()
+		return d.locked(func() *controlpb.Response { return d.claim(caller, takeOver) })
 	}
 	// Only the owner reaches the core (§5.4).
 	if d.host != nil {
@@ -247,15 +251,21 @@ func (d *Dispatcher) hostMethod(request *controlpb.Request) *controlpb.Response 
 }
 
 // claim answers Claim. The development socket only admits the user running the server, who
-// owns it already.
-func (d *Dispatcher) claim(caller peer.Identity) *controlpb.Response {
+// owns it already. A take-over stops the core as Stop does, under the same lock.
+func (d *Dispatcher) claim(caller peer.Identity, takeOver bool) *controlpb.Response {
 	switch {
 	case d.development:
 		return empty()
 	case d.host == nil:
 		return failure(CodeNotImplemented, "claim is not implemented by this host")
 	}
-	if err := d.host.Claim(caller); err != nil {
+	var err error
+	if takeOver {
+		err = d.host.TakeOver(caller, func() error { return d.engine.Stop() })
+	} else {
+		err = d.host.Claim(caller)
+	}
+	if err != nil {
 		return hostFailure(err)
 	}
 	return empty()

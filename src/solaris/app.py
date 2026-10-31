@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import os
 import sys
+from collections.abc import Callable, Coroutine
 from functools import partial
 from pathlib import Path
+from typing import Any
 
 from PySide6.QtCore import QCoreApplication, QEvent, Qt, QUrl
 from PySide6.QtGui import QGuiApplication, QIcon
@@ -82,6 +84,18 @@ def default_host() -> TunnelHost:
     return ServiceHost(default_opener(), takeover=takeover)
 
 
+def default_take_over(host: TunnelHost) -> Callable[[], Coroutine[Any, Any, None]] | None:
+    """An administrator's take-over of another user's tunnel (D5b): only with the installed
+    Windows service, whose executable runs as the take-over helper."""
+    if sys.platform != "win32" or not isinstance(host, ServiceHost):
+        return None
+    from solaris.desktop import elevation
+
+    if not elevation.is_administrator() or not elevation.service_executable().is_file():
+        return None
+    return partial(host.take_over, elevation.take_over)
+
+
 def load_ui(engine: QQmlApplicationEngine, view_models: ViewModels) -> bool:
     engine.setInitialProperties(view_models.initial_properties())
     engine.load(QUrl.fromLocalFile(str(MAIN_QML)))
@@ -145,8 +159,9 @@ def main(
     settings = DatabaseSettingsStore(store.database)
     translations = Translations(app)
     translations.apply(resolve_language(language or settings.current.language))
+    host = host or default_host()
     view_models = compose(
-        host or default_host(),
+        host,
         store,
         fetcher or UrlFetcher(),
         appearance=Appearance(resolve_mode(appearance or stored_appearance(settings))),
@@ -157,6 +172,7 @@ def main(
         updater=updater,
         icloud=bundled_provider(),
         google=google or configured_provider(KeyringCredentials()),
+        take_over=default_take_over(host),
     )
     engine = QQmlApplicationEngine()
     if not load_ui(engine, view_models):

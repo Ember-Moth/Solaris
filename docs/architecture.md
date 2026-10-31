@@ -16,7 +16,8 @@ Solaris（决策 D1）；
 - **内核以 Go 库形式内嵌，不作为 CLI 子进程运行。** Windows 上内核位于自有的 LocalSystem 服务内，
   macOS 上位于 NetworkExtension 系统扩展内。两端共用本仓库自己实现的 Go 内核层 engine，直接依赖 mihomo；
   [libclash](https://github.com/Herta-Network/libclash) 只作参考，不作为依赖（见第 3 节）。
-- **UI 始终以普通用户权限运行。** Windows 只在安装器处请求一次 UAC；macOS 只在首次激活系统扩展时需要用户批准。
+- **UI 始终以普通用户权限运行。** Windows 在安装器处请求 UAC；管理员接管其他用户的隧道时，界面经 UAC 启动的是服务
+  自己的接管辅助进程，界面本身不提权（5.4 节）。macOS 只在首次激活系统扩展时需要用户批准。
 - **关闭 UI 后隧道继续运行。** Windows 服务按属主持久化配置，并在开机后恢复；macOS 的 NE 本身就独立于 App 运行。
 - **控制面是自定义的方法调用协议，不使用 HTTP。** Windows 上走命名管道；macOS 上走 Network Extension
   自带的 IPC（provider message），不监听任何 socket。两端都不开放 TCP 端口，mihomo 自带的 HTTP
@@ -307,7 +308,7 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 | 方法 | 平台 | 说明 |
 | --- | --- | --- |
 | `GetInfo` | 两者 | 协议版本、服务版本、mihomo 版本、运行状态；Windows 上还返回属主状态（空闲 / 调用者 / 其他用户，5.4 节） |
-| `Claim` | Windows | 服务没有属主、调用者已是属主，或属主的隧道没在运行时认领（5.4 节） |
+| `Claim` | Windows | 服务没有属主、调用者已是属主，或属主的隧道没在运行时认领；带 `take_over` 时，有管理员权限的调用者还能接管另一个用户运行中的隧道（5.4 节） |
 | `Validate` | 两者 | 配置只经过流水线解析，不应用 |
 | `Start` | 两者 | 提交配置（YAML 或拼装来源）、覆写和运行选项，然后准入、应用；Windows 上还要持久化（5.2 节） |
 | `Reload` | 两者 | 运行中替换配置，由 `hub.ApplyConfig` 原地应用；Windows 上同样持久化 |
@@ -380,7 +381,7 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 | `unsupported_method` | 当前宿主不提供该方法或该能力（如开发服务上的 TUN 和系统代理） | 否 |
 | `not_implemented` | 方法已定义，但当前宿主没有实现 | 否 |
 | `not_claimed` | Windows 服务不属于调用者，但可以认领（5.4 节） | 否 |
-| `owned_by_other_user` | Windows 服务属于另一个用户，他的隧道正在运行 | 否 |
+| `owned_by_other_user` | Windows 服务属于另一个用户，他的隧道正在运行；没有管理员权限的接管也得到它 | 否 |
 | `service_restarting` | 认领换了属主，服务要重启才能打开新属主的 home；稍后再认领 | 是 |
 | `invalid_config` | 配置无法解析，或被准入流水线拒绝；`message` 是 mihomo 的原始错误文本。拼装出错时以 `plan: ` 或 `subscription "名称": ` 开头 | 否 |
 | `not_running` | 需要运行中的内核 | 否 |
@@ -487,8 +488,10 @@ PID 来防止管道名被抢注。
 1. 用 `GetNamedPipeClientProcessId` 取得客户端进程，并在整个连接期间持有其进程句柄，这期间进程 ID 不会给别的
    进程用；
 2. 以只允许共享读的方式打开客户端的映像文件，比较它与服务旁边的 `Solaris.exe` 的卷序列号和文件 ID；映像的句柄
-   同样持有到连接结束，这期间文件不能被改写、改名或删除；
-3. 客户端必须在用户会话里（会话 ID 不为 0）；读取它 token 的用户 SID 和会话 ID，作为属主判断的身份；
+   同样持有到连接结束，这期间文件不能被改写、改名或删除。服务自己的 `solaris-service.exe` 也按文件 ID 接受，它是
+   管理员接管用的辅助进程（5.4 节），要求第 3 项读到管理员权限；
+3. 客户端必须在用户会话里（会话 ID 不为 0）；读取它 token 的用户 SID、会话 ID，以及 Administrators 组是否启用
+   （管理员权限），作为属主判断的身份；
 4. 签名的发布构建（链接时设 `product.SignedRelease=true`）还要求客户端的 Authenticode 签名为 Windows 信任、签名者
    的显示名是 `product.WindowsSigner`。不检查吊销：那可能要联网，而且每条连接都要做。目前没有这样的构建，
    `product.WindowsSigner` 是占位值；
@@ -498,7 +501,8 @@ PID 来防止管道名被抢注。
 `SignedRelease` 保持默认的 `"false"`，服务把空的签名者交给 `peer.PipeClientVerifier`，只跳过第 4 项。第 1、2、3、5 项
 照常：客户端必须就是服务旁边那个 `Solaris.exe` 文件本身（卷序列号和文件 ID 相同，连接期间锁住），复制到别处的同一个
 程序、同名的其他程序都会被断开。安装目录 `C:\Program Files\Solaris` 只有管理员能写，所以能换掉这个文件的人本来就
-能换掉服务。`peer_windows_test.go` 用空签名者测这几项（复制出的程序被拒、界面没装时被拒、会话 0 被拒）；CI 的
+能换掉服务。`peer_windows_test.go` 用空签名者测这几项（复制出的程序被拒、界面没装时被拒、会话 0 被拒），以及服务的
+可执行文件只在有管理员权限时通过（以 UAC 那样过滤过的 token 起的子进程被拒）；CI 的
 `smoke-test.ps1` 用 PowerShell 连一次装好的服务的管道，只确认它在监听。签名以后发布构建链接时打开
 `SignedRelease`，同时界面的 `signature.WINDOWS_SIGNER` 填上同一个显示名（release.md 第 3 节）。
 
@@ -521,9 +525,24 @@ PID 来防止管道名被抢注。
 - 界面（`ServiceHost`）只在要做事时认领：只读的请求（状态、代理组、规则、订阅、GEO 分类、停止、关闭连接）遇到
   `not_claimed` 时按内核停止作答，不认领。两个用户同时开着界面时，各自的轮询因此不会把服务抢来抢去（每换一次
   属主都要重启服务）。其余请求遇到 `not_claimed` 就先认领，等过服务重启再发一次。遇到 `owned_by_other_user` 时，
-  概览页标题栏提示"其他用户正在使用"，连接按钮不可用。
-- 内核运行中由管理员接管其他用户的隧道未实现，做不做待定（决策 D5b，[decisions.md](decisions.md)）；要做的话加在
-  `owner.Service.Claim` 里。
+  概览页标题栏提示"其他用户正在使用"，连接按钮不可用；管理员另有"接管"。
+- **管理员接管**（决策 D5b）：另一个用户的隧道在运行时，管理员经 UAC 确认后可以接管。那个用户的隧道停止，管理员
+  成为属主；不是管理员的用户仍要等对方断开或注销。
+  - 界面：管理员（token 的提权类型是"受限"或"完全"，或者 UAC 关着时是 Administrators 的成员）在概览页点"接管"、
+    确认后（ui.md 第 8 节），界面以 `ShellExecuteEx` 的 `runas` 启动服务旁边的 `solaris-service.exe -take-over`，
+    UAC 弹出同意提示。这个辅助进程连上管道，发带 `take_over` 的 `Claim`，得到 `service_restarting`（或 Empty，
+    已经是它的）就以 0 退出。界面随后照常认领，等过服务重启。用户在 UAC 提示里选"否"时什么都不变。
+  - 服务（`owner.Service.TakeOver`）：调用者 token 的 Administrators 组没有启用时，与 `Claim` 一样得到
+    `owned_by_other_user`。启用时停止内核，与 `Stop` 相同：清除 `was_running`，写回原属主的系统代理；他不在登录
+    状态、写不了时，`proxy.json` 留到他下次登录再写回，与注销时一样。然后记下新属主，经 `-restart` 辅助进程重启，
+    与普通的换属主相同。分发器在认领时已持有操作锁，所以停止内核的函数由它传给 `TakeOver`。
+  - 原属主的界面之后照常看到空闲或 `owned_by_other_user`；他的隧道不会自己恢复，要他再连接、重新认领。
+  - 为什么这样认定管理员：UAC 给管理员的界面一个过滤过的 token，Administrators 组只用于拒绝；同一用户的其他进程
+    还能注入界面，所以界面的连接不能证明什么。启用的 Administrators 组只有经用户确认的提权才有（UAC 关着时管理员
+    的进程总有它，那时本来就没有确认这一步）。中完整性级别的进程注入不了高完整性级别的辅助进程；不提权运行辅助
+    进程时，它连管道都通不过校验（5.3 节第 2 项）。辅助进程是服务自己的 Go 程序，只发这一个请求，不加载 Python、
+    Qt 和用户目录里的东西。
+  - 只给管理员显示"接管"：标准用户要在 UAC 里填另一个管理员账户的密码，接管后成为属主的会是那个账户，不是他。
 
 ### 5.5 系统代理
 
@@ -640,7 +659,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 | 通过控制接口替换二进制或重启进程 | 对外只有方法表中的方法，没有对应能力 |
 | 畸形或超大的消息 | Windows 先校验帧头再分配缓冲区，macOS 在解码前检查长度；未知方法和枚举直接拒绝 |
 | 订阅拖住内核或泄漏 | 事件缓存在有界缓冲区，满了丢弃最旧的；超过 30 秒未拉取的订阅自动失效 |
-| 其他用户接管隧道 | 属主 SID 校验；另一个用户的隧道运行时不能认领；一个服务进程只打开一个属主的 home |
+| 其他用户接管隧道 | 属主 SID 校验；另一个用户的隧道运行时不能认领，只有经 UAC 提权的管理员能接管（5.4 节）；一个服务进程只打开一个属主的 home |
+| 同一用户的其他进程借界面接管隧道 | 接管要求客户端 token 启用 Administrators 组，只有经 UAC 确认的提权进程有；界面不提权，服务的可执行文件不提权运行时通不过客户端校验 |
 | 其他用户的流量走属主的隧道 | 属主注销时停止隧道，只在属主登录时恢复（D5） |
 | 系统代理留在失效的端口上 | 停止、注销、服务停止时写回属主原来的设置；写不了就存着，等他下次登录 |
 | 局域网暴露 | `allow-lan` 和监听 `0.0.0.0` 的 listeners 默认关闭，由用户显式开启 |
@@ -651,8 +671,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 
 ## 9. 安装、升级与卸载
 
-- **Windows**：NSIS 安装器 `package/windows/installer.nsi`，由 `scripts/build_windows.py` 编译（第 10 节），是唯一的
-  UAC 点：安装器和卸载器以管理员身份运行，界面从不提权。界面有中英两种语言，按系统的显示语言选择。关闭界面和处理
+- **Windows**：NSIS 安装器 `package/windows/installer.nsi`，由 `scripts/build_windows.py` 编译（第 10 节）。安装器和
+  卸载器以管理员身份运行；界面从不提权，只在管理员接管其他用户的隧道时经 UAC 启动服务的接管辅助进程（5.4 节）。界面有中英两种语言，按系统的显示语言选择。关闭界面和处理
   服务的几步在 `package/windows/setup.ps1` 里，由安装器和卸载器以 64 位 Windows PowerShell 运行。流程参考 hypervpn 的
   `packaging/windows/`。
   - 安装：位置固定为 `C:\Program Files\Solaris`（`/D=` 不起作用，服务只认这个只有管理员能写的目录里的界面）；复制
@@ -767,11 +787,14 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
     不需要解析的流水线步骤（覆写插入、fd 模式的警告、`FDNetwork` 与 TUN 的核对）在 `internal/admission` 里单测；
   - 控制协议：帧头校验、超限拒绝、请求 ID 匹配、订阅缓冲与过期，Go 与 Python 两端用同一组样本互测
     （样本里的响应来自一个不链接 mihomo 的假 engine，所以不随 mihomo 版本变化）；
-  - 属主：认领与换属主重启、按属主恢复、注销停止、系统代理的开启与还原，用替身平台在所有平台上测
-    （`internal/owner`），分发器的放行和错误码见 `internal/control/host_test.go`；
-  - Windows CI：客户端校验（真实的命名管道、文件 ID、锁住映像、签名者）、home 目录的 ACL 与拒绝链接、WinINet
-    代理设置的读写与还原（只在 CI 上改代理）。服务的安装、升级与卸载由 `windows-installer` job 覆盖（第 9 节）；
-    模拟属主 token 和认领后的服务重启要 SYSTEM 身份和登录的用户，CI 不覆盖；
+  - 属主：认领与换属主重启、管理员接管、按属主恢复、注销停止、系统代理的开启与还原，用替身平台在所有平台上测
+    （`internal/owner`），分发器的放行、接管时停止内核和错误码见 `internal/control/host_test.go`，接管辅助进程的
+    请求见 `service/takeover_test.go`；
+  - Windows CI：客户端校验（真实的命名管道、文件 ID、锁住映像、签名者，服务的可执行文件只在有管理员权限时通过）、
+    管理员权限的判断（对照 `CheckTokenMembership` 和 UAC 那样过滤过的 token）、home 目录的 ACL 与拒绝链接、WinINet
+    代理设置的读写与还原（只在 CI 上改代理），以及界面以 `runas` 启动程序并取回退出码（runner 本来就提权，不弹
+    UAC 提示）。服务的安装、升级与卸载由 `windows-installer` job 覆盖（第 9 节）；模拟属主 token、认领后的服务
+    重启、真实的 UAC 提示和两个登录用户之间的接管要 SYSTEM 身份和登录的用户，CI 不覆盖；
   - Python：用模拟宿主（`tests/support/simulated.py`）测试 models 与 ViewModel。它代替内核回答的部分在
     `simulated_core.py`：配置检查、拼装、读订阅、预览、规则测试、转换和导出。`testdata/core-vectors.json` 记着内核
     对一组输入的回答（`internal/compose/vectors_test.go` 核对，带 `-update` 时改写），`tests/test_simulated.py`
@@ -784,8 +807,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 
 ## 12. 待定事项
 
-决策都记录在 [decisions.md](decisions.md)。与本文有关的待定决策有三项：管理员接管运行中的隧道（D5b，5.4 节）、
-provider message 的大小上限（D8，6.3 节）和支持的最低 macOS（D28，6.1 节）。
+决策都记录在 [decisions.md](decisions.md)。与本文有关的待定决策有两项：provider message 的大小上限（D8，6.3 节）
+和支持的最低 macOS（D28，6.1 节）。
 
 ## 13. 参考
 

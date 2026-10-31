@@ -15,12 +15,14 @@ import (
 type handleConn interface{ Fd() uintptr }
 
 // PipeClientVerifier accepts only installedUI, the Solaris.exe beside the service, run in a
-// user's session (docs/architecture.md §5.3), and returns that user's SID and session. The
-// connection it hands back holds the client's process and executable open until it closes:
-// the process ID cannot pass to another process meanwhile, nor can the file be replaced.
-// With signer set, as in signed release builds, the client's Authenticode signature must
-// be one Windows trusts, by that signer.
-func PipeClientVerifier(installedUI, signer string) Verifier {
+// user's session (docs/architecture.md §5.3), and returns that user's SID and session. It
+// also accepts helper, the service's own executable, when an administrator runs it elevated
+// to take over another user's tunnel (decision D5b, §5.4); run without those rights it is
+// turned away. The connection it hands back holds the client's process and executable open
+// until it closes: the process ID cannot pass to another process meanwhile, nor can the
+// file be replaced. With signer set, as in signed release builds, the client's Authenticode
+// signature must be one Windows trusts, by that signer.
+func PipeClientVerifier(installedUI, helper, signer string) Verifier {
 	return func(conn net.Conn) (net.Conn, Identity, error) {
 		pipe, ok := conn.(handleConn)
 		if !ok {
@@ -31,7 +33,7 @@ func PipeClientVerifier(installedUI, signer string) Verifier {
 			return nil, Identity{}, fmt.Errorf("identify pipe client: %w", err)
 		}
 		held := &heldHandles{}
-		identity, err := verify(processID, installedUI, signer, held)
+		identity, err := verify(processID, installedUI, helper, signer, held)
 		if err != nil {
 			held.close()
 			return nil, Identity{}, err
@@ -40,7 +42,7 @@ func PipeClientVerifier(installedUI, signer string) Verifier {
 	}
 }
 
-func verify(processID uint32, installedUI, signer string, held *heldHandles) (Identity, error) {
+func verify(processID uint32, installedUI, helper, signer string, held *heldHandles) (Identity, error) {
 	process, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION|windows.SYNCHRONIZE, false, processID)
 	if err != nil {
 		return Identity{}, fmt.Errorf("open pipe client process: %w", err)
@@ -55,14 +57,17 @@ func verify(processID uint32, installedUI, signer string, held *heldHandles) (Id
 		return Identity{}, fmt.Errorf("open pipe client executable: %w", err)
 	}
 	held.add(image)
-	installed, err := openLocked(installedUI)
+	isUI, err := isImage(image, installedUI)
 	if err != nil {
 		return Identity{}, fmt.Errorf("open the installed UI: %w", err)
 	}
-	defer windows.CloseHandle(installed)
-	if same, err := sameFile(image, installed); err != nil {
-		return Identity{}, err
-	} else if !same {
+	isHelper := false
+	if !isUI && helper != "" {
+		if isHelper, err = isImage(image, helper); err != nil {
+			return Identity{}, fmt.Errorf("open the service's executable: %w", err)
+		}
+	}
+	if !isUI && !isHelper {
 		return Identity{}, fmt.Errorf("pipe client %s is not the installed UI", imagePath)
 	}
 	if signer != "" {
@@ -90,11 +95,37 @@ func verify(processID uint32, installedUI, signer string, held *heldHandles) (Id
 	if err != nil {
 		return Identity{}, fmt.Errorf("read pipe client user: %w", err)
 	}
+	admin, err := administrator(token)
+	if err != nil {
+		return Identity{}, fmt.Errorf("read pipe client groups: %w", err)
+	}
+	if isHelper && !admin {
+		return Identity{}, errors.New("pipe client runs the service's executable without an administrator's rights")
+	}
 	// Had the process exited before its handle was open, the ID could be another's by now.
 	if event, err := windows.WaitForSingleObject(process, 0); err != nil || event != uint32(windows.WAIT_TIMEOUT) {
 		return Identity{}, errors.New("pipe client exited while it was checked")
 	}
-	return Identity{UserID: user.User.Sid.String(), SessionID: sessionID, ProcessID: processID}, nil
+	return Identity{UserID: user.User.Sid.String(), SessionID: sessionID, ProcessID: processID, Administrator: admin}, nil
+}
+
+// administrator says token has the Administrators group enabled. UAC filters an
+// administrator's token down to one where the group only denies access, so their processes
+// get it once the user confirmed an elevation; nothing short of that prompt gives it to a
+// process that runs without it (decision D5b). With UAC off, an administrator's processes
+// always have it.
+func administrator(token windows.Token) (bool, error) {
+	groups, err := token.GetTokenGroups()
+	if err != nil {
+		return false, err
+	}
+	for _, group := range groups.AllGroups() {
+		if group.Sid.IsWellKnown(windows.WinBuiltinAdministratorsSid) {
+			return group.Attributes&windows.SE_GROUP_ENABLED != 0 &&
+				group.Attributes&windows.SE_GROUP_USE_FOR_DENY_ONLY == 0, nil
+		}
+	}
+	return false, nil
 }
 
 func processImage(process windows.Handle) (string, error) {
@@ -114,6 +145,16 @@ func openLocked(path string) (windows.Handle, error) {
 	}
 	return windows.CreateFile(name, windows.GENERIC_READ, windows.FILE_SHARE_READ, nil,
 		windows.OPEN_EXISTING, windows.FILE_ATTRIBUTE_NORMAL, 0)
+}
+
+// isImage says the executable open as image is the file at path.
+func isImage(image windows.Handle, path string) (bool, error) {
+	file, err := openLocked(path)
+	if err != nil {
+		return false, err
+	}
+	defer windows.CloseHandle(file)
+	return sameFile(image, file)
 }
 
 // sameFile compares volume and file IDs, which no path trick can fake.

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
+from typing import Any
 
 from solaris.desktop import links
 from solaris.desktop.login import LoginItem, UnavailableLoginItem
@@ -134,6 +135,7 @@ def compose(
     credentials: CredentialStore | None = None,
     icloud: ICloudProvider | None = None,
     google: GoogleDriveProvider | None = None,
+    take_over: Callable[[], Coroutine[Any, Any, None]] | None = None,
 ) -> ViewModels:
     """``clock`` dates profile updates and subscription expiry. The settings live in the
     profiles' database unless given. ``tray_available`` and ``start_hidden``: see DesktopViewModel.
@@ -141,7 +143,8 @@ def compose(
     ``updater`` defaults to GitHub's releases, downloaded into the profiles' directory.
     ``credentials`` keeps the WARP account; the system's credential store by default.
     ``icloud`` is the iCloud backup of a packaged macOS app, ``google`` the Google Drive backup
-    of a build with a Google OAuth client; automatic backup runs with either."""
+    of a build with a Google OAuth client; automatic backup runs with either. ``take_over``
+    is an administrator's take-over of another user's tunnel (OverviewViewModel)."""
     runner = AsyncRunner()
     settings_store = settings or DatabaseSettingsStore(store.database)
     library = ProfileLibrary(
@@ -153,7 +156,7 @@ def compose(
         credentials=credentials,
     )
     shell = ShellViewModel(host, runner)
-    overview = OverviewViewModel(host, library, runner, settings_store)
+    overview = OverviewViewModel(host, library, runner, settings_store, take_over=take_over)
     proxies = ProxiesViewModel(host, runner)
     profiles = ProfilesViewModel(library, runner, clock)
     routing = RoutingViewModel(library, runner, settings_store)
