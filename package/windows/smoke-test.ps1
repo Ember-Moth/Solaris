@@ -71,8 +71,8 @@ function Invoke-Setup([string] $Path, [string] $Arguments) {
 function Invoke-InteractiveSetup([string] $Path) {
     Add-Type -AssemblyName UIAutomationClient
     Add-Type -AssemblyName UIAutomationTypes
-    $providerTypes = @(Add-Type -AssemblyName UIAutomationClientsideProviders -PassThru)
-    [System.Windows.Automation.ClientSettings]::RegisterClientSideProviderAssembly($providerTypes[0].Assembly.GetName())
+    Add-Type -AssemblyName UIAutomationClientsideProviders
+    [System.Windows.Automation.ClientSettings]::RegisterClientSideProviders([UIAutomationClientsideProviders.UIAutomationClientSideProviders]::ClientSideProviderDescriptionTable)
     $process = Start-Process -FilePath $Path -PassThru
     $null = $process.Handle
     try {
