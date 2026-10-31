@@ -18,7 +18,7 @@ Windows 安装包目前不签名（D29），更新时只核对校验和（第 3 
 | --- | --- |
 | 标签 | `v<版本>`，版本即 `pyproject.toml` 的 `version`，形如 `1.0.0`（三段数字）。预发布和草稿不提供给更新 |
 | 标题与说明 | `Solaris <版本>`；说明取自 `.github/release-notes.md`，`{{version}}` 换成版本，"更新内容"在草稿里手写 |
-| macOS 安装包 | `Solaris-<版本>-macos-arm64.dmg`：内含 `Solaris.app`；磁盘映像用 Developer ID（Team `GY9ZKZMAZA`）签名、公证并 staple |
+| macOS 安装包 | `Solaris-<版本>-macos-arm64.dmg`：由 `scripts/build_dmg.py` 制作，挂载后是一个固定的窗口，左边 `Solaris.app`、右边“应用程序”的快捷方式（apple/README.md 的“磁盘映像”）；磁盘映像用 Developer ID（Team `GY9ZKZMAZA`）签名、公证并 staple |
 | Windows 安装包 | `Solaris-<版本>-windows-x64-setup.exe`：NSIS 安装器（architecture.md 第 9 节）。目前不签名（D29），更新时只核对校验和（第 3 节第 4 步）；加入签名后用 Authenticode 签名 |
 | 校验和 | `SHA256SUMS`：`sha256sum` 的输出格式，每行 `<64 位小写十六进制>  <文件名>`，覆盖本次发布的其他每个文件 |
 | 源代码 | `Solaris-<版本>-source.tar.gz`：本仓库在这个标签的代码，加上 `go mod vendor` 得到的全部 Go 依赖（第 5 节） |
