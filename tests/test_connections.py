@@ -264,8 +264,14 @@ def test_closing_connections_and_the_detail(qtbot: QtBot, runner: AsyncRunner) -
 
     connections.setActive(False)
     asyncio.run(host.stop())
-    connections.refresh()
-    qtbot.waitUntil(lambda: not prop(connections, "running"))
+
+    # A refresh the timer started may still be on its way, from before the host stopped, and
+    # refresh() does nothing until it lands: ask again until one reads the stopped host.
+    def stopped() -> bool:
+        connections.refresh()
+        return not prop(connections, "running")
+
+    qtbot.waitUntil(stopped)
     assert prop(connections, "summary") == "未连接"
     assert prop(connections, "emptyText") == "未连接"
     connections.closeAll()
