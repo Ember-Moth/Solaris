@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import shutil
 import struct
+import sys
 from pathlib import Path
 
 import pytest
@@ -92,7 +93,10 @@ def test_installer_name() -> None:
     assert build_windows.installer_name("0.2.0") == "Solaris-0.2.0-windows-x64-setup.exe"
 
 
-@pytest.mark.skipif(shutil.which("makensis") is None, reason="needs NSIS")
+@pytest.mark.skipif(
+    sys.platform != "win32" or shutil.which("makensis") is None,
+    reason="needs NSIS and the Windows MSVC installer UI toolchain",
+)
 def test_installer_compiles(tmp_path: Path) -> None:
     makensis = Path(shutil.which("makensis") or "")
     directory = _install_directory(tmp_path)

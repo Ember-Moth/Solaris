@@ -39,7 +39,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Run as a script, Python puts scripts/ on the path rather than the root.
 sys.path.insert(0, str(ROOT))
 
-from scripts import build_app, build_apple, cronet, fetch_geodata, symbols  # noqa: E402
+from scripts import build_app, build_apple, build_installer_ui, cronet, fetch_geodata, symbols  # noqa: E402
 from scripts.build_apple import BuildError  # noqa: E402
 
 BUILD = ROOT / "build" / "windows"
@@ -239,6 +239,7 @@ def build_installer(directory: Path, version: str, makensis: Path, output: Path)
     definitions and the uninstall list go into ``output``/nsis."""
     work = output / "nsis"
     work.mkdir(parents=True, exist_ok=True)
+    plugin = build_installer_ui.build(work / "ui")
     files = work / "uninstall-files.nsh"
     # makensis reads a file without a byte order mark in the system's code page, unless an
     # !include names the charset: the generated files get the mark, installer.nsi the option.
@@ -252,6 +253,9 @@ def build_installer(directory: Path, version: str, makensis: Path, output: Path)
         "SETUP_SCRIPT": SETUP_SCRIPT,
         "APP_ICON": ICON,
         "UNINSTALL_FILES": files,
+        "INSTALLER_UI_DIR": plugin.parent,
+        "INSTALLER_UI_INCLUDE": PACKAGE / "ui" / "interface.nsh",
+        "INSTALLER_FONTS": ROOT / "src" / "solaris" / "ui" / "fonts",
     }
     wrapper = work / "installer.nsi"
     lines = [f'!define {key} "{nsis_string(str(value))}"' for key, value in definitions.items()]

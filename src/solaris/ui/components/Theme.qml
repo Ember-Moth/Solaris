@@ -166,6 +166,8 @@ QtObject {
     readonly property int dialogWidth: 400  // spacing.dialog-width
     readonly property int dialogWidthWide: 640  // spacing.dialog-width-wide
     readonly property int dialogWidthEditor: 840  // spacing.dialog-width-editor
+    readonly property int installerWidth: 640  // spacing.installer-width
+    readonly property int installerHeight: 440  // spacing.installer-height
     readonly property int listHeaderHeight: 28  // spacing.list-header-height
     readonly property int insertionLine: 2  // spacing.insertion-line
     readonly property int editorMinHeight: 240  // spacing.editor-min-height

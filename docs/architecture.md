@@ -754,11 +754,15 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   卸载器以管理员身份运行；界面从不提权，只在管理员接管其他用户的隧道时经 UAC 启动服务的接管辅助进程（5.4 节）。界面有中英两种语言，按系统的显示语言选择。关闭界面和处理
   服务的几步在 `package/windows/setup.ps1` 里，由安装器和卸载器以 64 位 Windows PowerShell 运行。流程参考 hypervpn 的
   `packaging/windows/`。
+  - 自定义界面（D39）：`package/windows/ui/setup_ui.cpp` 是独立的 Win32 UI 线程，配色、字号及窗口尺寸从
+    DESIGN.md 生成，支持中英文、系统浅深色、高对比度和 DPI 变化。NSIS 的默认页面隐藏；普通运行先由 UI 收集
+    安装/卸载选择，再在静默引擎中执行原有事务，并把实际阶段和结果回传 UI。控件只返回选择，不执行安装命令。
+    `/S` 不创建界面；操作进行中不能关闭，完成或失败后可查看详情并关闭，安装完成还可打开 Solaris。
   - 安装：位置固定为 `C:\Program Files\Solaris`（`/D=` 不起作用，服务只认这个只有管理员能写的目录里的界面）；复制
     文件；用 `sc.exe` 注册 `SolarisService`（LocalSystem、自动启动，5.2 节的故障恢复，`failureflag 1` 让服务带错误
     退出时也重启）并启动；在 HKLM 下注册 `solaris:` 和 `clash:`，命令是 `"<安装目录>\Solaris.exe" "%1"`；所有用户的
     开始菜单快捷方式；"应用"里的卸载信息。安装器以管理员身份运行，可能不是使用者本人，所以 scheme 写在 HKLM 而不是
-    HKCU；用户自己的 HKCU 里如有其他客户端注册的 `clash:`，对这个用户仍是它优先。完成页的"运行 Solaris"经 Explorer
+    HKCU；用户自己的 HKCU 里如有其他客户端注册的 `clash:`，对这个用户仍是它优先。完成页的"打开 Solaris"经 Explorer
     以登录用户的身份打开界面，不继承安装器的管理员权限。
   - 升级：注册表里已有安装时，先关闭正在运行的界面（见下面的"关闭界面"；隧道在服务里，不受影响），停止服务并等它
     的进程退出，再以 `/UPGRADE` 静默运行旧版本的
@@ -771,13 +775,13 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
     再给各会话里从安装目录运行的 `Solaris.exe` 共 5 秒，仍在运行的直接结束。`--quit` 以运行安装器的用户身份
     执行，只请得到这个用户的界面；其他用户的界面（快速切换用户，或以另一个管理员账户提权安装时）等完这 5 秒后被
     结束。
-  - 用户数据：卸载器的组件页有一项默认不勾选的"订阅、设置和日志"，勾选（静默卸载时加 `/PURGE`）才删除
+  - 用户数据：卸载确认界面的数据清除选项默认不勾选，勾选（静默卸载时加 `/PURGE`）才删除
     `C:\ProgramData\Solaris`（服务一侧，所有用户的配置、覆写与缓存）和运行卸载器的用户的 `%LOCALAPPDATA%\Solaris`。
     其他用户的界面数据和系统凭据库里的 WARP 账户卸载器够不着，留着。
-  - 失败时弹出原因并停止，静默运行时原因写进 `%TEMP%\Solaris-setup-error.log`；退出码沿用 Windows Installer 的：
+  - 失败时显示独立的失败状态和操作详情，静默运行时原因写进 `%TEMP%\Solaris-setup-error.log`；退出码沿用 Windows Installer 的：
     1603 一般失败、1633 不是 64 位的 Windows 10 及以上、1638 已装在别的目录。
   - 验证：CI 的 `windows-installer` job 在 `windows-latest` 上构建不签名的安装包，由 `package/windows/smoke-test.ps1`
-    依次安装、打开界面、在界面运行时升级、在界面运行时卸载（保留数据）、再安装、以 `/PURGE` 卸载，核对文件、服务的
+    首次安装通过 UI Automation 操作真实安装窗口，之后打开界面、静默升级、静默卸载（保留数据）、再安装、以 `/PURGE` 卸载，核对文件、服务的
     路径、启动方式、账户、恢复策略与管道监听、注册表、快捷方式、计划任务，升级和卸载时界面自己退出（退出码 0，
     没有留下 `ui.lock`），以及卸载后什么都没留下。不建 TUN，不连接。真机上的 UAC、开机恢复和隧道见
     [maintenance.md](maintenance.md) 2.1 节。
@@ -807,7 +811,7 @@ Windows 安装器为两个 Solaris 可执行文件设置独立的 WER mini dump 
 | macOS xcframework | 本仓库 Go 模块的 c-archive 构建，包含 engine 与控制分发器，导出供 `handleAppMessage` 调用的 C 函数 |
 | 协议绑定 | 由 `control.proto` 生成 Go 与 Python 代码 |
 | UI | Nuitka standalone（Windows 上是 `--mode=standalone` 的 `Solaris.exe`，用 MSVC；macOS 上是 `--mode=app`） |
-| Windows 安装包 | `scripts/build_windows.py` 构建服务和界面、组装安装目录，用 NSIS 3 编译 `package/windows/installer.nsi` |
+| Windows 安装包 | MSVC x86 编译自定义安装器 UI 插件，NSIS 3 封装它与 x64 应用；`scripts/build_windows.py` 统一组装 |
 | macOS 包 | `scripts/build_app.py` 组装并签名 `Solaris.app`；发布工作流公证后做成 `.dmg` |
 | 崩溃符号 | Nuitka `--unstripped`；macOS dSYM 校验 UUID；Windows PDB 与精确 Go 服务二进制独立存档，发布 artifact 保留 90 天 |
 

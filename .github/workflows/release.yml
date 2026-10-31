@@ -304,6 +304,7 @@ jobs:
         run: uv run --frozen python scripts/build_windows.py --installer-only
 
       - name: Install, upgrade and uninstall
+        shell: powershell
         env:
           INSTALLER: build/windows/${{ steps.version.outputs.installer }}
         run: ./package/windows/smoke-test.ps1 -Installer $env:INSTALLER

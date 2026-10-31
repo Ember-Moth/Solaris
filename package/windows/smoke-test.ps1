@@ -66,6 +66,54 @@ function Invoke-Setup([string] $Path, [string] $Arguments) {
     }
 }
 
+# The first install exercises the real custom UI -> NSIS engine bridge. The later
+# upgrade/uninstall cases continue to exercise /S. Only run on this disposable runner.
+function Invoke-InteractiveSetup([string] $Path) {
+    Add-Type -AssemblyName UIAutomationClient
+    Add-Type -AssemblyName UIAutomationTypes
+    $process = Start-Process -FilePath $Path -PassThru
+    $null = $process.Handle
+    try {
+        $rootElement = [System.Windows.Automation.AutomationElement]::RootElement
+        $pidCondition = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ProcessIdProperty, $process.Id)
+        $classCondition = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ClassNameProperty, 'SolarisSetupWindow')
+        $condition = [System.Windows.Automation.AndCondition]::new($pidCondition, $classCondition)
+        $deadline = [DateTime]::UtcNow.AddSeconds(30)
+        $window = $null
+        while (-not $window -and [DateTime]::UtcNow -lt $deadline) {
+            $window = $rootElement.FindFirst([System.Windows.Automation.TreeScope]::Children, $condition)
+            if (-not $window) { Start-Sleep -Milliseconds 100 }
+        }
+        if (-not $window) { throw 'The custom installer window did not open' }
+        $actionCondition = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::AutomationIdProperty, '1001')
+        $closeCondition = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::AutomationIdProperty, '1002')
+        $action = $null
+        while (-not $action -and [DateTime]::UtcNow -lt $deadline) {
+            $candidate = $window.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $actionCondition)
+            if ($candidate -and $candidate.Current.Name) { $action = $candidate }
+            else { Start-Sleep -Milliseconds 100 }
+        }
+        if (-not $action) { throw 'The custom installer has no accessible Install button' }
+        $initialName = $action.Current.Name
+        $action.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+        $deadline = [DateTime]::UtcNow.AddMinutes(5)
+        while (-not $process.HasExited -and $action.Current.Name -eq $initialName -and [DateTime]::UtcNow -lt $deadline) {
+            Start-Sleep -Milliseconds 200
+        }
+        $openChinese = '{0}{1} Solaris' -f [char]0x6253, [char]0x5F00
+        if ($process.HasExited -or $action.Current.Name -notin @('Open Solaris', $openChinese)) {
+            if (Test-Path $ErrorLog) { Get-Content -LiteralPath $ErrorLog | Write-Output }
+            throw 'The custom installer did not reach its successful completion page'
+        }
+        # Close, so the following --quit test still starts with no UI and no user data.
+        $close = $window.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $closeCondition)
+        $close.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+        if (-not $process.WaitForExit(30000) -or $process.ExitCode -ne 0) { throw 'The custom installer did not exit successfully' }
+    } finally {
+        if (-not $process.HasExited) { $process.Kill() }
+    }
+}
+
 function Get-SolarisService {
     Get-CimInstance Win32_Service -Filter "Name='$ServiceName'"
 }
@@ -200,7 +248,7 @@ if ((Test-Path $Root) -or (Test-Path $UninstallKey) -or (Get-SolarisService) -or
 $ui = $null
 try {
     Write-Output '1. Install'
-    Invoke-Setup $Installer '/S'
+    Invoke-InteractiveSetup $Installer
     Assert-Installed
 
     Write-Output '2. The UI'

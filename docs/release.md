@@ -9,6 +9,9 @@
 Windows 安装包目前不签名（D29），更新时只核对校验和（第 3 节）。`solaris:` 和 `clash:` 两个 scheme 由打包向
 系统注册（macOS 的 Info.plist，Windows 安装器写在 HKLM，第 6 节）。
 
+Windows 安装器采用自定义 Win32 界面（D39），由 MSVC 编译为 NSIS 的 x86 Unicode 插件；它只随安装器/卸载器
+解压到临时目录，不成为应用运行时依赖。原有静默参数保留，发布冒烟测试同时覆盖交互安装和静默升级/卸载。
+
 ## 1. 发布物
 
 每个版本是 GitHub 仓库 `Ember-Moth/Solaris` 的一个 Release，由发布工作流创建。界面只认下面这套约定，发布工作流

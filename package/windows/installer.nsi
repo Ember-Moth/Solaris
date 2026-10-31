@@ -18,12 +18,12 @@ ManifestDPIAware true
 RequestExecutionLevel admin
 SetCompressor /SOLID lzma
 
-!include MUI2.nsh
 !include LogicLib.nsh
 !include FileFunc.nsh
 !include Sections.nsh
 !include WinVer.nsh
 !include x64.nsh
+!include "${INSTALLER_UI_INCLUDE}"
 
 !define PRODUCT "Solaris"
 !define CLIENT "Solaris.exe"
@@ -46,32 +46,36 @@ ShowUninstDetails show
 Var Upgrade      ; the installer: a previous installation is in $INSTDIR
 Var UpgradeCall  ; the uninstaller: called by a newer installer with /UPGRADE
 
-; The corona mark (scripts/gen_icons.py), for the installer and the uninstaller.
-!define MUI_ICON "${APP_ICON}"
-!define MUI_UNICON "${APP_ICON}"
-!define MUI_ABORTWARNING
-!define MUI_FINISHPAGE_RUN
-!define MUI_FINISHPAGE_RUN_FUNCTION OpenUI
-!insertmacro MUI_PAGE_WELCOME
-!insertmacro MUI_PAGE_INSTFILES
-!insertmacro MUI_PAGE_FINISH
-!insertmacro MUI_UNPAGE_CONFIRM
-!define MUI_COMPONENTSPAGE_NODESC
-!define MUI_COMPONENTSPAGE_TEXT_TOP "$(KeepData)"
-!insertmacro MUI_UNPAGE_COMPONENTS
-!insertmacro MUI_UNPAGE_INSTFILES
+; NSIS's built-in pages remain hidden: interactive runs switch to the silent engine
+; after the custom UI confirms the operation. /S never creates a UI window.
+Icon "${APP_ICON}"
+UninstallIcon "${APP_ICON}"
+XPStyle on
+Page instfiles
+UninstPage instfiles
 
 ; The first language is the fallback; NSIS picks the one matching the system's display
 ; language at startup.
-!insertmacro MUI_LANGUAGE "English"
-!insertmacro MUI_LANGUAGE "SimpChinese"
+LoadLanguageFile "${NSISDIR}\Contrib\Language files\English.nlf"
+LoadLanguageFile "${NSISDIR}\Contrib\Language files\SimpChinese.nlf"
+
+LangString InterfaceFailed ${LANG_ENGLISH} "The setup window could not be opened. Please run the installer again."
+LangString InterfaceFailed ${LANG_SIMPCHINESE} "无法打开安装界面，请重新运行安装程序。"
+LangString CopyingFiles ${LANG_ENGLISH} "Copying application files…"
+LangString CopyingFiles ${LANG_SIMPCHINESE} "正在复制应用文件…"
+LangString RegisteringApp ${LANG_ENGLISH} "Registering Solaris…"
+LangString RegisteringApp ${LANG_SIMPCHINESE} "正在注册 Solaris…"
+LangString RemovingFiles ${LANG_ENGLISH} "Removing application files…"
+LangString RemovingFiles ${LANG_SIMPCHINESE} "正在移除应用文件…"
+LangString ClearingData ${LANG_ENGLISH} "Clearing selected application data…"
+LangString ClearingData ${LANG_SIMPCHINESE} "正在清除所选应用数据…"
 
 LangString NeedsWindows ${LANG_ENGLISH} "${PRODUCT} needs 64-bit Windows 10 or later."
 LangString NeedsWindows ${LANG_SIMPCHINESE} "${PRODUCT} 需要 64 位的 Windows 10 或更高版本。"
 LangString OtherLocation ${LANG_ENGLISH} "${PRODUCT} is installed in another folder ($0). Uninstall it in Settings > Apps first, then run this installer again."
 LangString OtherLocation ${LANG_SIMPCHINESE} "${PRODUCT} 已安装在另一个文件夹（$0）。请先在“设置 > 应用”中卸载，再运行本安装程序。"
-LangString SetupFailed ${LANG_ENGLISH} "${PRODUCT} could not be set up."
-LangString SetupFailed ${LANG_SIMPCHINESE} "无法完成 ${PRODUCT} 的设置。"
+LangString SetupFailed ${LANG_ENGLISH} "${PRODUCT} could not complete the operation."
+LangString SetupFailed ${LANG_SIMPCHINESE} "${PRODUCT} 未能完成操作。"
 LangString UninstallerFailed ${LANG_ENGLISH} "The installed version of ${PRODUCT} could not be removed (result: $0). Uninstall it in Settings > Apps, then run this installer again."
 LangString UninstallerFailed ${LANG_SIMPCHINESE} "无法移除已安装的 ${PRODUCT}（结果：$0）。请先在“设置 > 应用”中卸载，再运行本安装程序。"
 LangString ClosingUI ${LANG_ENGLISH} "Closing ${PRODUCT}…"
@@ -86,8 +90,6 @@ LangString RemovingService ${LANG_ENGLISH} "Removing the ${PRODUCT} service…"
 LangString RemovingService ${LANG_SIMPCHINESE} "正在移除 ${PRODUCT} 服务…"
 LangString DataSection ${LANG_ENGLISH} "Subscriptions, settings and logs"
 LangString DataSection ${LANG_SIMPCHINESE} "订阅、设置和日志"
-LangString KeepData ${LANG_ENGLISH} "Your subscriptions, settings and logs are kept unless you select them below."
-LangString KeepData ${LANG_SIMPCHINESE} "订阅、设置和日志默认保留，在下面勾选后一并删除。"
 
 VIProductVersion "${APP_VERSION}.0"
 VIAddVersionKey /LANG=${LANG_ENGLISH} "ProductName" "${PRODUCT}"
@@ -102,7 +104,13 @@ VIAddVersionKey /LANG=${LANG_ENGLISH} "LegalCopyright" "GPL-3.0-only"
   FileOpen $9 "${ERROR_LOG}" w
   FileWriteUTF16LE /BOM $9 "${PRODUCT} ${APP_VERSION}: ${MESSAGE}$\r$\n"
   FileClose $9
-  MessageBox MB_OK|MB_ICONSTOP "${MESSAGE}" /SD IDOK
+  ${If} $UiEnabled == 1
+    SolarisSetupUI::Finish "failure" "${MESSAGE}"
+    Pop $9
+    StrCpy $UiEnabled 0
+  ${Else}
+    MessageBox MB_OK|MB_ICONSTOP "${MESSAGE}" /SD IDOK
+  ${EndIf}
   SetErrorLevel ${CODE}
   Abort
 !macroend
@@ -114,6 +122,7 @@ VIAddVersionKey /LANG=${LANG_ENGLISH} "LegalCopyright" "GPL-3.0-only"
   Pop $1
   ${If} $1 != ""
     DetailPrint "$1"
+    !insertmacro UiLog "$1"
   ${EndIf}
   ${If} $0 != 0
     !insertmacro Fail "$(SetupFailed)$\r$\n$\r$\n$1" 1603
@@ -137,6 +146,7 @@ VIAddVersionKey /LANG=${LANG_ENGLISH} "LegalCopyright" "GPL-3.0-only"
 !macroend
 
 Function .onInit
+  StrCpy $UiEnabled 0
   Delete "${ERROR_LOG}"
   ${IfNot} ${RunningX64}
   ${OrIfNot} ${AtLeastWin10}
@@ -154,21 +164,28 @@ Function .onInit
     ${EndIf}
     StrCpy $Upgrade 1
   ${EndIf}
+  IfSilent done
+  ${If} $Upgrade == 1
+    !insertmacro UiBegin "upgrade"
+  ${Else}
+    !insertmacro UiBegin "install"
+  ${EndIf}
+  done:
 FunctionEnd
 
 Section
   InitPluginsDir
   File "/oname=$PLUGINSDIR\setup.ps1" "${SETUP_SCRIPT}"
   ; setup.ps1 asks the UI to quit, and ends it when it does not; the tunnel runs in the service.
-  DetailPrint "$(ClosingUI)"
+  !insertmacro UiStatus "$(ClosingUI)"
   !insertmacro Setup close-ui
-  DetailPrint "$(StoppingService)"
+  !insertmacro UiStatus "$(StoppingService)"
   !insertmacro Setup stop-service
   ; The previous uninstaller removes exactly the files it installed, so files a newer
   ; version no longer ships do not stay behind. Without it, the new files go over the old.
   ${If} $Upgrade == 1
   ${AndIf} ${FileExists} "$INSTDIR\${UNINSTALLER}"
-    DetailPrint "$(RemovingOld)"
+    !insertmacro UiStatus "$(RemovingOld)"
     ClearErrors
     ExecWait '"$INSTDIR\${UNINSTALLER}" /S /UPGRADE _?=$INSTDIR' $0
     ${If} ${Errors}
@@ -177,10 +194,12 @@ Section
     ${EndIf}
   ${EndIf}
 
+  !insertmacro UiStatus "$(CopyingFiles)"
   SetOutPath "$INSTDIR"
   File /r "${APP_DIRECTORY}\*"
   WriteUninstaller "$INSTDIR\${UNINSTALLER}"
 
+  !insertmacro UiStatus "$(RegisteringApp)"
   WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayName" "${PRODUCT}"
   WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayVersion" "${APP_VERSION}"
   WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayIcon" '"$INSTDIR\${CLIENT}",0'
@@ -200,14 +219,49 @@ Section
 
   ; Created, or pointed at this installation again, and started; it restores the tunnel
   ; that was running before the upgrade.
-  DetailPrint "$(StartingService)"
+  !insertmacro UiStatus "$(StartingService)"
   !insertmacro Setup install-service
 SectionEnd
 
-; The finish page's "Run Solaris". Started from this elevated process, the UI would run as
+; The finish page's "Open Solaris". Started from this elevated process, the UI would run as
 ; administrator; Explorer starts it as the signed-in user instead.
 Function OpenUI
   Exec '"$WINDIR\explorer.exe" "$INSTDIR\${CLIENT}"'
+FunctionEnd
+
+Function .onInstSuccess
+  ${If} $UiEnabled == 1
+    SolarisSetupUI::Finish "success" ""
+    Pop $0
+    StrCpy $UiEnabled 0
+    ${If} $0 == "open"
+      Call OpenUI
+    ${EndIf}
+  ${EndIf}
+FunctionEnd
+
+Function .onInstFailed
+  ${If} $UiEnabled == 1
+    SolarisSetupUI::Finish "failure" "$(SetupFailed)"
+    Pop $0
+    StrCpy $UiEnabled 0
+  ${EndIf}
+FunctionEnd
+
+Function un.onUninstSuccess
+  ${If} $UiEnabled == 1
+    SolarisSetupUI::Finish "success" ""
+    Pop $0
+    StrCpy $UiEnabled 0
+  ${EndIf}
+FunctionEnd
+
+Function un.onUninstFailed
+  ${If} $UiEnabled == 1
+    SolarisSetupUI::Finish "failure" "$(SetupFailed)"
+    Pop $0
+    StrCpy $UiEnabled 0
+  ${EndIf}
 FunctionEnd
 
 Function un.RemoveFiles
@@ -224,9 +278,9 @@ Section "!un.${PRODUCT}" UninstallProgram
   ${EndIf}
   InitPluginsDir
   File "/oname=$PLUGINSDIR\setup.ps1" "${SETUP_SCRIPT}"
-  DetailPrint "$(ClosingUI)"
+  !insertmacro UiStatus "$(ClosingUI)"
   !insertmacro Setup close-ui
-  DetailPrint "$(RemovingService)"
+  !insertmacro UiStatus "$(RemovingService)"
   !insertmacro Setup remove-service
   ; Every user's "Open at sign-in" task (src/solaris/desktop/login.py).
   !insertmacro Setup remove-tasks
@@ -234,6 +288,7 @@ Section "!un.${PRODUCT}" UninstallProgram
   !insertmacro UnregisterScheme clash
   Delete "$SMPROGRAMS\${PRODUCT}.lnk"
   DeleteRegKey HKLM "${UNINSTALL_KEY}"
+  !insertmacro UiStatus "$(RemovingFiles)"
   Call un.RemoveFiles
   Delete "$INSTDIR\${UNINSTALLER}"
   ; Only when empty: files this package did not install stay.
@@ -248,6 +303,7 @@ Section /o "un.$(DataSection)" UninstallData
   ${If} $UpgradeCall == 1
     Return
   ${EndIf}
+  !insertmacro UiStatus "$(ClearingData)"
   RMDir /r "$APPDATA\${PRODUCT}"
   SetShellVarContext current
   RMDir /r "$LOCALAPPDATA\${PRODUCT}"
@@ -256,6 +312,7 @@ SectionEnd
 
 ; After the sections: /PURGE selects the data section by its index.
 Function un.onInit
+  StrCpy $UiEnabled 0
   SetRegView 64
   SetShellVarContext all
   StrCpy $UpgradeCall 0
@@ -271,4 +328,20 @@ Function un.onInit
   ${AndIf} $UpgradeCall == 0
     !insertmacro SelectSection ${UninstallData}
   ${EndIf}
+  ${If} $UpgradeCall == 1
+    SetSilent silent
+    Return
+  ${EndIf}
+  IfSilent done
+  ${If} ${SectionIsSelected} ${UninstallData}
+    !insertmacro UiBegin "uninstall-purge"
+  ${Else}
+    !insertmacro UiBegin "uninstall"
+  ${EndIf}
+  ${If} $0 == "purge"
+    !insertmacro SelectSection ${UninstallData}
+  ${Else}
+    !insertmacro UnselectSection ${UninstallData}
+  ${EndIf}
+  done:
 FunctionEnd

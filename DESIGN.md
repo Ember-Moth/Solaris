@@ -171,12 +171,20 @@ spacing:
   dialog-width: 400px
   dialog-width-wide: 640px
   dialog-width-editor: 840px
+  installer-width: 640px
+  installer-height: 440px
   list-header-height: 28px
   insertion-line: 2px
   editor-min-height: 240px
 opacity:
   disabled: 0.4
 components:
+  installer-window:
+    backgroundColor: "{colors.background}"
+    textColor: "{colors.text}"
+    typography: "{typography.body-md}"
+    width: "{spacing.installer-width}"
+    height: "{spacing.installer-height}"
   page:
     backgroundColor: "{colors.background}"
     textColor: "{colors.text}"
@@ -718,6 +726,15 @@ Solaris 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 PySide6 
   `scripts/gen_icons.py` 从同一组几何参数生成，母版在 `ui/brand/`，`.icns`、`.ico` 在 `package/icons/`。
 
 ## Components
+
+- **Windows 安装器**：使用独立的 Win32 界面，NSIS 负责安装事务，不显示默认向导页面。
+  客户区为 `installer-width` × `installer-height`（640 × 440），按 DPI 缩放；保留系统标题栏、窗口菜单和最小化。
+  沿用本文件的浅深色、圆角、字号与 24px 外边距，跟随系统外观与高对比度设置。顶部放日冕标识、Solaris 和版本，
+  正文是一个标题、简短说明及白色分组摘要；安装进度按实际阶段显示，不编造百分比，详情可展开查看。
+  安装、升级、卸载、完成与失败都有独立文案。Windows 的动作按钮在左、取消/关闭在右；卸载确认默认取消，
+  删除数据选项默认不选。执行安装事务时禁止中途关闭；完成后由用户选择打开 Solaris 或关闭。
+  控件保留 Win32 的键盘和辅助功能语义，Tab/Enter/Esc 可操作，键盘操作显示系统焦点框；禁用动画时进度仍有静态状态文字。
+  英文用随包 Inter，中文用 Microsoft YaHei UI；加载字体失败时回退系统字体。安装器文本不展示内部 IPC 或服务账户名。
 
 - **侧栏导航**：
   - 页面依次是概览、代理、订阅、分流、连接、日志、设置（英文 "Overview"、"Proxies"、"Subscriptions"、"Routing"、"Connections"、"Logs"、"Settings"）。「订阅」只管来源，「分流」决定用哪套规则。

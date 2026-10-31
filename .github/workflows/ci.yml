@@ -167,6 +167,33 @@ jobs:
           uv run --no-project --with dmgbuild==1.6.7 python scripts/build_dmg.py \
             build/apple/check/Solaris.app "$RUNNER_TEMP/Solaris.dmg"
 
+  installer-ui:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2
+        with:
+          enable-cache: true
+      - name: NSIS
+        run: choco install nsis --yes --no-progress
+      - name: Build the custom Win32 surface and read-only harness
+        run: uv run --frozen python scripts/build_installer_ui.py --preview
+      - name: Exercise installer UI and capture screenshots
+        shell: powershell
+        run: ./package/windows/ui-smoke-test.ps1 -Preview build/installer-ui/Solaris-setup-preview.exe -Output build/installer-ui/screenshots
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: installer-ui-${{ github.sha }}
+          path: |
+            build/installer-ui/screenshots/
+            build/installer-ui/SolarisSetupUI.dll
+            build/installer-ui/SolarisSetupUI.pdb
+            build/installer-ui/Solaris-setup-preview.exe
+          if-no-files-found: ignore
+          retention-days: 14
+
   # The unsigned Windows installer (docs/architecture.md §9, §10), then installed, upgraded and
   # uninstalled on the runner by package/windows/smoke-test.ps1: the service starts and listens
   # on its pipe, the UI opens its window. No TUN, no connection.
@@ -200,6 +227,7 @@ jobs:
       - name: Build (unsigned)
         run: uv run --frozen --with nuitka==4.2.2 python scripts/build_windows.py
       - name: Install, upgrade and uninstall
+        shell: powershell
         run: ./package/windows/smoke-test.ps1 -Installer (Get-Item build/windows/Solaris-*-windows-x64-setup.exe).FullName
 
   # The owned-TUN and fd-mode tests create a real TUN, so they run only here, inside network

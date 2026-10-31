@@ -1,0 +1,8 @@
+LIBRARY SolarisSetupUI
+EXPORTS
+    Begin
+    Status
+    Log
+    Finish
+    Capture
+    Close
