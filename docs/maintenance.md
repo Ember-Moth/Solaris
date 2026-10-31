@@ -118,6 +118,9 @@ home 目录的 ACL 和 WinINet 代理设置的读写在 `go` job 的 Windows run
 
 同时核对：
 
+- **Gatekeeper**：用浏览器从 GitHub 下载发布工作流产出的 dmg（这样会带上隔离标记），打开映像，把 Solaris 拖进
+  "应用程序"后第一次打开，系统只应显示"从互联网下载"的普通确认，不应拒绝打开（发布工作流里 Gatekeeper 的检查只报
+  警告，见第 3 节）；
 - 激活时的批准与 VPN 配置的允许；系统要求重启时的提示；
 - app 在 hardened runtime 下启动，"登录时打开"（`SMAppService`）；
 - 扩展找到 utun 描述符；四种栈经过 utun 的流量、DNS 劫持（198.18.0.2）；断开与重连后描述符的归属；据此定下 macOS
@@ -274,6 +277,13 @@ exits.md 第 9 节的待实测项。
 
 ## 3. 已知问题
 
+- **Gatekeeper 对公证过的 app 有两种说法**：发布工作流里公证被接受、票据已 staple，同一个 app 下载到 Mac 上用
+  `syspolicy_check distribution` 检查是"可以分发"，`spctl --assess --type execute` 却拒绝，syspolicyd 的日志里是十来个
+  `errSecCSUnsigned`（被当成代码却没有签名的项目）和"没有匹配的规则"，路径被系统打码。怀疑是 Nuitka 放在
+  `Contents/MacOS` 里、签名存在扩展属性里的数据文件（QML、字体等，三百多个），还没坐实。runner 上的
+  `syspolicy_check` 另外报 "Internal Xprotect Error"，在 Mac 上不出现。所以发布工作流只把公证与 staple 当关卡，这两项
+  检查只报警告；以测试 Mac 上下载后打开的结果为准（2.2 节）。要是那里被拒，就从这些数据文件查起，例如把它们移出
+  `Contents/MacOS`。
 - **mihomo 内部的数据竞争**：mihomo 用终结器关闭重载换下的出站，关闭时写日志要读日志级别，而下一次
   `ApplyConfig` 开头的 `log.SetLevel` 不加锁地写它；`ApplyConfig` 还先改写入站对每个连接都要读的局域网、免认证
   设置，再关闭入站。两处都在 mihomo 里，读写的是一个整数和几个切片。停止时 engine 先关入站、自己关出站，不经过
