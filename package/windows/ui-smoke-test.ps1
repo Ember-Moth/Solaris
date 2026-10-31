@@ -10,6 +10,7 @@ $ErrorActionPreference = 'Stop'
 $Preview = (Resolve-Path -LiteralPath $Preview).Path
 $null = New-Item -ItemType Directory -Path $Output -Force
 $Output = (Resolve-Path -LiteralPath $Output).Path
+$licenseSource = [IO.File]::ReadAllText((Join-Path $PSScriptRoot '../../LICENSE'), [Text.Encoding]::UTF8).Replace("`r`n", "`n").TrimEnd([char[]]"`r`n")
 . "$PSScriptRoot/automation.ps1"
 Add-Type -AssemblyName System.Drawing
 Add-Type -TypeDefinition @'
@@ -152,13 +153,19 @@ foreach ($sample in @(
         if ($sample.Mode -ne 'uninstall') {
             if ([SetupUI]::IsWindowEnabled([SetupUI]::GetDlgItem($case.Window, 1001))) { throw 'Install was enabled before license consent' }
             if ($sample.Mode -eq 'install') {
-                $path = (Element $case.Window 1006).GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
+                $pathElement = Element $case.Window 1006
+                if (-not $pathElement.Current.Name) { throw 'The install path has no accessible label' }
+                $path = $pathElement.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
                 $path.SetValue('C:\Solaris Preview')
             }
             Invoke-Button $case.Window 1008
-            $license = (Element $case.Window 1009).GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
-            if (-not $license.Current.IsReadOnly -or $license.Current.Value.Length -lt 30000 -or
-                $license.Current.Value -notmatch 'END OF TERMS AND CONDITIONS') { throw 'The full GPLv3 text is not readable' }
+            $licenseElement = Element $case.Window 1009
+            if ($licenseElement.Current.Name -notmatch 'GPL') { throw 'The license reader has no accessible label' }
+            # Multiline native readers expose TextPattern, not the single-line ValuePattern.
+            $license = $licenseElement.GetCurrentPattern([System.Windows.Automation.TextPattern]::Pattern)
+            $readOnly = $license.DocumentRange.GetAttributeValue([System.Windows.Automation.TextPattern]::IsReadOnlyAttribute)
+            $licenseText = $license.DocumentRange.GetText(-1).Replace("`r`n", "`n").TrimEnd([char[]]"`r`n")
+            if ($readOnly -ne $true -or $licenseText -cne $licenseSource) { throw 'The complete read-only GPLv3 text differs from LICENSE' }
             Snapshot $case.Window "$name-license"
             Invoke-Button $case.Window 1002
             if ([SetupUI]::IsWindowEnabled([SetupUI]::GetDlgItem($case.Window, 1001))) { throw 'Reading the license implicitly accepted it' }
