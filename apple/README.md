@@ -10,6 +10,11 @@ Xcode 工程由 XcodeGen 从 `project.yml` 生成，包含两个 target（docs/a
 只构建 arm64（D2），扩展和管理库的最低系统版本是 macOS 15.0（主应用实际要求的版本见“组装 Solaris.app”）。决策
 编号见 docs/decisions.md，测试 Mac 上的验收见 docs/maintenance.md 2.2、2.3 节。
 
+扩展用途说明位于 `Tunnel/en.lproj/InfoPlist.strings` 与 `Tunnel/zh-Hans.lproj/InfoPlist.strings`，
+由 XcodeGen 的 Tunnel 资源扫描进入最终扩展。基础 `Info.plist` 保留英文回退；主 app 声明 `en`、`zh-Hans`。
+`build_apple.check_localizations` 验证编译资源与源码一致，`test_apple_localization.py` 通过独立进程中的
+Foundation Bundle 验证中文、英文及其他语言回退，不提交系统扩展请求。实际系统弹窗待测试 Mac 验收（D36）。
+
 ## 工程结构
 
 ```text

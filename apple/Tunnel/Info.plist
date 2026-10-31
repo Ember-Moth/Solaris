@@ -23,7 +23,7 @@
 	<key>LSMinimumSystemVersion</key>
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>NSSystemExtensionUsageDescription</key>
-	<string>Solaris routes your traffic through mihomo with this network extension.</string>
+	<string>Solaris uses this network extension to route traffic according to your connection settings.</string>
 	<key>NetworkExtension</key>
 	<dict>
 		<key>NEMachServiceName</key>

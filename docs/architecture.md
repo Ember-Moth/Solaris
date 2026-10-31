@@ -674,6 +674,10 @@ Solaris.app/Contents/
 
 ### 6.3 控制通道
 
+系统扩展的用途说明通过 `en.lproj/InfoPlist.strings` 与 `zh-Hans.lproj/InfoPlist.strings` 本地化（D36）。
+`Info.plist` 保留英文回退，构建脚本校验编译后的语言资源和源文件一致；主 app 声明两种语言，
+系统提示按 macOS 的语言偏好解析，不读取应用内的语言设置。系统按钮由 macOS 提供。
+
 macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的 IPC：
 
 1. UI 通过 ctypes 调用管理库的发送函数 `solaris_manager_send`，传入编码好的 Request 和超时；

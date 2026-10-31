@@ -58,6 +58,7 @@ GOPROXY = "https://goproxy.cn,direct"
 GO_VERSION_VARIABLE = "github.com/Ember-Moth/Solaris/src/core/internal/product.Version"
 # All four TUN stacks, as on Windows (D3); fd mode defaults to gVisor (docs/architecture.md §3.4).
 GO_TAGS = "with_gvisor"
+LOCALIZATIONS = ("en", "zh-Hans")
 PROFILE_DIRECTORIES = (
     Path.home() / "Library/Developer/Xcode/UserData/Provisioning Profiles",
     Path.home() / "Library/MobileDevice/Provisioning Profiles",
@@ -245,6 +246,25 @@ def check_products(dylib: Path, extension: Path) -> None:
     for key, value in expected.items():
         if info.get(key) != value:
             raise BuildError(f"the extension's {key} is {info.get(key)!r}, not {value!r}")
+    check_localizations(extension)
+
+
+def check_localizations(extension: Path) -> None:
+    """Check compiled resources before signing/packaging; Xcode may emit binary strings."""
+    info = plistlib.loads((extension / "Contents" / "Info.plist").read_bytes())
+    if info.get("CFBundleDevelopmentRegion") != "en":
+        raise BuildError("the extension must fall back to English")
+    for language in LOCALIZATIONS:
+        relative = Path(f"{language}.lproj") / "InfoPlist.strings"
+        built = extension / "Contents" / "Resources" / relative
+        if not built.is_file():
+            raise BuildError(f"the extension is missing {relative}")
+        values = _plist(["plutil", "-convert", "xml1", "-o", "-", built])
+        source = _plist(["plutil", "-convert", "xml1", "-o", "-", APPLE / "Tunnel" / relative])
+        if values != source or not values.get("NSSystemExtensionUsageDescription"):
+            raise BuildError(f"the extension's {relative} differs from its source")
+        if language == "en" and any(info.get(key) != value for key, value in values.items()):
+            raise BuildError("the extension's English resources and Info.plist fallback differ")
 
 
 def assemble_check_app(dylib: Path, extension: Path, version: str, build_number: str) -> Path:
@@ -258,6 +278,8 @@ def assemble_check_app(dylib: Path, extension: Path, version: str, build_number:
     _run(["ditto", extension, contents / "Library" / "SystemExtensions" / extension.name])
     info = {
         "CFBundleExecutable": "Solaris",
+        "CFBundleDevelopmentRegion": "en",
+        "CFBundleLocalizations": list(LOCALIZATIONS),
         "CFBundleIdentifier": APP_ID,
         "CFBundleInfoDictionaryVersion": "6.0",
         "CFBundleName": "Solaris",

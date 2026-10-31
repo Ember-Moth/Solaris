@@ -270,6 +270,8 @@ def assemble(ui: Path, dylib: Path, extension: Path, version: str, core: str, mi
     info.update(
         {
             "CFBundleIdentifier": build_apple.APP_ID,
+            "CFBundleDevelopmentRegion": "en",
+            "CFBundleLocalizations": list(build_apple.LOCALIZATIONS),
             "CFBundleName": APP_NAME,
             "CFBundleDisplayName": APP_NAME,
             "CFBundleExecutable": EXECUTABLE,
