@@ -56,15 +56,15 @@ function Expect([bool] $Condition, [string] $Problem) {
     }
 }
 
-function Invoke-Setup([string] $Path, [string] $Arguments) {
+function Invoke-Setup([string] $Path, [string] $Arguments, [int] $ExpectedExitCode = 0) {
     Write-Output "> $(Split-Path $Path -Leaf) $Arguments"
     # One string: the uninstaller's _?= must come last and unquoted, spaces and all.
     $process = Start-Process -FilePath $Path -ArgumentList $Arguments -PassThru
     $null = $process.Handle  # keeps the exit code readable after the process exits
     if (-not $process.WaitForExit(300000)) { throw "$Path timed out" }
-    if ($process.ExitCode -ne 0) {
+    if ($process.ExitCode -ne $ExpectedExitCode) {
         if (Test-Path $ErrorLog) { Get-Content -LiteralPath $ErrorLog | Write-Output }
-        throw "$Path $Arguments exited with $($process.ExitCode)"
+        throw "$Path $Arguments exited with $($process.ExitCode), expected $ExpectedExitCode"
     }
 }
 
@@ -294,6 +294,16 @@ try {
     Assert-QuitByItself 'the upgrade'
     Assert-Installed
     Expect ((Get-SolarisService).ProcessId -ne $before) "$ServiceName was not restarted"
+
+    Write-Output '3b. A locked runtime file fails the upgrade; retry after release recovers'
+    $lockedRuntime = [IO.File]::Open((Join-Path $Root 'libcronet.dll'), [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+    try {
+        Invoke-Setup $Installer '/S' 1603
+        Expect ((Get-SolarisService).State -eq 'Stopped') 'A failed copy started the service with an incomplete runtime'
+        Expect ((Test-Path -LiteralPath $ErrorLog) -and (Get-Item -LiteralPath $ErrorLog).Length -gt 0) 'The failed upgrade did not report its error'
+    } finally { $lockedRuntime.Dispose() }
+    Invoke-Setup $Installer '/S'
+    Assert-Installed
 
     Write-Output '4. Uninstall over the running UI, keeping the user data'
     Start-UI

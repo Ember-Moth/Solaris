@@ -64,6 +64,8 @@ LangString InterfaceFailed ${LANG_ENGLISH} "The setup window could not be opened
 LangString InterfaceFailed ${LANG_SIMPCHINESE} "无法打开安装界面，请重新运行安装程序。"
 LangString CopyingFiles ${LANG_ENGLISH} "Copying application files…"
 LangString CopyingFiles ${LANG_SIMPCHINESE} "正在复制应用文件…"
+LangString CopyFailed ${LANG_ENGLISH} "The application files could not be replaced. Close programs using Solaris files and run the installer again."
+LangString CopyFailed ${LANG_SIMPCHINESE} "无法替换应用文件。请关闭正在使用 Solaris 文件的程序，然后重新运行安装程序。"
 LangString CheckingDirectory ${LANG_ENGLISH} "Checking the install folder…"
 LangString CheckingDirectory ${LANG_SIMPCHINESE} "正在检查安装文件夹…"
 LangString RegisteringApp ${LANG_ENGLISH} "Registering Solaris…"
@@ -219,9 +221,28 @@ Section
   ${EndIf}
 
   !insertmacro UiStatus "$(CopyingFiles)"
+  ; Silent NSIS installs otherwise ignore a locked file and can leave an old DLL
+  ; beside a new executable. Retry transient locks, then fail before starting it.
+  StrCpy $2 0
+  copy_files:
+  ClearErrors
   SetOutPath "$INSTDIR"
+  SetOverwrite try
   File /r "${APP_DIRECTORY}\*"
+  SetOverwrite on
+  ${If} ${Errors}
+    IntOp $2 $2 + 1
+    ${If} $2 >= 3
+      !insertmacro Fail "$(CopyFailed)" 1603
+    ${EndIf}
+    Sleep 1000
+    Goto copy_files
+  ${EndIf}
+  ClearErrors
   WriteUninstaller "$INSTDIR\${UNINSTALLER}"
+  ${If} ${Errors}
+    !insertmacro Fail "$(CopyFailed)" 1603
+  ${EndIf}
 
   !insertmacro UiStatus "$(RegisteringApp)"
   WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayName" "${PRODUCT}"

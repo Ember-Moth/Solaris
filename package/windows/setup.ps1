@@ -104,7 +104,25 @@ function Stop-SolarisService {
     Wait-Exit (Get-ProcessFrom $ServiceExecutable) 'solaris-service.exe'
 }
 
+function Read-BinaryMachine([string] $Path) {
+    $reader = [IO.BinaryReader]::new([IO.File]::OpenRead($Path))
+    try {
+        if ($reader.ReadUInt16() -ne 0x5a4d) { throw "Not a Windows executable: $Path" }
+        $reader.BaseStream.Position = 0x3c
+        $reader.BaseStream.Position = $reader.ReadInt32()
+        if ($reader.ReadUInt32() -ne 0x4550) { throw "Invalid PE header: $Path" }
+        return $reader.ReadUInt16()
+    } finally { $reader.Dispose() }
+}
+
 function Install-SolarisService {
+    $machine = Read-BinaryMachine $ServiceExecutable
+    if ($machine -notin @(0x8664, 0xAA64)) { throw 'The service is not an x64 or ARM64 executable.' }
+    foreach ($binary in @($Client, (Join-Path $InstallDirectory 'libcronet.dll'))) {
+        if ((Read-BinaryMachine $binary) -ne $machine) {
+            throw "The installed runtime has mixed architectures: $binary. Run the matching installer again."
+        }
+    }
     Set-CrashDumps
     $binary = "`"\`"$ServiceExecutable\`"`""
     if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
