@@ -1,6 +1,7 @@
 package owner
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -76,6 +77,8 @@ func (m *machine) WriteProxy(session uint32, settings sysproxy.Settings) error {
 
 func (m *machine) Restart() { m.restarts++ }
 
+func (m *machine) NetworkReady() bool { return true }
+
 // fakeCore is the dispatcher's side: Resume and Suspend report back as the dispatcher does.
 type fakeCore struct {
 	host    *Service
@@ -108,6 +111,20 @@ func (c *fakeCore) Suspend() error {
 	return c.host.Suspended()
 }
 
+func (c *fakeCore) ResumeContext(ctx context.Context, start *controlpb.StartRequest) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return c.Resume(start)
+}
+
+func (c *fakeCore) SuspendContext(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return c.Suspend()
+}
+
 // bundled is the GEO data an installer ships, in a directory of its own.
 func bundled(t *testing.T) string {
 	t.Helper()
@@ -123,7 +140,7 @@ func bundled(t *testing.T) string {
 // start runs the service as a new process would: Open, then Attach.
 func start(t *testing.T, root string, m *machine) (*Service, *fakeCore, string) {
 	t.Helper()
-	service, home, err := Open(root, bundled(t), m, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	service, home, err := Open(context.Background(), root, bundled(t), m, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -260,7 +277,7 @@ func TestOpenSeedsWhatTheHomeLacks(t *testing.T) {
 	if err := SaveRecord(root, Record{SID: bob, Session: 2}); err != nil {
 		t.Fatal(err)
 	}
-	_, opened, err := Open(root, filepath.Join(t.TempDir(), "missing"), m, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	_, opened, err := Open(context.Background(), root, filepath.Join(t.TempDir(), "missing"), m, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil || opened != Home(root, bob) {
 		t.Fatalf("home = %q, %v", opened, err)
 	}

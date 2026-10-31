@@ -229,7 +229,7 @@ class OverviewViewModel(QObject):
     def setConnected(self, on: bool) -> None:
         """The connection switch (D26): connect with what the settings page's switches ask
         for, as far as the host takes it over, or disconnect."""
-        if self._busy or on == self._connected():
+        if not self._can_toggle_connection() or on == (self._connected() or self._recovering()):
             return
         if on:
             self._act(self._library.tunnel.start(), pending="start")
@@ -239,7 +239,7 @@ class OverviewViewModel(QObject):
     @Slot()
     def toggleConnection(self) -> None:
         """The tray's 连接 / 断开."""
-        self.setConnected(not self._connected())
+        self.setConnected(not (self._connected() or self._recovering()))
 
     @Property(str, notify=changed)
     def extensionSetup(self) -> str:
@@ -326,6 +326,25 @@ class OverviewViewModel(QObject):
     def _connected(self) -> bool:
         return self._state() == "running"
 
+    def _recovery(self) -> str:
+        return self._snapshot.status.recovery_state if self._snapshot else "none"
+
+    def _recovering(self) -> bool:
+        return self._recovery() in ("sleeping", "waiting_network", "connecting")
+
+    def _can_toggle_connection(self) -> bool:
+        return (
+            not self._busy and not self._other_user and (not self._changing() or self._recovering())
+        )
+
+    @Property(bool, notify=changed)
+    def recovering(self) -> bool:
+        return self._recovering()
+
+    @Property(bool, notify=changed)
+    def canToggleConnection(self) -> bool:
+        return self._can_toggle_connection()
+
     @Property(bool, notify=changed)
     def connected(self) -> bool:
         return self._connected()
@@ -351,6 +370,11 @@ class OverviewViewModel(QObject):
         # The service restarts for its new owner while it is taken over.
         if self._other_user or self._taking_over:
             return self.tr("其他用户正在使用")
+        if not self._pending:
+            if self._recovering():
+                return self.tr("正在恢复连接")
+            if self._recovery() == "failed":
+                return self.tr("恢复连接失败")
         if self._extension_setup and not self._pending:
             return (
                 self.tr("网络扩展尚未就绪")
@@ -391,13 +415,15 @@ class OverviewViewModel(QObject):
 
     @Property(str, notify=changed)
     def connectLabel(self) -> str:
-        return self.tr("断开") if self._connected() else self.tr("连接")
+        return self.tr("断开") if self._connected() or self._recovering() else self.tr("连接")
 
     # -- the connection switch ---------------------------------------------------------------
     def _changing(self) -> str:
         """ "start" or "stop" while this switch or the host brings the tunnel up or down."""
         if self._pending:
             return self._pending
+        if self._recovering():
+            return "start"
         return {"starting": "start", "stopping": "stop"}.get(self._state(), "")
 
     @Property(bool, notify=changed)
@@ -413,6 +439,21 @@ class OverviewViewModel(QObject):
     @Property(str, notify=changed)
     def connectionDetail(self) -> str:
         """The switch's second line: what it is doing, or why it could not."""
+        if not self._pending:
+            match self._recovery():
+                case "sleeping":
+                    return self.tr("等待系统唤醒")
+                case "waiting_network":
+                    return self.tr("等待网络恢复，可关闭连接取消")
+                case "connecting":
+                    return self.tr("正在恢复连接，可关闭连接取消")
+                case "failed":
+                    reason = self._snapshot.status.recovery_error if self._snapshot else ""
+                    if reason == "network_unavailable":
+                        return self.tr("网络尚未恢复，自动重试已停止")
+                    if reason == "core_unresponsive":
+                        return self.tr("内核没有响应，请重新连接")
+                    return self.tr("自动恢复失败，请重试连接")
         changing = self._changing()
         if changing == "start":
             return self.tr("正在连接…")
@@ -426,7 +467,9 @@ class OverviewViewModel(QObject):
 
     @Property(bool, notify=changed)
     def connectionFailed(self) -> bool:
-        return self._changing() == "" and self._connection_error != ""
+        return self._changing() == "" and (
+            self._connection_error != "" or self._recovery() == "failed"
+        )
 
     # -- outbound ----------------------------------------------------------------------------
     @Property("QVariantList", notify=modeOptionsChanged)  # pyright: ignore[reportArgumentType]

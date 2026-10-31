@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"time"
 
 	"google.golang.org/protobuf/encoding/protojson"
 
@@ -23,10 +24,36 @@ const (
 	stateFile = "state.json"
 	// proxyFile holds the owner's own proxy settings while the service's are in place, so
 	// that they come back even after a crash.
-	proxyFile = "proxy.json"
+	proxyFile         = "proxy.json"
+	resumeAttemptFile = "resume-attempt.json"
 )
 
 type kept struct{ home string }
+
+// An unfinished automatic start survives a process crash. On the next start it blocks
+// another automatic attempt until the user connects, preventing an SCM crash loop.
+func (k kept) resumeInterrupted() bool {
+	_, err := os.Stat(k.path(resumeAttemptFile))
+	return err == nil
+}
+
+func (k kept) markResumeAttempt() error {
+	raw, err := json.Marshal(struct {
+		StartedAt int64 `json:"started_at_unix_ms"`
+	}{time.Now().UnixMilli()})
+	if err != nil {
+		return err
+	}
+	return writeFile(k.path(resumeAttemptFile), raw)
+}
+
+func (k kept) clearResumeAttempt() error {
+	err := os.Remove(k.path(resumeAttemptFile))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	return err
+}
 
 type state struct {
 	WasRunning bool `json:"was_running"`

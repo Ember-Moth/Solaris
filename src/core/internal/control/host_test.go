@@ -15,13 +15,15 @@ import (
 
 // fakeHost owns the service for owner and records what the dispatcher tells it.
 type fakeHost struct {
-	owner       string
-	claimErr    error
-	applied     []*controlpb.StartRequest
-	stopped     int
-	suspended   int
-	systemProxy bool
-	proxyErr    error
+	owner         string
+	claimErr      error
+	applied       []*controlpb.StartRequest
+	stopped       int
+	suspended     int
+	systemProxy   bool
+	recovery      controlpb.RecoveryState
+	recoveryError string
+	proxyErr      error
 	// tookOver lists who asked to take over; the owner package decides who may.
 	tookOver []string
 }
@@ -62,6 +64,25 @@ func (h *fakeHost) Applied(start *controlpb.StartRequest) error {
 func (h *fakeHost) StopRequested(caller peer.Identity) error { return h.Admit(caller) }
 
 func (h *fakeHost) ResumeAllowed() bool { return true }
+
+func (h *fakeHost) RecoveryStatus() (controlpb.RecoveryState, string) {
+	return h.recovery, h.recoveryError
+}
+
+func TestStatusIncludesTheHostsRecoveryState(t *testing.T) {
+	host := &fakeHost{recovery: controlpb.RecoveryState_RECOVERY_STATE_WAITING_NETWORK}
+	d := New(Options{Engine: core, Host: host})
+	defer d.Close()
+	status := call(t, d, request(1, getStatus)).GetGetStatus()
+	if status.GetRecoveryState() != host.recovery {
+		t.Fatal(status)
+	}
+	host.recovery, host.recoveryError = controlpb.RecoveryState_RECOVERY_STATE_FAILED, "network_unavailable"
+	status = call(t, d, request(2, getStatus)).GetGetStatus()
+	if status.GetRecoveryError() != "network_unavailable" {
+		t.Fatal(status)
+	}
+}
 
 func (h *fakeHost) Stopped() error {
 	h.stopped++

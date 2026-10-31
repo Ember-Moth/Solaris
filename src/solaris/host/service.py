@@ -468,6 +468,8 @@ class ServiceHost:
             connection_count=status.connection_count,
             tun_enabled=status.tun_enabled,
             system_proxy_enabled=status.system_proxy_enabled,
+            recovery_state=_enum_name(pb.RecoveryState, "RECOVERY_STATE_", status.recovery_state),
+            recovery_error=status.recovery_error,
         )
 
     async def prepare_start(self, options: RunOptions) -> None:

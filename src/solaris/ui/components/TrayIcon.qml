@@ -33,7 +33,7 @@ Platform.SystemTrayIcon {
         Platform.MenuItem {
             text: tray.overview.connectLabel
             // Another user's tunnel is theirs to disconnect (docs/architecture.md §5.4).
-            enabled: !tray.overview.busy && !tray.overview.connectionChanging && !tray.overview.ownedByOtherUser
+            enabled: tray.overview.canToggleConnection
             onTriggered: tray.overview.toggleConnection()
         }
 

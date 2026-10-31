@@ -488,6 +488,7 @@ C:\ProgramData\Solaris\              仅 SYSTEM 与 Administrators 可访问
 └── users\<SID>\                       该用户的 mihomo home 目录（IsSafePath 根）：只有 SYSTEM 能写，属主能读
     ├── profile.json                   最近一次 Start / Reload 生效的请求：配置来源、覆写、运行选项（protojson）
     ├── state.json                     was_running：属主下次登录时是否恢复隧道
+    ├── resume-attempt.json            自动恢复尚未完成的保护标记，仅含开始时间；阻止崩溃循环
     ├── proxy.json                     服务的系统代理生效期间，属主自己原来的代理设置（5.5 节）
     ├── GeoSite.dat、GeoIP.dat         GEO 数据：缺少时服务在打开 engine 前从 geodata\ 复制，之后由 engine 更新
     ├── providers\ …                   provider 与规则集缓存
@@ -509,7 +510,8 @@ UI 必须使用 Nuitka standalone 模式。onefile 模式会解压到 `%TEMP%` �
 
 - 服务名 `SolarisService`，以 LocalSystem 身份运行，自动启动。
 - SCM 故障恢复：依次在 5 s、15 s、60 s 后重启。
-- 接受的控制事件：Stop、Shutdown、SessionChange（SessionLogon、SessionLogoff）。PowerEvent（唤醒后重置连接）未实现。
+- 接受的控制事件：Stop、Shutdown、SessionChange（SessionLogon、SessionLogoff）、PowerEvent。
+  另外经 `PowerRegisterSuspendResumeNotification` 接收现代待机通知；回调只发布事件，不等待内核。
 - **一个进程只服务一个属主**：启动时读 `owner.json`，在属主的 home 里打开 engine；没有属主时不打开 engine，只回答
   `GetInfo` 和 `Claim`。认领换了属主时（包括第一次认领），服务写好新的 `owner.json`，回复 `service_restarting`，
   启动一个 `solaris-service.exe -restart` 辅助进程，然后退出；辅助进程等服务停下后再启动它，新进程打开新属主的
@@ -522,6 +524,20 @@ UI 必须使用 Nuitka standalone 模式。onefile 模式会解压到 `%TEMP%` �
   其他用户因此不会走属主的隧道，与 D5 一致。
 - 服务停止（关机、升级）时还原属主的系统代理，`was_running` 保留，下次启动时一并恢复。
 - 分层期限与卡死恢复见 4.1.1 节。SCM 请求停止或关机时最多等待 20 秒清理，超过后结束进程；显式服务停止不触发恢复循环。
+
+**睡眠与唤醒**（D34，`internal/power`、`internal/owner/power.go`）：
+
+- 合并 SCM 和原生回调的重复通知，记录每次睡眠的序号与最新状态；即使睡眠、唤醒发生在消费队列之前，也会执行一次恢复。
+  自动唤醒和随后用户活动的通知属于同一轮；没有前置睡眠通知的关键唤醒也可以触发重置。
+- 睡眠时停止内核并还原系统代理，保留 `was_running`、配置和节点选择；唤醒先清理旧连接与 TUN，再恢复最近成功的配置。
+  只恢复仍登录着的原属主，且其连接意图仍为开启。空闲用户、主动断开、注销、换属主或服务关闭都会取消恢复。
+- 重试间隔依次为 0、1、2、5、10 秒，整轮最多一分钟。先检查本机接口是否启用且有可用地址，不发公网探测请求；
+  真正的配置/内核错误仍由启动返回。无效配置或内核卡死不继续重试。睡眠/注销等临时停止与用户断开分别处理。
+- `GetStatus.recovery_state` 报告 sleeping、waiting_network、connecting、failed 或 none；`recovery_error` 只给稳定原因码。
+  恢复时界面与托盘都允许断开，失败后显示原因并允许手动连接。
+- 登录/注销事件在记录顺序后异步执行；同一会话的新事件取消旧事件排队的工作，其他用户的事件不覆盖属主的事件。
+- 每次自动恢复先写 `resume-attempt.json`，成功后清除；普通错误返回后也清除。卡死、超时或进程崩溃留下标记时，下一次
+  服务启动保持可用但不自动连接，界面说明恢复失败。用户手动连接成功后清除保护，避免 SCM 对同一配置无限重启。
 
 ### 5.3 管道与客户端校验
 

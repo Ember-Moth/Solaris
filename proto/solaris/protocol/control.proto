@@ -330,6 +330,13 @@ enum Mode {
 }
 
 message GetStatusRequest {}
+enum RecoveryState {
+  RECOVERY_STATE_NONE = 0;
+  RECOVERY_STATE_SLEEPING = 1;
+  RECOVERY_STATE_WAITING_NETWORK = 2;
+  RECOVERY_STATE_CONNECTING = 3;
+  RECOVERY_STATE_FAILED = 4;
+}
 message GetStatusResponse {
   RunState state = 1;
   Mode mode = 2;
@@ -339,6 +346,8 @@ message GetStatusResponse {
   optional Error last_error = 6;
   bool tun_enabled = 7;
   bool system_proxy_enabled = 8;
+  RecoveryState recovery_state = 9;
+  string recovery_error = 10; // stable reason code; no configuration or credentials
 }
 message SetModeRequest { Mode mode = 1; }
 

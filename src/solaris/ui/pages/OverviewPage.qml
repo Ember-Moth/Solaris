@@ -108,7 +108,7 @@ ScrollView {
 
                             value: page.overview.connectionOn
                             // Another user's tunnel is theirs to disconnect (docs/architecture.md §5.4).
-                            enabled: !page.overview.busy && !page.overview.connectionChanging && !page.overview.ownedByOtherUser
+                            enabled: page.overview.canToggleConnection
                             Accessible.name: qsTr("连接")
                             Accessible.description: page.overview.connectionDetail
                             onRequested: on => page.overview.setConnected(on)
@@ -125,7 +125,7 @@ ScrollView {
                             options: page.overview.modeOptions
                             current: page.overview.mode
                             accessibleName: qsTr("模式")
-                            enabled: !page.overview.busy
+                            enabled: !page.overview.busy && !page.overview.recovering
                             onPicked: value => page.overview.setMode(value)
                         }
                     }

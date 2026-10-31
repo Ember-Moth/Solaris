@@ -1,12 +1,14 @@
 package owner
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
 	"path/filepath"
 	"slices"
 	"sync"
+	"time"
 
 	"google.golang.org/protobuf/proto"
 
@@ -33,13 +35,14 @@ type Platform interface {
 	// Restart replaces this service process with a new one once the current request is
 	// answered.
 	Restart()
+	NetworkReady() bool
 }
 
 // Core is the dispatcher's side of the tunnel.
 type Core interface {
 	Running() bool
-	Resume(start *controlpb.StartRequest) error
-	Suspend() error
+	ResumeContext(context.Context, *controlpb.StartRequest) error
+	SuspendContext(context.Context) error
 }
 
 // Service implements control.Host for the Windows service.
@@ -48,8 +51,19 @@ type Service struct {
 	platform Platform
 	log      *slog.Logger
 	core     Core
+	ctx      context.Context
+	cancel   context.CancelFunc
 
-	mu sync.Mutex
+	mu                   sync.Mutex
+	closed               bool
+	signedOut            bool
+	resumeBlocked        bool
+	resumeToken          uint64
+	power                powerState
+	powerDelays          []time.Duration
+	sessionJobs          map[uint32]sessionJob
+	sessionSequence      uint64
+	ownerSessionSequence uint64
 	// owner is nil until the first claim. bound says this process opened the engine in the
 	// owner's home; a process started without an owner never does.
 	owner      *Record
@@ -69,19 +83,29 @@ var _ control.Host = (*Service)(nil)
 // engine: the home gets the GEO data in geodataDir, the files the installer ships, unless
 // it has its own. With no owner yet the home is "", and the process serves GetInfo and
 // Claim only.
-func Open(root, geodataDir string, platform Platform, log *slog.Logger) (*Service, string, error) {
+func Open(ctx context.Context, root, geodataDir string, platform Platform, log *slog.Logger) (*Service, string, error) {
 	for _, dir := range []string{root, filepath.Join(root, usersDir)} {
 		if err := platform.SecureDir(dir, ""); err != nil {
 			return nil, "", err
 		}
 	}
-	s := &Service{root: root, platform: platform, log: log}
+	ctx, cancel := context.WithCancel(ctx)
+	opened := false
+	defer func() {
+		if !opened {
+			cancel()
+		}
+	}()
+	s := &Service{root: root, platform: platform, log: log, ctx: ctx, cancel: cancel,
+		powerDelays: []time.Duration{0, time.Second, 2 * time.Second, 5 * time.Second, 10 * time.Second},
+		sessionJobs: make(map[uint32]sessionJob)}
 	record, ok, err := LoadRecord(root)
 	if err != nil {
 		// The next claim writes a new record.
 		log.Warn("ignored the owner record", "error", err)
 	}
 	if !ok {
+		opened = true
 		return s, "", nil
 	}
 	home := Home(root, record.SID)
@@ -95,9 +119,14 @@ func Open(root, geodataDir string, platform Platform, log *slog.Logger) (*Servic
 	}
 	s.owner, s.bound, s.home = &record, true, kept{home}
 	s.wantRunning = s.home.wasRunning()
+	s.resumeBlocked = s.home.resumeInterrupted()
+	if s.resumeBlocked && s.wantRunning {
+		s.power.status, s.power.errorCode = controlpb.RecoveryState_RECOVERY_STATE_FAILED, "core_unresponsive"
+	}
 	if s.profile, err = s.home.profile(); err != nil {
 		log.Warn("ignored the kept profile", "error", err)
 	}
+	opened = true
 	return s, home, nil
 }
 
@@ -144,6 +173,8 @@ func (s *Service) Admit(caller peer.Identity) error {
 
 func (s *Service) admitLocked(caller peer.Identity) error {
 	switch {
+	case s.closed:
+		return control.ErrRestarting
 	case s.restarting:
 		return control.ErrRestarting
 	case s.owner == nil:
@@ -165,13 +196,14 @@ func (s *Service) StopRequested(caller peer.Identity) error {
 		return err
 	}
 	s.wantRunning = false
+	s.cancelPowerLocked()
 	return s.home.setWasRunning(false)
 }
 
 func (s *Service) ResumeAllowed() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.wantRunning && s.bound && !s.restarting && s.owner != nil && len(s.platform.SignedIn(s.owner.SID)) > 0
+	return s.resumeAllowedLocked()
 }
 
 // Claim takes on caller when the service has no owner, is theirs, or the owner's tunnel is
@@ -219,6 +251,7 @@ func (s *Service) claimLocked(caller peer.Identity) error {
 	case s.restarting:
 		return control.ErrRestarting
 	case s.owner != nil && s.owner.SID == caller.UserID:
+		s.signedOut = false
 		if s.owner.Session != caller.SessionID {
 			s.owner.Session = caller.SessionID
 			s.saveRecordLocked()
@@ -232,6 +265,7 @@ func (s *Service) claimLocked(caller peer.Identity) error {
 		return fmt.Errorf("record the owner: %w", err)
 	}
 	s.log.Info("new owner; restarting to open their home", "sid", record.SID)
+	s.cancelPowerLocked()
 	s.owner, s.restarting = &record, true
 	s.platform.Restart()
 	return control.ErrRestarting
@@ -240,8 +274,19 @@ func (s *Service) claimLocked(caller peer.Identity) error {
 func (s *Service) Applied(start *controlpb.StartRequest) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.closed || s.ctx.Err() != nil {
+		return context.Canceled
+	}
 	s.profile = start
 	s.wantRunning = true
+	s.resumeBlocked = false
+	s.resumeToken++
+	if err := s.home.clearResumeAttempt(); err != nil {
+		s.log.Warn("clear automatic resume guard", "error", err)
+	}
+	if !s.power.event.Sleeping {
+		s.cancelPowerLocked()
+	}
 	s.keepLocked(true)
 	if options := start.GetOptions(); options.GetSystemProxyEnabled() {
 		return s.proxyOnLocked(uint16(options.GetMixedPort()))
@@ -259,6 +304,7 @@ func (s *Service) Stopped() error {
 // come back at the owner's next sign-in.
 func (s *Service) stoppedLocked() error {
 	s.wantRunning = false
+	s.cancelPowerLocked()
 	if err := s.home.setWasRunning(false); err != nil {
 		s.log.Error("keep was_running", "error", err)
 	}
@@ -309,8 +355,11 @@ func (s *Service) SystemProxyEnabled() bool {
 // Close gives the owner their proxy settings back as the service stops, for a shutdown or an
 // upgrade. was_running stays, so the next start brings the tunnel and the proxy back.
 func (s *Service) Close() {
+	s.cancel()
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.closed = true
+	s.cancelPowerLocked()
 	if !s.bound {
 		return
 	}
@@ -322,12 +371,25 @@ func (s *Service) Close() {
 // SignedIn follows a sign-in to session. The owner gets their tunnel back if it was up;
 // a user whose proxy settings the service left behind gets them back.
 func (s *Service) SignedIn(session uint32) {
+	ctx, sequence, _ := s.beginSession(session, true)
+	defer s.finishSession(session, sequence)
+	s.signedIn(ctx, session, sequence)
+}
+
+func (s *Service) signedIn(ctx context.Context, session uint32, sequence uint64) {
+	if ctx.Err() != nil {
+		return
+	}
 	sid, err := s.platform.SessionUser(session)
 	if err != nil {
 		s.log.Warn("read the user of a new session", "session", session, "error", err)
 		return
 	}
 	s.mu.Lock()
+	if ctx.Err() != nil || s.closed || (s.owner != nil && s.owner.SID == sid && sequence < s.ownerSessionSequence) {
+		s.mu.Unlock()
+		return
+	}
 	if s.owner == nil || s.owner.SID != sid || !s.bound || s.restarting {
 		s.mu.Unlock()
 		s.restoreStrayProxy(sid, session)
@@ -337,8 +399,10 @@ func (s *Service) SignedIn(session uint32) {
 		s.owner.Session = session
 		s.saveRecordLocked()
 	}
+	s.ownerSessionSequence = sequence
+	s.signedOut = false
 	profile := s.profile
-	resume := profile != nil && s.wantRunning && !s.running()
+	resume := profile != nil && s.resumeAllowedLocked() && !s.running()
 	if !resume && s.proxyPort == 0 {
 		if err := s.proxyOffLocked(); err != nil {
 			s.log.Warn("restore the owner's proxy settings", "error", err)
@@ -348,23 +412,28 @@ func (s *Service) SignedIn(session uint32) {
 	if !resume {
 		return
 	}
-	if err := s.core.Resume(profile); err != nil {
+	if err := s.resume(ctx, profile); err != nil {
 		s.log.Error("bring the owner's tunnel back", "error", err)
 		return
 	}
-	s.log.Info("brought the owner's tunnel back", "session", session)
+	if s.running() {
+		s.log.Info("brought the owner's tunnel back", "session", session)
+	}
 }
 
 // SignedOut stops the tunnel when its owner signs out of the session they use it from: the
 // TUN takes every user's traffic (decision D5). It comes back at their next sign-in.
 func (s *Service) SignedOut(session uint32) {
-	s.mu.Lock()
-	ours := s.owner != nil && s.bound && s.owner.Session == session
-	s.mu.Unlock()
-	if !ours || !s.running() {
+	ctx, sequence, ours := s.beginSession(session, false)
+	defer s.finishSession(session, sequence)
+	s.signedOutOf(ctx, session, ours)
+}
+
+func (s *Service) signedOutOf(ctx context.Context, session uint32, ours bool) {
+	if !ours {
 		return
 	}
-	if err := s.core.Suspend(); err != nil {
+	if err := s.core.SuspendContext(ctx); err != nil {
 		s.log.Error("stop the tunnel at the owner's sign-out", "error", err)
 		return
 	}

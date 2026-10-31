@@ -444,6 +444,8 @@ class SimulatedHost:
         # Whether the core has GEO data to list; without it the installer's list stands in.
         self.has_geodata = True
         self._running = True
+        self.recovery_state = "none"
+        self.recovery_error = ""
         self.core_needs_tunnel = core_needs_tunnel
         self.prepared = 0  # prepare_start's calls
         self._tunnel_up = False  # prepared, Start not sent yet
@@ -549,6 +551,8 @@ class SimulatedHost:
             connection_count=len(self._connections),
             tun_enabled=self._tun,
             system_proxy_enabled=self._system_proxy,
+            recovery_state=self.recovery_state,
+            recovery_error=self.recovery_error,
         )
 
     async def validate(self, config: TunnelConfig) -> CompositionReport | None:
@@ -567,6 +571,7 @@ class SimulatedHost:
             self._failed = error.code == "apply_failed"
             raise
         self._running = True
+        self.recovery_state, self.recovery_error = "none", ""
         self._tunnel_up = False
         self._failed = False
         self._started_at = self._clock()
@@ -700,6 +705,7 @@ class SimulatedHost:
 
     async def stop(self) -> None:
         self._running = False
+        self.recovery_state, self.recovery_error = "none", ""
         self._tunnel_up = False
         self._failed = False
         self._connections.clear()

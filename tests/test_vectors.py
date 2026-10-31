@@ -30,6 +30,7 @@ REQUESTS = {
     "expired": pb.Request(
         protocol_version=1, id=9, timeout_ms=5000, deadline_unix_ms=1, get_info=pb.GetInfoRequest()
     ),
+    "recovery_status": pb.Request(protocol_version=1, id=10, get_status=pb.GetStatusRequest()),
     "validate_composition": pb.Request(
         protocol_version=1,
         id=2,
@@ -97,6 +98,13 @@ def test_decodes_go_response() -> None:
     assert info.get_info.core_version == "unlinked"
     assert info.get_info.state == pb.RUN_STATE_STOPPED
     assert info.get_info.ownership == pb.OWNERSHIP_AVAILABLE
+
+
+def test_decodes_go_recovery_status() -> None:
+    status = response("recovery_status").get_status
+    assert status.state == pb.RUN_STATE_STOPPED
+    assert status.recovery_state == pb.RECOVERY_STATE_FAILED
+    assert status.recovery_error == "network_unavailable"
 
 
 def test_decodes_go_composition_report() -> None:

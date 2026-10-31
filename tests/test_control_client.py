@@ -258,6 +258,7 @@ def test_service_host_maps_status_groups_and_traffic() -> None:
                     mode=pb.MODE_GLOBAL,
                     connection_count=3,
                     tun_enabled=True,
+                    recovery_state=pb.RECOVERY_STATE_WAITING_NETWORK,
                 )
             )
         if method == "list_groups":
@@ -289,6 +290,8 @@ def test_service_host_maps_status_groups_and_traffic() -> None:
             host = ServiceHost(opener)
             try:
                 status = await host.get_status()
+                assert status.recovery_state == "waiting_network"
+                assert status.recovery_error == ""
                 assert (status.state, status.mode, status.tun_enabled) == (
                     "running",
                     "global",

@@ -35,6 +35,7 @@ home 目录的 ACL 和 WinINet 代理设置的读写在 `go` job 的 Windows run
 - 真实 ProgramData 下的 ACL，Nuitka 构建的界面通过客户端校验；
 - wintun、strict-route、四种 TUN 栈和 DNS 泄漏；Windows 的默认栈还没定（设置页默认"跟随配置"）；
 - UAC 提示、升级后恢复隧道；
+- 睡眠、休眠和现代待机的真实通知，唤醒后更换网络、恢复期间断开/注销、多用户切换，以及卡死后 SCM 回收；
 - 界面只在 CI 的离屏环境里运行过：渲染、自绘顶部区域的窗口按钮、拖动和贴靠、读屏软件都没在 Windows 上看过。
 
 ### 1.3 macOS：没在真机上运行过的
@@ -55,7 +56,6 @@ home 目录的 ACL 和 WinINet 代理设置的读写在 `go` job 的 Windows run
 - Tor 出口（D23，[exits.md](exits.md) 第 4 节）：只有设计；
 - Windows 代码签名（D29）：签名方案定下后接上 `product.WindowsSigner`、`SignedRelease` 和界面的
   `signature.WINDOWS_SIGNER`（[release.md](release.md) 第 3 节）；
-- Windows 服务处理 PowerEvent（唤醒后重置连接，[architecture.md](architecture.md) §5.2）；
 - macOS 卸载前停用系统扩展（`deactivationRequest`），扩展说明文字的本地化；
 - 崩溃日志。
 

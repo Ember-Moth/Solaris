@@ -11,6 +11,7 @@ import (
 
 	"golang.org/x/sys/windows"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/power"
 	"github.com/Ember-Moth/Solaris/src/core/internal/sysproxy"
 )
 
@@ -28,6 +29,8 @@ func Windows(restart func()) Platform { return windowsPlatform{restart: restart}
 type windowsPlatform struct{ restart func() }
 
 func (p windowsPlatform) Restart() { p.restart() }
+
+func (windowsPlatform) NetworkReady() bool { return power.NetworkAvailable() }
 
 func (windowsPlatform) ReadProxy(session uint32) (sysproxy.Settings, error) {
 	return sysproxy.Read(session)

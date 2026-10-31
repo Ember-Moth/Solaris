@@ -52,6 +52,14 @@ class Mode(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     MODE_GLOBAL: _ClassVar[Mode]
     MODE_DIRECT: _ClassVar[Mode]
 
+class RecoveryState(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    RECOVERY_STATE_NONE: _ClassVar[RecoveryState]
+    RECOVERY_STATE_SLEEPING: _ClassVar[RecoveryState]
+    RECOVERY_STATE_WAITING_NETWORK: _ClassVar[RecoveryState]
+    RECOVERY_STATE_CONNECTING: _ClassVar[RecoveryState]
+    RECOVERY_STATE_FAILED: _ClassVar[RecoveryState]
+
 class GroupSort(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     GROUP_SORT_UNSPECIFIED: _ClassVar[GroupSort]
@@ -118,6 +126,11 @@ MODE_UNSPECIFIED: Mode
 MODE_RULE: Mode
 MODE_GLOBAL: Mode
 MODE_DIRECT: Mode
+RECOVERY_STATE_NONE: RecoveryState
+RECOVERY_STATE_SLEEPING: RecoveryState
+RECOVERY_STATE_WAITING_NETWORK: RecoveryState
+RECOVERY_STATE_CONNECTING: RecoveryState
+RECOVERY_STATE_FAILED: RecoveryState
 GROUP_SORT_UNSPECIFIED: GroupSort
 GROUP_SORT_NAME: GroupSort
 GROUP_SORT_DELAY: GroupSort
@@ -546,7 +559,7 @@ class GetStatusRequest(_message.Message):
     def __init__(self) -> None: ...
 
 class GetStatusResponse(_message.Message):
-    __slots__ = ("state", "mode", "started_at_unix_ms", "memory_bytes", "connection_count", "last_error", "tun_enabled", "system_proxy_enabled")
+    __slots__ = ("state", "mode", "started_at_unix_ms", "memory_bytes", "connection_count", "last_error", "tun_enabled", "system_proxy_enabled", "recovery_state", "recovery_error")
     STATE_FIELD_NUMBER: _ClassVar[int]
     MODE_FIELD_NUMBER: _ClassVar[int]
     STARTED_AT_UNIX_MS_FIELD_NUMBER: _ClassVar[int]
@@ -555,6 +568,8 @@ class GetStatusResponse(_message.Message):
     LAST_ERROR_FIELD_NUMBER: _ClassVar[int]
     TUN_ENABLED_FIELD_NUMBER: _ClassVar[int]
     SYSTEM_PROXY_ENABLED_FIELD_NUMBER: _ClassVar[int]
+    RECOVERY_STATE_FIELD_NUMBER: _ClassVar[int]
+    RECOVERY_ERROR_FIELD_NUMBER: _ClassVar[int]
     state: RunState
     mode: Mode
     started_at_unix_ms: int
@@ -563,7 +578,9 @@ class GetStatusResponse(_message.Message):
     last_error: Error
     tun_enabled: bool
     system_proxy_enabled: bool
-    def __init__(self, state: _Optional[_Union[RunState, str]] = ..., mode: _Optional[_Union[Mode, str]] = ..., started_at_unix_ms: _Optional[int] = ..., memory_bytes: _Optional[int] = ..., connection_count: _Optional[int] = ..., last_error: _Optional[_Union[Error, _Mapping]] = ..., tun_enabled: _Optional[bool] = ..., system_proxy_enabled: _Optional[bool] = ...) -> None: ...
+    recovery_state: RecoveryState
+    recovery_error: str
+    def __init__(self, state: _Optional[_Union[RunState, str]] = ..., mode: _Optional[_Union[Mode, str]] = ..., started_at_unix_ms: _Optional[int] = ..., memory_bytes: _Optional[int] = ..., connection_count: _Optional[int] = ..., last_error: _Optional[_Union[Error, _Mapping]] = ..., tun_enabled: _Optional[bool] = ..., system_proxy_enabled: _Optional[bool] = ..., recovery_state: _Optional[_Union[RecoveryState, str]] = ..., recovery_error: _Optional[str] = ...) -> None: ...
 
 class SetModeRequest(_message.Message):
     __slots__ = ("mode",)

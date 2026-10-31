@@ -385,6 +385,8 @@ class HostStatus:
     connection_count: int
     tun_enabled: bool
     system_proxy_enabled: bool
+    recovery_state: str = "none"  # Windows sleep/wake recovery; always none on macOS
+    recovery_error: str = ""  # stable reason code, not raw configuration/error text
 
 
 # How a latency test measures a node (D32): "http" asks for the test URL through it, "tcp"

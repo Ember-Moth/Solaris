@@ -111,6 +111,7 @@ type Host interface {
 	// for a busy core. ResumeAllowed rechecks it when an automatic resume executes.
 	StopRequested(caller peer.Identity) error
 	ResumeAllowed() bool
+	RecoveryStatus() (controlpb.RecoveryState, string)
 	// Stopped follows Stop, after which the tunnel stays down; Suspended follows Suspend,
 	// after which it comes back at the owner's next sign-in. Both restore their proxy.
 	Stopped() error
@@ -510,6 +511,7 @@ func (d *Dispatcher) coreMethod(ctx context.Context, caller peer.Identity, reque
 		status := d.engine.Status()
 		if d.host != nil {
 			status.SystemProxyEnabled = d.host.SystemProxyEnabled()
+			status.RecoveryState, status.RecoveryError = d.host.RecoveryStatus()
 		}
 		return &controlpb.Response{Result: &controlpb.Response_GetStatus{GetStatus: status}}
 	case *controlpb.Request_SetMode:

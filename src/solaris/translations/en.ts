@@ -1859,6 +1859,14 @@ prepend-rules:
         <translation>In use by another user</translation>
     </message>
     <message>
+        <source>正在恢复连接</source>
+        <translation>Restoring connection</translation>
+    </message>
+    <message>
+        <source>恢复连接失败</source>
+        <translation>Couldn’t restore the connection</translation>
+    </message>
+    <message>
         <source>网络扩展尚未就绪</source>
         <translation>Network extension not ready</translation>
     </message>
@@ -1905,6 +1913,30 @@ prepend-rules:
     <message>
         <source>连接</source>
         <translation>Connect</translation>
+    </message>
+    <message>
+        <source>等待系统唤醒</source>
+        <translation>Waiting for the system to wake</translation>
+    </message>
+    <message>
+        <source>等待网络恢复，可关闭连接取消</source>
+        <translation>Waiting for the network; turn off Connect to cancel</translation>
+    </message>
+    <message>
+        <source>正在恢复连接，可关闭连接取消</source>
+        <translation>Restoring the connection; turn off Connect to cancel</translation>
+    </message>
+    <message>
+        <source>网络尚未恢复，自动重试已停止</source>
+        <translation>The network is still unavailable; automatic retries have stopped</translation>
+    </message>
+    <message>
+        <source>内核没有响应，请重新连接</source>
+        <translation>The core isn’t responding; connect again to retry</translation>
+    </message>
+    <message>
+        <source>自动恢复失败，请重试连接</source>
+        <translation>Couldn’t restore the connection automatically; try connecting again</translation>
     </message>
     <message>
         <source>正在连接…</source>

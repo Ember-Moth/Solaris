@@ -26,6 +26,7 @@ import (
 	"github.com/Ember-Moth/Solaris/src/core/internal/operation"
 	"github.com/Ember-Moth/Solaris/src/core/internal/owner"
 	"github.com/Ember-Moth/Solaris/src/core/internal/peer"
+	"github.com/Ember-Moth/Solaris/src/core/internal/power"
 	"github.com/Ember-Moth/Solaris/src/core/internal/product"
 	"github.com/Ember-Moth/Solaris/src/core/internal/server"
 )
@@ -68,7 +69,7 @@ func run() error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	return serve(ctx, nil, func() {
+	return serve(ctx, nil, power.NewQueue(), func() {
 		slog.Warn("the service has a new owner; start it again to serve them")
 		time.AfterFunc(restartDelay, stop)
 	})
@@ -92,7 +93,7 @@ type sessionEvent struct {
 
 // serve runs the control pipe until ctx ends. restart asks for a new service process,
 // which a new owner needs: mihomo's home is fixed for the life of a process (§3.2).
-func serve(ctx context.Context, sessions <-chan sessionEvent, restart func()) error {
+func serve(ctx context.Context, sessions <-chan sessionEvent, powerEvents *power.Queue, restart func()) error {
 	executable, err := os.Executable()
 	if err != nil {
 		return err
@@ -111,7 +112,7 @@ func serve(ctx context.Context, sessions <-chan sessionEvent, restart func()) er
 	}
 	defer closeLog()
 	slog.SetDefault(logger)
-	host, home, err := owner.Open(root, filepath.Join(filepath.Dir(executable), geodataDir), platform, logger)
+	host, home, err := owner.Open(ctx, root, filepath.Join(filepath.Dir(executable), geodataDir), platform, logger)
 	if err != nil {
 		logger.Error("open the owner's home", "error", err)
 		return err
@@ -131,12 +132,29 @@ func serve(ctx context.Context, sessions <-chan sessionEvent, restart func()) er
 	defer dispatcher.Close()
 	defer host.Close()
 	host.Attach(dispatcher)
+	watcher, err := watchPower(powerEvents)
+	if err != nil {
+		logger.Warn("native sleep/wake notifications unavailable; SCM events remain enabled", "error", err)
+	} else {
+		defer watcher.Close()
+	}
 	go func() {
-		for event := range sessions {
-			if event.signIn {
-				host.SignedIn(event.session)
-			} else {
-				host.SignedOut(event.session)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event := <-sessions:
+				host.SessionChanged(event.session, event.signIn)
+			}
+		}
+	}()
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-powerEvents.Changed():
+				host.PowerChanged(powerEvents.Latest())
 			}
 		}
 	}()
@@ -238,13 +256,14 @@ func (service) Execute(_ []string, requests <-chan svc.ChangeRequest, status cha
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	sessions := make(chan sessionEvent, 64)
+	powerEvents := power.NewQueue()
 	done := make(chan error, 1)
 	// A new owner restarts the service, and only an error exit makes the SCM's recovery
 	// restart it; the helper does it at once.
-	go func() { done <- serve(ctx, sessions, func() { restartLater(cancel) }) }()
+	go func() { done <- serve(ctx, sessions, powerEvents, func() { restartLater(cancel) }) }()
 	status <- svc.Status{
 		State:   svc.Running,
-		Accepts: svc.AcceptStop | svc.AcceptShutdown | svc.AcceptSessionChange,
+		Accepts: svc.AcceptStop | svc.AcceptShutdown | svc.AcceptSessionChange | svc.AcceptPowerEvent,
 	}
 	exitCode := func(err error) uint32 {
 		if err != nil {
@@ -262,6 +281,8 @@ func (service) Execute(_ []string, requests <-chan svc.ChangeRequest, status cha
 			switch request.Cmd {
 			case svc.Interrogate:
 				status <- request.CurrentStatus
+			case svc.PowerEvent:
+				powerEvents.Publish(request.EventType)
 			case svc.Stop, svc.Shutdown:
 				status <- svc.Status{State: svc.StopPending}
 				cancel()
