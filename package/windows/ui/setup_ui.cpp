@@ -27,6 +27,7 @@ constexpr UINT finishMessage = WM_APP + 2;
 constexpr UINT captureMessage = WM_APP + 3;
 constexpr UINT closeMessage = WM_APP + 4;
 constexpr UINT scaleMessage = WM_APP + 5; // read-only preview layout probe
+constexpr UINT_PTR progressTimer = 1;
 constexpr int actionID = 1001, cancelID = 1002, detailsID = 1003, purgeID = 1004;
 enum class Phase { Ready, Working, Done, Failed };
 
@@ -143,9 +144,8 @@ void applyTheme(State& s) {
   const HWND window = s.window.load();
   const BOOL dark = s.dark && !s.highContrast;
   DwmSetWindowAttribute(window, DWMWA_USE_IMMERSIVE_DARK_MODE, &dark, sizeof(dark));
-  SendMessageW(s.progress, PBM_SETBARCOLOR, 0, static_cast<LPARAM>(s.palette.primary));
-  SendMessageW(s.progress, PBM_SETBKCOLOR, 0, static_cast<LPARAM>(s.palette.control_track));
-  SendMessageW(s.progress, PBM_SETMARQUEE, s.phase == Phase::Working && s.motion, 35);
+  if (s.phase == Phase::Working && s.motion && !s.details) SetTimer(window, progressTimer, 32, nullptr);
+  else KillTimer(window, progressTimer);
   RedrawWindow(window, nullptr, nullptr, RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_ERASE);
 }
 
@@ -155,9 +155,31 @@ HFONT font(State& s, int pixels, int weight, const wchar_t* family) {
                     DEFAULT_PITCH | FF_DONTCARE, family);
 }
 
+bool hasFont(const wchar_t* family) {
+  LOGFONTW query{};
+  query.lfCharSet = DEFAULT_CHARSET;
+  wcscpy_s(query.lfFaceName, family);
+  bool found = false;
+  HDC dc = GetDC(nullptr);
+  if (dc) {
+    EnumFontFamiliesExW(dc, &query, [](const LOGFONTW*, const TEXTMETRICW*, DWORD, LPARAM data) -> int {
+      *reinterpret_cast<bool*>(data) = true;
+      return 0;
+    }, reinterpret_cast<LPARAM>(&found), 0);
+    ReleaseDC(nullptr, dc);
+  }
+  return found;
+}
+
 void makeFonts(State& s) {
   const wchar_t* latin = s.privateFont ? L"Inter" : L"Segoe UI";
-  const wchar_t* family = s.chinese ? L"Microsoft YaHei UI" : latin;
+  const wchar_t* family = latin;
+  if (s.chinese) {
+    // English/Server images may lack the optional Chinese UI fonts. Do not let
+    // GDI choose an unrelated Latin serif face when the requested font is absent.
+    family = hasFont(L"Microsoft YaHei UI") ? L"Microsoft YaHei UI"
+           : hasFont(L"Microsoft YaHei") ? L"Microsoft YaHei" : L"Segoe UI";
+  }
   const HFONT previous[] = {s.titleFont, s.bodyFont, s.captionFont, s.monoFont, s.brandFont, s.labelFont, s.compactFont};
   s.titleFont = font(s, kTitleSize, kTitleWeight, family);
   s.bodyFont = font(s, kBodySize, kBodyWeight, family);
@@ -276,8 +298,9 @@ void renderState(State& s) {
   show(s.primary, !busy);
   show(s.secondary, ready || busy || (done && !s.uninstall));
   EnableWindow(s.secondary, !busy);
-  SendMessageW(s.progress, PBM_SETMARQUEE, busy && s.motion, 35);
   const HWND window = s.window.load();
+  if (busy && s.motion && !s.details) SetTimer(window, progressTimer, 32, nullptr);
+  else KillTimer(window, progressTimer);
   EnableMenuItem(GetSystemMenu(window, FALSE), SC_CLOSE, MF_BYCOMMAND | (busy ? MF_GRAYED : MF_ENABLED));
   DrawMenuBar(window);
   RedrawWindow(window, nullptr, nullptr, RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_ERASE);
@@ -377,6 +400,41 @@ LRESULT CALLBACK detailProcedure(HWND window, UINT message, WPARAM wparam, LPARA
   return result;
 }
 
+void drawProgress(State& s, HWND window, HDC dc) {
+  RECT rect{};
+  GetClientRect(window, &rect);
+  FillRect(dc, &rect, s.surface);
+  const int height = rect.bottom;
+  if (height < 1 || rect.right < height) return;
+  // This is an indeterminate activity indicator, never an estimated percentage.
+  // With reduced motion it becomes a steady accent line; the adjacent text still
+  // names the actual installation phase.
+  const COLORREF track = s.motion ? s.palette.control_track : s.palette.primary;
+  roundBox(dc, rect, track, track, height / 2, 0);
+  if (s.motion) {
+    const int width = rect.right / 4;
+    const int travel = rect.right - width;
+    const int tick = static_cast<int>(GetTickCount64() % 2400);
+    const int position = MulDiv(travel, tick <= 1200 ? tick : 2400 - tick, 1200);
+    RECT segment{position, 0, position + width, height};
+    roundBox(dc, segment, s.palette.primary, s.palette.primary, height / 2, 0);
+  }
+}
+
+LRESULT CALLBACK progressProcedure(HWND window, UINT message, WPARAM wparam, LPARAM lparam, UINT_PTR, DWORD_PTR data) {
+  auto& s = *reinterpret_cast<State*>(data);
+  if (message == WM_ERASEBKGND) return 1;
+  if (message == WM_PAINT) {
+    PAINTSTRUCT paint{};
+    HDC dc = BeginPaint(window, &paint);
+    drawProgress(s, window, dc);
+    EndPaint(window, &paint);
+    return 0;
+  }
+  if (message == WM_PRINTCLIENT) { drawProgress(s, window, reinterpret_cast<HDC>(wparam)); return 0; }
+  return DefSubclassProc(window, message, wparam, lparam);
+}
+
 HWND control(State& s, const wchar_t* type, const wchar_t* caption, DWORD style, int id = 0) {
   HWND window = CreateWindowExW(0, type, caption, WS_CHILD | WS_VISIBLE | style, 0, 0, 0, 0,
                                s.window.load(), reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)), module, nullptr);
@@ -398,6 +456,7 @@ void makeControls(State& s) {
   SendMessageW(s.check, BM_SETCHECK, s.purgeDefault ? BST_CHECKED : BST_UNCHECKED, 0);
   s.progress = control(s, PROGRESS_CLASSW, s.tr(L"操作进度", L"Operation progress"), PBS_MARQUEE | PBS_SMOOTH);
   SetWindowTheme(s.progress, L"", L"");
+  SetWindowSubclass(s.progress, progressProcedure, 1, reinterpret_cast<DWORD_PTR>(&s));
   s.detailButton = control(s, L"BUTTON", L"", BS_OWNERDRAW | WS_TABSTOP, detailsID);
   s.detailLabel = control(s, L"STATIC", s.tr(L"操作详情", L"Operation details"), SS_NOPREFIX);
   s.detailEdit = control(s, L"EDIT", L"", ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL | WS_TABSTOP);
@@ -542,6 +601,9 @@ LRESULT CALLBACK windowProcedure(HWND window, UINT message, WPARAM wparam, LPARA
     }
     case WM_THEMECHANGED:
     case WM_SETTINGCHANGE: applyTheme(s); return 0;
+    case WM_TIMER:
+      if (wparam == progressTimer && s.phase == Phase::Working) InvalidateRect(s.progress, nullptr, FALSE);
+      return 0;
     case updateMessage: {
       std::unique_ptr<Update> update(reinterpret_cast<Update*>(lparam));
       appendLog(s, update->text);

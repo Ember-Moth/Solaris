@@ -733,8 +733,9 @@ Solaris 是 Windows 与 macOS 上的 mihomo 图形客户端，界面用 PySide6 
   正文是一个标题、简短说明及白色分组摘要；安装进度按实际阶段显示，不编造百分比，详情可展开查看。
   安装、升级、卸载、完成与失败都有独立文案。Windows 的动作按钮在左、取消/关闭在右；卸载确认默认取消，
   删除数据选项默认不选。执行安装事务时禁止中途关闭；完成后由用户选择打开 Solaris 或关闭。
-  控件保留 Win32 的键盘和辅助功能语义，Tab/Enter/Esc 可操作，键盘操作显示系统焦点框；禁用动画时进度仍有静态状态文字。
-  英文用随包 Inter，中文用 Microsoft YaHei UI；加载字体失败时回退系统字体。安装器文本不展示内部 IPC 或服务账户名。
+  控件保留 Win32 的键盘和辅助功能语义，Tab/Enter/Esc 可操作，键盘操作显示系统焦点框；禁用动画时活动指示条变为静态强调线，状态文字继续说明实际阶段。
+  英文用随包 Inter，中文优先 Microsoft YaHei UI / Microsoft YaHei；缺少中文补充字体时回退 Segoe UI 与系统字形回退。
+  安装器文本不展示内部 IPC 或服务账户名。
 
 - **侧栏导航**：
   - 页面依次是概览、代理、订阅、分流、连接、日志、设置（英文 "Overview"、"Proxies"、"Subscriptions"、"Routing"、"Connections"、"Logs"、"Settings"）。「订阅」只管来源，「分流」决定用哪套规则。
