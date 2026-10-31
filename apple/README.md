@@ -229,8 +229,8 @@ mihomo home 在扩展容器的 `Application Support/Solaris/core`，`startTunnel
 - **线程**：调用会阻塞到完成或超时。NetworkExtension 在主队列上完成回调，所以要在后台线程调用，并且
   主线程在跑 run loop（Qt 的事件循环就是）；在主线程调用会直接返回 `FAILED`。`configure`、`start`、
   `stop` 依次执行，`status` 和 `send` 可以与它们并行，`icloud_*` 与所有调用都可以并行。
-- **激活**：系统要用户批准时，`activate` 立即返回 `NEEDS_APPROVAL`，请求继续挂着；之后的调用等同一个请求，
-  用户允许后返回 `OK`，到超时仍未允许则再返回 `NEEDS_APPROVAL`。替换时总是用包内的扩展，因为只有它和
+- **激活**：系统要用户批准时，`activate` 立即返回 `NEEDS_APPROVAL`，请求继续挂着；之后的调用复用同一个待批准请求，
+  仍未允许就立即返回 `NEEDS_APPROVAL`，不再等一分钟。用户允许并完成激活后才能返回 `OK`。替换时总是用包内的扩展，因为只有它和
   这个 app 的控制协议一致。
 - **配置**（D7）：`start` 不带内核的配置；连接后，宿主用 `send` 发 `Start` / `Reload`。
 - **包含所有网络**（D19）：`include_all_networks` 是 `bool`。VPN 配置的 `includeAllNetworks` 与它不同时，

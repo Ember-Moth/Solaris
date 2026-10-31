@@ -124,6 +124,30 @@ ApplicationWindow {
         }
     }
 
+    ExtensionSetupDialog {
+        id: extensionSetupDialog
+
+        overview: window.overviewViewModel
+    }
+
+    Connections {
+        target: window.overviewViewModel
+
+        function onExtensionSetupRequested() {
+            const from = window.visible && Focus.within(window.activeFocusItem, overviewPage)
+                ? window.activeFocusItem : overviewPage.connectionControl
+            window.shellViewModel.setPage("overview")
+            window.present()
+            if (!extensionSetupDialog.visible)
+                extensionSetupDialog.show(from)
+        }
+
+        function onChanged() {
+            if (window.overviewViewModel.extensionSetup === "" && extensionSetupDialog.visible)
+                extensionSetupDialog.close()
+        }
+    }
+
     RowLayout {
         anchors.fill: parent
         spacing: 0
@@ -141,6 +165,8 @@ ApplicationWindow {
             currentIndex: window.shellViewModel.pageIndex
 
             OverviewPage {
+                id: overviewPage
+
                 overview: window.overviewViewModel
                 profiles: window.profilesViewModel
                 routing: window.routingViewModel

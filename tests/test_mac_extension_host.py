@@ -236,18 +236,28 @@ def test_prepare_start_brings_the_tunnel_up_for_the_core_to_answer() -> None:
     assert manager.include_all_networks == [True]
 
 
-def test_activation_waiting_for_approval_is_asked_again_on_the_next_start() -> None:
+@pytest.mark.parametrize(
+    ("result", "code", "retryable"),
+    [
+        (extension.NEEDS_APPROVAL, "extension_needs_approval", True),
+        (extension.NEEDS_REBOOT, "extension_needs_reboot", False),
+    ],
+)
+def test_pending_activation_is_asked_again_on_the_next_start(
+    result: int, code: str, retryable: bool
+) -> None:
     manager = FakeManager(lambda _: pb.Response(empty=pb.Empty()))
-    manager.failures["activate"] = ManagerError(extension.NEEDS_APPROVAL, "Allow the extension")
     host = MacExtensionHost(manager)
 
-    with pytest.raises(HostError) as raised:
-        asyncio.run(host.start(TunnelConfig("proxies: []\n")))
-    assert (raised.value.code, raised.value.retryable) == ("extension_needs_approval", True)
-    assert manager.calls == ["activate"]
+    for attempt in range(2):
+        manager.failures["activate"] = ManagerError(result, "Activation pending")
+        with pytest.raises(HostError) as raised:
+            asyncio.run(host.start(TunnelConfig("proxies: []\n")))
+        assert (raised.value.code, raised.value.retryable) == (code, retryable)
+        assert manager.calls == ["activate"] * (attempt + 1)
 
     asyncio.run(host.start(TunnelConfig("proxies: []\n")))
-    assert manager.calls[1:3] == ["activate", "start"]
+    assert manager.calls[2:4] == ["activate", "start"]
 
 
 @pytest.mark.parametrize(

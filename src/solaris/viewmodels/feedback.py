@@ -20,6 +20,12 @@ _MESSAGES = {
     "invalid_config": QT_TRANSLATE_NOOP("Feedback", "配置无效"),
     "not_running": QT_TRANSLATE_NOOP("Feedback", "隧道未运行"),
     "already_running": QT_TRANSLATE_NOOP("Feedback", "隧道已在运行"),
+    "extension_needs_approval": QT_TRANSLATE_NOOP(
+        "Feedback", "请在系统设置中允许 Solaris 的网络扩展"
+    ),
+    "extension_needs_reboot": QT_TRANSLATE_NOOP(
+        "Feedback", "网络扩展尚未就绪，请按系统提示完成设置后重试"
+    ),
     # A port or the TUN did not open, e.g. a mixed port another program holds.
     "apply_failed": QT_TRANSLATE_NOOP("Feedback", "配置未能生效"),
     "invalid_url": QT_TRANSLATE_NOOP("Feedback", "链接无效"),

@@ -318,3 +318,14 @@ def default_login_item() -> LoginItem:
         except OSError, LoginItemError:
             return UnavailableLoginItem()
     return UnavailableLoginItem()
+
+
+def open_login_settings() -> None:
+    """Open Login Items & Extensions without registering or changing a login item.
+
+    Network extension approval lives on this page too. Use Apple's existing API rather
+    than a private System Settings URL; the caller handles an unavailable framework.
+    """
+    if sys.platform != "darwin":
+        raise LoginItemError("Login Items & Extensions is only available on macOS")
+    ObjCMainAppService().open_settings()

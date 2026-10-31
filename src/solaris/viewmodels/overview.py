@@ -3,6 +3,7 @@ busiest connections; and the settings page's TUN and system proxy switches."""
 
 from __future__ import annotations
 
+import asyncio
 import time
 from collections.abc import Callable, Coroutine
 from typing import Any
@@ -10,6 +11,7 @@ from typing import Any
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
+from solaris.desktop.login import open_login_settings
 from solaris.host.base import HostError, ProxyGroup, TunnelHost
 from solaris.i18n import QT_TRANSLATE_NOOP
 from solaris.models import format as fmt
@@ -47,6 +49,7 @@ def _normalized(history: tuple[int, ...], scale: float) -> list[float]:
 class OverviewViewModel(QObject):
     changed = Signal()
     modeOptionsChanged = Signal()  # the UI language changed; ``changed`` fires every second
+    extensionSetupRequested = Signal()
 
     def __init__(
         self,
@@ -84,6 +87,11 @@ class OverviewViewModel(QObject):
         self._pending = ""  # "start" or "stop" while the connection switch's action runs
         self._error = ""  # the last action's failure, until the next action
         self._connection_error = ""  # the last connect's or disconnect's failure
+        # User action needed by macOS, distinct from a failed connection. Kept after the
+        # guide closes so it can be reopened; neither polling nor closing it retries.
+        self._extension_setup = ""  # "approval" or "pending"
+        self._extension_settings_opening = False
+        self._extension_settings_failed = False
         self._refresh_error = ""  # the last refresh's failure, until one succeeds
         # Another user's tunnel runs (docs/architecture.md §5.4): only they can disconnect it,
         # unless this user is an administrator and takes it over.
@@ -140,6 +148,8 @@ class OverviewViewModel(QObject):
         self._refresh_error = ""
         self._other_user = False
         self._snapshot = snapshot
+        if snapshot.status.state == "running":
+            self._extension_setup = ""
         if snapshot.groups is not None:
             self._groups = snapshot.groups
         self._refreshed(settles)
@@ -188,12 +198,22 @@ class OverviewViewModel(QObject):
             self._busy = self._taking_over = False
             self._pending = ""
             if pending:
-                self._connection_error = failure_text(error)
+                self._extension_setup = (
+                    {
+                        "extension_needs_approval": "approval",
+                        "extension_needs_reboot": "pending",
+                    }.get(error.code, "")
+                    if pending == "start" and isinstance(error, HostError)
+                    else ""
+                )
+                self._connection_error = "" if self._extension_setup else failure_text(error)
             else:
                 self._error = failure_text(error)
             if switch:
                 self._switch_error = failure_text(error)
             self.changed.emit()
+            if pending and self._extension_setup:
+                self.extensionSetupRequested.emit()
 
         self._runner.submit(action, acted, failed)
 
@@ -220,6 +240,44 @@ class OverviewViewModel(QObject):
     def toggleConnection(self) -> None:
         """The tray's 连接 / 断开."""
         self.setConnected(not self._connected())
+
+    @Property(str, notify=changed)
+    def extensionSetup(self) -> str:
+        return self._extension_setup
+
+    @Slot()
+    def showExtensionSetup(self) -> None:
+        if self._extension_setup:
+            self.extensionSetupRequested.emit()
+
+    @Property(bool, notify=changed)
+    def extensionSettingsOpening(self) -> bool:
+        return self._extension_settings_opening
+
+    @Property(str, notify=changed)
+    def extensionSettingsError(self) -> str:
+        if self._extension_settings_failed:
+            return self.tr("无法打开系统设置，请按上方路径手动打开")
+        return ""
+
+    @Slot()
+    def openExtensionSettings(self) -> None:
+        if self._extension_setup != "approval" or self._extension_settings_opening:
+            return
+        self._extension_settings_opening = True
+        self._extension_settings_failed = False
+        self.changed.emit()
+
+        def finished(failed: bool) -> None:
+            self._extension_settings_opening = False
+            self._extension_settings_failed = failed
+            self.changed.emit()
+
+        self._runner.submit(
+            asyncio.to_thread(open_login_settings),
+            lambda _: finished(False),
+            lambda _: finished(True),
+        )
 
     @Slot()
     def takeOver(self) -> None:
@@ -293,6 +351,12 @@ class OverviewViewModel(QObject):
         # The service restarts for its new owner while it is taken over.
         if self._other_user or self._taking_over:
             return self.tr("其他用户正在使用")
+        if self._extension_setup and not self._pending:
+            return (
+                self.tr("网络扩展尚未就绪")
+                if self._extension_setup == "pending"
+                else self.tr("等待授权")
+            )
         title = STATE_TITLES.get(self._snapshot.status.state) if self._snapshot else None
         return self.tr(title) if title else self.tr("未连接")
 
@@ -354,6 +418,10 @@ class OverviewViewModel(QObject):
             return self.tr("正在连接…")
         if changing == "stop":
             return self.tr("正在断开…")
+        if self._extension_setup == "approval":
+            return self.tr("允许网络扩展后继续连接")
+        if self._extension_setup == "pending":
+            return self.tr("按系统提示完成设置后重试")
         return self._connection_error
 
     @Property(bool, notify=changed)

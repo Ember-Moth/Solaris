@@ -76,7 +76,8 @@ enum {
 // Activates the system extension bundled in the app (OSSystemExtensionRequest), replacing one
 // activated from another build, and waits up to timeout_seconds. When the system asks the user
 // for approval, returns SOLARIS_MANAGER_NEEDS_APPROVAL at once; the request stays pending, and
-// later calls wait for it again: OK once the user allows it, NEEDS_APPROVAL while they have not.
+// later calls also return NEEDS_APPROVAL at once while approval is pending. Once activation
+// completes, they can return OK. Retrying does not submit a duplicate pending request.
 SolarisManagerResult solaris_manager_activate(double timeout_seconds, char **error);
 
 // Creates or repairs the app's VPN configuration (NETunnelProviderManager) and enables it. The

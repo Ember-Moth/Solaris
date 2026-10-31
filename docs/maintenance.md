@@ -57,8 +57,7 @@ home 目录的 ACL 和 WinINet 代理设置的读写在 `go` job 的 Windows run
   `signature.WINDOWS_SIGNER`（[release.md](release.md) 第 3 节）；
 - Windows 服务处理 PowerEvent（唤醒后重置连接），以及界面、服务、内核三层逐层递减的超时
   （[architecture.md](architecture.md) §5.2）；
-- macOS 卸载前停用系统扩展（`deactivationRequest`），扩展说明文字的本地化，"需要批准扩展""需要重启"两种错误的
-  专门文案；
+- macOS 卸载前停用系统扩展（`deactivationRequest`），扩展说明文字的本地化；
 - 崩溃日志。
 
 ## 2. 真机验收

@@ -676,6 +676,69 @@
     </message>
 </context>
 <context>
+    <name>ExtensionSetupDialog</name>
+    <message>
+        <source>允许 Solaris 的网络扩展</source>
+        <translation>Allow the Solaris network extension</translation>
+    </message>
+    <message>
+        <source>网络扩展尚未就绪</source>
+        <translation>Network extension not ready</translation>
+    </message>
+    <message>
+        <source>macOS 尚未完成网络扩展的启用。请按系统提示完成设置，然后重试连接。</source>
+        <translation>macOS hasn’t finished enabling the network extension. Follow the system prompts to finish setup, then retry the connection.</translation>
+    </message>
+    <message>
+        <source>连接前，需要先在 macOS 中允许 Solaris 的网络扩展。</source>
+        <translation>Before connecting, allow the Solaris network extension in macOS.</translation>
+    </message>
+    <message>
+        <source>1. 打开「登录项与扩展」</source>
+        <translation>1. Open Login Items &amp; Extensions</translation>
+    </message>
+    <message>
+        <source>系统设置 › 通用 › 登录项与扩展</source>
+        <translation>System Settings › General › Login Items &amp; Extensions</translation>
+    </message>
+    <message>
+        <source>打开系统设置</source>
+        <translation>Open System Settings</translation>
+    </message>
+    <message>
+        <source>2. 允许 Solaris</source>
+        <translation>2. Allow Solaris</translation>
+    </message>
+    <message>
+        <source>在「网络扩展」右侧点击信息按钮，打开 Solaris，并按系统提示确认。</source>
+        <translation>Click the info button next to Network Extensions, turn on Solaris, and confirm when macOS asks.</translation>
+    </message>
+    <message>
+        <source>3. 返回这里继续连接</source>
+        <translation>3. Return here to connect</translation>
+    </message>
+    <message>
+        <source>点击「继续连接」。如果 macOS 询问是否允许添加 VPN 配置，请选择「允许」。</source>
+        <translation>Click “Continue connecting”. If macOS asks to add a VPN configuration, choose “Allow”.</translation>
+    </message>
+    <message>
+        <source>重试连接</source>
+        <translation>Retry connection</translation>
+    </message>
+    <message>
+        <source>取消</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>正在连接…</source>
+        <translation>Connecting…</translation>
+    </message>
+    <message>
+        <source>继续连接</source>
+        <translation>Continue connecting</translation>
+    </message>
+</context>
+<context>
     <name>Feedback</name>
     <message>
         <source>该功能尚未实现</source>
@@ -716,6 +779,10 @@
     <message>
         <source>隧道已在运行</source>
         <translation>Tunnel already running</translation>
+    </message>
+    <message>
+        <source>请在系统设置中允许 Solaris 的网络扩展</source>
+        <translation>Allow the Solaris network extension in System Settings</translation>
     </message>
     <message>
         <source>配置未能生效</source>
@@ -780,6 +847,10 @@
     <message>
         <source>开发模式不支持 TUN 模式</source>
         <translation>Development mode doesn’t support TUN mode</translation>
+    </message>
+    <message>
+        <source>网络扩展尚未就绪，请按系统提示完成设置后重试</source>
+        <translation>The network extension isn’t ready; follow the system prompts to finish setup, then retry</translation>
     </message>
     <message>
         <source>开发模式不支持系统代理</source>
@@ -1634,6 +1705,10 @@ prepend-rules:
         <translation>Connect</translation>
     </message>
     <message>
+        <source>安装指引…</source>
+        <translation>Setup guide…</translation>
+    </message>
+    <message>
         <source>模式</source>
         <translation>Mode</translation>
     </message>
@@ -1768,8 +1843,20 @@ prepend-rules:
         <translation>Connection failed</translation>
     </message>
     <message>
+        <source>无法打开系统设置，请按上方路径手动打开</source>
+        <translation>Can’t open System Settings; follow the path above to open it manually</translation>
+    </message>
+    <message>
         <source>其他用户正在使用</source>
         <translation>In use by another user</translation>
+    </message>
+    <message>
+        <source>网络扩展尚未就绪</source>
+        <translation>Network extension not ready</translation>
+    </message>
+    <message>
+        <source>等待授权</source>
+        <translation>Awaiting approval</translation>
     </message>
     <message>
         <source>未连接</source>
@@ -1818,6 +1905,14 @@ prepend-rules:
     <message>
         <source>正在断开…</source>
         <translation>Disconnecting…</translation>
+    </message>
+    <message>
+        <source>允许网络扩展后继续连接</source>
+        <translation>Allow the network extension, then continue connecting</translation>
+    </message>
+    <message>
+        <source>按系统提示完成设置后重试</source>
+        <translation>Follow the system prompts to finish setup, then retry</translation>
     </message>
     <message>
         <source>节点</source>

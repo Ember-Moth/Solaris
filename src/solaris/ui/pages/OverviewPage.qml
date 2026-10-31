@@ -12,6 +12,7 @@ ScrollView {
     required property ProfilesViewModel profiles
     required property RoutingViewModel routing
     required property ShellViewModel shell
+    readonly property alias connectionControl: connectionSwitch
 
     contentWidth: availableWidth
     clip: true
@@ -88,12 +89,23 @@ ScrollView {
                                 visible: text !== ""
                                 text: page.overview.connectionDetail
                                 role: Theme.type.caption
-                                color: page.overview.connectionFailed ? Theme.danger : Theme.textMuted
+                                color: page.overview.connectionFailed ? Theme.danger
+                                    : page.overview.extensionSetup !== "" ? Theme.warning : Theme.textMuted
                                 wrapMode: Text.Wrap
                             }
                         }
 
+                        AppButton {
+                            visible: page.overview.extensionSetup !== ""
+                            enabled: !page.overview.busy
+                            text: qsTr("安装指引…")
+                            variant: "compact"
+                            onClicked: page.overview.showExtensionSetup()
+                        }
+
                         AppSwitch {
+                            id: connectionSwitch
+
                             value: page.overview.connectionOn
                             // Another user's tunnel is theirs to disconnect (docs/architecture.md §5.4).
                             enabled: !page.overview.busy && !page.overview.connectionChanging && !page.overview.ownedByOtherUser

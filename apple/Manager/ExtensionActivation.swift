@@ -39,8 +39,9 @@ final class ExtensionActivation: NSObject, OSSystemExtensionRequestDelegate {
           throw ManagerError.failed("System extension activation ended with an unknown result")
         }
       }
-      if attempt.needsApproval && !attempt.approvalReported {
-        attempt.approvalReported = true
+      // Retrying from the setup guide must not spend another minute waiting on an
+      // approval the user has not given. Keep the request, and report its current state.
+      if attempt.needsApproval {
         throw ManagerError.needsApproval
       }
       if !condition.wait(until: deadline) {
@@ -104,8 +105,6 @@ private final class Attempt {
   let request: OSSystemExtensionRequest
   var outcome: Result<OSSystemExtensionRequest.Result, Error>?
   var needsApproval = false
-  /// Whether a call has returned SOLARIS_MANAGER_NEEDS_APPROVAL early; later calls wait instead.
-  var approvalReported = false
 
   init(_ request: OSSystemExtensionRequest) { self.request = request }
 }
