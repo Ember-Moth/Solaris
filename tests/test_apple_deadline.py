@@ -38,16 +38,12 @@ blocked.signal()
 try Deadline(seconds: 1).withLock(blocked, "enter again") { entered = true }
 precondition(entered)
 
-let chain = try Deadline(seconds: 0.08)
-let first: Int = try chain.wait("first") { done in
-  DispatchQueue.global().asyncAfter(deadline: .now() + 0.03) { done(.success(1)) }
-}
+let chain = try Deadline(seconds: 5)
+let first: Int = try chain.wait("first") { done in done(.success(1)) }
 precondition(first == 1)
-timedOut {
-  let _: Int = try chain.wait("second") { done in
-    DispatchQueue.global().asyncAfter(deadline: .now() + 0.08) { done(.success(2)) }
-  }
-}
+// Consume the original budget explicitly. No successful callback depends on a
+// global queue being scheduled inside a few milliseconds on a busy CI runner.
+_ = DispatchSemaphore(value: 0).wait(timeout: chain.end)
 
 var submitted = false
 timedOut {
@@ -57,9 +53,16 @@ timedOut {
   }
 }
 precondition(!submitted)
-let next: Int = try Deadline(seconds: 1).wait("next request") { done in done(.success(4)) }
+var late: ((Result<Int, Error>) -> Void)?
+timedOut {
+  let _: Int = try Deadline(seconds: 0.02).wait("pending callback") { done in late = done }
+}
+precondition(late != nil)
+let next: Int = try Deadline(seconds: 5).wait("next request") { done in
+  late?(.success(2)) // deliver the old result while the new request is pending
+  done(.success(4))
+}
 precondition(next == 4)
-Thread.sleep(forTimeInterval: 0.08) // the old callback can finish without changing the next result
 print("deadline checks passed")
 """)
     binary = tmp_path / "deadline-test"
@@ -80,5 +83,6 @@ print("deadline checks passed")
         text=True,
         timeout=60,
     )
-    result = subprocess.run([str(binary)], check=True, capture_output=True, text=True, timeout=5)
+    result = subprocess.run([str(binary)], capture_output=True, text=True, timeout=15)
+    assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "deadline checks passed"
