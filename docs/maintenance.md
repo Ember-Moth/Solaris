@@ -11,8 +11,9 @@ Solaris 从 1.0.0 起进入维护。本文是日常工作的依据：各平台�
 Naive 原生加载与配置拼装；不带 `with_naive` 的普通 Go 开发构建会明确拒绝 Naive 节点。Naive HTTP/2、QUIC/UoT
 及 AnyTLS+REALITY 已用测试服务端验证；真实节点与系统 TUN 下的端到端行为仍需实机验收。
 
-除 1.4 节列出的以外，功能都已实现。现有 macOS 安装包已由用户确认安装可用；本轮新增功能的验证来自 CI、
-替身和本机的假服务器，尚未执行新版签名发布或实机验收。第 2 节列出仍需专项验证的项目，完成后更新相应条目。
+除 1.4 节列出的以外，功能都已实现。现有 macOS 安装包已由用户确认安装可用；**macOS iCloud 备份已完成接入并正式启用**
+（2026-10-31 确认），按已上线功能维护。近期内核、连接生命周期和安装器变更的验证主要来自 CI、替身和本机测试服务器；
+新版本签名发布、专项实机验收及后续回归按第 2 节执行。
 
 ### 1.1 CI 覆盖
 
@@ -55,8 +56,7 @@ home 目录的 ACL 和 WinINet 代理设置的读写在 `go` job 的 Windows run
 - `includeAllNetworks`（D19），provider message 的大小上限（D8）；
 - 隧道断开时导入订阅、连接后再读（D27）；
 - 新增停用入口的系统授权、取消、待处理结果、VPN 配置清理，以及停用后重新启用（D35）；
-- 中英文系统的首次授权与停用提示（D36）；自动化已验证 Bundle 对中文、英文及英文回退的解析；
-- iCloud 备份：CloudKit 从没真正运行过，Production 的 schema 也还没部署（2.3 节）。
+- 中英文系统的首次授权与停用提示（D36）；自动化已验证 Bundle 对中文、英文及英文回退的解析。
 
 两个平台都没做过的：真实订阅（e2e 的节点是本机起的代理）、WARP 与 VPN Gate 出口和组网（只对假服务器、构造的出站和
 模拟宿主测过）、"检查更新"对真实 Release（只对本机的假服务器测过）、Google Drive 备份（只对本机的假 OAuth 和 Drive
@@ -157,8 +157,11 @@ home 目录的 ACL 和 WinINet 代理设置的读写在 `go` job 的 Windows run
 
 ### 2.3 iCloud 备份
 
-先在 CloudKit Console 里建 schema（一次）。Production 环境不能由应用自动建 schema，所以 record type 要先在
-Development 里建好再部署：
+iCloud 备份已接入并正式启用。用户在受支持的 macOS 签名安装版中，通过「设置 → 备份与同步 → iCloud」主动开启；
+功能是快照备份与恢复，不做双向实时同步。以下保留生产配置的维护说明和后续版本回归清单。
+
+重建容器或调整 schema 时，在 CloudKit Console 中维护定义。Production 环境不能由应用自动建 schema，所以 record type
+先在 Development 里建好，再部署：
 
 1. 打开 [CloudKit Console](https://icloud.developer.apple.com)，选 container `iCloud.dev.tschen.solaris`，进
    Development 环境的 Schema → Record Types，新建 `Snapshot`，加两个字段：`info`（String）、`snapshot`（Asset）。
@@ -169,7 +172,7 @@ Development 里建好再部署：
 没部署时，列出快照报"The iCloud container has no Snapshot record type; deploy its schema"，保存报 CloudKit 的
 "Cannot create new type"，都会写在设置页 iCloud 一行。
 
-然后用签名、公证过的 app，在测试 Mac 上登录测试用的 Apple 账户：
+后续版本回归时，用签名、公证过的 app，在测试 Mac 上登录测试用的 Apple 账户：
 
 1. 设置页"备份与同步"有 iCloud 一行，写"未开启"。打开开关后不弹确认框（D30），写"上次备份：刚刚 · 成功"。CloudKit Console 的 Production → Records（用同一个 Apple 账户登录，Private
    Database，`Snapshot`）里有一条记录。

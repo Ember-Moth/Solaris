@@ -306,6 +306,9 @@ mihomo home 在扩展容器的 `Application Support/Solaris/core`，`startTunnel
 
 ## iCloud 备份
 
+iCloud 备份已接入并正式启用。受支持的签名安装版可在「设置 → 备份与同步 → iCloud」中开启，使用系统 Apple 账户的
+私有数据库保存快照。以下是已上线功能的实现、生产配置与维护说明；源码运行和无相应授权的构建仍按不可用处理。
+
 设计见 docs/storage.md 第 5 节。管理库被加载进主应用的进程，所以 CloudKit 用的是主应用的签名和
 `App/Solaris.entitlements`：container `iCloud.dev.tschen.solaris`、服务 `CloudKit`、环境 `Production`（Developer ID
 只能用 Production）。扩展不访问 iCloud，它的 entitlement 不变。
@@ -319,7 +322,7 @@ mihomo home 在扩展容器的 `Application Support/Solaris/core`，`startTunnel
 
 ### Schema
 
-Production 环境不能由应用自动建 schema：`Snapshot` record type（`info` 为 String，`snapshot` 为 Asset，`recordName`
+重建容器或变更 schema 时，Production 环境不能由应用自动创建定义：`Snapshot` record type（`info` 为 String，`snapshot` 为 Asset，`recordName`
 带 Queryable 索引，列出快照的查询要用）要在 CloudKit Console 的 Development 环境里建好，再部署到 Production。
 Production 的 schema 之后只能加不能删，所以字段只加不改。步骤见 docs/maintenance.md 2.3 节。没部署时，列出快照报
 "The iCloud container has no Snapshot record type; deploy its schema"，保存报 CloudKit 的"Cannot create new type"，

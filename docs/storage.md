@@ -212,15 +212,16 @@ macOS 上可以和 iCloud 同时开启，各自上传、各自保留快照。实
 
 ## 5. iCloud（仅 macOS）
 
+- **状态**：已完成接入并正式启用。用户可在「设置 → 备份与同步 → iCloud」中主动开启，使用系统已登录的 Apple 账户备份与恢复快照；不做双向实时同步。
 - **方式**：使用 CloudKit 的私有数据库（D13）。数据占用的是用户自己的 iCloud 空间，开发者看不到。
 - **账户**：第三方应用不能自己登录 iCloud，只能使用系统已登录的 Apple 账户。系统没有登录 iCloud 时，界面提示用户
   去系统设置登录。CloudKit 不告诉应用账户名，所以备份目标的账户名就写"iCloud"；换了 Apple 账户之后，快照进的是
   新账户的私有数据库。
 - **依赖条件**：需要 Developer ID 签名、iCloud（CloudKit）entitlement、container（`iCloud.<bundle id>`）以及对应的
-  provisioning profile，所以只有 `apple/` 的 Xcode 工程签名打包的 app 才有 iCloud 备份；container 是
+  provisioning profile，因此需使用带相应授权的 macOS 签名安装版；container 是
   `iCloud.dev.tschen.solaris`，环境是 Production（Developer ID 只能用它），签名的细节见
-  [apple/README.md](../apple/README.md)「iCloud 备份」。CloudKit 的 schema 要在 CloudKit Console 里建好并部署到
-  Production；这一步和在测试 Mac 上对真实 CloudKit 的验收见 [maintenance.md](maintenance.md) 2.3 节。
+  [apple/README.md](../apple/README.md)「iCloud 备份」。CloudKit schema 的部署维护要求，以及后续版本的真实账户回归清单，
+  见 [maintenance.md](maintenance.md) 2.3 节。
 - **管理库**（`apple/Manager/CloudBackup.swift`）：`solaris_manager_icloud_status`、`_save`、`_list`、`_download`、
   `_delete` 五个函数，和其他函数一样阻塞到完成或超时，在后台线程调用。每份快照是默认 zone 里一条 `Snapshot` 类型的
   记录：记录名由 Python 给出，快照内容放在 `CKAsset`（字段 `snapshot`），`SnapshotInfo` 和大小作为 JSON 放在
