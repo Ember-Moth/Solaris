@@ -27,6 +27,9 @@ COMPOSITION = pb.Composition(
 # The requests, as the UI encodes them; Go checks what it decodes from each.
 REQUESTS = {
     "get_info": pb.Request(protocol_version=1, id=1, get_info=pb.GetInfoRequest()),
+    "expired": pb.Request(
+        protocol_version=1, id=9, timeout_ms=5000, deadline_unix_ms=1, get_info=pb.GetInfoRequest()
+    ),
     "validate_composition": pb.Request(
         protocol_version=1,
         id=2,

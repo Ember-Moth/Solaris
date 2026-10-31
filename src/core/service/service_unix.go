@@ -18,6 +18,7 @@ import (
 	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/control"
 	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
+	"github.com/Ember-Moth/Solaris/src/core/internal/operation"
 	"github.com/Ember-Moth/Solaris/src/core/internal/peer"
 	"github.com/Ember-Moth/Solaris/src/core/internal/product"
 	"github.com/Ember-Moth/Solaris/src/core/internal/server"
@@ -88,7 +89,9 @@ func newDevelopmentEngine(home string) (*engine.Engine, error) {
 // newDevelopmentDispatcher serves the host methods so ServiceHost works against it, and
 // rejects the TUN and the system proxy with unsupported_method.
 func newDevelopmentDispatcher(core *engine.Engine) *control.Dispatcher {
-	return control.New(control.Options{Engine: core, HostMethods: true, Development: true})
+	return control.New(control.Options{
+		Engine: core, HostMethods: true, Development: true, OnUnresponsive: operation.Terminate,
+	})
 }
 
 func refuseRoot(euid int) error {

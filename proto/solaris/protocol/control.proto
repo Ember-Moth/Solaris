@@ -10,6 +10,11 @@ option go_package = "github.com/Ember-Moth/Solaris/src/core/internal/controlpb;c
 message Request {
   uint32 protocol_version = 1;
   uint64 id = 2;
+  // Remaining host budget, including its operation queue. Zero uses the host's bound.
+  // Both peers are on the same machine; the absolute deadline also includes transport
+  // time, so a request received after its caller gave up cannot start a new operation.
+  uint32 timeout_ms = 3;
+  int64 deadline_unix_ms = 4;
   oneof method {
     // Host methods. GetInfo and Reload also run in the macOS extension; the rest are
     // Windows-service only because macOS starts and stops through NETunnelProviderManager.

@@ -1,5 +1,7 @@
 import asyncio
+import time
 from collections.abc import Awaitable, Callable
+from typing import cast
 
 import pytest
 
@@ -23,6 +25,98 @@ from solaris.protocol import control_pb2
 from solaris.protocol.frame import KIND_REQUEST, KIND_RESPONSE, encode, read_frame
 
 type Answer = Callable[[control_pb2.Request], Awaitable[control_pb2.Response | None]]
+
+
+class BlockedWriter:
+    def __init__(self) -> None:
+        self.frames: list[bytes] = []
+        self.closed = False
+
+    def write(self, data: bytes) -> None:
+        self.frames.append(data)
+
+    async def drain(self) -> None:
+        await asyncio.Event().wait()
+
+    def close(self) -> None:
+        self.closed = True
+
+    async def wait_closed(self) -> None:
+        pass
+
+
+@pytest.mark.parametrize("waiting_for_lock", [False, True])
+def test_timeout_includes_the_send_lock_and_drain(waiting_for_lock: bool) -> None:
+    async def scenario() -> None:
+        writer = BlockedWriter()
+        client = ControlClient(asyncio.StreamReader(), cast(asyncio.StreamWriter, writer))
+        if waiting_for_lock:
+            await client._write_lock.acquire()
+        try:
+            with pytest.raises(HostError) as raised:
+                async with asyncio.timeout(1):
+                    await client.call(
+                        control_pb2.Request(get_info=control_pb2.GetInfoRequest()), timeout=0.02
+                    )
+            assert raised.value.code == "timeout"
+            assert writer.closed
+            assert client.closed
+            assert not client._pending
+            assert bool(writer.frames) is not waiting_for_lock
+        finally:
+            if waiting_for_lock:
+                client._write_lock.release()
+            await client.close()
+
+    asyncio.run(scenario())
+
+
+def test_timeout_includes_opening_the_control_connection() -> None:
+    async def unavailable() -> Streams:
+        await asyncio.Event().wait()
+        raise AssertionError("unreachable")
+
+    async def scenario() -> None:
+        host = ServiceHost(unavailable)
+        with pytest.raises(HostError) as raised:
+            async with asyncio.timeout(1):
+                await host._call(
+                    control_pb2.Request(get_info=control_pb2.GetInfoRequest()), timeout=0.02
+                )
+        assert raised.value.code == "timeout"
+        assert not host._connect_lock.locked()
+        await host.close()
+
+    asyncio.run(scenario())
+
+
+def test_wire_budget_deducts_time_spent_waiting_to_send() -> None:
+    received: list[control_pb2.Request] = []
+
+    async def answer(request: control_pb2.Request) -> control_pb2.Response:
+        received.append(request)
+        return info_response()
+
+    async def scenario() -> None:
+        server, opener = await serve(answer)
+        async with server:
+            client = await ControlClient.connect(opener)
+            await client._write_lock.acquire()
+            started = time.time()
+            task = asyncio.create_task(
+                client.call(control_pb2.Request(get_info=control_pb2.GetInfoRequest()), timeout=0.5)
+            )
+            try:
+                await asyncio.sleep(0.1)
+                client._write_lock.release()
+                await task
+                sent = received[0]
+                assert 0 < sent.timeout_ms <= 350
+                assert started * 1000 < sent.deadline_unix_ms < (started + 0.5) * 1000
+            finally:
+                await client.close()
+
+    asyncio.run(scenario())
 
 
 async def serve(answer: Answer) -> tuple[asyncio.Server, Opener]:
@@ -518,7 +612,7 @@ def test_service_host_gives_up_on_a_restart_that_does_not_end(
 
     with pytest.raises(HostError) as raised:
         asyncio.run(scenario())
-    assert raised.value.code == "service_restarting"
+    assert raised.value.code == "timeout"
 
 
 def test_service_host_sends_mesh_networks_and_reads_their_status() -> None:

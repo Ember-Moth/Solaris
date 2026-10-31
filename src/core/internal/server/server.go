@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Ember-Moth/Solaris/src/core/internal/frame"
+	"github.com/Ember-Moth/Solaris/src/core/internal/operation"
 	"github.com/Ember-Moth/Solaris/src/core/internal/peer"
 )
 
@@ -56,12 +57,16 @@ func serveConn(ctx context.Context, accepted net.Conn, verify peer.Verifier, han
 	}
 	defer conn.Close()
 	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
 	context.AfterFunc(ctx, func() { conn.Close() })
 
-	var writes sync.Mutex
+	var writes operation.Gate
 	var requests sync.WaitGroup
-	defer requests.Wait()
+	defer func() {
+		// In particular, EOF must cancel queued work before waiting for it. Waiting
+		// first would let requests execute after their client has disconnected.
+		cancel()
+		requests.Wait()
+	}()
 	slots := make(chan struct{}, maxInFlight)
 	for {
 		payload, err := frame.Read(conn, frame.KindRequest)
@@ -79,8 +84,18 @@ func serveConn(ctx context.Context, accepted net.Conn, verify peer.Verifier, han
 		requests.Go(func() {
 			defer func() { <-slots }()
 			response := handler.Handle(ctx, caller, payload)
-			writes.Lock()
+			writeCtx, stopWrite := context.WithTimeout(ctx, 5*time.Second)
+			defer stopWrite()
+			if err := writes.Lock(writeCtx); err != nil {
+				cancel()
+				return
+			}
 			defer writes.Unlock()
+			deadline, _ := writeCtx.Deadline()
+			if err := conn.SetWriteDeadline(deadline); err != nil {
+				cancel()
+				return
+			}
 			if err := frame.Write(conn, frame.KindResponse, response); err != nil {
 				cancel()
 			}

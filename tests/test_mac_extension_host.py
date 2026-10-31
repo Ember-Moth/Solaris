@@ -97,6 +97,31 @@ class FakeManager:
         return [request.WhichOneof("method") for request in self.requests]
 
 
+def test_provider_message_timeout_does_not_wait_for_a_stuck_native_call() -> None:
+    manager = FakeManager(lambda _: pb.Response(empty=pb.Empty()))
+    release = threading.Event()
+    original = manager.send
+
+    def blocked(request: bytes, timeout: float) -> bytes:
+        release.wait(2)
+        return original(request, timeout)
+
+    manager.send = blocked
+    host = MacExtensionHost(manager)
+
+    async def scenario() -> None:
+        try:
+            with pytest.raises(HostError) as raised:
+                async with asyncio.timeout(1):
+                    await host._call(pb.Request(get_info=pb.GetInfoRequest()), timeout=0.02)
+            assert raised.value.code == "timeout"
+        finally:
+            release.set()
+            await host.close()
+
+    asyncio.run(scenario())
+
+
 def test_without_a_tunnel_the_host_reports_stopped_and_empty() -> None:
     manager = FakeManager(lambda _: pb.Response())
     host = MacExtensionHost(manager, core_version="v1.19.33")

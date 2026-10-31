@@ -8,11 +8,13 @@ import (
 	"errors"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/control"
 	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
 	"github.com/Ember-Moth/Solaris/src/core/internal/geodata"
+	"github.com/Ember-Moth/Solaris/src/core/internal/operation"
 	"github.com/Ember-Moth/Solaris/src/core/internal/peer"
 )
 
@@ -37,6 +39,7 @@ var (
 // attach seeds home with the GEO data in resources, unless resources is empty, then opens
 // the engine and the dispatcher on the descriptor. includeAllNetworks is the tunnel's.
 func attach(fd int, home, resources string, includeAllNetworks bool) error {
+	defer operation.Guard("attach_tunnel", 50*time.Second, operation.Terminate)()
 	lifecycle.Lock()
 	defer lifecycle.Unlock()
 	mu.RLock()
@@ -62,7 +65,7 @@ func attach(fd int, home, resources string, includeAllNetworks bool) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	opened := &session{
 		engine:     core,
-		dispatcher: control.New(control.Options{Engine: core}),
+		dispatcher: control.New(control.Options{Engine: core, OnUnresponsive: operation.Terminate}),
 		ctx:        ctx,
 		cancel:     cancel,
 	}
@@ -73,6 +76,7 @@ func attach(fd int, home, resources string, includeAllNetworks bool) error {
 }
 
 func detach() {
+	defer operation.Guard("detach_tunnel", 20*time.Second, operation.Terminate)()
 	lifecycle.Lock()
 	defer lifecycle.Unlock()
 	mu.RLock()

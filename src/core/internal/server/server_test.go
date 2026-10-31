@@ -110,3 +110,40 @@ func equal(a, b []string) bool {
 	}
 	return true
 }
+
+type waitingHandler struct{ entered, cancelled chan struct{} }
+
+func (h waitingHandler) Handle(ctx context.Context, _ peer.Identity, _ []byte) []byte {
+	close(h.entered)
+	<-ctx.Done()
+	close(h.cancelled)
+	return []byte("cancelled")
+}
+
+func TestClientEOFImmediatelyCancelsQueuedWork(t *testing.T) {
+	client, server := net.Pipe()
+	defer client.Close()
+	handler := waitingHandler{make(chan struct{}), make(chan struct{})}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		serveConn(context.Background(), server, func(conn net.Conn) (net.Conn, peer.Identity, error) {
+			return conn, peer.Identity{}, nil
+		}, handler, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	}()
+	if err := frame.Write(client, frame.KindRequest, []byte("wait")); err != nil {
+		t.Fatal(err)
+	}
+	<-handler.entered
+	client.Close()
+	select {
+	case <-handler.cancelled:
+	case <-time.After(time.Second):
+		t.Fatal("EOF waited for a request before cancelling it")
+	}
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("connection cleanup did not finish")
+	}
+}

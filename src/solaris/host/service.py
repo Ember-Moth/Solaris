@@ -46,7 +46,8 @@ from solaris.host.base import (
     bundled_geo_categories,
     taken_over,
 )
-from solaris.host.client import DEFAULT_TIMEOUT_S, ControlClient
+from solaris.host.client import ControlClient
+from solaris.host.timeouts import remaining_seconds, request_timeout
 from solaris.host.transport import Opener
 from solaris.protocol import control_pb2
 
@@ -381,29 +382,49 @@ class ServiceHost:
                 self._connections = []
             return self._client
 
-    async def _call(self, request: pb.Request, timeout: float = DEFAULT_TIMEOUT_S) -> pb.Response:
+    async def _call(self, request: pb.Request, timeout: float | None = None) -> pb.Response:
+        timeout = request_timeout(request, timeout)
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + timeout
         try:
-            return await (await self._connected()).call(request, timeout=timeout)
-        except HostError as error:
-            if error.code != "not_claimed" or request.WhichOneof("method") in _READS:
-                raise
-        await self.claim()
-        return await (await self._connected()).call(request, timeout=timeout)
+            async with asyncio.timeout(timeout):
+                try:
+                    client = await self._connected()
+                    return await client.call(request, timeout=remaining_seconds(deadline))
+                except HostError as error:
+                    if error.code != "not_claimed" or request.WhichOneof("method") in _READS:
+                        raise
+                await self.claim()
+                client = await self._connected()
+                return await client.call(request, timeout=remaining_seconds(deadline))
+        except TimeoutError as error:
+            raise HostError(
+                "timeout", "the host request did not finish in time", retryable=True
+            ) from error
 
     async def claim(self) -> None:
         """Become the service's owner: it is free, or ours already. A service that has to
         open another user's home restarts first, and is claimed again once it is back."""
         loop = asyncio.get_running_loop()
         deadline = loop.time() + CLAIM_TIMEOUT_S
-        while True:
-            try:
-                await (await self._connected()).call(pb.Request(claim=pb.ClaimRequest()))
-                return
-            except HostError as error:
-                if error.code not in _RESTARTING or loop.time() >= deadline:
-                    raise
-            await self.close()
-            await asyncio.sleep(CLAIM_RETRY_S)
+        try:
+            async with asyncio.timeout(CLAIM_TIMEOUT_S):
+                while True:
+                    try:
+                        client = await self._connected()
+                        await client.call(
+                            pb.Request(claim=pb.ClaimRequest()), timeout=remaining_seconds(deadline)
+                        )
+                        return
+                    except HostError as error:
+                        if error.code not in _RESTARTING or loop.time() >= deadline:
+                            raise
+                    await self.close()
+                    await asyncio.sleep(CLAIM_RETRY_S)
+        except TimeoutError as error:
+            raise HostError(
+                "timeout", "the service could not be claimed in time", retryable=True
+            ) from error
 
     async def take_over(self, helper: Callable[[], None]) -> None:
         """Stop another user's running tunnel and become the owner (D5b). ``helper`` has the

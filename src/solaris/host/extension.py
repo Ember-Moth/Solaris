@@ -41,8 +41,8 @@ from solaris.host.base import (
     TunnelConfig,
     bundled_geo_categories,
 )
-from solaris.host.client import DEFAULT_TIMEOUT_S
 from solaris.host.service import ServiceHost
+from solaris.host.timeouts import request_timeout, set_host_deadline
 from solaris.host.transport import Streams
 from solaris.product import PROTOCOL_VERSION
 from solaris.protocol import control_pb2
@@ -354,12 +354,20 @@ class MacExtensionHost(ServiceHost):
     def core_available(self) -> bool:
         return self._answered
 
-    async def _call(self, request: pb.Request, timeout: float = DEFAULT_TIMEOUT_S) -> pb.Response:
+    async def _call(self, request: pb.Request, timeout: float | None = None) -> pb.Response:
+        timeout = request_timeout(request, timeout)
+        deadline = asyncio.get_running_loop().time() + timeout
         request.protocol_version = PROTOCOL_VERSION
         request.id = next(self._ids)
+        set_host_deadline(request, timeout)
         send = partial(self._manager.send, request.SerializeToString(), timeout)
         try:
-            payload = await _blocking(send)
+            async with asyncio.timeout_at(deadline):
+                payload = await _blocking(send)
+        except TimeoutError as error:
+            raise HostError(
+                "timeout", "the extension request did not finish in time", retryable=True
+            ) from error
         except ManagerError as error:
             failure = _host_error(error, "connection_closed")
             if isinstance(failure, TunnelDownError):
@@ -392,16 +400,22 @@ class MacExtensionHost(ServiceHost):
         self._subscriptions.clear()
         self._connections = []
 
-    async def _manage(self, call: Callable[[], None]) -> None:
+    async def _manage(self, call: Callable[[], None], timeout: float) -> None:
         try:
-            await _blocking(call)
+            async with asyncio.timeout(timeout + 2):
+                await _blocking(call)
+        except TimeoutError as error:
+            raise HostError(
+                "timeout", "the native tunnel operation did not finish in time", retryable=True
+            ) from error
         except ManagerError as error:
             raise _host_error(error, "tunnel_failed") from error
 
     async def _down_state(self) -> str:
         try:
-            status = await _blocking(self._manager.status)
-        except ManagerError:
+            async with asyncio.timeout(5):
+                status = await _blocking(self._manager.status)
+        except ManagerError, TimeoutError:
             return "stopped"
         return _DOWN_STATES.get(status, "stopped")
 
@@ -424,10 +438,14 @@ class MacExtensionHost(ServiceHost):
         """Bring the tunnel up, with the VPN configuration including all networks or not as
         the options say (D19), so that the extension answers before Start."""
         if not self._activated:
-            await self._manage(partial(self._manager.activate, ACTIVATE_TIMEOUT_S))
+            await self._manage(
+                partial(self._manager.activate, ACTIVATE_TIMEOUT_S), ACTIVATE_TIMEOUT_S
+            )
             self._activated = True
         include_all_networks = options.include_all_networks
-        await self._manage(partial(self._manager.start, START_TIMEOUT_S, include_all_networks))
+        await self._manage(
+            partial(self._manager.start, START_TIMEOUT_S, include_all_networks), START_TIMEOUT_S
+        )
         self._prepared = self._answered = True
 
     async def start(self, config: TunnelConfig) -> CompositionReport | None:
@@ -448,7 +466,7 @@ class MacExtensionHost(ServiceHost):
     async def stop(self) -> None:
         """Take the tunnel down; the extension stops the core as it detaches."""
         self._prepared = False
-        await self._manage(partial(self._manager.stop, STOP_TIMEOUT_S))
+        await self._manage(partial(self._manager.stop, STOP_TIMEOUT_S), STOP_TIMEOUT_S)
         self._forget_extension()
 
     async def list_geo_categories(self) -> GeoCategories:

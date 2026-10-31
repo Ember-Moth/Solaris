@@ -761,6 +761,14 @@
         <translation>The service isn’t responding</translation>
     </message>
     <message>
+        <source>内核没有响应，请稍后重试</source>
+        <translation>The core isn’t responding; try again shortly</translation>
+    </message>
+    <message>
+        <source>操作已取消</source>
+        <translation>Operation cancelled</translation>
+    </message>
+    <message>
         <source>隧道正由其他用户使用</source>
         <translation>Another user is using the tunnel</translation>
     </message>

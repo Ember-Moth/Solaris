@@ -362,6 +362,36 @@ func TestTunnelComesBackForItsOwner(t *testing.T) {
 	}
 }
 
+func TestStopIntentIsKeptBeforeTheCoreCanStop(t *testing.T) {
+	root, m := t.TempDir(), newMachine()
+	m.sessions[1], m.sessions[2] = alice, bob
+	if err := SaveRecord(root, Record{SID: alice, Session: 1}); err != nil {
+		t.Fatal(err)
+	}
+	service, core, home := start(t, root, m)
+	core.running = true
+	if err := service.Applied(profile(false)); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.StopRequested(as(bob, 2)); !errors.Is(err, control.ErrOwnedByOtherUser) {
+		t.Fatalf("other user stopped the owner: %v", err)
+	}
+	if !service.ResumeAllowed() {
+		t.Fatal("the other user's refusal changed the owner's intent")
+	}
+	if err := service.StopRequested(as(alice, 1)); err != nil {
+		t.Fatal(err)
+	}
+	if !core.running || (kept{home}).wasRunning() || service.ResumeAllowed() {
+		t.Fatal("stop intent was not kept independently of core cleanup")
+	}
+	// The core may be stuck, so recovery replaces the process instead of stopping it.
+	_, restarted, _ := start(t, root, m)
+	if restarted.running || len(restarted.resumed) != 0 {
+		t.Fatal("service recovery undid the user's disconnect")
+	}
+}
+
 func TestSystemProxyIsTheOwners(t *testing.T) {
 	root, m := t.TempDir(), newMachine()
 	if err := SaveRecord(root, Record{SID: alice, Session: 1}); err != nil {

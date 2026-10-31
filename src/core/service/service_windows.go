@@ -23,6 +23,7 @@ import (
 	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/control"
 	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
+	"github.com/Ember-Moth/Solaris/src/core/internal/operation"
 	"github.com/Ember-Moth/Solaris/src/core/internal/owner"
 	"github.com/Ember-Moth/Solaris/src/core/internal/peer"
 	"github.com/Ember-Moth/Solaris/src/core/internal/product"
@@ -126,7 +127,7 @@ func serve(ctx context.Context, sessions <-chan sessionEvent, restart func()) er
 		defer opened.Close()
 		core = opened
 	}
-	dispatcher := control.New(control.Options{Engine: core, HostMethods: true, Host: host})
+	dispatcher := control.New(control.Options{Engine: core, HostMethods: true, Host: host, OnUnresponsive: operation.Terminate})
 	defer dispatcher.Close()
 	defer host.Close()
 	host.Attach(dispatcher)
@@ -264,7 +265,15 @@ func (service) Execute(_ []string, requests <-chan svc.ChangeRequest, status cha
 			case svc.Stop, svc.Shutdown:
 				status <- svc.Status{State: svc.StopPending}
 				cancel()
-				return false, exitCode(<-done)
+				select {
+				case err := <-done:
+					return false, exitCode(err)
+				case <-time.After(20 * time.Second):
+					// Returning lets svc.Run and main exit even if library cleanup is stuck.
+					// The SCM requested this stop: report a clean stop, not a recovery loop.
+					slog.Error("service cleanup exceeded the shutdown deadline")
+					return false, 0
+				}
 			case svc.SessionChange:
 				// The owner signing out stops the tunnel and their signing in brings it back
 				// (decision D5, docs/architecture.md §5.4); serve takes it from here.

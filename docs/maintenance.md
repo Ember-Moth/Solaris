@@ -55,8 +55,7 @@ home 目录的 ACL 和 WinINet 代理设置的读写在 `go` job 的 Windows run
 - Tor 出口（D23，[exits.md](exits.md) 第 4 节）：只有设计；
 - Windows 代码签名（D29）：签名方案定下后接上 `product.WindowsSigner`、`SignedRelease` 和界面的
   `signature.WINDOWS_SIGNER`（[release.md](release.md) 第 3 节）；
-- Windows 服务处理 PowerEvent（唤醒后重置连接），以及界面、服务、内核三层逐层递减的超时
-  （[architecture.md](architecture.md) §5.2）；
+- Windows 服务处理 PowerEvent（唤醒后重置连接，[architecture.md](architecture.md) §5.2）；
 - macOS 卸载前停用系统扩展（`deactivationRequest`），扩展说明文字的本地化；
 - 崩溃日志。
 
@@ -353,7 +352,7 @@ SHA-256。界面从不静默安装，用户确认后才打开安装包。
 - **视觉**：先改 [DESIGN.md](../DESIGN.md)，再运行 `scripts/gen_theme.py` 生成 `Theme.qml`。
 - **文案**：中文是源语言；改动文案后运行 `scripts/gen_i18n.py`，并在 `src/solaris/translations/en.ts` 里补齐英文。
   文案保持中立、简短（DESIGN.md 的 Typography 一节）。
-- **决策**：新的设计决策接着编号（D33 起）记进 [decisions.md](decisions.md)；已有的编号不变，代码注释引用它们。
+- **决策**：新的设计决策在 [decisions.md](decisions.md) 的最后一条之后接着编号；已有的编号不变，代码注释引用它们。
 - 每个改动先开 PR，CI 全绿再合并；main 变红时先修。
 
 ### 5.3 表结构与存下的格式

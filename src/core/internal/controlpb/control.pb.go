@@ -660,6 +660,11 @@ type Request struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	ProtocolVersion uint32                 `protobuf:"varint,1,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
 	Id              uint64                 `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty"`
+	// Remaining host budget, including its operation queue. Zero uses the host's bound.
+	// Both peers are on the same machine; the absolute deadline also includes transport
+	// time, so a request received after its caller gave up cannot start a new operation.
+	TimeoutMs      uint32 `protobuf:"varint,3,opt,name=timeout_ms,json=timeoutMs,proto3" json:"timeout_ms,omitempty"`
+	DeadlineUnixMs int64  `protobuf:"varint,4,opt,name=deadline_unix_ms,json=deadlineUnixMs,proto3" json:"deadline_unix_ms,omitempty"`
 	// Types that are valid to be assigned to Method:
 	//
 	//	*Request_GetInfo
@@ -743,6 +748,20 @@ func (x *Request) GetProtocolVersion() uint32 {
 func (x *Request) GetId() uint64 {
 	if x != nil {
 		return x.Id
+	}
+	return 0
+}
+
+func (x *Request) GetTimeoutMs() uint32 {
+	if x != nil {
+		return x.TimeoutMs
+	}
+	return 0
+}
+
+func (x *Request) GetDeadlineUnixMs() int64 {
+	if x != nil {
+		return x.DeadlineUnixMs
 	}
 	return 0
 }
@@ -7118,10 +7137,13 @@ var File_solaris_protocol_control_proto protoreflect.FileDescriptor
 
 const file_solaris_protocol_control_proto_rawDesc = "" +
 	"\n" +
-	"\x1esolaris/protocol/control.proto\x12\x12solaris.control.v1\"\xa7\x16\n" +
+	"\x1esolaris/protocol/control.proto\x12\x12solaris.control.v1\"\xf0\x16\n" +
 	"\aRequest\x12)\n" +
 	"\x10protocol_version\x18\x01 \x01(\rR\x0fprotocolVersion\x12\x0e\n" +
-	"\x02id\x18\x02 \x01(\x04R\x02id\x12?\n" +
+	"\x02id\x18\x02 \x01(\x04R\x02id\x12\x1d\n" +
+	"\n" +
+	"timeout_ms\x18\x03 \x01(\rR\ttimeoutMs\x12(\n" +
+	"\x10deadline_unix_ms\x18\x04 \x01(\x03R\x0edeadlineUnixMs\x12?\n" +
 	"\bget_info\x18\n" +
 	" \x01(\v2\".solaris.control.v1.GetInfoRequestH\x00R\agetInfo\x128\n" +
 	"\x05claim\x18\v \x01(\v2 .solaris.control.v1.ClaimRequestH\x00R\x05claim\x12A\n" +

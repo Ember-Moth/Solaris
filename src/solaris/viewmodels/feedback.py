@@ -14,6 +14,8 @@ _MESSAGES = {
     "service_unavailable": QT_TRANSLATE_NOOP("Feedback", "未能连接到服务"),
     "connection_closed": QT_TRANSLATE_NOOP("Feedback", "与服务的连接已断开"),
     "timeout": QT_TRANSLATE_NOOP("Feedback", "服务没有响应"),
+    "core_unresponsive": QT_TRANSLATE_NOOP("Feedback", "内核没有响应，请稍后重试"),
+    "cancelled": QT_TRANSLATE_NOOP("Feedback", "操作已取消"),
     "owned_by_other_user": QT_TRANSLATE_NOOP("Feedback", "隧道正由其他用户使用"),
     # The elevated helper that takes over another user's tunnel failed (D5b).
     "take_over_failed": QT_TRANSLATE_NOOP("Feedback", "无法接管隧道"),

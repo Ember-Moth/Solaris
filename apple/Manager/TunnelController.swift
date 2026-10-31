@@ -15,26 +15,30 @@ final class TunnelController {
   static let shared = TunnelController()
 
   /// configure, start and stop run one at a time.
-  private let lifecycle = NSLock()
+  private let lifecycle = DispatchSemaphore(value: 1)
   private let cacheLock = NSLock()
   private var cached: NETunnelProviderManager?
 
   func configure(includeAllNetworks: Bool) throws {
-    try lifecycle.withLock { _ = try configured(includeAllNetworks: includeAllNetworks) }
+    let deadline = try Deadline(seconds: preferencesTimeout)
+    try deadline.withLock(lifecycle, "configure the tunnel") {
+      _ = try configured(includeAllNetworks: includeAllNetworks, before: deadline)
+    }
   }
 
   func start(timeout: TimeInterval, includeAllNetworks: Bool) throws {
-    let deadline = Date(timeIntervalSinceNow: timeout)
-    try lifecycle.withLock {
-      var connection = try configured(includeAllNetworks: includeAllNetworks).connection
+    let deadline = try Deadline(seconds: timeout)
+    try deadline.withLock(lifecycle, "start the tunnel") {
+      var connection = try configured(includeAllNetworks: includeAllNetworks, before: deadline).connection
       if connection.status == .disconnecting {
         try waitUntilDown(connection, StatusChanges(connection), before: deadline)
         // Down now, so the configuration takes the setting before the tunnel connects again.
-        connection = try configured(includeAllNetworks: includeAllNetworks).connection
+        connection = try configured(includeAllNetworks: includeAllNetworks, before: deadline).connection
       }
       if connection.status == .connected { return }
       let changes = StatusChanges(connection)
       if [.disconnected, .invalid].contains(connection.status) {
+        try deadline.check("start the tunnel")
         logger.info("starting the tunnel")
         // No options: the engine's configuration arrives later as a Start message (D7).
         try connection.startVPNTunnel()
@@ -43,22 +47,21 @@ final class TunnelController {
         // Right after the request the status may still read disconnected; once it has moved,
         // falling back to disconnected means the extension gave up.
         if changes.seen && [.disconnected, .invalid].contains(connection.status) {
-          throw ManagerError.failed(try disconnectReason(connection))
+          throw ManagerError.failed(try disconnectReason(connection, before: deadline))
         }
-        guard Date() < deadline else {
-          throw ManagerError.timedOut("The Solaris tunnel did not connect in time")
-        }
-        changes.next(before: min(deadline, Date(timeIntervalSinceNow: 0.25)))
+        try deadline.check("connect the tunnel")
+        changes.next(before: min(deadline.end, .now() + 0.25))
       }
     }
   }
 
   func stop(timeout: TimeInterval) throws {
-    let deadline = Date(timeIntervalSinceNow: timeout)
-    try lifecycle.withLock {
-      guard let connection = try current()?.connection else { return }
+    let deadline = try Deadline(seconds: timeout)
+    try deadline.withLock(lifecycle, "stop the tunnel") {
+      guard let connection = try current(before: deadline)?.connection else { return }
       let changes = StatusChanges(connection)
       if ![.disconnected, .disconnecting, .invalid].contains(connection.status) {
+        try deadline.check("stop the tunnel")
         logger.info("stopping the tunnel")
         connection.stopVPNTunnel()
       }
@@ -68,7 +71,8 @@ final class TunnelController {
 
   /// A SOLARIS_TUNNEL_ value from SolarisManager.h.
   func status() throws -> Int {
-    guard let manager = try current() else { return SOLARIS_TUNNEL_NOT_CONFIGURED }
+    let deadline = try Deadline(seconds: preferencesTimeout)
+    guard let manager = try current(before: deadline) else { return SOLARIS_TUNNEL_NOT_CONFIGURED }
     switch manager.connection.status {
     case .invalid: return SOLARIS_TUNNEL_INVALID
     case .disconnected: return SOLARIS_TUNNEL_DISCONNECTED
@@ -82,11 +86,12 @@ final class TunnelController {
 
   /// Exchanges one provider message; the extension answers in handleAppMessage.
   func send(_ message: Data, timeout: TimeInterval) throws -> Data {
-    guard let manager = try current() else { throw ManagerError.notConfigured }
+    let deadline = try Deadline(seconds: timeout)
+    guard let manager = try current(before: deadline) else { throw ManagerError.notConfigured }
     guard [.connected, .reasserting].contains(manager.connection.status),
       let session = manager.connection as? NETunnelProviderSession
     else { throw ManagerError.notConnected }
-    let reply: Data? = try waitForCompletion("reach the extension", timeout: timeout) { done in
+    let reply: Data? = try deadline.wait("reach the extension") { done in
       do {
         try session.sendProviderMessage(message) { done(.success($0)) }
       } catch {
@@ -102,8 +107,8 @@ final class TunnelController {
   /// (D19). A tunnel that is up keeps the setting it connected with: the extension reads it once,
   /// as it attaches the core, so a change takes effect on the next connection. Callers hold
   /// `lifecycle`.
-  private func configured(includeAllNetworks: Bool) throws -> NETunnelProviderManager {
-    let manager = try load() ?? NETunnelProviderManager()
+  private func configured(includeAllNetworks: Bool, before deadline: Deadline) throws -> NETunnelProviderManager {
+    let manager = try load(before: deadline) ?? NETunnelProviderManager()
     let current = manager.protocolConfiguration as? NETunnelProviderProtocol
     let down = [.disconnected, .invalid].contains(manager.connection.status)
     if manager.isEnabled, manager.localizedDescription == configurationName,
@@ -124,11 +129,11 @@ final class TunnelController {
     manager.localizedDescription = configurationName
     manager.isEnabled = true
     logger.info("saving the VPN configuration, includeAllNetworks \(includeAllNetworks)")
-    try waitForCompletion("save the VPN configuration") { done in
+    try deadline.wait("save the VPN configuration") { done in
       manager.saveToPreferences { done($0.map { .failure($0) } ?? .success(())) }
     }
     // A configuration starts reliably only after it has been loaded again since saving.
-    try waitForCompletion("reload the VPN configuration") { done in
+    try deadline.wait("reload the VPN configuration") { done in
       manager.loadFromPreferences { done($0.map { .failure($0) } ?? .success(())) }
     }
     cacheLock.withLock { cached = manager }
@@ -136,15 +141,16 @@ final class TunnelController {
   }
 
   /// The cached configuration while it is valid, otherwise a fresh load.
-  private func current() throws -> NETunnelProviderManager? {
+  private func current(before deadline: Deadline) throws -> NETunnelProviderManager? {
+    try deadline.check("read the VPN configuration")
     if let manager = cacheLock.withLock({ cached }), manager.connection.status != .invalid {
       return manager
     }
-    return try load()
+    return try load(before: deadline)
   }
 
-  private func load() throws -> NETunnelProviderManager? {
-    let managers: [NETunnelProviderManager] = try waitForCompletion(
+  private func load(before deadline: Deadline) throws -> NETunnelProviderManager? {
+    let managers: [NETunnelProviderManager] = try deadline.wait(
       "load the VPN configuration"
     ) { done in
       NETunnelProviderManager.loadAllFromPreferences { managers, error in
@@ -160,18 +166,16 @@ final class TunnelController {
   }
 
   private func waitUntilDown(
-    _ connection: NEVPNConnection, _ changes: StatusChanges, before deadline: Date
+    _ connection: NEVPNConnection, _ changes: StatusChanges, before deadline: Deadline
   ) throws {
     while ![.disconnected, .invalid].contains(connection.status) {
-      guard Date() < deadline else {
-        throw ManagerError.timedOut("The Solaris tunnel did not stop in time")
-      }
-      changes.next(before: min(deadline, Date(timeIntervalSinceNow: 0.25)))
+      try deadline.check("stop the tunnel")
+      changes.next(before: min(deadline.end, .now() + 0.25))
     }
   }
 
-  private func disconnectReason(_ connection: NEVPNConnection) throws -> String {
-    let error: Error? = try waitForCompletion("read why the tunnel stopped", timeout: 2) { done in
+  private func disconnectReason(_ connection: NEVPNConnection, before deadline: Deadline) throws -> String {
+    let error: Error? = try deadline.wait("read why the tunnel stopped") { done in
       connection.fetchLastDisconnectError { done(.success($0)) }
     }
     guard let error else { return "The Solaris tunnel stopped while connecting" }
@@ -179,27 +183,10 @@ final class TunnelController {
   }
 }
 
-/// Waits for an operation that reports through a completion handler.
-private func waitForCompletion<T>(
-  _ action: String, timeout: TimeInterval = preferencesTimeout,
-  _ operation: (@escaping (Result<T, Error>) -> Void) -> Void
-) throws -> T {
-  let done = DispatchSemaphore(value: 0)
-  let lock = NSLock()
-  var result: Result<T, Error>?
-  operation { value in
-    lock.withLock { result = value }
-    done.signal()
-  }
-  guard done.wait(timeout: .now() + timeout) == .success,
-    let value = lock.withLock({ result })
-  else { throw ManagerError.timedOut("Timed out trying to \(action)") }
-  return try value.get()
-}
-
 /// Counts a connection's status notifications, so that waiting loops wake up on changes.
 private final class StatusChanges {
-  private let condition = NSCondition()
+  private let lock = NSLock()
+  private let changed = DispatchSemaphore(value: 0)
   private var count = 0
   private var observer: NSObjectProtocol?
 
@@ -208,9 +195,9 @@ private final class StatusChanges {
       forName: .NEVPNStatusDidChange, object: connection, queue: nil
     ) { [weak self] _ in
       guard let self else { return }
-      self.condition.withLock {
+      self.lock.withLock {
         self.count += 1
-        self.condition.broadcast()
+        self.changed.signal()
       }
     }
   }
@@ -219,13 +206,10 @@ private final class StatusChanges {
     if let observer { NotificationCenter.default.removeObserver(observer) }
   }
 
-  var seen: Bool { condition.withLock { count > 0 } }
+  var seen: Bool { lock.withLock { count > 0 } }
 
   /// Returns after the next change, or at `limit`.
-  func next(before limit: Date) {
-    condition.withLock {
-      let start = count
-      while count == start, condition.wait(until: limit) {}
-    }
+  func next(before limit: DispatchTime) {
+    _ = changed.wait(timeout: limit)
   }
 }

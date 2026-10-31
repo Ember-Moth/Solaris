@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"google.golang.org/protobuf/proto"
@@ -17,6 +18,7 @@ import (
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
 	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
 	"github.com/Ember-Moth/Solaris/src/core/internal/frame"
+	"github.com/Ember-Moth/Solaris/src/core/internal/operation"
 	"github.com/Ember-Moth/Solaris/src/core/internal/peer"
 	"github.com/Ember-Moth/Solaris/src/core/internal/product"
 	"github.com/Ember-Moth/Solaris/src/core/internal/warp"
@@ -105,6 +107,10 @@ type Host interface {
 	// Applied follows Start, Reload and Resume once the core took start: the service keeps
 	// it for the next sign-in and sets the owner's system proxy as its options say.
 	Applied(start *controlpb.StartRequest) error
+	// StopRequested authorizes caller again and keeps the stop intent before waiting
+	// for a busy core. ResumeAllowed rechecks it when an automatic resume executes.
+	StopRequested(caller peer.Identity) error
+	ResumeAllowed() bool
 	// Stopped follows Stop, after which the tunnel stays down; Suspended follows Suspend,
 	// after which it comes back at the owner's next sign-in. Both restore their proxy.
 	Stopped() error
@@ -128,30 +134,48 @@ type Options struct {
 	Development bool
 	// Host is the Windows service's owner, persistence and system proxy.
 	Host Host
+	// OnUnresponsive runs once when work outlives its core deadline. The host must replace
+	// the process: mihomo's package state cannot safely be reused after a stuck mutation.
+	OnUnresponsive func(operation.Failure)
 }
 
 type Dispatcher struct {
-	engine      Engine
-	hostMethods bool
-	development bool
-	host        Host
-	// ops serializes the methods that change state (§4.1); queries run concurrently.
-	ops           sync.Mutex
-	subscriptions *subscriptions
+	engine         Engine
+	hostMethods    bool
+	development    bool
+	host           Host
+	operations     *operation.Executor
+	reads          *operation.Executor
+	intents        *operation.Executor
+	intentMu       sync.Mutex
+	stopGeneration atomic.Uint64
+	lifetime       context.Context
+	closeLifetime  context.CancelFunc
+	unresponsive   atomic.Bool
+	failOnce       sync.Once
+	onUnresponsive func(operation.Failure)
+	subscriptions  *subscriptions
 }
 
 func New(options Options) *Dispatcher {
-	return &Dispatcher{
-		engine:        options.Engine,
-		hostMethods:   options.HostMethods,
-		development:   options.Development,
-		host:          options.Host,
-		subscriptions: newSubscriptions(options.Engine),
+	dispatcher := &Dispatcher{
+		engine:         options.Engine,
+		hostMethods:    options.HostMethods,
+		development:    options.Development,
+		host:           options.Host,
+		onUnresponsive: options.OnUnresponsive,
+		subscriptions:  newSubscriptions(options.Engine),
 	}
+	dispatcher.operations = operation.New(1, dispatcher.fail)
+	dispatcher.reads = operation.New(32, dispatcher.fail)
+	dispatcher.intents = operation.New(1, dispatcher.fail)
+	dispatcher.lifetime, dispatcher.closeLifetime = context.WithCancel(context.Background())
+	return dispatcher
 }
 
 // Close ends every subscription. It does not stop the engine.
 func (d *Dispatcher) Close() {
+	d.closeLifetime()
 	d.subscriptions.close()
 }
 
@@ -177,7 +201,7 @@ func (d *Dispatcher) Handle(ctx context.Context, caller peer.Identity, payload [
 	case request.Method == nil:
 		return EncodeFailure(id, CodeInvalidRequest, "request names no known method")
 	}
-	return encode(id, d.dispatch(ctx, caller, &request))
+	return encode(id, d.execute(ctx, caller, &request))
 }
 
 func (d *Dispatcher) dispatch(ctx context.Context, caller peer.Identity, request *controlpb.Request) *controlpb.Response {
@@ -189,7 +213,7 @@ func (d *Dispatcher) dispatch(ctx context.Context, caller peer.Identity, request
 			return failure(CodeUnsupportedMethod, "claim is only served by the Windows service")
 		}
 		takeOver := request.GetClaim().GetTakeOver()
-		return d.locked(func() *controlpb.Response { return d.claim(caller, takeOver) })
+		return d.claim(caller, takeOver)
 	}
 	// Only the owner reaches the core (§5.4).
 	if d.host != nil {
@@ -205,19 +229,17 @@ func (d *Dispatcher) dispatch(ctx context.Context, caller peer.Identity, request
 		if !d.hostMethods {
 			return failure(CodeUnsupportedMethod, "set_system_proxy is only served by the Windows service")
 		}
-		return d.hostMethod(request)
+		return d.hostMethod(ctx, request)
 	case *controlpb.Request_Validate, *controlpb.Request_Start, *controlpb.Request_Stop:
-		return d.hostMethod(request)
+		return d.hostMethod(ctx, request)
 	case *controlpb.Request_Reload:
-		return d.locked(func() *controlpb.Response { return d.reload(method.Reload) })
+		return d.reload(ctx, method.Reload)
 	default:
 		return d.coreMethod(ctx, caller, request)
 	}
 }
 
-func (d *Dispatcher) hostMethod(request *controlpb.Request) *controlpb.Response {
-	d.ops.Lock()
-	defer d.ops.Unlock()
+func (d *Dispatcher) hostMethod(ctx context.Context, request *controlpb.Request) *controlpb.Response {
 	switch method := request.Method.(type) {
 	case *controlpb.Request_Validate:
 		validate := method.Validate
@@ -228,20 +250,32 @@ func (d *Dispatcher) hostMethod(request *controlpb.Request) *controlpb.Response 
 		}
 		return d.applied(d.engine.Validate(profile))
 	case *controlpb.Request_Start:
+		if !d.currentIntent(ctx) {
+			return engineFailure(context.Canceled)
+		}
 		start := method.Start
 		profile, response := d.profile(start.GetConfigYaml(), start.GetComposition(), start.GetOverrides(), start.GetOptions())
 		if response != nil {
 			return response
 		}
 		report, err := d.engine.Start(profile)
-		if err == nil && d.host != nil {
-			err = d.host.Applied(start)
+		if ctx.Err() != nil {
+			return engineFailure(ctx.Err())
+		}
+		if err == nil {
+			err = d.commitApplied(ctx, start)
 		}
 		return d.applied(report, err)
 	case *controlpb.Request_Stop:
 		err := d.engine.Stop()
+		if ctx.Err() != nil {
+			return engineFailure(ctx.Err())
+		}
 		if err == nil && d.host != nil {
 			err = d.host.Stopped()
+		}
+		if intent, ok := ctx.Value(intentKey{}).(requestIntent); ok {
+			err = errors.Join(err, intent.stopError)
 		}
 		return d.result(err)
 	case *controlpb.Request_SetSystemProxy:
@@ -271,14 +305,20 @@ func (d *Dispatcher) claim(caller peer.Identity, takeOver bool) *controlpb.Respo
 	return empty()
 }
 
-func (d *Dispatcher) reload(reload *controlpb.ReloadRequest) *controlpb.Response {
+func (d *Dispatcher) reload(ctx context.Context, reload *controlpb.ReloadRequest) *controlpb.Response {
+	if !d.currentIntent(ctx) {
+		return engineFailure(context.Canceled)
+	}
 	profile, response := d.profile(reload.GetConfigYaml(), reload.GetComposition(), reload.GetOverrides(), reload.GetOptions())
 	if response != nil {
 		return response
 	}
 	report, err := d.engine.Reload(profile)
-	if err == nil && d.host != nil {
-		err = d.host.Applied(asStart(reload))
+	if ctx.Err() != nil {
+		return engineFailure(ctx.Err())
+	}
+	if err == nil {
+		err = d.commitApplied(ctx, asStart(reload))
 	}
 	return d.applied(report, err)
 }
@@ -311,8 +351,17 @@ func (d *Dispatcher) Running() bool {
 // Resume starts the core with the profile the Windows service kept, as Start does, when its
 // owner signs in again (docs/architecture.md §5.2). A core that runs is left alone.
 func (d *Dispatcher) Resume(start *controlpb.StartRequest) error {
-	d.ops.Lock()
-	defer d.ops.Unlock()
+	return d.ResumeContext(context.Background(), start)
+}
+
+func (d *Dispatcher) ResumeContext(ctx context.Context, start *controlpb.StartRequest) error {
+	return d.runLifecycle(ctx, "start", func(work context.Context) error { return d.resume(work, start) })
+}
+
+func (d *Dispatcher) resume(ctx context.Context, start *controlpb.StartRequest) error {
+	if !d.currentIntent(ctx) || d.host == nil || !d.host.ResumeAllowed() {
+		return nil
+	}
 	if d.Running() {
 		return nil
 	}
@@ -323,18 +372,28 @@ func (d *Dispatcher) Resume(start *controlpb.StartRequest) error {
 	if _, err := d.engine.Start(profile); err != nil {
 		return err
 	}
-	return d.host.Applied(start)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return d.commitApplied(ctx, start)
 }
 
 // Suspend stops the core when its owner signs out (decision D5). Unlike Stop, the tunnel
 // comes back at their next sign-in.
 func (d *Dispatcher) Suspend() error {
-	d.ops.Lock()
-	defer d.ops.Unlock()
-	if err := d.engine.Stop(); err != nil {
-		return err
-	}
-	return d.host.Suspended()
+	return d.SuspendContext(context.Background())
+}
+
+func (d *Dispatcher) SuspendContext(ctx context.Context) error {
+	return d.runLifecycle(ctx, "stop", func(work context.Context) error {
+		if err := d.engine.Stop(); err != nil {
+			return err
+		}
+		if err := work.Err(); err != nil {
+			return err
+		}
+		return d.host.Suspended()
+	})
 }
 
 // applied answers Validate, Start and Reload: a composition's report, or Empty.
@@ -445,12 +504,6 @@ func (d *Dispatcher) systemProxyServed() *controlpb.Response {
 	return nil
 }
 
-func (d *Dispatcher) locked(run func() *controlpb.Response) *controlpb.Response {
-	d.ops.Lock()
-	defer d.ops.Unlock()
-	return run()
-}
-
 func (d *Dispatcher) coreMethod(ctx context.Context, caller peer.Identity, request *controlpb.Request) *controlpb.Response {
 	switch method := request.Method.(type) {
 	case *controlpb.Request_GetStatus:
@@ -460,7 +513,7 @@ func (d *Dispatcher) coreMethod(ctx context.Context, caller peer.Identity, reque
 		}
 		return &controlpb.Response{Result: &controlpb.Response_GetStatus{GetStatus: status}}
 	case *controlpb.Request_SetMode:
-		return d.locked(func() *controlpb.Response { return d.result(d.engine.SetMode(method.SetMode.GetMode())) })
+		return d.result(d.engine.SetMode(method.SetMode.GetMode()))
 	case *controlpb.Request_ListGroups:
 		sort := method.ListGroups.GetSort()
 		if !knownSort(sort) {
@@ -483,9 +536,7 @@ func (d *Dispatcher) coreMethod(ctx context.Context, caller peer.Identity, reque
 		if selectProxy.GetGroup() == "" || selectProxy.GetProxy() == "" {
 			return failure(CodeInvalidRequest, "select_proxy needs a group and a proxy")
 		}
-		return d.locked(func() *controlpb.Response {
-			return d.result(d.engine.SelectProxy(selectProxy.GetGroup(), selectProxy.GetProxy()))
-		})
+		return d.result(d.engine.SelectProxy(selectProxy.GetGroup(), selectProxy.GetProxy()))
 	case *controlpb.Request_HealthCheck:
 		return d.result(d.engine.HealthCheck(ctx, method.HealthCheck.GetGroup(), method.HealthCheck.GetTest()))
 	case *controlpb.Request_TestDelay:
@@ -710,7 +761,7 @@ func (d *Dispatcher) draftProfile(configYAML string, source *controlpb.Compositi
 }
 
 func (d *Dispatcher) subscribe(ctx context.Context, caller peer.Identity, kind topic, level controlpb.LogLevel) *controlpb.Response {
-	id, err := d.subscriptions.subscribe(ctx, caller, kind, level)
+	id, err := d.subscriptions.subscribe(connectionContext(ctx), caller, kind, level)
 	if err != nil {
 		return subscriptionFailure(err)
 	}
@@ -759,6 +810,9 @@ func engineFailure(err error) *controlpb.Response {
 		code      string
 		retryable bool
 	}{
+		{context.DeadlineExceeded, CodeTimeout, true},
+		{context.Canceled, CodeCancelled, true},
+		{operation.ErrUnresponsive, CodeUnresponsive, true},
 		{engine.ErrInvalidConfig, CodeInvalidConfig, false},
 		{engine.ErrNotRunning, CodeNotRunning, false},
 		{engine.ErrAlreadyRunning, CodeAlreadyRunning, false},

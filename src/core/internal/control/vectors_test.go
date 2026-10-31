@@ -119,7 +119,7 @@ func TestSharedVectors(t *testing.T) {
 	fake := &vectorEngine{}
 	dispatcher := New(Options{Engine: fake, HostMethods: true})
 	for _, name := range []string{"get_info", "validate_composition", "inspect_source", "list_geo_categories",
-		"preview_group", "match_rule", "convert_to_plan", "export_plan"} {
+		"preview_group", "match_rule", "convert_to_plan", "export_plan", "expired"} {
 		requestFrame, err := hex.DecodeString(vectors[name+"_request_frame"])
 		if err != nil {
 			t.Fatal(err)

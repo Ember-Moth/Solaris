@@ -57,7 +57,8 @@ type Service struct {
 	home       kept
 	restarting bool
 	// profile is the one the core runs, or ran last.
-	profile *controlpb.StartRequest
+	profile     *controlpb.StartRequest
+	wantRunning bool
 	// proxyPort is the mixed port the owner's system proxy points at; 0 while it is theirs.
 	proxyPort uint16
 }
@@ -93,6 +94,7 @@ func Open(root, geodataDir string, platform Platform, log *slog.Logger) (*Servic
 		log.Warn("seed the GEO data", "error", err)
 	}
 	s.owner, s.bound, s.home = &record, true, kept{home}
+	s.wantRunning = s.home.wasRunning()
 	if s.profile, err = s.home.profile(); err != nil {
 		log.Warn("ignored the kept profile", "error", err)
 	}
@@ -137,6 +139,10 @@ func (s *Service) Ownership(caller peer.Identity) controlpb.Ownership {
 func (s *Service) Admit(caller peer.Identity) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return s.admitLocked(caller)
+}
+
+func (s *Service) admitLocked(caller peer.Identity) error {
 	switch {
 	case s.restarting:
 		return control.ErrRestarting
@@ -150,6 +156,22 @@ func (s *Service) Admit(caller peer.Identity) error {
 		return control.ErrRestarting
 	}
 	return nil
+}
+
+func (s *Service) StopRequested(caller peer.Identity) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.admitLocked(caller); err != nil {
+		return err
+	}
+	s.wantRunning = false
+	return s.home.setWasRunning(false)
+}
+
+func (s *Service) ResumeAllowed() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.wantRunning && s.bound && !s.restarting && s.owner != nil && len(s.platform.SignedIn(s.owner.SID)) > 0
 }
 
 // Claim takes on caller when the service has no owner, is theirs, or the owner's tunnel is
@@ -219,6 +241,7 @@ func (s *Service) Applied(start *controlpb.StartRequest) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.profile = start
+	s.wantRunning = true
 	s.keepLocked(true)
 	if options := start.GetOptions(); options.GetSystemProxyEnabled() {
 		return s.proxyOnLocked(uint16(options.GetMixedPort()))
@@ -235,6 +258,7 @@ func (s *Service) Stopped() error {
 // stoppedLocked follows the tunnel going down until someone starts it again: it does not
 // come back at the owner's next sign-in.
 func (s *Service) stoppedLocked() error {
+	s.wantRunning = false
 	if err := s.home.setWasRunning(false); err != nil {
 		s.log.Error("keep was_running", "error", err)
 	}
@@ -314,7 +338,7 @@ func (s *Service) SignedIn(session uint32) {
 		s.saveRecordLocked()
 	}
 	profile := s.profile
-	resume := profile != nil && s.home.wasRunning() && !s.running()
+	resume := profile != nil && s.wantRunning && !s.running()
 	if !resume && s.proxyPort == 0 {
 		if err := s.proxyOffLocked(); err != nil {
 			s.log.Warn("restore the owner's proxy settings", "error", err)

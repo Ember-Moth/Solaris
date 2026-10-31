@@ -59,6 +59,10 @@ func (h *fakeHost) Applied(start *controlpb.StartRequest) error {
 	return h.proxyErr
 }
 
+func (h *fakeHost) StopRequested(caller peer.Identity) error { return h.Admit(caller) }
+
+func (h *fakeHost) ResumeAllowed() bool { return true }
+
 func (h *fakeHost) Stopped() error {
 	h.stopped++
 	h.systemProxy = false

@@ -229,6 +229,9 @@ mihomo home 在扩展容器的 `Application Support/Solaris/core`，`startTunnel
 - **线程**：调用会阻塞到完成或超时。NetworkExtension 在主队列上完成回调，所以要在后台线程调用，并且
   主线程在跑 run loop（Qt 的事件循环就是）；在主线程调用会直接返回 `FAILED`。`configure`、`start`、
   `stop` 依次执行，`status` 和 `send` 可以与它们并行，`icloud_*` 与所有调用都可以并行。
+- **期限**：隧道管理用 `Deadline` 的单调时钟期限；等待启停队列、加载/保存/重载 VPN 配置和等待隧道状态都扣同一份预算。
+  过期的回调不再触发下一步。Go 控制请求另有逐层递减预算（architecture.md 4.1.1 节）；attach 最多 50 秒、detach 最多
+  20 秒，卡住时结束扩展宿主，让系统回收资源，不在同一进程里重建第二个内核。
 - **激活**：系统要用户批准时，`activate` 立即返回 `NEEDS_APPROVAL`，请求继续挂着；之后的调用复用同一个待批准请求，
   仍未允许就立即返回 `NEEDS_APPROVAL`，不再等一分钟。用户允许并完成激活后才能返回 `OK`。替换时总是用包内的扩展，因为只有它和
   这个 app 的控制协议一致。
