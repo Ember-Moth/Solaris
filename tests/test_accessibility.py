@@ -308,8 +308,8 @@ def test_deleting_a_row_focuses_the_one_that_takes_its_place(qtbot: QtBot, loade
     more = more_button(loaded, "本地配置")
     open_menu_item(qtbot, loaded, more, 5)  # 删除: a local file has two items fewer
     qtbot.waitUntil(lambda: loaded.focused_text() == "取消")
-    loaded.key(qtbot, Qt.Key.Key_Escape)
-    assert loaded.focused() is more
+    loaded.key(qtbot, Qt.Key.Key_Escape, wait=0)
+    qtbot.waitUntil(lambda: loaded.focused() is more)
     assert more.property("visualFocus")
     assert loaded.warnings == []
 
@@ -325,8 +325,8 @@ def test_saving_an_override_returns_to_the_rows_more_button(qtbot: QtBot, loaded
 
     # Esc cancels from inside the editor.
     edit()
-    loaded.key(qtbot, Qt.Key.Key_Escape)
-    assert loaded.focused() is more
+    loaded.key(qtbot, Qt.Key.Key_Escape, wait=0)
+    qtbot.waitUntil(lambda: loaded.focused() is more)
     assert more.property("visualFocus")
 
     edit()

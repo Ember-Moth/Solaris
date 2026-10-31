@@ -117,12 +117,24 @@ try {
     # With _?= the uninstaller runs in place and cannot delete its own executable.
     $remaining = @(Get-ChildItem -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue)
     if ($remaining.Count -ne 1 -or $remaining[0].FullName -ne $uninstaller) { throw 'Migration cleanup left runtime files behind' }
-    Remove-Item -LiteralPath $uninstaller -Force
-    Remove-Item -LiteralPath $root -Force
+    # Windows emulation may release the in-place executable after its process
+    # has signalled exit. Wait for removal instead of assuming it is immediate.
+    $cleanupDeadline = [DateTime]::UtcNow.AddSeconds(15)
+    while (Test-Path -LiteralPath $root) {
+        try { Remove-Item -LiteralPath $root -Recurse -Force }
+        catch {
+            if ([DateTime]::UtcNow -ge $cleanupDeadline) { throw }
+            Start-Sleep -Milliseconds 200
+        }
+    }
     if ((Test-Path $key) -or (Test-Path $userData) -or (Test-Path $serviceData) -or
         (Get-Service SolarisService -ErrorAction SilentlyContinue)) { throw 'Migration cleanup left application state behind' }
     Write-Output 'x64 to ARM64 migration passed: native payload, running service/GUI, preserved data and clean uninstall.'
 } catch {
+    if (Test-Path -LiteralPath $uninstaller) {
+        Get-Item -LiteralPath $uninstaller | Select-Object FullName, Attributes | Format-List | Out-String | Write-Output
+        Get-Acl -LiteralPath $uninstaller | Format-List Owner, AccessToString | Out-String | Write-Output
+    }
     $nativeLibrary = Join-Path $root 'libcronet.dll'
     if (Test-Path -LiteralPath $nativeLibrary) {
         Get-Item -LiteralPath $nativeLibrary | Select-Object FullName, Attributes, Length | Format-List | Out-String | Write-Output
