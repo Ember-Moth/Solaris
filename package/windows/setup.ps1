@@ -15,11 +15,16 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('close-ui', 'stop-service', 'install-service', 'remove-service', 'remove-tasks')]
+    [ValidateSet('prepare-directory', 'close-ui', 'stop-service', 'install-service', 'remove-service', 'remove-tasks')]
     [string] $Operation,
-    [Parameter(Mandatory = $true)][string] $InstallDirectory
+    [Parameter(Mandatory = $true, ParameterSetName = 'Directory')][string] $InstallDirectory,
+    [Parameter(Mandatory = $true, ParameterSetName = 'File')][string] $InstallDirectoryFile
 )
 $ErrorActionPreference = 'Stop'
+if ($InstallDirectoryFile) {
+    # NSIS passes the chosen path as data, never interpolated into a command line.
+    $InstallDirectory = [IO.File]::ReadAllText($InstallDirectoryFile, [Text.Encoding]::Unicode)
+}
 
 $ServiceName = 'SolarisService'  # src/core/internal/product
 $Client = Join-Path $InstallDirectory 'Solaris.exe'
@@ -181,8 +186,96 @@ function Remove-LoginTasks {
     }
 }
 
+# The service trusts executables in this directory. A custom location must be as
+# resistant to replacement by a non-administrator as Program Files. Never relax an
+# existing parent's ACL, take ownership of someone else's folder, or traverse links.
+function Prepare-InstallDirectory {
+    if ($InstallDirectory -notmatch '^[A-Za-z]:\\[^\\]' -or $InstallDirectory.Substring(2) -match '[<>:"|?*\x00-\x1f]') {
+        throw 'Choose an absolute folder on a local fixed drive, such as D:\Solaris.'
+    }
+    $parts = $InstallDirectory.Substring(3).TrimEnd('\').Split('\')
+    foreach ($part in $parts) {
+        if (-not $part -or $part -in @('.', '..') -or $part -match '[ .]$' -or
+            $part -match '^(?i:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)') {
+            throw 'The install folder contains an invalid path component.'
+        }
+    }
+    $full = [IO.Path]::GetFullPath($InstallDirectory).TrimEnd('\')
+    $drive = [IO.DriveInfo]::new([IO.Path]::GetPathRoot($full))
+    if ($drive.DriveType -ne [IO.DriveType]::Fixed -or $drive.DriveFormat -notin @('NTFS', 'ReFS')) {
+        throw 'The install folder needs a local fixed NTFS or ReFS drive with Windows permissions.'
+    }
+    $admins = [Security.Principal.SecurityIdentifier]::new('S-1-5-32-544')
+    $trusted = @('S-1-5-18', $admins.Value)
+    $trusted += ([Security.Principal.NTAccount]::new('NT SERVICE', 'TrustedInstaller')).Translate([Security.Principal.SecurityIdentifier]).Value
+    $security = [Security.AccessControl.DirectorySecurity]::new()
+    $security.SetOwner($admins)
+    $security.SetAccessRuleProtection($true, $false)
+    foreach ($entry in @(@('S-1-5-18', 'FullControl'), @('S-1-5-32-544', 'FullControl'), @('S-1-5-32-545', 'ReadAndExecute'))) {
+        $rule = [Security.AccessControl.FileSystemAccessRule]::new(
+            [Security.Principal.SecurityIdentifier]::new($entry[0]),
+            [Security.AccessControl.FileSystemRights]$entry[1],
+            [Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit',
+            [Security.AccessControl.PropagationFlags]::None,
+            [Security.AccessControl.AccessControlType]::Allow)
+        $security.AddAccessRule($rule)
+    }
+    function Assert-Protected([string] $Path, [bool] $VolumeRoot = $false) {
+        $item = Get-Item -LiteralPath $Path -Force
+        if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "Linked folders or files are not allowed: $Path" }
+        $acl = Get-Acl -LiteralPath $Path
+        if ($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -notin $trusted) {
+            throw "The selected folder is owned by a regular user. Choose another location: $Path"
+        }
+        $raw = [Security.AccessControl.RawSecurityDescriptor]::new($acl.GetSecurityDescriptorBinaryForm(), 0)
+        if ($null -eq $raw.DiscretionaryAcl) { throw "The selected folder has unrestricted permissions: $Path" }
+        # Root volumes cannot themselves be renamed/deleted. Creating siblings at
+        # the volume root is harmless; deleting children or changing its ACL is not.
+        $danger = if ($VolumeRoot) { [int64]0x100C0040 } else { [int64]0x500D0156 }
+        foreach ($rule in $acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])) {
+            if ($rule.AccessControlType -ne 'Allow' -or
+                ($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly) -or
+                $rule.IdentityReference.Value -in $trusted) { continue }
+            if (([int64]$rule.FileSystemRights -band $danger) -ne 0) {
+                throw "Other users can modify this location. Choose a protected folder, such as C:\Program Files\Solaris: $Path"
+            }
+        }
+    }
+    $current = $drive.RootDirectory.FullName
+    Assert-Protected $current $true
+    foreach ($part in $parts) {
+        $current = Join-Path $current $part
+        if (-not (Test-Path -LiteralPath $current)) {
+            # Apply the protected ACL at creation, before any application file is written.
+            $null = [IO.Directory]::CreateDirectory($current, $security)
+        }
+        if (-not [IO.Directory]::Exists($current)) { throw "Not a directory: $current" }
+        Assert-Protected $current
+    }
+    $key = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Solaris'
+    $installed = (Get-ItemProperty -LiteralPath $key -ErrorAction SilentlyContinue).InstallLocation
+    $marker = Join-Path $full '.solaris-install-root'
+    $items = @(Get-ChildItem -LiteralPath $full -Force)
+    # Refuse unsafe content before close-ui or the old uninstaller can execute it.
+    $pending = [Collections.Generic.Stack[string]]::new()
+    $pending.Push($full)
+    while ($pending.Count) {
+        foreach ($item in Get-ChildItem -LiteralPath $pending.Pop() -Force) {
+            Assert-Protected $item.FullName
+            if ($item.PSIsContainer) { $pending.Push($item.FullName) }
+        }
+    }
+    if ($items.Count -and $installed -ne $full -and
+        (-not [IO.File]::Exists($marker) -or [IO.File]::ReadAllText($marker).Trim() -ne 'Solaris installation directory v1')) {
+        throw 'Choose an empty folder or the existing Solaris installation folder.'
+    }
+    [IO.File]::WriteAllText($marker, 'Solaris installation directory v1')
+    Write-Output "Install folder verified: $full"
+}
+
 try {
     switch ($Operation) {
+        'prepare-directory' { Prepare-InstallDirectory }
         'close-ui' { Close-UI }
         'stop-service' { Stop-SolarisService }
         'install-service' { Install-SolarisService }

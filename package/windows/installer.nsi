@@ -7,10 +7,11 @@
 ;   UNINSTALL_FILES  Delete and RMDir lines for exactly the files in APP_DIRECTORY
 ;
 ; It is the only place Solaris asks for elevation: the installer and the uninstaller run as
-; administrator, the UI never does. The install directory is fixed to Program Files, which
-; only administrators can write: the service accepts the UI only from its own directory.
+; administrator, the UI never does. Custom directories are verified and protected before
+; files are written: the service accepts the UI only from its own directory.
 ;
-; Command line: /S is silent. The uninstaller also takes /PURGE (silent: delete the user data
+; Command line: /S is silent; fresh installs also accept /D=<absolute folder> last, unquoted.
+; The uninstaller also takes /PURGE (silent: delete the user data
 ; too) and /UPGRADE (an installer's call, below: remove the installed files and nothing else).
 
 Unicode true
@@ -63,6 +64,8 @@ LangString InterfaceFailed ${LANG_ENGLISH} "The setup window could not be opened
 LangString InterfaceFailed ${LANG_SIMPCHINESE} "无法打开安装界面，请重新运行安装程序。"
 LangString CopyingFiles ${LANG_ENGLISH} "Copying application files…"
 LangString CopyingFiles ${LANG_SIMPCHINESE} "正在复制应用文件…"
+LangString CheckingDirectory ${LANG_ENGLISH} "Checking the install folder…"
+LangString CheckingDirectory ${LANG_SIMPCHINESE} "正在检查安装文件夹…"
 LangString RegisteringApp ${LANG_ENGLISH} "Registering Solaris…"
 LangString RegisteringApp ${LANG_SIMPCHINESE} "正在注册 Solaris…"
 LangString RemovingFiles ${LANG_ENGLISH} "Removing application files…"
@@ -72,8 +75,6 @@ LangString ClearingData ${LANG_SIMPCHINESE} "正在清除所选应用数据…"
 
 LangString NeedsWindows ${LANG_ENGLISH} "${PRODUCT} needs 64-bit Windows 10 or later."
 LangString NeedsWindows ${LANG_SIMPCHINESE} "${PRODUCT} 需要 64 位的 Windows 10 或更高版本。"
-LangString OtherLocation ${LANG_ENGLISH} "${PRODUCT} is installed in another folder ($0). Uninstall it in Settings > Apps first, then run this installer again."
-LangString OtherLocation ${LANG_SIMPCHINESE} "${PRODUCT} 已安装在另一个文件夹（$0）。请先在“设置 > 应用”中卸载，再运行本安装程序。"
 LangString SetupFailed ${LANG_ENGLISH} "${PRODUCT} could not complete the operation."
 LangString SetupFailed ${LANG_SIMPCHINESE} "${PRODUCT} 未能完成操作。"
 LangString UninstallerFailed ${LANG_ENGLISH} "The installed version of ${PRODUCT} could not be removed (result: $0). Uninstall it in Settings > Apps, then run this installer again."
@@ -117,7 +118,10 @@ VIAddVersionKey /LANG=${LANG_ENGLISH} "LegalCopyright" "GPL-3.0-only"
 
 ; Runs one of setup.ps1's operations; it prints why it failed, which the message shows as it is.
 !macro Setup OPERATION
-  nsExec::ExecToStack /TIMEOUT=180000 '"${POWERSHELL}" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\setup.ps1" -Operation ${OPERATION} -InstallDirectory "$INSTDIR"'
+  FileOpen $8 "$PLUGINSDIR\install-directory.txt" w
+  FileWriteUTF16LE /BOM $8 "$INSTDIR"
+  FileClose $8
+  nsExec::ExecToStack /TIMEOUT=180000 '"${POWERSHELL}" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\setup.ps1" -Operation ${OPERATION} -InstallDirectoryFile "$PLUGINSDIR\install-directory.txt"'
   Pop $0
   Pop $1
   ${If} $1 != ""
@@ -154,14 +158,11 @@ Function .onInit
   ${EndIf}
   SetRegView 64
   SetShellVarContext all
-  ; Whatever /D= said: the directory must be one only administrators can write.
-  StrCpy $INSTDIR "$PROGRAMFILES64\${PRODUCT}"
   StrCpy $Upgrade 0
   ReadRegStr $0 HKLM "${UNINSTALL_KEY}" "InstallLocation"
   ${If} $0 != ""
-    ${If} $0 != $INSTDIR
-      !insertmacro Fail "$(OtherLocation)" 1638
-    ${EndIf}
+    ; An update always uses the registered installation, including a custom location.
+    StrCpy $INSTDIR $0
     StrCpy $Upgrade 1
   ${EndIf}
   IfSilent done
@@ -176,6 +177,8 @@ FunctionEnd
 Section
   InitPluginsDir
   File "/oname=$PLUGINSDIR\setup.ps1" "${SETUP_SCRIPT}"
+  !insertmacro UiStatus "$(CheckingDirectory)"
+  !insertmacro Setup prepare-directory
   ; setup.ps1 asks the UI to quit, and ends it when it does not; the tunnel runs in the service.
   !insertmacro UiStatus "$(ClosingUI)"
   !insertmacro Setup close-ui
@@ -266,6 +269,7 @@ FunctionEnd
 
 Function un.RemoveFiles
   !include "${UNINSTALL_FILES}"
+  Delete "$INSTDIR\.solaris-install-root"
 FunctionEnd
 
 Section "!un.${PRODUCT}" UninstallProgram

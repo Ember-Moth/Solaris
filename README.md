@@ -87,7 +87,8 @@ EasyTier** 网络，通过分流规则访问网络中的设备。
 **macOS**：打开 DMG，将 Solaris 拖入「应用程序」。首次连接时按应用内指引，在「系统设置 › 通用 › 登录项与扩展」
 允许网络扩展，并确认添加 VPN 配置。卸载前可以在 Solaris 设置页停用系统扩展。
 
-**Windows**：运行 EXE 安装向导并允许管理员授权。应用安装在 `C:\Program Files\Solaris`，同时注册后台服务；
+**Windows**：运行 EXE 安装程序并允许管理员授权，阅读并同意 GPLv3 开源许可协议。默认安装在 `C:\Program Files\Solaris`，
+首次安装可选择其他本地文件夹；安装器会检查目录权限，升级沿用已有位置。安装时同时注册后台服务；
 日常使用的界面以普通用户身份运行。当前 Windows 安装包尚未签名。卸载入口位于「设置 › 应用」，默认保留订阅、设置
 和日志，也可选择清除。
 
@@ -109,3 +110,10 @@ Solaris 不收集使用统计，也不会自动上传日志或崩溃报告。订
 
 Solaris 以 [GPL-3.0-only](LICENSE) 发布，内核基于 [mihomo](https://github.com/MetaCubeX/mihomo) 及其
 [Ember-Moth fork](https://github.com/Ember-Moth/mihomo)。第三方组件及其许可证可在应用的「设置 › 关于 › 开源许可」中查看。
+
+## 赞助与商务合作
+
+如果 Solaris 对你有帮助，欢迎赞助项目的持续开发与维护。
+
+- **TRON**：`TSNLCUnYzasf7zUv932igYkeLDu4DXj5oc`
+- **商务合作**：[Telegram · @EmberMoth_bot](https://t.me/EmberMoth_bot)

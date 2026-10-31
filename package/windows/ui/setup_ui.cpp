@@ -7,6 +7,8 @@
 #include <uxtheme.h>
 #include <objidl.h>
 #include <gdiplus.h>
+#include <shobjidl.h>
+#include <wrl/client.h>
 #include "nsis_abi.h"
 
 #include <algorithm>
@@ -29,6 +31,7 @@ constexpr UINT closeMessage = WM_APP + 4;
 constexpr UINT scaleMessage = WM_APP + 5; // read-only preview layout probe
 constexpr UINT_PTR progressTimer = 1;
 constexpr int actionID = 1001, cancelID = 1002, detailsID = 1003, purgeID = 1004;
+constexpr int agreementID = 1005, pathID = 1006, browseID = 1007, licenseID = 1008;
 enum class Phase { Ready, Working, Done, Failed };
 
 struct Update { std::wstring text; bool logOnly = false; };
@@ -38,8 +41,8 @@ struct CaptureRequest { std::wstring path; bool success = false; };
 struct State {
   bool chinese = false, uninstall = false, upgrade = false, purgeDefault = false, preview = false;
   bool dark = false, highContrast = false, motion = true, details = false;
-  bool privateFont = false, privateMono = false;
-  std::wstring version, directory, assets, theme, log;
+  bool privateFont = false, privateMono = false, licenseView = false;
+  std::wstring version, directory, assets, theme, log, license;
   std::vector<std::wstring> loadedFonts;
   Phase phase = Phase::Ready;
   Palette palette = kLight;
@@ -50,6 +53,7 @@ struct State {
   HWND label = nullptr, value = nullptr, note = nullptr, check = nullptr;
   HWND progress = nullptr, detailButton = nullptr, detailLabel = nullptr, detailEdit = nullptr;
   HWND primary = nullptr, secondary = nullptr, hovered = nullptr;
+  HWND agreement = nullptr, pathEdit = nullptr, browse = nullptr, licenseButton = nullptr, licenseEdit = nullptr;
   HFONT titleFont = nullptr, bodyFont = nullptr, captionFont = nullptr, monoFont = nullptr;
   HFONT brandFont = nullptr, labelFont = nullptr, compactFont = nullptr;
   HICON icon = nullptr;
@@ -188,9 +192,9 @@ void makeFonts(State& s) {
   s.compactFont = font(s, kCompactSize, kCompactWeight, family);
   s.monoFont = font(s, kMonoSize, kMonoWeight, s.privateMono ? L"JetBrains Mono" : L"Consolas");
   s.brandFont = font(s, kTitleSize, kTitleWeight, latin);
-  for (HWND control : {s.body, s.check})
+  for (HWND control : {s.body, s.check, s.agreement})
     SendMessageW(control, WM_SETFONT, reinterpret_cast<WPARAM>(s.bodyFont), FALSE);
-  for (HWND control : {s.primary, s.secondary})
+  for (HWND control : {s.primary, s.secondary, s.browse, s.licenseButton})
     SendMessageW(control, WM_SETFONT, reinterpret_cast<WPARAM>(s.labelFont), FALSE);
   for (HWND control : {s.versionLabel, s.label, s.note, s.detailLabel})
     SendMessageW(control, WM_SETFONT, reinterpret_cast<WPARAM>(s.captionFont), FALSE);
@@ -198,6 +202,8 @@ void makeFonts(State& s) {
   SendMessageW(s.brand, WM_SETFONT, reinterpret_cast<WPARAM>(s.brandFont), FALSE);
   SendMessageW(s.headline, WM_SETFONT, reinterpret_cast<WPARAM>(s.titleFont), FALSE);
   SendMessageW(s.value, WM_SETFONT, reinterpret_cast<WPARAM>(s.monoFont), FALSE);
+  SendMessageW(s.pathEdit, WM_SETFONT, reinterpret_cast<WPARAM>(s.monoFont), FALSE);
+  SendMessageW(s.licenseEdit, WM_SETFONT, reinterpret_cast<WPARAM>(s.captionFont), FALSE);
   SendMessageW(s.detailEdit, WM_SETFONT, reinterpret_cast<WPARAM>(s.chinese ? s.captionFont : s.monoFont), FALSE);
   for (HFONT old : previous) if (old) DeleteObject(old);
   HICON oldIcon = s.icon;
@@ -225,6 +231,11 @@ void layout(State& s) {
   place(s, s.detailLabel, 44, 212, 552, 20);
   place(s, s.detailEdit, 44, 240, 552, 64);
   place(s, s.detailButton, 24, 328, 112, 32);
+  place(s, s.pathEdit, 56, 247, 424, 22);
+  place(s, s.browse, 504, 240, 92, 36);
+  place(s, s.agreement, 24, 328, 464, 32);
+  place(s, s.licenseButton, 504, 328, 112, 32);
+  place(s, s.licenseEdit, 44, 160, 552, 180);
   place(s, s.primary, 364, 380, 148, kButtonHeight);
   place(s, s.secondary, 520, 380, 96, kButtonHeight);
 }
@@ -240,10 +251,25 @@ void appendLog(State& s, const std::wstring& line) {
 }
 
 HWND defaultButton(State& s) {
-  return s.uninstall && s.phase == Phase::Ready ? s.secondary : s.primary;
+  return !s.licenseView && s.uninstall && s.phase == Phase::Ready ? s.secondary : s.primary;
 }
 
 void renderState(State& s) {
+  const bool agreement = SendMessageW(s.agreement, BM_GETCHECK, 0, 0) == BST_CHECKED;
+  show(s.licenseEdit, s.licenseView);
+  if (s.licenseView) {
+    text(s.headline, L"GNU GPLv3");
+    text(s.primary, s.tr(L"同意并返回", L"Agree and return"));
+    text(s.secondary, s.tr(L"返回", L"Back"));
+    for (HWND control : {s.body, s.label, s.value, s.note, s.check, s.progress, s.detailButton,
+                        s.detailLabel, s.detailEdit, s.agreement, s.pathEdit, s.browse, s.licenseButton}) show(control, false);
+    show(s.primary, true);
+    show(s.secondary, true);
+    EnableWindow(s.primary, TRUE);
+    RedrawWindow(s.window.load(), nullptr, nullptr, RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_ERASE);
+    return;
+  }
+  show(s.body, true);
   const bool ready = s.phase == Phase::Ready, busy = s.phase == Phase::Working;
   const bool done = s.phase == Phase::Done;
   const bool failed = s.phase == Phase::Failed;
@@ -260,7 +286,8 @@ void renderState(State& s) {
     text(s.label, s.tr(L"安装位置", L"Install location"));
     text(s.value, s.directory);
     text(s.note, s.uninstall ? s.tr(L"包含后台服务保存的所有用户配置。", L"Includes all users’ connection data saved by the service.")
-                : s.tr(L"可在 Windows「设置 › 应用」中卸载。", L"You can uninstall from Windows Settings > Apps."));
+                : s.upgrade ? s.tr(L"更新会沿用现有安装位置。", L"Updates keep the existing install location.")
+                : s.tr(L"可选择其他本地文件夹。", L"Choose a local folder for this installation."));
     text(s.primary, s.uninstall ? s.tr(L"卸载", L"Uninstall")
                    : s.upgrade ? s.tr(L"更新 Solaris", L"Update Solaris") : s.tr(L"安装 Solaris", L"Install Solaris"));
     text(s.secondary, s.tr(L"取消", L"Cancel"));
@@ -290,12 +317,17 @@ void renderState(State& s) {
   show(s.check, ready && s.uninstall);
   show(s.progress, busy && !s.details);
   show(s.label, !s.details && !(ready && s.uninstall));
-  show(s.value, !s.details && !busy && !(ready && s.uninstall));
+  show(s.value, !s.details && !busy && (!ready || s.upgrade));
+  show(s.pathEdit, ready && !s.uninstall && !s.upgrade);
+  show(s.browse, ready && !s.uninstall && !s.upgrade);
+  show(s.agreement, ready && !s.uninstall);
+  show(s.licenseButton, ready && !s.uninstall);
   show(s.note, !s.details);
   show(s.detailButton, !ready);
   show(s.detailLabel, s.details && !ready);
   show(s.detailEdit, s.details && !ready);
   show(s.primary, !busy);
+  EnableWindow(s.primary, !ready || s.uninstall || agreement);
   show(s.secondary, ready || busy || (done && !s.uninstall));
   EnableWindow(s.secondary, !busy);
   const HWND window = s.window.load();
@@ -320,8 +352,8 @@ void drawButton(State& s, DRAWITEMSTRUCT& item) {
     ink = s.palette.on_primary;
   } else if (pressed || hover) fill = s.palette.surface_subtle;
   if (destructive) ink = s.palette.danger;
-  if (disabled) { fill = s.palette.background; ink = s.palette.text_muted; }
-  FillRect(item.hDC, &rect, s.background);
+  if (disabled) { fill = s.palette.background; border = s.palette.border_button; ink = s.palette.text_muted; }
+  FillRect(item.hDC, &rect, item.CtlID == browseID ? s.surface : s.background);
   roundBox(item.hDC, rect, fill, border, s.px(6));
   wchar_t label[256]{};
   GetWindowTextW(item.hwndItem, label, 256);
@@ -354,7 +386,7 @@ LRESULT CALLBACK buttonProcedure(HWND window, UINT message, WPARAM wparam, LPARA
 void drawCheckbox(State& s, HWND window, HDC dc) {
   RECT rect{};
   GetClientRect(window, &rect);
-  FillRect(dc, &rect, s.surface);
+  FillRect(dc, &rect, window == s.agreement ? s.background : s.surface);
   const int top = (rect.bottom - s.px(16)) / 2;
   RECT box{s.px(1), top, s.px(17), top + s.px(16)};
   const bool checked = SendMessageW(window, BM_GETCHECK, 0, 0) == BST_CHECKED;
@@ -445,6 +477,70 @@ HWND control(State& s, const wchar_t* type, const wchar_t* caption, DWORD style,
   return window;
 }
 
+std::wstring readLicense(const std::wstring& path) {
+  std::unique_ptr<void, decltype(&CloseHandle)> file(
+      CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr), &CloseHandle);
+  if (file.get() == INVALID_HANDLE_VALUE) throw std::runtime_error("license file");
+  const DWORD length = GetFileSize(file.get(), nullptr);
+  if (!length || length > 131072) throw std::runtime_error("license size");
+  std::vector<char> bytes(length);
+  DWORD read = 0;
+  if (!ReadFile(file.get(), bytes.data(), length, &read, nullptr) || read != length) throw std::runtime_error("license read");
+  const int count = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, bytes.data(), static_cast<int>(length), nullptr, 0);
+  if (count < 1) throw std::runtime_error("license encoding");
+  std::wstring value(static_cast<size_t>(count), L'\0');
+  MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, bytes.data(), static_cast<int>(length), value.data(), count);
+  std::wstring result;
+  for (wchar_t ch : value) {
+    if (ch == L'\n' && (result.empty() || result.back() != L'\r')) result += L'\r';
+    result += ch;
+  }
+  return result;
+}
+
+void chooseDirectory(State& s) {
+  Microsoft::WRL::ComPtr<IFileOpenDialog> dialog;
+  if (FAILED(CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(dialog.GetAddressOf())))) return;
+  dialog->SetOptions(FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_NOCHANGEDIR);
+  dialog->SetTitle(s.tr(L"选择安装位置（将创建 Solaris 文件夹）", L"Choose a folder for Solaris"));
+  const auto slash = s.directory.find_last_of(L'\\');
+  Microsoft::WRL::ComPtr<IShellItem> folder;
+  if (slash != std::wstring::npos && SUCCEEDED(SHCreateItemFromParsingName(s.directory.substr(0, slash + 1).c_str(),
+      nullptr, IID_PPV_ARGS(folder.GetAddressOf())))) dialog->SetFolder(folder.Get());
+  if (FAILED(dialog->Show(s.window.load()))) return;
+  Microsoft::WRL::ComPtr<IShellItem> selected;
+  PWSTR path = nullptr;
+  if (FAILED(dialog->GetResult(selected.GetAddressOf())) || FAILED(selected->GetDisplayName(SIGDN_FILESYSPATH, &path))) return;
+  std::wstring directory(path);
+  CoTaskMemFree(path);
+  while (!directory.empty() && directory.back() == L'\\') directory.pop_back();
+  const auto leaf = directory.substr(directory.find_last_of(L'\\') + 1);
+  if (_wcsicmp(leaf.c_str(), L"Solaris") != 0) directory += L"\\Solaris";
+  text(s.pathEdit, directory);
+  SetFocus(s.pathEdit);
+}
+
+bool selectedDirectory(State& s) {
+  if (s.uninstall || s.upgrade) return true;
+  wchar_t input[1024]{}, full[1024]{};
+  GetWindowTextW(s.pathEdit, input, 1024);
+  std::wstring value(input);
+  std::replace(value.begin(), value.end(), L'/', L'\\');
+  const bool drive = value.size() > 3 && ((value[0] >= L'A' && value[0] <= L'Z') || (value[0] >= L'a' && value[0] <= L'z'))
+                     && value[1] == L':' && value[2] == L'\\';
+  const DWORD length = drive && value.substr(2).find_first_of(L"<>:\"|?*\r\n") == std::wstring::npos
+                       ? GetFullPathNameW(value.c_str(), 1024, full, nullptr) : 0;
+  if (!length || length >= 1024) {
+    MessageBoxW(s.window.load(), s.tr(L"请选择本地磁盘上的完整文件夹路径，例如 D:\\Solaris。", L"Choose an absolute folder on a local drive, such as D:\\Solaris."),
+                L"Solaris", MB_OK | MB_ICONINFORMATION);
+    SetFocus(s.pathEdit);
+    return false;
+  }
+  s.directory = full;
+  while (s.directory.size() > 3 && s.directory.back() == L'\\') s.directory.pop_back();
+  return true;
+}
+
 void makeControls(State& s) {
   s.brand = control(s, L"STATIC", L"Solaris", SS_NOPREFIX);
   s.versionLabel = control(s, L"STATIC", L"", SS_NOPREFIX);
@@ -457,6 +553,15 @@ void makeControls(State& s) {
                     BS_AUTOCHECKBOX | WS_TABSTOP, purgeID);
   SetWindowSubclass(s.check, checkboxProcedure, 1, reinterpret_cast<DWORD_PTR>(&s));
   SendMessageW(s.check, BM_SETCHECK, s.purgeDefault ? BST_CHECKED : BST_UNCHECKED, 0);
+  s.pathEdit = control(s, L"EDIT", s.directory.c_str(), ES_AUTOHSCROLL | WS_TABSTOP, pathID);
+  SetWindowSubclass(s.pathEdit, detailProcedure, 1, 0);
+  SendMessageW(s.pathEdit, EM_LIMITTEXT, 1000, 0);
+  s.browse = control(s, L"BUTTON", s.tr(L"浏览…", L"Browse…"), BS_OWNERDRAW | WS_TABSTOP, browseID);
+  s.agreement = control(s, L"BUTTON", s.tr(L"我已阅读并同意 GPLv3 开源许可协议", L"I agree to the GPLv3 open-source license"), BS_AUTOCHECKBOX | WS_TABSTOP, agreementID);
+  SetWindowSubclass(s.agreement, checkboxProcedure, 1, reinterpret_cast<DWORD_PTR>(&s));
+  s.licenseButton = control(s, L"BUTTON", s.tr(L"查看协议", L"View license"), BS_OWNERDRAW | WS_TABSTOP, licenseID);
+  s.licenseEdit = control(s, L"EDIT", s.license.c_str(), ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL | WS_TABSTOP, 1009);
+  SendMessageW(s.licenseEdit, EM_LIMITTEXT, 131072, 0);
   s.progress = control(s, PROGRESS_CLASSW, s.tr(L"操作进度", L"Operation progress"), PBS_MARQUEE | PBS_SMOOTH);
   SetWindowTheme(s.progress, L"", L"");
   SetWindowSubclass(s.progress, progressProcedure, 1, reinterpret_cast<DWORD_PTR>(&s));
@@ -467,7 +572,7 @@ void makeControls(State& s) {
   SendMessageW(s.detailEdit, EM_LIMITTEXT, 32768, 0);
   s.primary = control(s, L"BUTTON", L"", BS_OWNERDRAW | WS_TABSTOP, actionID);
   s.secondary = control(s, L"BUTTON", L"", BS_OWNERDRAW | WS_TABSTOP, cancelID);
-  for (HWND button : {s.primary, s.secondary, s.detailButton})
+  for (HWND button : {s.primary, s.secondary, s.detailButton, s.browse, s.licenseButton})
     SetWindowSubclass(button, buttonProcedure, 1, reinterpret_cast<DWORD_PTR>(&s));
   makeFonts(s);
   layout(s);
@@ -510,10 +615,14 @@ void drawSurface(State& s, HWND window, HDC dc) {
   RECT rect{};
   GetClientRect(window, &rect);
   FillRect(dc, &rect, s.background);
-  RECT card{s.px(24), s.px(200), s.px(616), s.px(316)};
+  RECT card{s.px(24), s.px(s.licenseView ? 144 : 200), s.px(616), s.px(s.licenseView ? 360 : 316)};
   const bool detailFocus = GetFocus() == s.detailEdit;
   roundBox(dc, card, s.palette.surface, detailFocus ? s.palette.primary : s.palette.border,
            s.px(8), detailFocus ? s.px(2) : 1);
+  if (!s.licenseView && s.phase == Phase::Ready && !s.uninstall && !s.upgrade) {
+    RECT field{s.px(44), s.px(240), s.px(492), s.px(276)};
+    roundBox(dc, field, s.palette.surface, GetFocus() == s.pathEdit ? s.palette.primary : s.palette.border_control, s.px(6));
+  }
   if (s.icon) DrawIconEx(dc, s.px(24), s.px(28), s.icon, s.px(40), s.px(40), 0, nullptr, DI_NORMAL);
   HPEN pen = CreatePen(PS_SOLID, 1, s.palette.border);
   const auto old = SelectObject(dc, pen);
@@ -549,25 +658,40 @@ LRESULT CALLBACK windowProcedure(HWND window, UINT message, WPARAM wparam, LPARA
     case WM_CTLCOLORBTN: {
       HDC dc = reinterpret_cast<HDC>(wparam);
       HWND child = reinterpret_cast<HWND>(lparam);
-      const bool inCard = child == s.label || child == s.value || child == s.note || child == s.check || child == s.detailLabel || child == s.detailEdit;
+      const bool inCard = child == s.label || child == s.value || child == s.note || child == s.check || child == s.detailLabel || child == s.detailEdit || child == s.pathEdit || child == s.licenseEdit;
       const bool muted = child == s.versionLabel || child == s.note || child == s.detailLabel || (child == s.label && s.phase != Phase::Working);
       SetTextColor(dc, muted ? s.palette.text_muted : s.palette.text);
       SetBkColor(dc, inCard ? s.palette.surface : s.palette.background);
       return reinterpret_cast<LRESULT>(inCard ? s.surface : s.background);
     }
     case WM_DRAWITEM:
-      if (wparam == actionID || wparam == cancelID || wparam == detailsID) {
+      if (wparam == actionID || wparam == cancelID || wparam == detailsID || wparam == browseID || wparam == licenseID) {
         drawButton(s, *reinterpret_cast<DRAWITEMSTRUCT*>(lparam));
         return TRUE;
       }
       break;
     case WM_COMMAND: {
       const int id = LOWORD(wparam);
-      if (id == detailsID && HIWORD(wparam) == BN_CLICKED) {
+      if (id == agreementID && HIWORD(wparam) == BN_CLICKED) {
+        renderState(s);
+      } else if (id == browseID && HIWORD(wparam) == BN_CLICKED && s.phase == Phase::Ready && !s.upgrade && !s.uninstall) {
+        chooseDirectory(s);
+      } else if (id == licenseID && HIWORD(wparam) == BN_CLICKED && s.phase == Phase::Ready) {
+        s.licenseView = true;
+        renderState(s);
+        SetFocus(s.licenseEdit);
+      } else if (id == detailsID && HIWORD(wparam) == BN_CLICKED) {
         s.details = !s.details;
         renderState(s);
       } else if (id == actionID && HIWORD(wparam) == BN_CLICKED) {
-        if (s.phase == Phase::Ready) {
+        if (s.licenseView) {
+          SendMessageW(s.agreement, BM_SETCHECK, BST_CHECKED, 0);
+          s.licenseView = false;
+          renderState(s);
+          SetFocus(s.primary);
+        } else if (s.phase == Phase::Ready) {
+          if (!s.uninstall && SendMessageW(s.agreement, BM_GETCHECK, 0, 0) != BST_CHECKED) return 0;
+          if (!selectedDirectory(s)) return 0;
           s.result.store(s.uninstall && SendMessageW(s.check, BM_GETCHECK, 0, 0) == BST_CHECKED ? 2 : 1);
           s.phase = Phase::Working;
           text(s.label, s.tr(L"正在准备…", L"Preparing…"));
@@ -584,6 +708,7 @@ LRESULT CALLBACK windowProcedure(HWND window, UINT message, WPARAM wparam, LPARA
       return 0;
     }
     case WM_CLOSE:
+      if (s.licenseView) { s.licenseView = false; renderState(s); SetFocus(s.licenseButton); return 0; }
       if (s.phase != Phase::Working) { s.result.store(0); DestroyWindow(window); }
       return 0;
     case WM_DESTROY:
@@ -649,8 +774,12 @@ LRESULT CALLBACK windowProcedure(HWND window, UINT message, WPARAM wparam, LPARA
 
 void run(State& s) {
   ULONG_PTR gdiplusToken = 0;
+  bool com = false;
   Gdiplus::GdiplusStartupInput input;
   try {
+    com = SUCCEEDED(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED));
+    if (!com) throw std::runtime_error("installer COM initialization");
+    s.license = readLicense(s.assets + L"\\LICENSE.txt");
     using SetDpiContext = HANDLE (WINAPI*)(HANDLE);
     auto setDpi = reinterpret_cast<SetDpiContext>(GetProcAddress(GetModuleHandleW(L"user32.dll"), "SetThreadDpiAwarenessContext"));
     if (setDpi) setDpi(reinterpret_cast<HANDLE>(static_cast<INT_PTR>(-4))); // per-monitor v2
@@ -693,7 +822,7 @@ void run(State& s) {
     ShowWindow(window, SW_SHOWNORMAL);
     UpdateWindow(window);
     SetForegroundWindow(window);
-    SetFocus(defaultButton(s));
+    SetFocus(s.uninstall ? s.secondary : s.upgrade ? s.agreement : s.pathEdit);
     SendMessageW(window, WM_CHANGEUISTATE, MAKEWPARAM(UIS_SET, UISF_HIDEFOCUS), 0);
     SetEvent(s.ready);
     MSG message{};
@@ -708,7 +837,7 @@ void run(State& s) {
         if (message.wParam == VK_ESCAPE) { SendMessageW(window, WM_CLOSE, 0, 0); continue; }
         if (message.wParam == VK_RETURN && s.phase != Phase::Working) {
           HWND focus = GetFocus();
-          HWND button = focus == s.primary || focus == s.secondary || focus == s.detailButton ? focus : defaultButton(s);
+          HWND button = focus == s.primary || focus == s.secondary || focus == s.detailButton || focus == s.browse || focus == s.licenseButton ? focus : defaultButton(s);
           SendMessageW(button, BM_CLICK, 0, 0);
           continue;
         }
@@ -727,6 +856,7 @@ void run(State& s) {
   if (s.surface) DeleteObject(s.surface);
   for (const auto& path : s.loadedFonts) RemoveFontResourceExW(path.c_str(), FR_PRIVATE, nullptr);
   if (gdiplusToken) Gdiplus::GdiplusShutdown(gdiplusToken);
+  if (com) CoUninitialize();
 }
 
 void closeUI() {
@@ -812,6 +942,10 @@ extern "C" void __cdecl Capture(HWND, int size, wchar_t*, stack_t** stack, extra
   call.push(request.success ? L"ok" : L"error");
 }
 extern "C" void __cdecl Close(HWND, int, wchar_t*, stack_t**, extra_parameters*) { closeUI(); }
+extern "C" void __cdecl GetDirectory(HWND, int size, wchar_t*, stack_t** stack, extra_parameters*) {
+  Call call{size, stack};
+  call.push(state ? state->directory.c_str() : L"");
+}
 
 BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID) {
   if (reason == DLL_PROCESS_ATTACH) module = instance;

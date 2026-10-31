@@ -25,7 +25,7 @@ Naive 原生加载与配置拼装；不带 `with_naive` 的普通 Go 开发构�
 | `go` | macOS、Windows、Linux | `go vet`、`go test`，再以 `-race` 跑一遍；Linux 上以 `with_gvisor` 带 `-race` 再跑安全项和组网测试，交叉编译 Windows 服务；macOS 上编扩展用的 C archive |
 | `apple` | macOS | 管理库和系统扩展的不签名构建，再用检查用的 app 做一次发布用的磁盘映像（`scripts/build_dmg.py`） |
 | `windows-installer` | Windows | 构建不签名的安装包，在 runner 上安装、打开界面、升级、卸载（`package/windows/smoke-test.ps1`） |
-| `installer-ui` | Windows | 编译真实 Win32 安装界面，在只读测试宿主中验证中英文、浅深色、键盘默认动作、数据选项、进度、成功/失败和 DPI 布局；保存窗口截图 artifact |
+| `installer-ui` | Windows | 检查自定义路径的 ACL、所有者及链接拒绝；编译真实 Win32 界面，在只读宿主中验证 GPL 全文与同意项、路径输入、中英文、浅深色、键盘默认动作、数据选项、进度、成功/失败和 DPI 布局；保存窗口截图 artifact |
 | `tun` | Linux | 在网络命名空间里建真实的 TUN：自管模式和 fd 模式，四种栈，fd 模式另测 `includeAllNetworks` |
 
 Windows 上的客户端校验（命名管道、文件 ID、锁住映像、服务的可执行文件只在有管理员权限时通过）、管理员权限的判断、

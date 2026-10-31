@@ -25,7 +25,7 @@ if ((Split-Path $Installer -Leaf) -notmatch '^Solaris-(\d+\.\d+\.\d+)-windows-x6
     throw "Not an installer as docs/release.md names it: $Installer"
 }
 $Version = $Matches[1]
-$Root = Join-Path $env:ProgramW6432 'Solaris'
+$Root = Join-Path $env:SystemDrive 'Solaris CI Custom'
 $Client = Join-Path $Root 'Solaris.exe'
 $ServiceExecutable = Join-Path $Root 'solaris-service.exe'
 $Uninstaller = Join-Path $Root 'uninstall.exe'
@@ -93,6 +93,14 @@ function Invoke-InteractiveSetup([string] $Path) {
             else { Start-Sleep -Milliseconds 100 }
         }
         if (-not $action) { throw 'The custom installer has no accessible Install button' }
+        if ($action.Current.IsEnabled) { throw 'Install was enabled without license consent' }
+        $pathCondition = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::AutomationIdProperty, '1006')
+        $path = $window.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $pathCondition)
+        $path.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue($Root)
+        $agreementCondition = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::AutomationIdProperty, '1005')
+        $agreement = $window.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $agreementCondition)
+        $agreement.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Toggle()
+        if (-not $action.Current.IsEnabled) { throw 'License consent did not enable Install' }
         $initialName = $action.Current.Name
         $action.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
         $deadline = [DateTime]::UtcNow.AddMinutes(5)
@@ -289,13 +297,23 @@ try {
     }
 
     Write-Output '5. Install again, then uninstall with /PURGE'
-    Invoke-Setup $Installer '/S'
+    Invoke-Setup $Installer "/S /D=$Root"
     Assert-Installed
     Invoke-Setup $Uninstaller "/S /PURGE _?=$Root"
     Assert-Removed
     foreach ($purged in $ServiceData, $UserData) {
         Expect (-not (Test-Path -LiteralPath $purged)) "/PURGE left $purged"
     }
+    Write-Output '6. Default install location'
+    $Root = Join-Path $env:ProgramW6432 'Solaris'
+    $Client = Join-Path $Root 'Solaris.exe'
+    $ServiceExecutable = Join-Path $Root 'solaris-service.exe'
+    $Uninstaller = Join-Path $Root 'uninstall.exe'
+    $LinkCommand = "`"$Client`" `"%1`""
+    Invoke-Setup $Installer '/S'
+    Assert-Installed
+    Invoke-Setup $Uninstaller "/S /PURGE _?=$Root"
+    Assert-Removed
 } finally {
     if ($null -ne $ui -and -not $ui.HasExited) { $ui.Kill() }
     Unregister-ScheduledTask -TaskName $OtherTask -TaskPath '\' -Confirm:$false -ErrorAction SilentlyContinue

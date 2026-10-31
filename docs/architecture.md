@@ -485,7 +485,7 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 ### 5.1 安装布局
 
 ```text
-C:\Program Files\Solaris\            管理员所有，用户只读；安装器固定装在这里
+C:\Program Files\Solaris\            默认位置；可自定义，安装目录管理员所有、普通用户只读运行
 ├── Solaris.exe                      Nuitka standalone UI
 ├── solaris-service.exe              Go 服务；wintun.dll（0.14.1）由 sing-tun 嵌在里面，从内存加载
 ├── geodata\                         随安装包附带的 GeoSite.dat、GeoIP.dat（D18），服务把 home 缺少的复制过去
@@ -575,7 +575,7 @@ PID 来防止管道名被抢注。
 **未签名的构建**：Windows 安装包目前不签名（D29），`scripts/build_windows.py` 链接服务时只注入版本，
 `SignedRelease` 保持默认的 `"false"`，服务把空的签名者交给 `peer.PipeClientVerifier`，只跳过第 4 项。第 1、2、3、5 项
 照常：客户端必须就是服务旁边那个 `Solaris.exe` 文件本身（卷序列号和文件 ID 相同，连接期间锁住），复制到别处的同一个
-程序、同名的其他程序都会被断开。安装目录 `C:\Program Files\Solaris` 只有管理员能写，所以能换掉这个文件的人本来就
+程序、同名的其他程序都会被断开。安装目录（默认 `C:\Program Files\Solaris`）只有管理员能写，所以能换掉这个文件的人本来就
 能换掉服务。`peer_windows_test.go` 用空签名者测这几项（复制出的程序被拒、界面没装时被拒、会话 0 被拒），以及服务的
 可执行文件只在有管理员权限时通过（以 UAC 那样过滤过的 token 起的子进程被拒）；CI 的
 `smoke-test.ps1` 用 PowerShell 连一次装好的服务的管道，只确认它在监听。签名以后发布构建链接时打开
@@ -758,7 +758,11 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
     DESIGN.md 生成，支持中英文、系统浅深色、高对比度和 DPI 变化。NSIS 的默认页面隐藏；普通运行先由 UI 收集
     安装/卸载选择，再在静默引擎中执行原有事务，并把实际阶段和结果回传 UI。控件只返回选择，不执行安装命令。
     `/S` 不创建界面；操作进行中不能关闭，完成或失败后可查看详情并关闭，安装完成还可打开 Solaris。
-  - 安装：位置固定为 `C:\Program Files\Solaris`（`/D=` 不起作用，服务只认这个只有管理员能写的目录里的界面）；复制
+  - 安装：默认 `C:\Program Files\Solaris`，首次安装可输入路径或浏览选择，静默安装支持最后一个参数 `/D=<完整路径>`（不加引号）。
+    交互安装与升级需主动勾选 GPLv3 同意项，可在同一窗口阅读仓库 LICENSE 全文；静默执行不显示确认页。
+    写文件及执行已有程序前，`prepare-directory` 检查本地固定 NTFS/ReFS 卷、路径各级的所有者和 ACL、目录链接及已有内容。
+    只新建缺失目录，并在创建时设置受保护的 ACL（SYSTEM / Administrators 完全控制，Users 读取执行），不修改现有父目录权限。
+    普通用户可修改/替换的目录、链接和不属于 Solaris 的非空目标会被拒绝；应用目录的标记支持失败后的重试。然后复制
     文件；用 `sc.exe` 注册 `SolarisService`（LocalSystem、自动启动，5.2 节的故障恢复，`failureflag 1` 让服务带错误
     退出时也重启）并启动；在 HKLM 下注册 `solaris:` 和 `clash:`，命令是 `"<安装目录>\Solaris.exe" "%1"`；所有用户的
     开始菜单快捷方式；"应用"里的卸载信息。安装器以管理员身份运行，可能不是使用者本人，所以 scheme 写在 HKLM 而不是
@@ -767,7 +771,7 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   - 升级：注册表里已有安装时，先关闭正在运行的界面（见下面的"关闭界面"；隧道在服务里，不受影响），停止服务并等它
     的进程退出，再以 `/UPGRADE` 静默运行旧版本的
     卸载器：它只按自己的清单删除装过的文件，服务、计划任务和注册都留着。然后复制新文件，把服务指向新文件并启动，
-    服务按 `was_running` 恢复隧道（5.2 节）。已装在别的目录时拒绝安装，请用户先卸载。
+    服务按 `was_running` 恢复隧道（5.2 节）。升级始终沿用注册表记录的位置，包括自定义目录；如需迁移位置，先卸载再安装。
   - 卸载：关闭界面；停止并删除服务；删除每个用户指向本安装的"登录时打开"计划任务（`Solaris (<域>_<用户>)`，
     `src/solaris/desktop/login.py`）、开始菜单快捷方式和卸载信息；两个 scheme 只在仍指向本安装时删除；按清单逐个
     删除装过的文件，安装目录只在空了时删除，不递归删除未知文件。

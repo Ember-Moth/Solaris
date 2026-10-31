@@ -149,6 +149,29 @@ foreach ($sample in @(
     try {
         $name = "$($sample.Mode)-$($sample.Lang)-$($sample.Theme)"
         Snapshot $case.Window "$name-ready"
+        if ($sample.Mode -ne 'uninstall') {
+            if ([SetupUI]::IsWindowEnabled([SetupUI]::GetDlgItem($case.Window, 1001))) { throw 'Install was enabled before license consent' }
+            if ($sample.Mode -eq 'install') {
+                $path = (Element $case.Window 1006).GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
+                $path.SetValue('C:\Solaris Preview')
+            }
+            Invoke-Button $case.Window 1008
+            $license = (Element $case.Window 1009).GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
+            if (-not $license.Current.IsReadOnly -or $license.Current.Value.Length -lt 30000 -or
+                $license.Current.Value -notmatch 'END OF TERMS AND CONDITIONS') { throw 'The full GPLv3 text is not readable' }
+            Snapshot $case.Window "$name-license"
+            Invoke-Button $case.Window 1002
+            if ([SetupUI]::IsWindowEnabled([SetupUI]::GetDlgItem($case.Window, 1001))) { throw 'Reading the license implicitly accepted it' }
+            $agreement = (Element $case.Window 1005).GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
+            if ($agreement.Current.ToggleState -ne [System.Windows.Automation.ToggleState]::Off) { throw 'License consent was selected by default' }
+            $agreement.Toggle()
+            if (-not [SetupUI]::IsWindowEnabled([SetupUI]::GetDlgItem($case.Window, 1001))) { throw 'License consent did not enable Install' }
+            $agreement.Toggle()
+            if ([SetupUI]::IsWindowEnabled([SetupUI]::GetDlgItem($case.Window, 1001))) { throw 'Revoking consent did not disable Install' }
+            Invoke-Button $case.Window 1008
+            Invoke-Button $case.Window 1001
+            if ($agreement.Current.ToggleState -ne [System.Windows.Automation.ToggleState]::On) { throw 'Agree and return did not accept the license' }
+        }
         if ($sample.Mode -eq 'uninstall') {
             $check = Element $case.Window 1004
             $toggle = $check.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
@@ -173,4 +196,4 @@ foreach ($sample in @(
         Assert-Exit $case $sample.Code
     } finally { if (-not $case.Process.HasExited) { $case.Process.Kill() } }
 }
-Write-Output 'Installer UI: locale, theme, keyboard default, progress, completion, failure and purge choice passed.'
+Write-Output 'Installer UI: license consent, full GPL text, custom path, locale, theme, keyboard default, progress, completion, failure and purge choice passed.'

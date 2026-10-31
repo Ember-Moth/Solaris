@@ -6,3 +6,4 @@ EXPORTS
     Finish
     Capture
     Close
+    GetDirectory

@@ -13,6 +13,7 @@ Var UiEnabled
   File /oname=Inter-OFL.txt "${INSTALLER_FONTS}\inter\OFL.txt"
   File /oname=JetBrainsMono-Regular.ttf "${INSTALLER_FONTS}\jetbrains-mono\JetBrainsMono-Regular.ttf"
   File /oname=JetBrainsMono-OFL.txt "${INSTALLER_FONTS}\jetbrains-mono\OFL.txt"
+  File /oname=LICENSE.txt "${INSTALLER_LICENSE}"
 !macroend
 
 ; Only used from .onInit / un.onInit, where SetSilent is valid. $0 retains the choice
@@ -30,6 +31,8 @@ Var UiEnabled
     SetErrorLevel 1603
     Quit
   ${EndIf}
+  SolarisSetupUI::GetDirectory
+  Pop $INSTDIR
   StrCpy $UiEnabled 1
   SetSilent silent
 !macroend

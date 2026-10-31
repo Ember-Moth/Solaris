@@ -40,11 +40,14 @@ Function .onInit
     SetErrorLevel 1603
     Quit
   ${EndIf}
+  SolarisSetupUI::GetDirectory
+  Pop $INSTDIR
   StrCpy $UiEnabled 1
   SetSilent silent
 FunctionEnd
 
 Section
+  !insertmacro UiLog "$INSTDIR"
   ${If} $LANGUAGE == ${LANG_SIMPCHINESE}
     !insertmacro UiStatus "正在准备应用文件…"
     !insertmacro UiLog "预览模式：未修改应用、服务或用户数据。"

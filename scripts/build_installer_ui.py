@@ -172,6 +172,9 @@ def build(output: Path) -> Path:
         "dwmapi.lib",
         "uxtheme.lib",
         "advapi32.lib",
+        "ole32.lib",
+        "shell32.lib",
+        "uuid.lib",
     ]
     subprocess.run(command, env=environment, check=True)
     return dll
@@ -211,6 +214,7 @@ def build_preview(plugin: Path, makensis: Path) -> Path:
         "INSTALLER_UI_DIR": plugin.parent,
         "INSTALLER_UI_INCLUDE": SOURCE / "interface.nsh",
         "INSTALLER_FONTS": ROOT / "src/solaris/ui/fonts",
+        "INSTALLER_LICENSE": ROOT / "LICENSE",
     }
 
     def quoted(value: str | Path) -> str:

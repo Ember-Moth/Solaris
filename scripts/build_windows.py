@@ -256,6 +256,7 @@ def build_installer(directory: Path, version: str, makensis: Path, output: Path)
         "INSTALLER_UI_DIR": plugin.parent,
         "INSTALLER_UI_INCLUDE": PACKAGE / "ui" / "interface.nsh",
         "INSTALLER_FONTS": ROOT / "src" / "solaris" / "ui" / "fonts",
+        "INSTALLER_LICENSE": ROOT / "LICENSE",
     }
     wrapper = work / "installer.nsi"
     lines = [f'!define {key} "{nsis_string(str(value))}"' for key, value in definitions.items()]
