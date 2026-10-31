@@ -25,7 +25,9 @@ env:
 jobs:
   macos:
     name: macOS arm64 (signed and notarized)
-    runs-on: macos-15
+    # The app needs macOS 26 (D28): on an older system Gatekeeper's assessment rejects it, so
+    # the release is built and checked on the system it ships for.
+    runs-on: macos-26
     environment: release
     timeout-minutes: 120
     steps:
