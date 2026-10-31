@@ -95,8 +95,8 @@ jobs:
           security import "$signing/certificate.p12" -k "$keychain" \
             -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
           rm "$signing/certificate.p12"
-          # The certificate is issued by Apple's Developer ID G2 intermediate, which the runner's
-          # keychains lack; without it the chain stops short and the identity is not valid.
+          # Apple's Developer ID G2 intermediate issues the certificate. Importing it keeps the
+          # chain complete whatever the runner image carries.
           security import apple/certificates/DeveloperIDG2CA.cer -k "$keychain"
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" \
             "$keychain" > /dev/null
