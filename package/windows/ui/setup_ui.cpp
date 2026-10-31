@@ -423,6 +423,9 @@ void drawProgress(State& s, HWND window, HDC dc) {
 
 LRESULT CALLBACK progressProcedure(HWND window, UINT message, WPARAM wparam, LPARAM lparam, UINT_PTR, DWORD_PTR data) {
   auto& s = *reinterpret_cast<State*>(data);
+  // The classic progress class otherwise reserves and paints an etched frame
+  // outside WM_PAINT. Use the entire control rectangle for the rounded track.
+  if (message == WM_NCCALCSIZE || message == WM_NCPAINT) return 0;
   if (message == WM_ERASEBKGND) return 1;
   if (message == WM_PAINT) {
     PAINTSTRUCT paint{};
