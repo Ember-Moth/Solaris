@@ -337,6 +337,12 @@ class SourceInspection:
     group_count: int
     rule_count: int
 
+    @property
+    def node_count(self) -> int:
+        """The nodes the source brings to the node pool: neither info nodes nor mesh
+        outbounds (docs/mesh.md §3). The subscriptions page counts these everywhere."""
+        return sum(not node.info and not node.mesh for node in self.nodes)
+
 
 @dataclass(frozen=True)
 class GeoDataset:

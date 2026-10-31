@@ -41,10 +41,9 @@ mihomo 自带三种组网出站：`tailscale`、`zerotier`、`easytier`。它们
   （`target` 是方案里写的引用）。不改走"节点选择"：发往私有地址的流量走普通代理也到不了，还会让这些地址经代理节点出去。
 - 自建组的成员条件（地区、来源订阅、名称、全部节点）不匹配组网出站；手动挑选也不列出它们。
 - `CompositionReport` 有 `mesh` 列表：`id`、名称、类型（`Tailscale`、`ZeroTier`、`EasyTier`）、来源订阅，按订阅
-  顺序；节点池（`nodes`）里没有它们。`InspectSource` 的节点多一个标记 `mesh: true`，`info` 总是 false。界面不看
-  这个标记：订阅页上订阅行的节点数（配置里 `proxies` 的条目数）和删除订阅时提示的"节点池会少 N 个节点"都含组网
-  出站；页面的合计"节点池 N 个节点"有拼装报告时取报告的 `nodes`，不含组网出站，还没有报告时按各订阅的节点相加，
-  也含组网出站。
+  顺序；节点池（`nodes`）里没有它们。`InspectSource` 的节点多一个标记 `mesh: true`，`info` 总是 false。订阅页上
+  的节点数都不含组网出站和信息节点（`SourceInspection.node_count`）：订阅行的节点数、删除订阅时提示的"节点池会少
+  N 个节点"，以及还没有拼装报告时按各订阅相加的合计；有报告时合计取报告的 `nodes`，同样不含。
 - 分享导出（routing.md 8.8 节）写组网出站的名称；`ConvertToPlan` 带来源订阅 id 时，把指向这份订阅里组网出站的
   规则转成 `mesh:` 目标，导入（没有来源）时跳过这些规则（`target`）。策略组里列出的组网出站不进成员。
 - 实现在 `internal/compose`（`pool.go` 分出组网出站，`compose.go` 的 `target`），测试是 `egress_test.go`。

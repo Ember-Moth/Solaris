@@ -7,7 +7,7 @@ from typing import ClassVar
 
 import pytest
 
-from solaris.models.profiles import ProfileError, Usage, count_proxies
+from solaris.models.profiles import ProfileError, Usage
 from solaris.models.subscription import (
     USER_AGENT,
     UrlFetcher,
@@ -16,7 +16,7 @@ from solaris.models.subscription import (
     read_config_file,
     suggested_name,
 )
-from tests.support.simulated import NODES, SAMPLE_CONFIG
+from tests.support.simulated import SAMPLE_CONFIG
 
 
 @pytest.mark.parametrize(
@@ -67,22 +67,6 @@ def test_read_config_file(tmp_path: Path) -> None:
     with pytest.raises(ProfileError) as raised:
         read_config_file(tmp_path / "missing.yaml")
     assert raised.value.code == "file_unreadable"
-
-
-@pytest.mark.parametrize(
-    ("text", "count"),
-    [
-        (SAMPLE_CONFIG, len(NODES)),
-        ("proxies:\n- name: a\n  type: ss\n- name: b\n  type: ss\nrules: []\n", 2),
-        ("proxies:\n  # a comment\n  - name: a\n\n    type: ss\nproxy-groups:\n  - name: g\n", 1),
-        ("proxies: []\n", 0),
-        ("proxies: [{name: a}]\n", None),
-        ("proxy-providers:\n  p: {type: http}\n", None),
-        ("proxies:\nrules: []\n", None),
-    ],
-)
-def test_count_proxies(text: str, count: int | None) -> None:
-    assert count_proxies(text) == count
 
 
 class _Handler(BaseHTTPRequestHandler):

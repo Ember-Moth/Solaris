@@ -271,8 +271,6 @@ exits.md 第 9 节的待实测项。
   `TestSecurity3EmbedModeGuardsAStrayController` 会写，它在 `-race` 下跳过，普通的 `go test` 照跑。
 - **GEO 数据的自动更新**在 engine 的协程里调用 mihomo 的 `UpdateGeoDatabases`，它和解析配置共用 mihomo 的包级
   状态，没有加锁（mihomo 自己的定时更新也是这样）。测试不跑真实的更新。
-- **节点数对不上**：订阅行的节点数和删除订阅时提示的"节点池会少 N 个节点"把组网出站算在内，订阅页的合计在有
-  拼装报告时不算（[mesh.md](mesh.md) 第 3 节）。
 - **macOS 的登录项**由 `SMAppService` 不带参数启动 app，所以登录后界面会显示窗口；Windows 的计划任务带
   `--background`，只进托盘（[ui.md](ui.md) 第 8 节）。
 - **WARP 的注册接口不是官方的**：Cloudflare 改动或限流时注册会失败。失败时拒绝连接，不退回普通代理；接口的常量

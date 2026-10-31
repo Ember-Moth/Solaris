@@ -85,7 +85,7 @@ def test_a_first_import_with_nodes_only_routes_with_the_default_plan(tmp_path: P
         profiles = await scene.library.profiles.import_url("https://nodes.example.com/s", "机场")
         # Nodes only: no profile's own rules to use.
         assert profiles.active is None
-        assert profiles.profiles[0].proxy_count == 3
+        assert profiles.profiles[0].proxy_count == 2  # 剩余流量 is an info node, not counted
         await scene.library.tunnel.start()
 
     run(scenario)
@@ -242,6 +242,27 @@ def test_removing_the_last_profile_with_rules_switches_to_the_plan(tmp_path: Pat
     assert config is not None
     assert config.composition is not None
     assert [s.id for s in config.composition.sources] == ["sample-b", "sample-c"]
+
+
+def test_nodes_are_counted_without_info_nodes_and_mesh_outbounds(tmp_path: Path) -> None:
+    """The subscription's row, the removal prompt and the pool count the same nodes: the
+    info node and the mesh outbound stay out of all three (docs/mesh.md §3)."""
+    scene = Scene(tmp_path)
+    with_mesh = NODES_ONLY + "  - {name: 家里, type: tailscale, auth-key: tskey-auth-x}\n"
+    scene.fetcher.body = with_mesh.encode()
+
+    async def scenario() -> None:
+        profiles = await scene.library.profiles.import_url("https://nodes.example.com/m", "M")
+        profile = profiles.profiles[0]
+        assert profile.proxy_count == 2
+        assert scene.state().mode == MODE_PLAN  # nodes only
+        removal = await scene.library.profiles.removal(profile.id)
+        assert removal.pool_nodes == 2
+        routing = await scene.library.routing()
+        assert routing.report is not None
+        assert len(routing.report.nodes) == 2
+
+    run(scenario)
 
 
 def test_the_pool_follows_the_profiles(tmp_path: Path) -> None:

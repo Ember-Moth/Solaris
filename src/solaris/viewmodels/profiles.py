@@ -280,7 +280,7 @@ class ProfilesViewModel(QObject):
             inspection = self._routing.inspections.get(profile.id)
             if inspection is None:
                 return None
-            total += sum(not node.info for node in inspection.nodes)
+            total += inspection.node_count
         return total
 
     @Property(bool, notify=changed)

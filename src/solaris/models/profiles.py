@@ -42,7 +42,8 @@ class Profile:
     auto_update_hours: int = 0  # subscriptions only; 0 turns automatic updates off
     updated_at: float = 0.0  # unix seconds of the last download or import
     usage: Usage | None = None
-    proxy_count: int | None = None  # inline proxies; None when not countable
+    # The nodes it brings to the node pool (SourceInspection.node_count); None until read.
+    proxy_count: int | None = None
     has_override: bool = False  # it has an override of its own; read from the overrides
     in_pool: bool = True  # its nodes join the node pool of the user's plans (routing.md §5.2)
     # Whether the stored config brings rules of its own; None until a core read it.
@@ -88,35 +89,3 @@ class ProfileList:
         return replace(
             self, profiles=profiles, active=active, update_failed=self.update_failed - {profile_id}
         )
-
-
-def count_proxies(text: str) -> int | None:
-    """Count the items of the top-level ``proxies:`` block sequence, for display only.
-
-    A line scan instead of a YAML parser: the service validates the config, the UI only
-    shows how many nodes it holds. Returns None for other styles (flow sequences, anchors)
-    and for configs without inline proxies; provider nodes are not counted."""
-    lines = text.splitlines()
-    start = next((i for i, line in enumerate(lines) if line.startswith("proxies:")), None)
-    if start is None:
-        return None
-    rest = lines[start].removeprefix("proxies:").split("#", 1)[0].strip()
-    if rest:
-        return 0 if rest == "[]" else None
-    count = 0
-    indent: int | None = None
-    for line in lines[start + 1 :]:
-        item = line.lstrip(" ")
-        if not item or item.startswith("#"):
-            continue
-        level = len(line) - len(item)
-        is_item = item == "-" or item.startswith("- ")
-        if indent is None:
-            if not is_item:
-                return None
-            indent = level
-        if level < indent or (level == indent and not is_item):
-            break
-        if level == indent:
-            count += 1
-    return count

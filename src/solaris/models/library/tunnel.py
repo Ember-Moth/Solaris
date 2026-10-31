@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 from solaris.host.base import HostError, RunOptions, SourceInspection
 from solaris.models import plans
 from solaris.models.library.core import has_rules, live_options
-from solaris.models.profiles import ProfileError, count_proxies
+from solaris.models.profiles import ProfileError
 from solaris.models.routing import MODE_PLAN, MODE_PROFILE
 from solaris.models.settings import Settings
 
@@ -77,13 +77,13 @@ class Tunnel:
             if config.composition is not None:
                 core.report = report
 
-    async def _read_stored(self, profile_id: str) -> tuple[str, SourceInspection]:
+    async def _read_stored(self, profile_id: str) -> SourceInspection:
         core = self._core
         text = await asyncio.to_thread(core.store.read_config, profile_id)
         inspection = await core.read(text, profile_id)
         if inspection is None:
             raise HostError("not_running", "no core answers")
-        return text, inspection
+        return inspection
 
     async def _read_unread(self) -> None:
         """Have the core read the profiles stored while none could, and settle what their
@@ -97,7 +97,7 @@ class Tunnel:
         updated = core.list
         for profile in [p for p in core.list.profiles if p.unread]:
             try:
-                text, inspection = await self._read_stored(profile.id)
+                inspection = await self._read_stored(profile.id)
             except HostError as error:
                 if error.code != "invalid_config":
                     raise
@@ -105,12 +105,15 @@ class Tunnel:
                 if not await asyncio.to_thread(core.store.fall_back, profile.id):
                     refused[profile.id] = error
                     continue
-                text, inspection = await self._read_stored(profile.id)
+                inspection = await self._read_stored(profile.id)
             else:
                 core.mark_failed(profile.id, None)
-            count = count_proxies(text)
-            nodes = len(inspection.nodes) if count is None else count
-            read = replace(profile, proxy_count=nodes, has_rules=inspection.has_rules, unread=False)
+            read = replace(
+                profile,
+                proxy_count=inspection.node_count,
+                has_rules=inspection.has_rules,
+                unread=False,
+            )
             updated = updated.put(read)
             core.inspections[profile.id] = inspection
             if updated.active is None and inspection.has_rules:

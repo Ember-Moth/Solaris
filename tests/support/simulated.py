@@ -61,9 +61,8 @@ from solaris.models.profiles import (
     ProfileError,
     ProfileList,
     Usage,
-    count_proxies,
 )
-from solaris.models.routing import MODE_PROFILE, RoutingStore
+from solaris.models.routing import DEFAULT_INFO_PATTERN, MODE_PROFILE, RoutingStore
 from solaris.models.store import ProfileStore
 from solaris.models.subscription import Download
 from tests.support.simulated_core import (
@@ -1008,7 +1007,7 @@ def seed_profiles(store: ProfileStore, now: float) -> ProfileList:
     local = store.directory / "config.yaml"
     local.parent.mkdir(parents=True, exist_ok=True)
     local.write_text(SAMPLE_CONFIG, encoding="utf-8")
-    count = count_proxies(SAMPLE_CONFIG)
+    count = inspect(SAMPLE_CONFIG, DEFAULT_INFO_PATTERN).node_count
     profiles = (
         Profile(
             id="sample-a",

@@ -34,7 +34,6 @@ from solaris.models.profiles import (
     ProfileError,
     ProfileList,
     Usage,
-    count_proxies,
 )
 from solaris.models.routing import MODE_PLAN, MODE_PROFILE, Plan
 from solaris.models.subscription import Fetcher, check_url, decode_config, read_config_file
@@ -75,7 +74,6 @@ class Profiles:
             auto_update_hours=DEFAULT_AUTO_UPDATE_HOURS if auto_update else 0,
             updated_at=self._core.clock(),
             usage=download.usage,
-            proxy_count=count_proxies(text),
         )
         async with self._core.lock:
             return await self._add(profile, text)
@@ -88,7 +86,6 @@ class Profiles:
             kind=KIND_FILE,
             path=str(path),
             updated_at=self._core.clock(),
-            proxy_count=count_proxies(text),
         )
         async with self._core.lock:
             return await self._add(profile, text)
@@ -101,9 +98,9 @@ class Profiles:
             await asyncio.to_thread(core.store.write_config, profile.id, text)
             await core.save(core.list.put(replace(profile, proxy_count=None, unread=True)))
             return core.list
-        profile = replace(profile, has_rules=inspection.has_rules)
-        if profile.proxy_count is None:
-            profile = replace(profile, proxy_count=len(inspection.nodes))
+        profile = replace(
+            profile, has_rules=inspection.has_rules, proxy_count=inspection.node_count
+        )
         updated = core.list.put(profile)
         if updated.active is None and inspection.has_rules:
             updated = replace(updated, active=profile.id)
@@ -209,12 +206,11 @@ class Profiles:
             if profile.in_pool:
                 core.report = None  # the pool lost its nodes until they are read
             return
-        count = count_proxies(text)
         refreshed = replace(
             profile,
             updated_at=core.clock(),
             usage=usage,
-            proxy_count=len(inspection.nodes) if count is None else count,
+            proxy_count=inspection.node_count,
             has_rules=inspection.has_rules,
             unread=False,
         )
@@ -292,7 +288,7 @@ class Profiles:
         if core.state.mode == MODE_PLAN and profile.in_pool:
             inspection = core.inspections.get(profile_id)
             if inspection is not None:
-                pool_nodes = sum(not node.info for node in inspection.nodes)
+                pool_nodes = inspection.node_count
         return Removal(profile, active, successor, pool_nodes)
 
     async def remove(self, profile_id: str) -> ProfileList:

@@ -77,7 +77,7 @@ def test_another_refused_profile_is_marked_and_left_out(tmp_path: Path) -> None:
     nodes, broken = profiles.profiles
     assert scene.state().mode == MODE_PLAN  # the first one read has nodes only
     assert not nodes.unread
-    assert nodes.proxy_count == 3
+    assert nodes.proxy_count == 2  # without the info node
     assert broken.unread
     assert broken.id in profiles.update_failed
     config = scene.host.config
