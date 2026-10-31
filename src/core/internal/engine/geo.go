@@ -50,24 +50,32 @@ const geoCheckInterval = time.Hour
 // mihomo only schedules its own updater from its main, which the embedded core never
 // runs. Fresh data takes effect with the next Start or Reload.
 type geoUpdater struct {
-	stop chan struct{}
-	done chan struct{}
+	interval time.Duration // the configuration's geo-update-interval
+	stop     chan struct{}
+	done     chan struct{}
 }
 
-// syncGeoUpdater runs the updater when cfg asks for it and stops it otherwise. The
-// lifecycle lock holds.
+// syncGeoUpdater runs the updater when cfg asks for it, restarting it when the interval
+// changes, and stops it otherwise. The lifecycle lock holds.
 func (e *Engine) syncGeoUpdater(cfg *config.Config) {
-	if cfg != nil && cfg.General.GeoAutoUpdate && cfg.General.GeoUpdateInterval > 0 {
-		if e.geo == nil {
-			e.geo = &geoUpdater{stop: make(chan struct{}), done: make(chan struct{})}
-			go e.geo.run(geoCheckInterval, geoDataTime, updater.UpdateGeoDatabases)
-		}
+	var interval time.Duration
+	if cfg != nil && cfg.General.GeoAutoUpdate {
+		interval = time.Duration(cfg.General.GeoUpdateInterval) * time.Hour
+	}
+	if e.geo != nil && e.geo.interval == interval {
 		return
 	}
 	if e.geo != nil {
 		close(e.geo.stop)
 		<-e.geo.done
 		e.geo = nil
+	}
+	if interval > 0 {
+		// mihomo's path lookups record the file names they find in package state that
+		// parsing a configuration shares, so they run here and not in the updater.
+		paths := []string{C.Path.GeoSite(), C.Path.GeoIP()}
+		e.geo = &geoUpdater{interval: interval, stop: make(chan struct{}), done: make(chan struct{})}
+		go e.geo.run(geoCheckInterval, func() time.Time { return geoDataTime(paths) }, updater.UpdateGeoDatabases)
 	}
 }
 
@@ -76,8 +84,7 @@ func (g *geoUpdater) run(check time.Duration, dataTime func() time.Time, update 
 	ticker := time.NewTicker(check)
 	defer ticker.Stop()
 	for {
-		interval := time.Duration(updater.GeoUpdateInterval()) * time.Hour
-		if geoUpdateDue(dataTime(), interval, time.Now()) {
+		if geoUpdateDue(dataTime(), g.interval, time.Now()) {
 			if err := update(); err != nil {
 				log.Warnln("[engine] GEO data update: %s", err)
 			}
@@ -96,10 +103,10 @@ func geoUpdateDue(dataTime time.Time, interval time.Duration, now time.Time) boo
 	return !dataTime.IsZero() && interval > 0 && !now.Before(dataTime.Add(interval))
 }
 
-// geoDataTime is when the oldest GEO data file in the home directory was written.
-func geoDataTime() time.Time {
+// geoDataTime is when the oldest of the GEO data files at paths was written.
+func geoDataTime(paths []string) time.Time {
 	var oldest time.Time
-	for _, path := range []string{C.Path.GeoSite(), C.Path.GeoIP()} {
+	for _, path := range paths {
 		info, err := os.Stat(path)
 		if errors.Is(err, fs.ErrNotExist) {
 			continue

@@ -3,7 +3,6 @@ package control
 import (
 	"context"
 	"fmt"
-	"net"
 	"os"
 	"strings"
 	"testing"
@@ -16,6 +15,7 @@ import (
 	"github.com/Ember-Moth/Solaris/src/core/internal/engine"
 	"github.com/Ember-Moth/Solaris/src/core/internal/geodata/geodatatest"
 	"github.com/Ember-Moth/Solaris/src/core/internal/peer"
+	"github.com/Ember-Moth/Solaris/src/core/internal/porttest"
 	"github.com/Ember-Moth/Solaris/src/core/internal/product"
 )
 
@@ -124,16 +124,6 @@ func systemProxyRequest(enabled bool) func(*controlpb.Request) {
 	}
 }
 
-func freePort(t *testing.T) int {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer listener.Close()
-	return listener.Addr().(*net.TCPAddr).Port
-}
-
 func profileYAML(mixedPort int) string {
 	return fmt.Sprintf(`mixed-port: %d
 proxies:
@@ -222,8 +212,8 @@ func TestHostMethodsDependOnHost(t *testing.T) {
 	}
 	expectOK(t, call(t, extension, request(4, validate)))
 	withProxy := &controlpb.RunOptions{SystemProxyEnabled: true}
-	expectError(t, call(t, extension, request(5, startRequest(profileYAML(freePort(t)), withProxy))), 5, CodeUnsupportedMethod)
-	expectOK(t, call(t, extension, request(6, startRequest(profileYAML(freePort(t)), nil))))
+	expectError(t, call(t, extension, request(5, startRequest(profileYAML(porttest.Free(t)), withProxy))), 5, CodeUnsupportedMethod)
+	expectOK(t, call(t, extension, request(6, startRequest(profileYAML(porttest.Free(t)), nil))))
 	expectOK(t, call(t, extension, request(7, stopRequest)))
 	if core.State() != controlpb.RunState_RUN_STATE_STOPPED {
 		t.Fatalf("state = %v after stop", core.State())
@@ -240,7 +230,7 @@ func TestHostMethodsDependOnHost(t *testing.T) {
 // or the system proxy fails with unsupported_method, whatever the request carries.
 func TestDevelopmentRejectsTUN(t *testing.T) {
 	dispatcher := development(t)
-	port := freePort(t)
+	port := porttest.Free(t)
 	tun := &controlpb.RunOptions{TunEnabled: true}
 	expectError(t, call(t, dispatcher, request(1, startRequest(profileYAML(port), tun))), 1, CodeUnsupportedMethod)
 	if core.State() != controlpb.RunState_RUN_STATE_STOPPED {
@@ -261,7 +251,7 @@ func TestDevelopmentRejectsSystemProxy(t *testing.T) {
 	expectError(t, call(t, dispatcher, request(1, systemProxyRequest(true))), 1, CodeUnsupportedMethod)
 	expectOK(t, call(t, dispatcher, request(2, systemProxyRequest(false))))
 	withProxy := &controlpb.RunOptions{SystemProxyEnabled: true}
-	expectError(t, call(t, dispatcher, request(3, startRequest(profileYAML(freePort(t)), withProxy))), 3, CodeUnsupportedMethod)
+	expectError(t, call(t, dispatcher, request(3, startRequest(profileYAML(porttest.Free(t)), withProxy))), 3, CodeUnsupportedMethod)
 	if core.State() != controlpb.RunState_RUN_STATE_STOPPED {
 		t.Fatalf("state = %v after a rejected start", core.State())
 	}
@@ -269,7 +259,7 @@ func TestDevelopmentRejectsSystemProxy(t *testing.T) {
 
 func TestLifecycleAndCoreMethods(t *testing.T) {
 	dispatcher := development(t)
-	port := freePort(t)
+	port := porttest.Free(t)
 	profile := profileYAML(port)
 
 	validate := func(yaml string) func(*controlpb.Request) {
@@ -349,7 +339,7 @@ func TestLogSubscriptionCarriesMihomoLines(t *testing.T) {
 	}))
 	id := subscribe.GetSubscribe().GetSubscriptionId()
 	expectOK(t, call(t, dispatcher, request(2, func(r *controlpb.Request) {
-		r.Method = &controlpb.Request_Validate{Validate: &controlpb.ValidateRequest{Source: &controlpb.ValidateRequest_ConfigYaml{ConfigYaml: profileYAML(freePort(t))}}}
+		r.Method = &controlpb.Request_Validate{Validate: &controlpb.ValidateRequest{Source: &controlpb.ValidateRequest_ConfigYaml{ConfigYaml: profileYAML(porttest.Free(t))}}}
 	})))
 	var seen []string
 	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
@@ -369,7 +359,7 @@ func TestLogSubscriptionCarriesMihomoLines(t *testing.T) {
 // Validate, Start and Reload all run the overrides, global first, in the order sent.
 func TestOverridesReachEveryAdmission(t *testing.T) {
 	dispatcher := development(t)
-	profile := profileYAML(freePort(t))
+	profile := profileYAML(porttest.Free(t))
 	mode := func(id uint64) controlpb.Mode {
 		return call(t, dispatcher, request(id, func(r *controlpb.Request) {
 			r.Method = &controlpb.Request_GetStatus{GetStatus: &controlpb.GetStatusRequest{}}

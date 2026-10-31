@@ -26,6 +26,7 @@ import (
 	"github.com/metacubex/mihomo/hub/route"
 
 	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
+	"github.com/Ember-Moth/Solaris/src/core/internal/porttest"
 )
 
 // Regression tests for the requirements of docs/architecture.md §3.3, in order.
@@ -93,8 +94,8 @@ secret: hunter2
 	}
 	defer os.RemoveAll(dir)
 	socket := filepath.Join(dir, "c.sock")
-	api := freePort(t)
-	profile := directProfile(freePort(t), "http://127.0.0.1:1/",
+	api := porttest.Free(t)
+	profile := directProfile(porttest.Free(t), "http://127.0.0.1:1/",
 		fmt.Sprintf("external-controller: 127.0.0.1:%d\nexternal-controller-unix: '%s'", api, socket))
 	if _, err := engine.Start(profile); err != nil {
 		t.Fatal(err)
@@ -112,6 +113,11 @@ secret: hunter2
 // #3: embed mode is on, so even a controller started by mistake cannot restart the
 // process, rewrite the configuration or upgrade the core.
 func TestSecurity3EmbedModeGuardsAStrayController(t *testing.T) {
+	if raceEnabled {
+		// route.ReCreateServer starts and stops the controller in goroutines that swap
+		// mihomo's package-level servers without a lock (docs/maintenance.md §3).
+		t.Skip("mihomo's controller start and stop race; the plain test run covers this")
+	}
 	openEngine(t, admission.TunNone)
 	dir, err := os.MkdirTemp("", "md-ctl-")
 	if err != nil {
@@ -239,7 +245,7 @@ func TestSecurity5SelectionSurvivesRestart(t *testing.T) {
 
 	engine := openEngine(t, admission.TunNone)
 	server := target(t)
-	profile = directProfile(freePort(t), server.URL+"/generate_204", "profile: {store-selected: false}")
+	profile = directProfile(porttest.Free(t), server.URL+"/generate_204", "profile: {store-selected: false}")
 	if _, err := engine.Start(profile); err != nil {
 		t.Fatal(err)
 	}

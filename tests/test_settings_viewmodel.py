@@ -156,7 +156,10 @@ def test_port_while_stopped_is_only_stored(qtbot: QtBot, view_models: ViewModels
     assert isinstance(host, SimulatedHost)
     qtbot.waitUntil(lambda: prop(view_models.overview, "connected"))
     view_models.overview.toggleConnection()
-    qtbot.waitUntil(lambda: not prop(view_models.overview, "connected"))
+    # A refresh may show the tunnel stopped while the action still keeps the overview busy,
+    # and the next toggle is ignored until it is done.
+    overview = view_models.overview
+    qtbot.waitUntil(lambda: not prop(overview, "connected") and not prop(overview, "busy"))
     with qtbot.waitSignal(settings.mixedPortChanged):
         settings.setMixedPort("7899")
     assert host.reloads == 0

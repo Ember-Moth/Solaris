@@ -2,7 +2,6 @@ package engine
 
 import (
 	"fmt"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -73,16 +72,6 @@ func openEngine(t *testing.T, mode admission.TunMode) *Engine {
 	}
 	t.Cleanup(func() { engine.Close() })
 	return engine
-}
-
-func freePort(t *testing.T) int {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer listener.Close()
-	return listener.Addr().(*net.TCPAddr).Port
 }
 
 // target is a loopback HTTP server, so no test needs the internet.

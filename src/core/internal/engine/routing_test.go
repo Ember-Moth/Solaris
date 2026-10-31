@@ -17,6 +17,7 @@ import (
 	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/compose"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
+	"github.com/Ember-Moth/Solaris/src/core/internal/porttest"
 )
 
 // A subscription that also asks for what composition must leave behind: its rules, its
@@ -178,7 +179,7 @@ func slowTarget(t *testing.T) (*httptest.Server, chan struct{}) {
 func TestComposedRulesRouteAndNameTheirEntries(t *testing.T) {
 	engine := openEngine(t, admission.TunNone)
 	server, release := slowTarget(t)
-	port := freePort(t)
+	port := porttest.Free(t)
 	serverPort := server.Listener.Addr().String()[strings.LastIndex(server.Listener.Addr().String(), ":")+1:]
 	plan := fmt.Sprintf(`{"version": 1, "test_url": %q, "rules": [
 		{"id": "web", "items": [{"type": "DST-PORT", "value": %q}], "target": "region:JP"},
@@ -298,7 +299,7 @@ func TestGeoUpdateDue(t *testing.T) {
 
 func TestGeoUpdaterChecksAndStops(t *testing.T) {
 	updates := make(chan struct{}, 8)
-	updater := &geoUpdater{stop: make(chan struct{}), done: make(chan struct{})}
+	updater := &geoUpdater{interval: 24 * time.Hour, stop: make(chan struct{}), done: make(chan struct{})}
 	stale := func() time.Time { return time.Now().Add(-1000 * time.Hour) }
 	go updater.run(10*time.Millisecond, stale, func() error {
 		updates <- struct{}{}
@@ -323,7 +324,7 @@ func TestGeoUpdaterChecksAndStops(t *testing.T) {
 func TestGeoUpdaterFollowsTheCore(t *testing.T) {
 	engine := openEngine(t, admission.TunNone)
 	server := target(t)
-	port := freePort(t)
+	port := porttest.Free(t)
 	plan := fmt.Sprintf(`{"version": 1, "test_url": %q, "fallback": "DIRECT"}`, server.URL)
 	if _, err := engine.Start(admission.Profile{Composition: composition(plan), Options: admission.RunOptions{MixedPort: uint16(port)}}); err != nil {
 		t.Fatal(err)

@@ -38,11 +38,18 @@ func (e *Engine) Validate(profile admission.Profile) (*controlpb.CompositionRepo
 func (e *Engine) apply(admitted *admittedConfig) {
 	mesh := e.adoptMesh(admitted)
 	closeReplaced(mesh)
-	hub.ApplyConfig(admitted.cfg)
+	applyConfig(admitted.cfg)
 	e.settleTUN()
 	e.setEntries(admitted.entries)
 	e.syncGeoUpdater(admitted.cfg)
 	e.runMesh(mesh)
+}
+
+// applyConfig is hub.ApplyConfig, once the finalizers that are due have run when the race
+// detector is on (race.go).
+func applyConfig(cfg *config.Config) {
+	settleFinalizers()
+	hub.ApplyConfig(cfg)
 }
 
 // prepareTUN gives mihomo the descriptor its TUN runs on in fd mode, right before apply.
@@ -245,13 +252,15 @@ func idleConfig() (*config.Config, error) {
 func (e *Engine) teardown() {
 	e.syncGeoUpdater(nil)
 	e.setEntries(nil)
+	proxies := tunnel.Proxies()
 	providers := tunnel.Providers()
 	ruleProviders := tunnel.RuleProviders()
 	executor.Shutdown()
+	closeInbounds()
 	if idle, err := idleConfig(); err != nil {
 		log.Errorln("[engine] idle configuration: %s", err)
 	} else {
-		hub.ApplyConfig(idle)
+		applyConfig(idle)
 	}
 	e.closeMesh()
 	e.settleTUN()
@@ -259,12 +268,30 @@ func (e *Engine) teardown() {
 		_ = c.Close()
 		return true
 	})
+	// mihomo leaves the outbounds to the garbage collector, which closes them from
+	// finalizers some time later; with their connections gone, they close now.
+	for _, proxy := range proxies {
+		_ = proxy.Close()
+	}
 	for _, provider := range providers {
+		for _, proxy := range provider.Proxies() {
+			_ = proxy.Close()
+		}
 		closeProvider(provider)
 	}
 	for _, provider := range ruleProviders {
 		closeProvider(provider)
 	}
+}
+
+// closeInbounds closes the inbounds that check each connection against the LAN and
+// authentication settings: hub.ApplyConfig sets those, which the inbounds read without a
+// lock, before it closes the inbounds.
+func closeInbounds() {
+	listener.PatchInboundListeners(nil, tunnel.Tunnel, true)
+	listener.ReCreateHTTP(0, tunnel.Tunnel)
+	listener.ReCreateSocks(0, tunnel.Tunnel)
+	listener.ReCreateMixed(0, tunnel.Tunnel)
 }
 
 func closeProvider(provider any) {

@@ -86,6 +86,8 @@ type Engine struct {
 	meshMu    sync.Mutex
 	mesh      map[string]*meshOutbound
 	meshOrder []string
+	// meshStarts are the starts runMesh set off, which the core waits for as it stops.
+	meshStarts sync.WaitGroup
 }
 
 var (

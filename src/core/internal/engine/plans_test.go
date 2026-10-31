@@ -14,6 +14,7 @@ import (
 	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/compose"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
+	"github.com/Ember-Moth/Solaris/src/core/internal/porttest"
 )
 
 const cheapPlan = `{"version": 1, "groups": [
@@ -113,7 +114,7 @@ func TestMatchRuleOnADraft(t *testing.T) {
 func TestMatchRuleAgreesWithConnections(t *testing.T) {
 	engine := openEngine(t, admission.TunNone)
 	server, release := slowTarget(t)
-	port := freePort(t)
+	port := porttest.Free(t)
 	address := server.Listener.Addr().String()
 	serverPort := address[strings.LastIndex(address, ":")+1:]
 	plan := fmt.Sprintf(`{"version": 1, "test_url": %q, "rules": [

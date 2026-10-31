@@ -171,7 +171,14 @@ class App:
     def connect(self) -> None:
         """Turn the overview's connection switch on (D26)."""
         overview = self.view_models.overview
-        self.until(lambda: self.prop(overview, "statusTitle") in ("未连接", "连接失败"))
+        # The title can say stopped before the stop is done; the switch ignores presses
+        # until then.
+        self.until(
+            lambda: (
+                self.prop(overview, "statusTitle") in ("未连接", "连接失败")
+                and not self.prop(overview, "busy")
+            )
+        )
         overview.setConnected(True)
         self.until(
             lambda: (

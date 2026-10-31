@@ -61,6 +61,16 @@ def editor(routing: RoutingViewModel) -> RuleEditor:
     return routing._editor
 
 
+# The overview shows the tunnel stopped or running once a refresh reads it, which can come
+# before the action is done; until then it is busy and ignores the next toggle.
+def stopped(overview: QObject) -> bool:
+    return not prop(overview, "connected") and not prop(overview, "busy")
+
+
+def running(overview: QObject) -> bool:
+    return prop(overview, "connected") and not prop(overview, "busy")
+
+
 def host_of(view_models: ViewModels) -> SimulatedHost:
     host = view_models.host
     assert isinstance(host, SimulatedHost)
@@ -292,7 +302,7 @@ def test_a_new_protocol_rekeys_the_account(qtbot: QtBot, planned: ViewModels) ->
     qtbot.waitUntil(lambda: getattr(routing.warp_account(), "protocol", "") == "wireguard")
     # Chosen while stopped, the key follows once the tunnel runs.
     overview.toggleConnection()
-    qtbot.waitUntil(lambda: not prop(overview, "connected"))
+    qtbot.waitUntil(lambda: stopped(overview))
     exit_.setProtocol("masque-h3")
     assert "连接后换用 MASQUE（HTTP/3）" in prop(exit_, "accountDetail")
     assert len(host.warp_calls) == 2
@@ -451,15 +461,15 @@ def test_vpngate_waits_for_the_connection(qtbot: QtBot, planned: ViewModels) -> 
     routing, host, overview = planned.routing, host_of(planned), planned.overview
     exit_ = vpngate(routing)
     overview.toggleConnection()
-    qtbot.waitUntil(lambda: not prop(overview, "connected"))
+    qtbot.waitUntil(lambda: stopped(overview))
     # Turned off, the exit never fetches the list, however often the tunnel starts.
     overview.toggleConnection()
-    qtbot.waitUntil(lambda: prop(overview, "connected"))
+    qtbot.waitUntil(lambda: running(overview))
     exit_._tick()
     qtbot.wait(50)
     assert host.vpngate_calls == []
     overview.toggleConnection()
-    qtbot.waitUntil(lambda: not prop(overview, "connected"))
+    qtbot.waitUntil(lambda: stopped(overview))
     with qtbot.waitSignal(routing.applied):
         exit_.setActive(True)
     assert (prop(exit_, "status"), prop(exit_, "statusTone")) == ("连接后获取", "muted")
@@ -470,7 +480,7 @@ def test_vpngate_waits_for_the_connection(qtbot: QtBot, planned: ViewModels) -> 
     assert len(host.vpngate_calls) == 1
     # A fresh list is not fetched again for the next connection.
     overview.toggleConnection()
-    qtbot.waitUntil(lambda: not prop(overview, "connected"))
+    qtbot.waitUntil(lambda: stopped(overview))
     overview.toggleConnection()
     qtbot.waitUntil(lambda: prop(overview, "connected"))
     qtbot.wait(50)
