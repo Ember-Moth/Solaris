@@ -7,6 +7,10 @@ on:
         description: CI run containing the x64 and ARM64 installer artifacts
         required: true
         type: string
+      repackage:
+        description: Repackage the existing native payloads with the current installer scripts
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -15,7 +19,7 @@ permissions:
 jobs:
   migrate:
     runs-on: windows-11-arm
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       - name: Identify the installer artifacts
@@ -46,6 +50,34 @@ jobs:
           run-id: ${{ inputs.installer_run_id }}
           name: windows-installer-arm64-${{ steps.source.outputs.sha }}
           path: build/migration/arm64
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2
+        if: inputs.repackage
+        with:
+          enable-cache: true
+      - name: Repackage the existing native payloads
+        if: inputs.repackage
+        env:
+          UV_PYTHON_ARCH: aarch64
+        shell: pwsh
+        run: |
+          choco install nsis --yes --no-progress
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          uv sync --frozen
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($arch in @('x64', 'arm64')) {
+            $source = (Get-Item "build/migration/$arch/*.exe").FullName
+            $build = if ($arch -eq 'x64') { 'build/windows' } else { 'build/windows-arm64' }
+            $payload = Join-Path $build 'Solaris'
+            7z x $source "-o$payload" -y
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            foreach ($file in @('$PLUGINSDIR', 'uninstall.exe')) {
+              $path = Join-Path $payload $file
+              if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Recurse -Force }
+            }
+            uv run --frozen python scripts/build_windows.py --installer-only --arch $arch
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            Copy-Item -LiteralPath (Get-Item "$build/Solaris-*-windows-$arch-setup.exe").FullName -Destination $source -Force
+          }
       - name: Upgrade an emulated x64 installation to native ARM64
         shell: powershell
         run: ./package/windows/arm64-upgrade-smoke-test.ps1 -X64Installer (Get-Item build/migration/x64/*.exe).FullName -ARM64Installer (Get-Item build/migration/arm64/*.exe).FullName
