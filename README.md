@@ -57,13 +57,13 @@ macOS 在首次连接时通过系统授权启用扩展，也提供卸载前的�
 
 ## 更多网络能力
 
-Solaris 使用 [Ember-Moth/mihomo](https://github.com/Ember-Moth/mihomo) 内核，在 mihomo 的协议能力上加入：
+Solaris 使用 [mihomo 增强版](https://github.com/Ember-Moth/mihomo)内核，在 mihomo 的协议能力上加入：
 
 - **Naive**：支持 HTTP/2、QUIC，以及兼容服务端上的 UoT。
 - **AnyTLS + REALITY**：支持使用 REALITY 的 AnyTLS 节点。
 - **Snell v4–v6**：支持用户密钥和连接复用，v6 可选择与服务端一致的传输模式。
 
-节点怎么配置、哪些参数需要服务端支持，以及完整 YAML 示例，见 [内核扩展与配置指南](docs/mihomo-fork.md)。
+节点怎么配置、哪些参数需要服务端支持，以及完整 YAML 示例，见 [mihomo 增强版配置指南](docs/mihomo-fork.md)。
 
 此外，可以让流量经所选节点接入 **Cloudflare WARP 或 VPN Gate** 链式出口；也可以添加 **Tailscale、ZeroTier、
 EasyTier** 网络，通过分流规则访问网络中的设备。
@@ -115,8 +115,8 @@ Solaris 不收集使用统计，也不会自动上传日志或崩溃报告。订
 
 ## 许可证
 
-Solaris 以 [GPL-3.0-only](LICENSE) 发布，内核基于 [mihomo](https://github.com/MetaCubeX/mihomo) 及其
-[Ember-Moth fork](https://github.com/Ember-Moth/mihomo)。第三方组件及其许可证可在应用的「设置 › 关于 › 开源许可」中查看。
+Solaris 以 [GPL-3.0-only](LICENSE) 发布，使用基于 [mihomo](https://github.com/MetaCubeX/mihomo) 的
+[mihomo 增强版](https://github.com/Ember-Moth/mihomo)内核。第三方组件及其许可证可在应用的「设置 › 关于 › 开源许可」中查看。
 
 ## 赞助与商务合作
 

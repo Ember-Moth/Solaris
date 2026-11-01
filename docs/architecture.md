@@ -223,7 +223,7 @@ Windows 服务以 SYSTEM 身份运行内核，下面每一项都必须满足，�
 mihomo 提供的可选标签有 `with_gvisor`、`with_low_memory`、`no_tailscale`、`no_zerotier`、
 `no_easytier`、`no_fake_tcp`。任何情况下都不带 `cmfa`。Windows 服务带 `with_gvisor` 构建，四种 TUN 栈都提供，
 由用户在设置里选择（决策 D3）；macOS NE 同样带 `with_gvisor` 构建（D3 在 macOS 上的决定，`scripts/build_apple.py`
-的默认标签），fd 模式默认用 gVisor 栈。各标签组合下 `./service` 的二进制体积（fork `56c6fc1d5c27`，Go 1.27.3，
+的默认标签），fd 模式默认用 gVisor 栈。各标签组合下 `./service` 的二进制体积（mihomo 增强版 `56c6fc1d5c27`，Go 1.27.3，
 `CGO_ENABLED=0`、`-trimpath -ldflags "-s -w"`；此对比不带 `with_naive`）：
 
 | 标签 | Windows amd64 | macOS arm64 |
@@ -252,10 +252,10 @@ mihomo 提供的可选标签有 `with_gvisor`、`with_low_memory`、`no_tailscal
 - 各标签组合在两个平台上都能编译。真实 TUN 下，四种栈在 Linux 的自管模式里都能建立 TUN 并转发流量（CI 的
   网络命名空间测试，见第 11 节）；Windows 上 wintun 的真机验收见 [maintenance.md](maintenance.md) 2.1 节。
 
-Solaris 保留 `github.com/metacubex/mihomo` 的导入路径和 v1.19.33 require，通过 go.mod replace 固定到
+Solaris 使用 mihomo 增强版，保留 `github.com/metacubex/mihomo` 的导入路径和 v1.19.33 require，通过 go.mod replace 固定到
 [`Ember-Moth/mihomo` 的 Meta 分支](https://github.com/Ember-Moth/mihomo/tree/Meta)提交
 `56c6fc1d5c271b207c8513a583a342b87a2230bc`（`v1.19.33-0.20261031183713-56c6fc1d5c27`，D38）。
-用户侧的配置方式、参数及完整示例见 [内核扩展与配置指南](mihomo-fork.md)。
+用户侧的配置方式、参数及完整示例见 [mihomo 增强版配置指南](mihomo-fork.md)。
 它基于上游 `3f27ef3`，增加 Naive、AnyTLS+REALITY，以及与 Xray 26.10.29 对齐的 REALITY 握手版本和
 默认 X25519MLKEM768 行为；显式 `support-x25519mlkem768: false` 仍保留。状态和许可证清单使用实际替换版本。
 Snell v4/v5 改由 sing-snell 实现，保留 v1–v3，并增加 v6、`user-key` 与 `version6-mode`；这些字段在订阅和自定义方案中保留。
