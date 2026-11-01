@@ -493,7 +493,7 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 C:\Program Files\Solaris\            默认位置；可自定义，安装目录管理员所有、普通用户只读运行
 ├── Solaris.exe                      Nuitka standalone UI
 ├── solaris-service.exe              Go 服务；wintun.dll（0.14.1）由 sing-tun 嵌在里面，从内存加载
-├── geodata\                         随安装包附带的 GeoSite.dat、GeoIP.dat（D18），服务把 home 缺少的复制过去
+├── geodata\                         附带 GeoSite.dat、GeoIP.dat、geoip.metadb、ASN.mmdb（D18），服务补齐 home 缺少的文件
 ├── LICENSE、solaris\licenses\        许可证与第三方声明（release.md 第 5 节）
 ├── uninstall.exe
 └── …                                  Python / Qt 运行依赖
@@ -506,7 +506,7 @@ C:\ProgramData\Solaris\              仅 SYSTEM 与 Administrators 可访问
     ├── state.json                     was_running：属主下次登录时是否恢复隧道
     ├── resume-attempt.json            自动恢复尚未完成的保护标记，仅含开始时间；阻止崩溃循环
     ├── proxy.json                     服务的系统代理生效期间，属主自己原来的代理设置（5.5 节）
-    ├── GeoSite.dat、GeoIP.dat         GEO 数据：缺少时服务在打开 engine 前从 geodata\ 复制，之后由 engine 更新
+    ├── GeoSite.dat、GeoIP.dat、geoip.metadb、ASN.mmdb  GEO 数据：打开 engine 前从 geodata\ 补齐，之后由 engine 更新
     ├── providers\ …                   provider 与规则集缓存
     └── cache.db                       mihomo profile 缓存，包括节点选择（store-selected）
 ```
@@ -649,7 +649,7 @@ Solaris.app/Contents/
 ├── Frameworks/SolarisManager.dylib                 Swift，C ABI，供 ctypes 调用
 └── Library/SystemExtensions/dev.tschen.solaris.tunnel.systemextension
     ├── MacOS/dev.tschen.solaris.tunnel             NEPacketTunnelProvider + 本仓库 Go 模块编出的 xcframework（静态链接）
-    └── Resources/GeoSite.dat、GeoIP.dat            安装包附带的 GEO 数据（routing.md 8.4 节）
+    └── Resources/GeoSite.dat、GeoIP.dat、geoip.metadb、ASN.mmdb  附带的 GEO 数据（routing.md 8.4 节）
 ```
 
 - 源码、构建与签名见 [apple/README.md](../apple/README.md)：XcodeGen 工程 `apple/project.yml`，原生部分的构建

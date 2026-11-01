@@ -161,7 +161,8 @@ function Assert-Installed {
     }
     foreach ($name in @(
             'Solaris.exe', 'solaris-service.exe', 'libcronet.dll', 'uninstall.exe', 'LICENSE',
-            'geodata\GeoSite.dat', 'geodata\GeoIP.dat', 'solaris\licenses\THIRD_PARTY_NOTICES.txt')) {
+            'geodata\GeoSite.dat', 'geodata\GeoIP.dat', 'geodata\geoip.metadb', 'geodata\ASN.mmdb',
+            'solaris\licenses\THIRD_PARTY_NOTICES.txt')) {
         if (-not (Test-Path -LiteralPath (Join-Path $Root $name) -PathType Leaf)) { throw "$name is missing" }
     }
     $product = (Get-Item -LiteralPath $Client).VersionInfo.ProductVersion

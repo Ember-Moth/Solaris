@@ -1,5 +1,6 @@
-"""Fetch the GEO data the installers ship (docs/routing.md §8.4): GeoSite.dat and GeoIP.dat
-from a pinned MetaCubeX/meta-rules-dat release, checked against pinned SHA-256 digests.
+"""Fetch the GEO data the installers ship (docs/routing.md §8.4): GeoSite.dat, GeoIP.dat,
+geoip.metadb and ASN.mmdb from a pinned MetaCubeX/meta-rules-dat release, checked against
+pinned SHA-256 digests.
 
     uv run python scripts/fetch_geodata.py               # into build/geodata, cached
     uv run python scripts/fetch_geodata.py --categories  # regenerate the category list
@@ -57,7 +58,19 @@ GEOIP = DataFile(
     16549675,
     "fbf747a085be25eb61ecac8c27140b4ab0bf8181af6fdb104caa325bd93cf117",
 )
-FILES = (GEOSITE, GEOIP)
+MMDB = DataFile(
+    "geoip.metadb",
+    "geoip.metadb",
+    8426932,
+    "f42f98151f1d658356d8360a2fc1e7d371695dc8b5e19dd8a4d938cf9e189fed",
+)
+ASN = DataFile(
+    "GeoLite2-ASN.mmdb",
+    "ASN.mmdb",
+    8981086,
+    "4f480469576dba3e84b1f5c17313059982b70a62b8d35fb1ed225e39109b0531",
+)
+FILES = (GEOSITE, GEOIP, MMDB, ASN)
 
 
 def _digest(path: Path) -> str:

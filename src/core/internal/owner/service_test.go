@@ -129,7 +129,10 @@ func (c *fakeCore) SuspendContext(ctx context.Context) error {
 func bundled(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	for name, content := range map[string]string{"GeoSite.dat": "bundled site", "GeoIP.dat": "bundled ip"} {
+	for name, content := range map[string]string{
+		"GeoSite.dat": "bundled site", "GeoIP.dat": "bundled ip",
+		"geoip.metadb": "bundled mmdb", "ASN.mmdb": "bundled asn",
+	} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o600); err != nil {
 			t.Fatal(err)
 		}
@@ -153,7 +156,7 @@ func start(t *testing.T, root string, m *machine) (*Service, *fakeCore, string) 
 func geoData(t *testing.T, home string) map[string]string {
 	t.Helper()
 	found := map[string]string{}
-	for _, name := range []string{"GeoSite.dat", "GeoIP.dat"} {
+	for _, name := range []string{"GeoSite.dat", "GeoIP.dat", "geoip.metadb", "ASN.mmdb"} {
 		content, err := os.ReadFile(filepath.Join(home, name))
 		if err == nil {
 			found[name] = string(content)
@@ -225,7 +228,7 @@ func TestClaimRestartsForANewOwner(t *testing.T) {
 	if home != Home(root, alice) || m.secured[home] != alice {
 		t.Fatalf("home %q, secured %v", home, m.secured)
 	}
-	if got := geoData(t, home); len(got) != 2 || got["GeoSite.dat"] != "bundled site" || got["GeoIP.dat"] != "bundled ip" {
+	if got := geoData(t, home); len(got) != 4 || got["GeoSite.dat"] != "bundled site" || got["GeoIP.dat"] != "bundled ip" || got["geoip.metadb"] != "bundled mmdb" || got["ASN.mmdb"] != "bundled asn" {
 		t.Fatalf("GEO data = %v", got)
 	}
 	if err := service.Admit(as(alice, 1)); err != nil {
@@ -263,13 +266,17 @@ func TestOpenSeedsWhatTheHomeLacks(t *testing.T) {
 	if err := os.MkdirAll(home, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(home, "GeoIP.dat"), []byte("updated ip"), 0o600); err != nil {
-		t.Fatal(err)
+	for name, content := range map[string]string{
+		"GeoIP.dat": "updated ip", "geoip.metadb": "updated mmdb", "ASN.mmdb": "updated asn",
+	} {
+		if err := os.WriteFile(filepath.Join(home, name), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if _, _, opened := start(t, root, m); opened != home {
 		t.Fatalf("home = %q", opened)
 	}
-	if got := geoData(t, home); len(got) != 2 || got["GeoSite.dat"] != "bundled site" || got["GeoIP.dat"] != "updated ip" {
+	if got := geoData(t, home); len(got) != 4 || got["GeoSite.dat"] != "bundled site" || got["GeoIP.dat"] != "updated ip" || got["geoip.metadb"] != "updated mmdb" || got["ASN.mmdb"] != "updated asn" {
 		t.Fatalf("GEO data = %v", got)
 	}
 

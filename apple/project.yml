@@ -61,6 +61,10 @@ targets:
         buildPhase: resources
       - path: ../build/geodata/GeoIP.dat
         buildPhase: resources
+      - path: ../build/geodata/geoip.metadb
+        buildPhase: resources
+      - path: ../build/geodata/ASN.mmdb
+        buildPhase: resources
     dependencies:
       # Built from src/core/apple by scripts/build_apple.py.
       - framework: ../build/apple/SolarisCore.xcframework

@@ -64,7 +64,7 @@ uv run python scripts/build_apple.py --sign
 不带参数是不签名构建（`CODE_SIGNING_ALLOWED=NO`），给 CI 和没有证书的机器用；`--sign` 用本机钥匙串里的
 Developer ID 证书签名并校验。脚本依次：
 
-1. 用 `scripts/fetch_geodata.py` 取得钉住的 `GeoSite.dat`、`GeoIP.dat`（缓存在 `build/geodata/`），
+1. 用 `scripts/fetch_geodata.py` 取得钉住的 `GeoSite.dat`、`GeoIP.dat`、`geoip.metadb`、`ASN.mmdb`（缓存在 `build/geodata/`），
    `project.yml` 把它们放进扩展的 `Contents/Resources`（见“GEO 数据”）；
 2. 把 `src/core/apple` 编成 arm64 的 C archive（`GOPROXY=https://goproxy.cn,direct`），`-ldflags -X` 把版本号写进
    `product.Version`（`GetInfo` 的服务版本），连同 cgo 生成的 `libsolaris.h` 和一份 module map 包成
@@ -207,7 +207,8 @@ Environment，Ember-Moth 批准后才拿到机密。标签必须是 `v<pyproject
 
 ## GEO 数据
 
-安装包附带的 `GeoSite.dat`、`GeoIP.dat`（docs/routing.md §8.4）在扩展的 `Contents/Resources` 里。扩展的
+安装包附带的 `GeoSite.dat`、`GeoIP.dat`、`geoip.metadb`、`ASN.mmdb`（docs/routing.md §8.4）在扩展的
+`Contents/Resources` 里。扩展的
 mihomo home 在扩展容器的 `Application Support/Solaris/core`，`startTunnel` 把资源目录交给
 `solaris_attach_tun`，Go 在打开 engine 前把 home 里缺少的文件复制过去（先写临时文件再改名，不会留下半个
 文件）；已有的文件不动，engine 的 GEO 自动更新会替换它们。复制失败时 attach 失败，隧道不启动。

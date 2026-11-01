@@ -17,7 +17,7 @@ import (
 // where it was made.
 func TestSeedTakesTheHomesACL(t *testing.T) {
 	bundled := t.TempDir()
-	writeFiles(t, bundled, map[string]string{"GeoSite.dat": "site", "GeoIP.dat": "ip"})
+	writeBundledFiles(t, bundled)
 	home := filepath.Join(t.TempDir(), "home")
 	if err := os.Mkdir(home, 0o700); err != nil {
 		t.Fatal(err)

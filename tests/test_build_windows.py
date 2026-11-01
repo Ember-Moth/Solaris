@@ -75,11 +75,13 @@ def test_gui_build_refuses_an_emulated_python_for_the_native_target(
         build_windows.build_ui("1.0.0", "arm64")
 
 
-def test_check_wants_every_required_file(tmp_path: Path) -> None:
-    directory = _install_directory(tmp_path)
-    (directory / "geodata" / "GeoIP.dat").unlink()
-    with pytest.raises(BuildError, match=r"GeoIP\.dat"):
-        build_windows.check(directory)
+@pytest.mark.parametrize("arch", ["x64", "arm64"])
+@pytest.mark.parametrize("name", ["GeoSite.dat", "GeoIP.dat", "geoip.metadb", "ASN.mmdb"])
+def test_check_wants_every_geodata_file(tmp_path: Path, arch: str, name: str) -> None:
+    directory = _install_directory(tmp_path, build_windows.target(arch)[1])
+    (directory / "geodata" / name).unlink()
+    with pytest.raises(BuildError, match="has no geodata/"):
+        build_windows.check(directory, arch)
 
 
 def test_check_refuses_other_architectures(tmp_path: Path) -> None:

@@ -36,7 +36,10 @@ func readDir(t *testing.T, dir string) map[string]string {
 
 func TestAttachSeedsTheHomeBeforeOpeningTheEngine(t *testing.T) {
 	resources := t.TempDir()
-	writeFiles(t, resources, map[string]string{"GeoSite.dat": "site", "GeoIP.dat": "ip"})
+	files := map[string]string{
+		"GeoSite.dat": "site", "GeoIP.dat": "ip", "geoip.metadb": "mmdb", "ASN.mmdb": "asn",
+	}
+	writeFiles(t, resources, files)
 	home := t.TempDir()
 	reader, writer, err := os.Pipe()
 	if err != nil {
@@ -48,7 +51,10 @@ func TestAttachSeedsTheHomeBeforeOpeningTheEngine(t *testing.T) {
 		detach()
 		t.Fatal("attached a pipe as the TUN")
 	}
-	if got := readDir(t, home); got["GeoSite.dat"] != "site" || got["GeoIP.dat"] != "ip" {
-		t.Fatalf("home = %v", got)
+	got := readDir(t, home)
+	for name, content := range files {
+		if got[name] != content {
+			t.Fatalf("home[%q] = %q, want %q", name, got[name], content)
+		}
 	}
 }

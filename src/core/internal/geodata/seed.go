@@ -11,7 +11,7 @@ import (
 
 // Files are the GEO data files the installers ship, under the names mihomo looks for in
 // its home (docs/routing.md §8.4).
-var Files = []string{"GeoSite.dat", "GeoIP.dat"}
+var Files = []string{"GeoSite.dat", "GeoIP.dat", "geoip.metadb", "ASN.mmdb"}
 
 // Seed copies each of Files from dir into home when home has none, so that mihomo does
 // not download it the first time a rule needs it. A file already in home stays: the

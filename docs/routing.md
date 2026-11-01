@@ -365,7 +365,9 @@ D 编号也在那里。
   `GeoSite.dat`、`GeoIP.dat`（mihomo 查找时不区分大小写）。`ListGeoCategories` 直接读这两个文件，只遍历
   protobuf 里的分类字段，不解码域名和 IP 段；和实际匹配用的是同一份数据。
 - **附带的数据**：MetaCubeX/meta-rules-dat 的 release 分支，钉在 `be456e5`（2026-10-29 发布）。
-  `geosite.dat` 4.4 MB，1563 个分类；`geoip.dat` 16.5 MB，260 个分类；共 20.9 MB。版本、大小和 sha256 写在
+  `GeoSite.dat` 4.4 MB，1563 个分类；`GeoIP.dat` 16.5 MB，260 个分类；`geoip.metadb` 8.4 MB；`ASN.mmdb`
+  9.0 MB（上游文件名 `GeoLite2-ASN.mmdb`）；共 38.3 MB。后两份供 MMDB 模式与 ASN 规则使用，默认的 `.dat`
+  模式不变，分类列表仍只读前两份。版本、大小和 sha256 写在
   `scripts/fetch_geodata.py`，与发布方的 `.sha256sum` 一致。脚本下载到 `build/geodata/`（已被 git 忽略），文件名
   已是 mihomo 的写法，打包时原样放进安装包，由内核所在的进程种进 home：打开 engine 前把 home 里缺少的文件复制
   过去（`internal/geodata` 的 `Seed`，先写临时文件再改名，不会留下半个文件），已有的不动，engine 的 GEO 更新会

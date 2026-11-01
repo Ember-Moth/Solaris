@@ -1,10 +1,23 @@
 package geodata
 
 import (
+	"maps"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+func writeBundledFiles(t *testing.T, dir string) map[string]string {
+	t.Helper()
+	files := map[string]string{
+		"GeoSite.dat":  "bundled site",
+		"GeoIP.dat":    "bundled ip",
+		"geoip.metadb": "bundled mmdb",
+		"ASN.mmdb":     "bundled asn",
+	}
+	writeFiles(t, dir, files)
+	return files
+}
 
 func writeFiles(t *testing.T, dir string, files map[string]string) {
 	t.Helper()
@@ -34,30 +47,47 @@ func readDir(t *testing.T, dir string) map[string]string {
 
 func TestSeedCopiesOnlyWhatTheHomeLacks(t *testing.T) {
 	bundled := t.TempDir()
-	writeFiles(t, bundled, map[string]string{"GeoSite.dat": "bundled site", "GeoIP.dat": "bundled ip"})
-	home := filepath.Join(t.TempDir(), "Solaris", "core")
-	if err := os.MkdirAll(home, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	writeFiles(t, home, map[string]string{"GeoIP.dat": "updated ip"})
-	if err := Seed(bundled, home); err != nil {
-		t.Fatal(err)
-	}
-	want := map[string]string{"GeoSite.dat": "bundled site", "GeoIP.dat": "updated ip"}
-	if got := readDir(t, home); len(got) != len(want) || got["GeoSite.dat"] != want["GeoSite.dat"] || got["GeoIP.dat"] != want["GeoIP.dat"] {
-		t.Fatalf("home = %v, want %v", got, want)
+	files := writeBundledFiles(t, bundled)
+	for name := range files {
+		t.Run(name, func(t *testing.T) {
+			home := t.TempDir()
+			writeFiles(t, home, map[string]string{name: "updated data"})
+			if err := Seed(bundled, home); err != nil {
+				t.Fatal(err)
+			}
+			want := maps.Clone(files)
+			want[name] = "updated data"
+			if got := readDir(t, home); !maps.Equal(got, want) {
+				t.Fatalf("home = %v, want %v", got, want)
+			}
+		})
 	}
 }
 
 func TestSeedCreatesTheHome(t *testing.T) {
 	bundled := t.TempDir()
-	writeFiles(t, bundled, map[string]string{"GeoSite.dat": "site", "GeoIP.dat": "ip"})
+	want := writeBundledFiles(t, bundled)
 	home := filepath.Join(t.TempDir(), "Solaris", "core")
 	if err := Seed(bundled, home); err != nil {
 		t.Fatal(err)
 	}
-	if got := readDir(t, home); len(got) != 2 || got["GeoSite.dat"] != "site" || got["GeoIP.dat"] != "ip" {
+	if got := readDir(t, home); !maps.Equal(got, want) {
 		t.Fatalf("home = %v", got)
+	}
+}
+
+func TestSeedAddsMMDBToAnExistingDATHome(t *testing.T) {
+	bundled := t.TempDir()
+	want := writeBundledFiles(t, bundled)
+	home := t.TempDir()
+	previous := map[string]string{"GeoSite.dat": "updated site", "GeoIP.dat": "updated ip"}
+	writeFiles(t, home, previous)
+	maps.Copy(want, previous)
+	if err := Seed(bundled, home); err != nil {
+		t.Fatal(err)
+	}
+	if got := readDir(t, home); !maps.Equal(got, want) {
+		t.Fatalf("home = %v, want %v", got, want)
 	}
 }
 
