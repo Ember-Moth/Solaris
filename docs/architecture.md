@@ -223,7 +223,7 @@ Windows 服务以 SYSTEM 身份运行内核，下面每一项都必须满足，�
 mihomo 提供的可选标签有 `with_gvisor`、`with_low_memory`、`no_tailscale`、`no_zerotier`、
 `no_easytier`、`no_fake_tcp`。任何情况下都不带 `cmfa`。Windows 服务带 `with_gvisor` 构建，四种 TUN 栈都提供，
 由用户在设置里选择（决策 D3）；macOS NE 同样带 `with_gvisor` 构建（D3 在 macOS 上的决定，`scripts/build_apple.py`
-的默认标签），fd 模式默认用 gVisor 栈。各标签组合下 `./service` 的二进制体积（mihomo 增强版 `56c6fc1d5c27`，Go 1.27.3，
+的默认标签），fd 模式默认用 gVisor 栈。以下为各标签组合下 `./service` 二进制体积的历史测量（mihomo 增强版 `56c6fc1d5c27`，Go 1.27.3，
 `CGO_ENABLED=0`、`-trimpath -ldflags "-s -w"`；此对比不带 `with_naive`）：
 
 | 标签 | Windows amd64 | macOS arm64 |
@@ -254,13 +254,15 @@ mihomo 提供的可选标签有 `with_gvisor`、`with_low_memory`、`no_tailscal
 
 Solaris 使用 mihomo 增强版，保留 `github.com/metacubex/mihomo` 的导入路径和 v1.19.33 require，通过 go.mod replace 固定到
 [`Ember-Moth/mihomo` 的 Meta 分支](https://github.com/Ember-Moth/mihomo/tree/Meta)提交
-`56c6fc1d5c271b207c8513a583a342b87a2230bc`（`v1.19.33-0.20261031183713-56c6fc1d5c27`，D38）。
+`f499052f05502a9a27ff4e4e2382feaca978e55b`（`v1.19.33-0.20261103143402-f499052f0550`，D38）。
 用户侧的配置方式、参数及完整示例见 [mihomo 增强版配置指南](mihomo-fork.md)。
 它基于上游 `3f27ef3`，增加 Naive、AnyTLS+REALITY，以及与 Xray 26.10.29 对齐的 REALITY 握手版本和
 默认 X25519MLKEM768 行为；显式 `support-x25519mlkem768: false` 仍保留。状态和许可证清单使用实际替换版本。
 Snell v4/v5 改由 sing-snell 实现，保留 v1–v3，并增加 v6、`user-key` 与 `version6-mode`；这些字段在订阅和自定义方案中保留。
 Snell v3–v6 的 UDP 经 TCP 承载，不支持 v5 QUIC proxy；v4/v5 数据报仍受单条记录的载荷上限约束。
-v6 模式需与服务端一致，显式 `unsafe-raw` 模式不提供加密及 PSK 验证；默认模式不变。Cronet 绑定和原生库版本未随本次 Snell 更新改变。
+v6 模式需与服务端一致，显式 `unsafe-raw` 模式不提供加密及 PSK 验证；默认模式不变。Cronet Go 绑定与 sing-snell 使用 Ember-Moth 的 MetaCubeX/sing 适配版本；
+Cronet 原生库仍为 `d5437a0df01a`，由 `Ember-Moth/cronet-go/all` 选定原有 SagerNet 原生模块。
+Windows 的绝对路径加载必须调用同一套 Ember-Moth 绑定，不能混入旧 SagerNet Go 绑定的加载状态。
 
 发布标签在 macOS 为 `with_gvisor,with_naive`，Windows 为 `with_gvisor,with_naive,with_purego`。
 Naive 默认 HTTP/2，可用 `quic: true` 选 QUIC；UDP 需要 `udp-over-tcp: true` 及兼容服务端。

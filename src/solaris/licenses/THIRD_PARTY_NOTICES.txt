@@ -55,73 +55,76 @@ github.com/dlclark/regexp2 v1.12.0 -- MIT -- https://github.com/dlclark/regexp2 
 github.com/dunglas/httpsfv v1.0.2 -- BSD-3-Clause -- https://github.com/dunglas/httpsfv [25]
 github.com/easytier/easytier/easytier-go v0.0.0-20260910071355-3d0c9c3ca5e2 -- LGPL-3.0-only -- https://github.com/easytier/easytier [6]
 github.com/ebitengine/purego v0.10.0 -- Apache-2.0 -- https://github.com/ebitengine/purego [26]
-github.com/Ember-Moth/mihomo v1.19.33-0.20261031183713-56c6fc1d5c27 -- GPL-3.0-only -- https://github.com/Ember-Moth/mihomo [27]
-github.com/enfein/mieru/v3 v3.38.1 -- GPL-3.0-only -- https://github.com/enfein/mieru [27]
-github.com/ericlagergren/aegis v0.0.0-20250325060835-cd0defd64358 -- BSD-2-Clause -- https://github.com/ericlagergren/aegis [28]
-github.com/ericlagergren/polyval v0.0.0-20220411101811-e25bc10ba391 -- BSD-2-Clause -- https://github.com/ericlagergren/polyval [29]
-github.com/ericlagergren/siv v0.0.0-20220507050439-0b757b3aa5f1 -- BSD-3-Clause -- https://github.com/ericlagergren/siv [30]
-github.com/ericlagergren/subtle v0.0.0-20220507045147-890d697da010 -- BSD-3-Clause -- https://github.com/ericlagergren/subtle [30]
-github.com/fsnotify/fsnotify v1.9.0 -- BSD-3-Clause -- https://github.com/fsnotify/fsnotify [31]
-github.com/fxamacker/cbor/v2 v2.9.0 -- MIT -- https://github.com/fxamacker/cbor [32]
-github.com/gaukas/godicttls v0.0.4 -- BSD-3-Clause -- https://github.com/gaukas/godicttls [33]
-github.com/go-ole/go-ole v1.3.0 -- MIT -- https://github.com/go-ole/go-ole [34]
-github.com/gobwas/httphead v0.1.0 -- MIT -- https://github.com/gobwas/httphead [35]
-github.com/gobwas/pool v0.2.1 -- MIT -- https://github.com/gobwas/pool [36]
-github.com/gobwas/ws v1.4.0 -- MIT -- https://github.com/gobwas/ws [37]
-github.com/gofrs/uuid/v5 v5.4.0 -- MIT -- https://github.com/gofrs/uuid [38]
-github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 -- Apache-2.0 -- https://github.com/golang/groupcache [39]
-github.com/golang/snappy v1.0.0 -- BSD-3-Clause -- https://github.com/golang/snappy [40]
-github.com/google/btree v1.1.3 -- Apache-2.0 -- https://github.com/google/btree [41]
-github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8 -- Apache-2.0 -- https://github.com/google/pprof [41]
-github.com/hashicorp/golang-lru/v2 v2.0.7 -- MPL-2.0 -- https://github.com/hashicorp/golang-lru [42]
-github.com/insomniacslk/dhcp v0.0.0-20250109001534-8abf58130905 -- BSD-3-Clause -- https://github.com/insomniacslk/dhcp [43]
-github.com/josharian/native v1.1.0 -- MIT -- https://github.com/josharian/native [44]
-github.com/klauspost/compress v1.17.9 -- BSD-3-Clause -- https://github.com/klauspost/compress [45]
-github.com/klauspost/cpuid/v2 v2.2.6 -- MIT -- https://github.com/klauspost/cpuid [46]
-github.com/klauspost/reedsolomon v1.12.3 -- MIT -- https://github.com/klauspost/reedsolomon [47]
-github.com/metacubex/age v0.0.0-20260603010618-28d156b4ea78 -- BSD-3-Clause -- https://github.com/metacubex/age [48]
-github.com/metacubex/amneziawg-go v0.0.0-20260908071407-0c1c6f40ecd7 -- MIT -- https://github.com/metacubex/amneziawg-go [49]
-github.com/metacubex/ascon v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/ascon [50]
-github.com/metacubex/bart v0.29.0 -- MIT -- https://github.com/metacubex/bart [51]
-github.com/metacubex/bbolt v0.0.0-20260706163408-d4ec34ad7c48 -- MIT -- https://github.com/metacubex/bbolt [52]
-github.com/metacubex/blake3 v0.1.0 -- MIT -- https://github.com/metacubex/blake3 [53]
-github.com/metacubex/chacha v0.1.5 -- MIT -- https://github.com/metacubex/chacha [54], [55]
-github.com/metacubex/chi v0.1.1 -- MIT -- https://github.com/metacubex/chi [56]
-github.com/metacubex/connect-ip-go v0.0.0-20260727083417-67ccdb0cf771 -- MIT -- https://github.com/metacubex/connect-ip-go [57]
-github.com/metacubex/cpu v0.1.2 -- BSD-3-Clause -- https://github.com/metacubex/cpu [58]
+github.com/Ember-Moth/cronet-go v0.0.0-20261103143108-5a29f59dd943 -- GPL-3.0-or-later -- https://github.com/Ember-Moth/cronet-go [27]
+github.com/Ember-Moth/cronet-go/all v0.0.0-20261103143108-5a29f59dd943 -- GPL-3.0-or-later -- https://github.com/Ember-Moth/cronet-go [27]
+github.com/Ember-Moth/mihomo v1.19.33-0.20261103143402-f499052f0550 -- GPL-3.0-only -- https://github.com/Ember-Moth/mihomo [28]
+github.com/Ember-Moth/sing-snell v0.0.0-20261103142549-a3b26775de24 -- GPL-3.0-or-later -- https://github.com/Ember-Moth/sing-snell [27]
+github.com/enfein/mieru/v3 v3.38.1 -- GPL-3.0-only -- https://github.com/enfein/mieru [28]
+github.com/ericlagergren/aegis v0.0.0-20250325060835-cd0defd64358 -- BSD-2-Clause -- https://github.com/ericlagergren/aegis [29]
+github.com/ericlagergren/polyval v0.0.0-20220411101811-e25bc10ba391 -- BSD-2-Clause -- https://github.com/ericlagergren/polyval [30]
+github.com/ericlagergren/siv v0.0.0-20220507050439-0b757b3aa5f1 -- BSD-3-Clause -- https://github.com/ericlagergren/siv [31]
+github.com/ericlagergren/subtle v0.0.0-20220507045147-890d697da010 -- BSD-3-Clause -- https://github.com/ericlagergren/subtle [31]
+github.com/fsnotify/fsnotify v1.9.0 -- BSD-3-Clause -- https://github.com/fsnotify/fsnotify [32]
+github.com/fxamacker/cbor/v2 v2.9.0 -- MIT -- https://github.com/fxamacker/cbor [33]
+github.com/gaukas/godicttls v0.0.4 -- BSD-3-Clause -- https://github.com/gaukas/godicttls [34]
+github.com/go-ole/go-ole v1.3.0 -- MIT -- https://github.com/go-ole/go-ole [35]
+github.com/gobwas/httphead v0.1.0 -- MIT -- https://github.com/gobwas/httphead [36]
+github.com/gobwas/pool v0.2.1 -- MIT -- https://github.com/gobwas/pool [37]
+github.com/gobwas/ws v1.4.0 -- MIT -- https://github.com/gobwas/ws [38]
+github.com/gofrs/uuid/v5 v5.4.0 -- MIT -- https://github.com/gofrs/uuid [39]
+github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 -- Apache-2.0 -- https://github.com/golang/groupcache [40]
+github.com/golang/snappy v1.0.0 -- BSD-3-Clause -- https://github.com/golang/snappy [41]
+github.com/google/btree v1.1.3 -- Apache-2.0 -- https://github.com/google/btree [42]
+github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8 -- Apache-2.0 -- https://github.com/google/pprof [42]
+github.com/hashicorp/golang-lru/v2 v2.0.7 -- MPL-2.0 -- https://github.com/hashicorp/golang-lru [43]
+github.com/insomniacslk/dhcp v0.0.0-20250109001534-8abf58130905 -- BSD-3-Clause -- https://github.com/insomniacslk/dhcp [44]
+github.com/josharian/native v1.1.0 -- MIT -- https://github.com/josharian/native [45]
+github.com/klauspost/compress v1.17.9 -- BSD-3-Clause -- https://github.com/klauspost/compress [46]
+github.com/klauspost/cpuid/v2 v2.2.6 -- MIT -- https://github.com/klauspost/cpuid [47]
+github.com/klauspost/reedsolomon v1.12.3 -- MIT -- https://github.com/klauspost/reedsolomon [48]
+github.com/metacubex/age v0.0.0-20260603010618-28d156b4ea78 -- BSD-3-Clause -- https://github.com/metacubex/age [49]
+github.com/metacubex/amneziawg-go v0.0.0-20260908071407-0c1c6f40ecd7 -- MIT -- https://github.com/metacubex/amneziawg-go [50]
+github.com/metacubex/ascon v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/ascon [51]
+github.com/metacubex/bart v0.29.0 -- MIT -- https://github.com/metacubex/bart [52]
+github.com/metacubex/bbolt v0.0.0-20260706163408-d4ec34ad7c48 -- MIT -- https://github.com/metacubex/bbolt [53]
+github.com/metacubex/blake3 v0.1.0 -- MIT -- https://github.com/metacubex/blake3 [54]
+github.com/metacubex/chacha v0.1.5 -- MIT -- https://github.com/metacubex/chacha [55], [56]
+github.com/metacubex/chi v0.1.1 -- MIT -- https://github.com/metacubex/chi [57]
+github.com/metacubex/connect-ip-go v0.0.0-20260727083417-67ccdb0cf771 -- MIT -- https://github.com/metacubex/connect-ip-go [58]
+github.com/metacubex/cpu v0.1.2 -- BSD-3-Clause -- https://github.com/metacubex/cpu [59]
 github.com/metacubex/edwards25519 v1.2.0 -- BSD-3-Clause -- https://github.com/metacubex/edwards25519 [21]
-github.com/metacubex/fswatch v0.1.1 -- GPL-3.0-or-later -- https://github.com/metacubex/fswatch [59]
+github.com/metacubex/fswatch v0.1.1 -- GPL-3.0-or-later -- https://github.com/metacubex/fswatch [27]
 github.com/metacubex/gvisor v0.0.0-20260922041103-e2cbcd6e7400 -- Apache-2.0 -- https://github.com/metacubex/gvisor [60]
-github.com/metacubex/hkdf v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/hkdf [58]
-github.com/metacubex/hpke v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/hpke [58]
-github.com/metacubex/http v0.1.8 -- BSD-3-Clause -- https://github.com/metacubex/http [58]
+github.com/metacubex/hkdf v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/hkdf [59]
+github.com/metacubex/hpke v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/hpke [59]
+github.com/metacubex/http v0.1.8 -- BSD-3-Clause -- https://github.com/metacubex/http [59]
 github.com/metacubex/jls-quic-go v0.0.0-20260727080412-732f2fc9a34d -- MIT -- https://github.com/metacubex/jls-quic-go [61]
-github.com/metacubex/jls-tls v0.0.0-20260723084315-67adc0e2f796 -- BSD-3-Clause -- https://github.com/metacubex/jls-tls [58]
+github.com/metacubex/jls-tls v0.0.0-20260723084315-67adc0e2f796 -- BSD-3-Clause -- https://github.com/metacubex/jls-tls [59]
 github.com/metacubex/jsonv2 v0.0.0-20260721082349-16b4998c8f89 -- BSD-3-Clause -- https://github.com/metacubex/jsonv2 [62]
 github.com/metacubex/kcp-go v0.0.0-20260105040817-550693377604 -- MIT -- https://github.com/metacubex/kcp-go [63]
-github.com/metacubex/mhurl v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/mhurl [58]
+github.com/metacubex/mhurl v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/mhurl [59]
 github.com/metacubex/mipstack v0.0.0-20261019124225-9a80a07eaeb9 -- MPL-2.0 -- https://github.com/metacubex/mipstack [64]
-github.com/metacubex/mlkem v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/mlkem [58]
+github.com/metacubex/mlkem v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/mlkem [59]
 github.com/metacubex/qpack v0.6.0 -- MIT -- https://github.com/metacubex/qpack [65]
 github.com/metacubex/quic-go v0.61.1-0.20260727080200-2548683b76f4 -- MIT -- https://github.com/metacubex/quic-go [61]
-github.com/metacubex/randv2 v0.2.0 -- GPL-3.0-only -- https://github.com/metacubex/randv2 [27]
+github.com/metacubex/randv2 v0.2.0 -- GPL-3.0-only -- https://github.com/metacubex/randv2 [28]
 github.com/metacubex/restls-client-go v0.1.9 -- BSD-3-Clause -- https://github.com/metacubex/restls-client-go [21], [66]
 github.com/metacubex/sevenzip v1.6.4 -- BSD-3-Clause -- https://github.com/metacubex/sevenzip [23]
-github.com/metacubex/sing v0.5.8 -- GPL-3.0-or-later -- https://github.com/metacubex/sing [59]
-github.com/metacubex/sing-mux v0.3.12 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-mux [59]
-github.com/metacubex/sing-quic v0.0.0-20260904234848-1c242664697a -- GPL-3.0-or-later -- https://github.com/metacubex/sing-quic [59]
-github.com/metacubex/sing-shadowsocks v0.2.13 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-shadowsocks [59]
-github.com/metacubex/sing-shadowsocks2 v0.2.8 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-shadowsocks2 [59]
-github.com/metacubex/sing-tun v0.4.28 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-tun [59]
+github.com/metacubex/sing v0.5.8 -- GPL-3.0-or-later -- https://github.com/metacubex/sing [27]
+github.com/metacubex/sing-mux v0.3.12 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-mux [27]
+github.com/metacubex/sing-quic v0.0.0-20260904234848-1c242664697a -- GPL-3.0-or-later -- https://github.com/metacubex/sing-quic [27]
+github.com/metacubex/sing-shadowsocks v0.2.13 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-shadowsocks [27]
+github.com/metacubex/sing-shadowsocks2 v0.2.8 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-shadowsocks2 [27]
+github.com/metacubex/sing-tun v0.4.28 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-tun [27]
 Wintun (wintun.dll in github.com/metacubex/sing-tun) 0.14.1 -- LicenseRef-Wintun-Prebuilt-Binaries -- https://www.wintun.net/ [67]
-github.com/metacubex/sing-vmess v0.2.5 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-vmess [59]
-github.com/metacubex/sing-wireguard v0.0.0-20261002050126-e5fa1a607406 -- GPL-3.0-only -- https://github.com/metacubex/sing-wireguard [27]
+github.com/metacubex/sing-vmess v0.2.5 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-vmess [27]
+github.com/metacubex/sing-wireguard v0.0.0-20261002050126-e5fa1a607406 -- GPL-3.0-only -- https://github.com/metacubex/sing-wireguard [28]
 github.com/metacubex/smux v0.0.0-20260105030934-d0c8756d3141 -- MIT -- https://github.com/metacubex/smux [68]
-github.com/metacubex/ssh v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/ssh [58]
+github.com/metacubex/ssh v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/ssh [59]
 github.com/metacubex/tailscale v0.0.0-20260821153257-ff0ecd818181 -- BSD-3-Clause -- https://github.com/metacubex/tailscale [69]
 github.com/metacubex/tailscale-wireguard-go v0.0.0-20260725073821-e61ab99cede2 -- MIT -- https://github.com/metacubex/tailscale-wireguard-go [70]
 github.com/metacubex/tfo-go v0.0.0-20260623020846-376a77860b8c -- MIT -- https://github.com/metacubex/tfo-go [71]
-github.com/metacubex/tls v0.1.9 -- BSD-3-Clause -- https://github.com/metacubex/tls [58]
+github.com/metacubex/tls v0.1.9 -- BSD-3-Clause -- https://github.com/metacubex/tls [59]
 github.com/metacubex/utls v1.8.8 -- BSD-3-Clause -- https://github.com/metacubex/utls [21]
 github.com/metacubex/wazero v0.0.0-20260628025728-9ae6bdcf2a7d -- Apache-2.0 -- https://github.com/metacubex/wazero [72], [73]
 github.com/metacubex/wireguard-go v0.0.0-20250820062549-a6cecdd7f57f -- MIT -- https://github.com/metacubex/wireguard-go [70]
@@ -138,17 +141,13 @@ github.com/pierrec/lz4/v4 v4.1.27 -- BSD-3-Clause -- https://github.com/pierrec/
 github.com/pires/go-proxyproto v0.8.0 -- Apache-2.0 -- https://github.com/pires/go-proxyproto [84]
 github.com/rasky/go-lzo v0.0.0-20200203143853-96a758eda86e -- GPL-2.0-or-later -- https://github.com/rasky/go-lzo [85]
 github.com/RyuaNerin/go-krypto v1.3.0 -- MIT -- https://github.com/RyuaNerin/go-krypto [86]
-github.com/sagernet/cronet-go v0.0.0-20261023060337-b3c2ed82ac97 -- GPL-3.0-or-later -- https://github.com/sagernet/cronet-go [59]
-github.com/sagernet/cronet-go/all v0.0.0-20261023060337-b3c2ed82ac97 -- GPL-3.0-or-later -- https://github.com/sagernet/cronet-go [59]
-github.com/sagernet/cronet-go/lib/darwin_arm64 v0.0.0-20261023055542-d5437a0df01a -- GPL-3.0-or-later -- https://github.com/sagernet/cronet-go [59]
-github.com/sagernet/cronet-go/lib/windows_amd64 v0.0.0-20261023055542-d5437a0df01a -- GPL-3.0-or-later -- https://github.com/sagernet/cronet-go [59]
-github.com/sagernet/cronet-go/lib/windows_arm64 v0.0.0-20261023055542-d5437a0df01a -- GPL-3.0-or-later -- https://github.com/sagernet/cronet-go [59]
-github.com/sagernet/sing v0.8.12-0.20260727003324-d096a164bc7f -- GPL-3.0-or-later -- https://github.com/sagernet/sing [59]
-github.com/sagernet/sing-snell v0.0.0-20260904135315-bc5a12ac736f -- GPL-3.0-or-later -- https://github.com/sagernet/sing-snell [59]
+github.com/sagernet/cronet-go/lib/darwin_arm64 v0.0.0-20261023055542-d5437a0df01a -- GPL-3.0-or-later -- https://github.com/sagernet/cronet-go [27]
+github.com/sagernet/cronet-go/lib/windows_amd64 v0.0.0-20261023055542-d5437a0df01a -- GPL-3.0-or-later -- https://github.com/sagernet/cronet-go [27]
+github.com/sagernet/cronet-go/lib/windows_arm64 v0.0.0-20261023055542-d5437a0df01a -- GPL-3.0-or-later -- https://github.com/sagernet/cronet-go [27]
 github.com/samber/lo v1.53.0 -- MIT -- https://github.com/samber/lo [87]
-github.com/sina-ghaderi/poly1305 v0.0.0-20220724002748-c5926b03988b -- GPL-3.0-only -- https://github.com/sina-ghaderi/poly1305 [27]
-github.com/sina-ghaderi/rabaead v0.0.0-20220730151906-ab6e06b96e8c -- GPL-3.0-only -- https://github.com/sina-ghaderi/rabaead [27]
-github.com/sina-ghaderi/rabbitio v0.0.0-20220730151941-9ce26f4f872e -- Apache-2.0 -- https://github.com/sina-ghaderi/rabbitio [41]
+github.com/sina-ghaderi/poly1305 v0.0.0-20220724002748-c5926b03988b -- GPL-3.0-only -- https://github.com/sina-ghaderi/poly1305 [28]
+github.com/sina-ghaderi/rabaead v0.0.0-20220730151906-ab6e06b96e8c -- GPL-3.0-only -- https://github.com/sina-ghaderi/rabaead [28]
+github.com/sina-ghaderi/rabbitio v0.0.0-20220730151941-9ce26f4f872e -- Apache-2.0 -- https://github.com/sina-ghaderi/rabbitio [42]
 github.com/sirupsen/logrus v1.10.2 -- MIT -- https://github.com/sirupsen/logrus [88]
 github.com/stangelandcl/ppmd v0.1.1 -- MIT -- https://github.com/stangelandcl/ppmd [89]
 github.com/tailscale/certstore v0.1.1-0.20260409135935-3638fb84b77d -- MIT -- https://github.com/tailscale/certstore [90]
@@ -167,16 +166,16 @@ gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec -- MIT -- https:
 go.yaml.in/yaml/v3 v3.0.5 -- MIT -- https://pkg.go.dev/go.yaml.in/yaml/v3 [102], [103]
 go4.org/mem v0.0.0-20240501181205-ae6ca9944745 -- Apache-2.0 -- https://pkg.go.dev/go4.org/mem [26]
 go4.org/netipx v0.0.0-20260823151212-3075585bcbeb -- BSD-3-Clause -- https://pkg.go.dev/go4.org/netipx [104]
-golang.org/x/crypto v0.57.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/crypto [58]
-golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/exp [58]
-golang.org/x/net v0.59.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/net [58]
-golang.org/x/sync v0.23.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/sync [58]
-golang.org/x/sys v0.49.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/sys [58]
-golang.org/x/term v0.46.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/term [58]
-golang.org/x/text v0.42.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/text [58]
-golang.org/x/time v0.10.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/time [58]
+golang.org/x/crypto v0.57.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/crypto [59]
+golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/exp [59]
+golang.org/x/net v0.59.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/net [59]
+golang.org/x/sync v0.23.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/sync [59]
+golang.org/x/sys v0.49.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/sys [59]
+golang.org/x/term v0.46.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/term [59]
+golang.org/x/text v0.42.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/text [59]
+golang.org/x/time v0.10.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/time [59]
 google.golang.org/protobuf v1.36.10 -- BSD-3-Clause -- https://pkg.go.dev/google.golang.org/protobuf [105]
-Go standard library go1.27.3 -- BSD-3-Clause -- https://go.dev/ [58], [106]
+Go standard library go1.27.3 -- BSD-3-Clause -- https://go.dev/ [59], [106]
 
 Qt
 --
@@ -2568,7 +2567,24 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
----- [27] used by: github.com/Ember-Moth/mihomo v1.19.33-0.20261031183713-56c6fc1d5c27, github.com/enfein/mieru/v3 v3.38.1, github.com/metacubex/randv2 v0.2.0, github.com/metacubex/sing-wireguard v0.0.0-20261002050126-e5fa1a607406, github.com/sina-ghaderi/poly1305 v0.0.0-20220724002748-c5926b03988b, github.com/sina-ghaderi/rabaead v0.0.0-20220730151906-ab6e06b96e8c
+---- [27] used by: github.com/Ember-Moth/cronet-go v0.0.0-20261103143108-5a29f59dd943, github.com/Ember-Moth/cronet-go/all v0.0.0-20261103143108-5a29f59dd943, github.com/Ember-Moth/sing-snell v0.0.0-20261103142549-a3b26775de24, github.com/metacubex/fswatch v0.1.1, github.com/metacubex/sing v0.5.8, github.com/metacubex/sing-mux v0.3.12, github.com/metacubex/sing-quic v0.0.0-20260904234848-1c242664697a, github.com/metacubex/sing-shadowsocks v0.2.13, github.com/metacubex/sing-shadowsocks2 v0.2.8, github.com/metacubex/sing-tun v0.4.28, github.com/metacubex/sing-vmess v0.2.5, github.com/sagernet/cronet-go/lib/darwin_arm64 v0.0.0-20261023055542-d5437a0df01a, github.com/sagernet/cronet-go/lib/windows_amd64 v0.0.0-20261023055542-d5437a0df01a, github.com/sagernet/cronet-go/lib/windows_arm64 v0.0.0-20261023055542-d5437a0df01a
+
+Copyright (C) 2022 by nekohasekai <contact-sagernet@sekai.icu>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+---- [28] used by: github.com/Ember-Moth/mihomo v1.19.33-0.20261103143402-f499052f0550, github.com/enfein/mieru/v3 v3.38.1, github.com/metacubex/randv2 v0.2.0, github.com/metacubex/sing-wireguard v0.0.0-20261002050126-e5fa1a607406, github.com/sina-ghaderi/poly1305 v0.0.0-20220724002748-c5926b03988b, github.com/sina-ghaderi/rabaead v0.0.0-20220730151906-ab6e06b96e8c
 
 GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
@@ -3245,7 +3261,7 @@ the library.  If this is what you want to do, use the GNU Lesser General
 Public License instead of this License.  But first, please read
 <https://www.gnu.org/licenses/why-not-lgpl.html>.
 
----- [28] used by: github.com/ericlagergren/aegis v0.0.0-20250325060835-cd0defd64358
+---- [29] used by: github.com/ericlagergren/aegis v0.0.0-20250325060835-cd0defd64358
 
 BSD 2-Clause License
 
@@ -3273,7 +3289,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [29] used by: github.com/ericlagergren/polyval v0.0.0-20220411101811-e25bc10ba391
+---- [30] used by: github.com/ericlagergren/polyval v0.0.0-20220411101811-e25bc10ba391
 
 BSD 2-Clause License
 
@@ -3301,7 +3317,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [30] used by: github.com/ericlagergren/siv v0.0.0-20220507050439-0b757b3aa5f1, github.com/ericlagergren/subtle v0.0.0-20220507045147-890d697da010
+---- [31] used by: github.com/ericlagergren/siv v0.0.0-20220507050439-0b757b3aa5f1, github.com/ericlagergren/subtle v0.0.0-20220507045147-890d697da010
 
 BSD 3-Clause License
 
@@ -3333,7 +3349,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [31] used by: github.com/fsnotify/fsnotify v1.9.0
+---- [32] used by: github.com/fsnotify/fsnotify v1.9.0
 
 Copyright © 2012 The Go Authors. All rights reserved.
 Copyright © fsnotify Authors. All rights reserved.
@@ -3361,7 +3377,7 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [32] used by: github.com/fxamacker/cbor/v2 v2.9.0
+---- [33] used by: github.com/fxamacker/cbor/v2 v2.9.0
 
 MIT License
 
@@ -3385,7 +3401,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [33] used by: github.com/gaukas/godicttls v0.0.4
+---- [34] used by: github.com/gaukas/godicttls v0.0.4
 
 BSD 3-Clause License
 
@@ -3416,7 +3432,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [34] used by: github.com/go-ole/go-ole v1.3.0
+---- [35] used by: github.com/go-ole/go-ole v1.3.0
 
 The MIT License (MIT)
 
@@ -3440,7 +3456,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [35] used by: github.com/gobwas/httphead v0.1.0
+---- [36] used by: github.com/gobwas/httphead v0.1.0
 
 The MIT License (MIT)
 
@@ -3464,7 +3480,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [36] used by: github.com/gobwas/pool v0.2.1
+---- [37] used by: github.com/gobwas/pool v0.2.1
 
 The MIT License (MIT)
 
@@ -3488,7 +3504,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [37] used by: github.com/gobwas/ws v1.4.0
+---- [38] used by: github.com/gobwas/ws v1.4.0
 
 The MIT License (MIT)
 
@@ -3512,7 +3528,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [38] used by: github.com/gofrs/uuid/v5 v5.4.0
+---- [39] used by: github.com/gofrs/uuid/v5 v5.4.0
 
 Copyright (C) 2013-2018 by Maxim Bublis <b@codemonkey.ru>
 
@@ -3535,7 +3551,7 @@ LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [39] used by: github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8
+---- [40] used by: github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8
 
 Apache License
 Version 2.0, January 2004
@@ -3729,7 +3745,7 @@ third-party archives.
    See the License for the specific language governing permissions and
    limitations under the License.
 
----- [40] used by: github.com/golang/snappy v1.0.0
+---- [41] used by: github.com/golang/snappy v1.0.0
 
 Copyright (c) 2011 The Snappy-Go Authors. All rights reserved.
 
@@ -3759,7 +3775,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [41] used by: github.com/google/btree v1.1.3, github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8, github.com/sina-ghaderi/rabbitio v0.0.0-20220730151941-9ce26f4f872e
+---- [42] used by: github.com/google/btree v1.1.3, github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8, github.com/sina-ghaderi/rabbitio v0.0.0-20220730151941-9ce26f4f872e
 
 Apache License
                            Version 2.0, January 2004
@@ -3963,7 +3979,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
----- [42] used by: github.com/hashicorp/golang-lru/v2 v2.0.7
+---- [43] used by: github.com/hashicorp/golang-lru/v2 v2.0.7
 
 Copyright (c) 2014 HashiCorp, Inc.
 
@@ -4330,7 +4346,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       With Secondary Licenses", as defined by
       the Mozilla Public License, v. 2.0.
 
----- [43] used by: github.com/insomniacslk/dhcp v0.0.0-20250109001534-8abf58130905
+---- [44] used by: github.com/insomniacslk/dhcp v0.0.0-20250109001534-8abf58130905
 
 BSD 3-Clause License
 
@@ -4362,7 +4378,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [44] used by: github.com/josharian/native v1.1.0
+---- [45] used by: github.com/josharian/native v1.1.0
 
 Copyright 2020 Josh Bleecher Snyder
 
@@ -4372,7 +4388,7 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [45] used by: github.com/klauspost/compress v1.17.9
+---- [46] used by: github.com/klauspost/compress v1.17.9
 
 Copyright (c) 2012 The Go Authors. All rights reserved.
 Copyright (c) 2019 Klaus Post. All rights reserved.
@@ -4679,7 +4695,7 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [46] used by: github.com/klauspost/cpuid/v2 v2.2.6
+---- [47] used by: github.com/klauspost/cpuid/v2 v2.2.6
 
 The MIT License (MIT)
 
@@ -4703,7 +4719,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [47] used by: github.com/klauspost/reedsolomon v1.12.3
+---- [48] used by: github.com/klauspost/reedsolomon v1.12.3
 
 The MIT License (MIT)
 
@@ -4728,7 +4744,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [48] used by: github.com/metacubex/age v0.0.0-20260603010618-28d156b4ea78
+---- [49] used by: github.com/metacubex/age v0.0.0-20260603010618-28d156b4ea78
 
 Copyright 2019 The age Authors
 Copyright 2019 Google LLC
@@ -4760,7 +4776,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [49] used by: github.com/metacubex/amneziawg-go v0.0.0-20260908071407-0c1c6f40ecd7
+---- [50] used by: github.com/metacubex/amneziawg-go v0.0.0-20260908071407-0c1c6f40ecd7
 
 Copyright (C) 2017-2025 WireGuard LLC. All Rights Reserved.
 
@@ -4782,7 +4798,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [50] used by: github.com/metacubex/ascon v0.1.0
+---- [51] used by: github.com/metacubex/ascon v0.1.0
 
 Copyright (c) 2019 Cloudflare. All rights reserved.
 
@@ -4842,7 +4858,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [51] used by: github.com/metacubex/bart v0.29.0
+---- [52] used by: github.com/metacubex/bart v0.29.0
 
 MIT License
 
@@ -4866,7 +4882,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [52] used by: github.com/metacubex/bbolt v0.0.0-20260706163408-d4ec34ad7c48
+---- [53] used by: github.com/metacubex/bbolt v0.0.0-20260706163408-d4ec34ad7c48
 
 The MIT License (MIT)
 
@@ -4889,7 +4905,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [53] used by: github.com/metacubex/blake3 v0.1.0
+---- [54] used by: github.com/metacubex/blake3 v0.1.0
 
 The MIT License (MIT)
 
@@ -4913,7 +4929,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
----- [54] used by: github.com/metacubex/chacha v0.1.5
+---- [55] used by: github.com/metacubex/chacha v0.1.5
 
 MIT License
 
@@ -4937,7 +4953,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [55] used by: github.com/metacubex/chacha v0.1.5
+---- [56] used by: github.com/metacubex/chacha v0.1.5
 
 The MIT License (MIT)
 
@@ -4961,7 +4977,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [56] used by: github.com/metacubex/chi v0.1.1
+---- [57] used by: github.com/metacubex/chi v0.1.1
 
 Copyright (c) 2015-present Peter Kieltyka (https://github.com/pkieltyka), Google Inc.
 
@@ -4984,7 +5000,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [57] used by: github.com/metacubex/connect-ip-go v0.0.0-20260727083417-67ccdb0cf771
+---- [58] used by: github.com/metacubex/connect-ip-go v0.0.0-20260727083417-67ccdb0cf771
 
 Copyright 2024 Marten Seemann
 
@@ -4994,7 +5010,7 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [58] used by: github.com/metacubex/cpu v0.1.2, github.com/metacubex/hkdf v0.1.0, github.com/metacubex/hpke v0.1.0, github.com/metacubex/http v0.1.8, github.com/metacubex/jls-tls v0.0.0-20260723084315-67adc0e2f796, github.com/metacubex/mhurl v0.1.0, github.com/metacubex/mlkem v0.1.0, github.com/metacubex/ssh v0.1.0, github.com/metacubex/tls v0.1.9, golang.org/x/crypto v0.57.0, golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e, golang.org/x/net v0.59.0, golang.org/x/sync v0.23.0, golang.org/x/sys v0.49.0, golang.org/x/term v0.46.0, golang.org/x/text v0.42.0, golang.org/x/time v0.10.0, Go standard library go1.27.3
+---- [59] used by: github.com/metacubex/cpu v0.1.2, github.com/metacubex/hkdf v0.1.0, github.com/metacubex/hpke v0.1.0, github.com/metacubex/http v0.1.8, github.com/metacubex/jls-tls v0.0.0-20260723084315-67adc0e2f796, github.com/metacubex/mhurl v0.1.0, github.com/metacubex/mlkem v0.1.0, github.com/metacubex/ssh v0.1.0, github.com/metacubex/tls v0.1.9, golang.org/x/crypto v0.57.0, golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e, golang.org/x/net v0.59.0, golang.org/x/sync v0.23.0, golang.org/x/sys v0.49.0, golang.org/x/term v0.46.0, golang.org/x/text v0.42.0, golang.org/x/time v0.10.0, Go standard library go1.27.3
 
 Copyright 2009 The Go Authors.
 
@@ -5023,23 +5039,6 @@ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
----- [59] used by: github.com/metacubex/fswatch v0.1.1, github.com/metacubex/sing v0.5.8, github.com/metacubex/sing-mux v0.3.12, github.com/metacubex/sing-quic v0.0.0-20260904234848-1c242664697a, github.com/metacubex/sing-shadowsocks v0.2.13, github.com/metacubex/sing-shadowsocks2 v0.2.8, github.com/metacubex/sing-tun v0.4.28, github.com/metacubex/sing-vmess v0.2.5, github.com/sagernet/cronet-go v0.0.0-20261023060337-b3c2ed82ac97, github.com/sagernet/cronet-go/all v0.0.0-20261023060337-b3c2ed82ac97, github.com/sagernet/cronet-go/lib/darwin_arm64 v0.0.0-20261023055542-d5437a0df01a, github.com/sagernet/cronet-go/lib/windows_amd64 v0.0.0-20261023055542-d5437a0df01a, github.com/sagernet/cronet-go/lib/windows_arm64 v0.0.0-20261023055542-d5437a0df01a, github.com/sagernet/sing v0.8.12-0.20260727003324-d096a164bc7f, github.com/sagernet/sing-snell v0.0.0-20260904135315-bc5a12ac736f
-
-Copyright (C) 2022 by nekohasekai <contact-sagernet@sekai.icu>
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 ---- [60] used by: github.com/metacubex/gvisor v0.0.0-20260922041103-e2cbcd6e7400
 

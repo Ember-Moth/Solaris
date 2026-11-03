@@ -7,13 +7,13 @@ toolchain go1.27.3
 tool google.golang.org/protobuf/cmd/protoc-gen-go
 
 require (
+	github.com/Ember-Moth/cronet-go v0.0.0-20261103143108-5a29f59dd943
 	github.com/Microsoft/go-winio v0.6.4
 	github.com/dlclark/regexp2 v1.12.0
 	github.com/easytier/easytier/easytier-go v0.0.0-20260910071355-3d0c9c3ca5e2
 	github.com/metacubex/mihomo v1.19.33
 	github.com/metacubex/tailscale v0.0.0-20260821153257-ff0ecd818181
 	github.com/metacubex/zerotier-go v0.0.0-20260813124750-13fa6f45da5f
-	github.com/sagernet/cronet-go v0.0.0-20261023060337-b3c2ed82ac97
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/mod v0.41.0
 	golang.org/x/sys v0.49.0
@@ -21,6 +21,8 @@ require (
 )
 
 require (
+	github.com/Ember-Moth/cronet-go/all v0.0.0-20261103143108-5a29f59dd943 // indirect
+	github.com/Ember-Moth/sing-snell v0.0.0-20261103142549-a3b26775de24 // indirect
 	github.com/RyuaNerin/go-krypto v1.3.0 // indirect
 	github.com/Yawning/aez v0.0.0-20211027044916-e49e68abd344 // indirect
 	github.com/ajg/form v1.7.1 // indirect
@@ -117,7 +119,6 @@ require (
 	github.com/pires/go-proxyproto v0.8.0 // indirect
 	github.com/rasky/go-lzo v0.0.0-20200203143853-96a758eda86e // indirect
 	github.com/safchain/ethtool v0.3.0 // indirect
-	github.com/sagernet/cronet-go/all v0.0.0-20261023060337-b3c2ed82ac97 // indirect
 	github.com/sagernet/cronet-go/lib/android_386 v0.0.0-20261023055542-d5437a0df01a // indirect
 	github.com/sagernet/cronet-go/lib/android_amd64 v0.0.0-20261023055542-d5437a0df01a // indirect
 	github.com/sagernet/cronet-go/lib/android_arm v0.0.0-20261023055542-d5437a0df01a // indirect
@@ -148,8 +149,6 @@ require (
 	github.com/sagernet/cronet-go/lib/windows_amd64 v0.0.0-20261023055542-d5437a0df01a // indirect
 	github.com/sagernet/cronet-go/lib/windows_arm64 v0.0.0-20261023055542-d5437a0df01a // indirect
 	github.com/sagernet/netlink v0.0.0-20240612041022-b9a21c07ac6a // indirect
-	github.com/sagernet/sing v0.8.12-0.20260727003324-d096a164bc7f // indirect
-	github.com/sagernet/sing-snell v0.0.0-20260904135315-bc5a12ac736f // indirect
 	github.com/samber/lo v1.53.0 // indirect
 	github.com/sina-ghaderi/poly1305 v0.0.0-20220724002748-c5926b03988b // indirect
 	github.com/sina-ghaderi/rabaead v0.0.0-20220730151906-ab6e06b96e8c // indirect
@@ -181,4 +180,4 @@ require (
 	golang.org/x/tools v0.50.0 // indirect
 )
 
-replace github.com/metacubex/mihomo => github.com/Ember-Moth/mihomo v1.19.33-0.20261031183713-56c6fc1d5c27
+replace github.com/metacubex/mihomo => github.com/Ember-Moth/mihomo v1.19.33-0.20261103143402-f499052f0550

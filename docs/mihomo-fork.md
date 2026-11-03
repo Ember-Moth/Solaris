@@ -1,7 +1,7 @@
 # mihomo 增强版配置指南
 
 本文面向使用 Solaris 的用户，介绍 [mihomo 增强版](https://github.com/Ember-Moth/mihomo)的扩展能力及其客户端配置方法。
-示例以 `Meta` 提交 `56c6fc1d5c27` 为核对基准；Solaris 当前锁定版本见 [go.mod](../src/core/go.mod)。
+示例以 `Meta` 提交 `f499052f0550` 为核对基准；Solaris 当前锁定版本见 [go.mod](../src/core/go.mod)。
 源码主分支和已发布安装包可能使用不同内核，请在「设置 → 关于 → 内核」及对应版本的发布说明中核对支持情况。
 
 | 能力 | 主要变化 | 服务端要求 |
@@ -243,9 +243,9 @@ v4/v5 的 UDP 数据报受当前记录载荷窗口限制，过大的单个数据
 
 ## 参数依据与进一步阅读
 
-- [mihomo 增强版 Naive 说明](https://github.com/Ember-Moth/mihomo/blob/56c6fc1d5c271b207c8513a583a342b87a2230bc/docs/naive.md)
-- [Naive 参数与校验](https://github.com/Ember-Moth/mihomo/blob/56c6fc1d5c271b207c8513a583a342b87a2230bc/adapter/outbound/naive_options.go)
-- [AnyTLS 参数与模式互斥](https://github.com/Ember-Moth/mihomo/blob/56c6fc1d5c271b207c8513a583a342b87a2230bc/adapter/outbound/anytls.go)
-- [REALITY 参数](https://github.com/Ember-Moth/mihomo/blob/56c6fc1d5c271b207c8513a583a342b87a2230bc/adapter/outbound/reality.go)与[握手实现](https://github.com/Ember-Moth/mihomo/blob/56c6fc1d5c271b207c8513a583a342b87a2230bc/component/tls/reality.go)
-- [Snell 参数](https://github.com/Ember-Moth/mihomo/blob/56c6fc1d5c271b207c8513a583a342b87a2230bc/adapter/outbound/snell.go)与[v4–v6 适配](https://github.com/Ember-Moth/mihomo/blob/56c6fc1d5c271b207c8513a583a342b87a2230bc/adapter/outbound/snell_sing.go)
+- [mihomo 增强版 Naive 说明](https://github.com/Ember-Moth/mihomo/blob/f499052f05502a9a27ff4e4e2382feaca978e55b/docs/naive.md)
+- [Naive 参数与校验](https://github.com/Ember-Moth/mihomo/blob/f499052f05502a9a27ff4e4e2382feaca978e55b/adapter/outbound/naive_options.go)
+- [AnyTLS 参数与模式互斥](https://github.com/Ember-Moth/mihomo/blob/f499052f05502a9a27ff4e4e2382feaca978e55b/adapter/outbound/anytls.go)
+- [REALITY 参数](https://github.com/Ember-Moth/mihomo/blob/f499052f05502a9a27ff4e4e2382feaca978e55b/adapter/outbound/reality.go)与[握手实现](https://github.com/Ember-Moth/mihomo/blob/f499052f05502a9a27ff4e4e2382feaca978e55b/component/tls/reality.go)
+- [Snell 参数](https://github.com/Ember-Moth/mihomo/blob/f499052f05502a9a27ff4e4e2382feaca978e55b/adapter/outbound/snell.go)与[v4–v6 适配](https://github.com/Ember-Moth/mihomo/blob/f499052f05502a9a27ff4e4e2382feaca978e55b/adapter/outbound/snell_sing.go)
 - [Solaris 的内核集成与约束](architecture.md)

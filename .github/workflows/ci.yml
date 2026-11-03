@@ -128,6 +128,7 @@ jobs:
         run: go test -race -tags with_gvisor,with_naive -run '^TestFork' ./internal/engine
       - name: Fork outbounds (Windows native Cronet)
         if: runner.os == 'Windows'
+        shell: pwsh
         run: |
           $arch = go env GOARCH
           $native = go mod download -json "github.com/sagernet/cronet-go/lib/windows_$arch" | ConvertFrom-Json
@@ -135,7 +136,7 @@ jobs:
           $env:PATH = "$($native.Dir);$env:PATH"
           $race = @()
           if ($arch -eq 'amd64') { $race += '-race' }
-          go test @race -tags with_gvisor,with_naive,with_purego -run '^TestFork' ./internal/engine
+          go test @race -tags with_gvisor,with_naive,with_purego -run '^(TestFork|TestNaiveRuntime)' ./internal/engine ./service
       # Tailscale's outbound only builds with with_gvisor, so the security and mesh tests run
       # once more with it: its state-dir held to the home (docs/mesh.md §4), and the fields
       # its status is read from (§10.1).

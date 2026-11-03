@@ -8,6 +8,7 @@ import (
 	"github.com/metacubex/mihomo/common/yaml"
 	"github.com/metacubex/mihomo/config"
 	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/listener/inbound"
 
 	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/compose"
@@ -131,5 +132,48 @@ func TestForkSnellSurvivesAdmissionAndComposition(t *testing.T) {
 				t.Errorf("accepted incompatible Snell v%d %s (composed=%t)", sample.version, sample.key, composed)
 			}
 		}
+	}
+}
+
+func TestForkVlessReverseProfileAdmission(t *testing.T) {
+	admitted, err := admitProfile(admission.Profile{Config: []byte(`
+proxies:
+  - {name: reverse-home, type: vless-reverse}
+  - {name: home-link, type: vless, server: 127.0.0.1, port: 9, uuid: 9d0cb9d0-964f-4ef6-897d-6c6b3ccf9e68}
+listeners:
+  - name: home-in
+    type: vless-reverse
+    outbound: home-link
+    connections: 2
+    rule: home-access
+sub-rules:
+  home-access: ["MATCH,DIRECT"]
+rules: ["MATCH,DIRECT"]
+`)}, noTUN)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, proxy := range admitted.cfg.Proxies {
+		t.Cleanup(func() { _ = proxy.Close() })
+	}
+	if admitted.cfg.Proxies["reverse-home"].Type() != C.VlessReverse {
+		t.Fatal("reverse outbound was not retained")
+	}
+	listener := admitted.cfg.Listeners["home-in"]
+	if listener == nil {
+		t.Fatal("reverse listener was not retained")
+	}
+	options, ok := listener.Config().(*inbound.VlessReverseOption)
+	if !ok || options.Outbound != "home-link" || options.Connections != 2 || options.SpecialRules != "home-access" {
+		t.Fatalf("reverse listener options changed: %#v", listener.Config())
+	}
+	if listener.Address() != "outbound://home-link" {
+		t.Fatalf("reverse virtual listener became a local socket: %s", listener.Address())
+	}
+	// "My plan" uses inline providers. The fork requires reverse outbounds in
+	// static proxies, so unsupported placement must be rejected, not discarded.
+	node := map[string]any{"name": "node", "type": "vless-reverse"}
+	if _, err := admitProfile(forkProfile(t, node, true), noTUN); err == nil {
+		t.Fatal("accepted a reverse outbound inside a composed provider")
 	}
 }
