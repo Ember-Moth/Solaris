@@ -1,5 +1,7 @@
 # 自定义分流
 
+本文面向开发者，说明分流模型、界面约定与配置拼装。使用方法见 [使用指南](usage.md#分流与节点)。
+
 订阅可以带着自己的分流规则，也可以只提供节点。本文写后一种用法：分流规则由用户自己维护，而且在新手和高阶
 用户之间做到能力逐层展开，而不是把 mihomo 的配置结构原样摆上界面。
 
@@ -364,19 +366,12 @@ D 编号也在那里。
 - 内核用 `.dat` 格式（基础段 `geodata-mode: true`）匹配 GEOSITE 和 GEOIP。文件在内核的 home 里，名为
   `GeoSite.dat`、`GeoIP.dat`（mihomo 查找时不区分大小写）。`ListGeoCategories` 直接读这两个文件，只遍历
   protobuf 里的分类字段，不解码域名和 IP 段；和实际匹配用的是同一份数据。
-- **附带的数据**：MetaCubeX/meta-rules-dat 的 release 分支，钉在 `be456e5`（2026-10-29 发布）。
-  `GeoSite.dat` 4.4 MB，1563 个分类；`GeoIP.dat` 16.5 MB，260 个分类；`geoip.metadb` 8.4 MB；`ASN.mmdb`
-  9.0 MB（上游文件名 `GeoLite2-ASN.mmdb`）；共 38.3 MB。后两份供 MMDB 模式与 ASN 规则使用，默认的 `.dat`
-  模式不变，分类列表仍只读前两份。版本、大小和 sha256 写在
-  `scripts/fetch_geodata.py`，与发布方的 `.sha256sum` 一致。脚本下载到 `build/geodata/`（已被 git 忽略），文件名
-  已是 mihomo 的写法，打包时原样放进安装包，由内核所在的进程种进 home：打开 engine 前把 home 里缺少的文件复制
-  过去（`internal/geodata` 的 `Seed`，先写临时文件再改名，不会留下半个文件），已有的不动，engine 的 GEO 更新会
-  替换它们。macOS 的扩展在 attach 时复制，失败时隧道不启动；Windows 服务在打开属主的 home 时从安装目录的
-  `geodata\` 复制，失败时记警告，依赖缺失数据的配置会报错。开发服务（`scripts/dev.py`）启动时也会
-  放一份。
-- **兜底清单**：`src/solaris/host/geo_categories.py`，由 `fetch_geodata.py --categories` 从附带的数据生成，
-  28 KB，带两个文件的 sha256。内核没有数据或连不上时（例如 macOS 隧道未连接），分类选择器用它。用 Python
-  模块而不是数据文件，Nuitka 打包时自动带上。CI 用 `--check` 核对清单与钉住的数据一致。
+- **随包资源**：`GeoSite.dat`、`GeoIP.dat`、`geoip.metadb`、`ASN.mmdb` 来自 MetaCubeX/meta-rules-dat；版本、
+  大小和 SHA-256 由 [`scripts/fetch_geodata.py`](../scripts/fetch_geodata.py) 固定。MMDB 和 ASN 文件用于对应模式及规则。
+  宿主在打开 engine 前通过 `Seed` 原子补齐 home 中的缺失文件，保留已有数据；复制失败时不以网络下载兜底。
+  macOS 在扩展 attach 时从 bundle 复制，Windows 从安装目录的 `geodata/` 复制，开发服务也会准备这些资源。
+- **分类兜底**：`src/solaris/host/geo_categories.py` 由 `fetch_geodata.py --categories` 生成，包含分类名和摘要。
+  内核缺少分类数据或暂不可用时，界面使用该清单；CI 用 `--check` 检查它与随包数据一致。
 - **更新**：基础段开启 `geo-auto-update`，周期 24 小时。Python 每 30 秒读取已应用配置的 `GetGeoUpdate`，按每份
   启用数据的安装时间判断过期；模式决定使用 GeoIP.dat 或 MMDB，未使用的 ASN 不参与判断。`Validate` 不改变更新计划。
   HTTPX 异步流下载遵循系统代理或环境代理（由 Python 进程发起），遵循 `geox-url`，有连接、读取和总时限；失败从

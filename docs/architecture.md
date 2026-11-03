@@ -1,6 +1,6 @@
 # 架构
 
-本文记录 Solaris 的架构。Solaris 是 mihomo 的桌面客户端（仓库 `Ember-Moth/Solaris`）。产品名、应用名都是
+本文面向开发者，记录 Solaris 的架构。用户操作见 [使用指南](usage.md)。Solaris 是 mihomo 的桌面客户端（仓库 `Ember-Moth/Solaris`）。产品名、应用名都是
 Solaris（决策 D1）；
 代码里的产品标识集中在 `src/core/internal/product/product.go` 与 `src/solaris/product.py`，协议见
 `proto/solaris/protocol/control.proto`。
@@ -223,22 +223,8 @@ Windows 服务以 SYSTEM 身份运行内核，下面每一项都必须满足，�
 mihomo 提供的可选标签有 `with_gvisor`、`with_low_memory`、`no_tailscale`、`no_zerotier`、
 `no_easytier`、`no_fake_tcp`。任何情况下都不带 `cmfa`。Windows 服务带 `with_gvisor` 构建，四种 TUN 栈都提供，
 由用户在设置里选择（决策 D3）；macOS NE 同样带 `with_gvisor` 构建（D3 在 macOS 上的决定，`scripts/build_apple.py`
-的默认标签），fd 模式默认用 gVisor 栈。以下为各标签组合下 `./service` 二进制体积的历史测量（mihomo 增强版 `56c6fc1d5c27`，Go 1.27.3，
-`CGO_ENABLED=0`、`-trimpath -ldflags "-s -w"`；此对比不带 `with_naive`）：
+的默认标签），fd 模式默认用 gVisor 栈。各构建标签的产物大小以对应构建为准。
 
-| 标签 | Windows amd64 | macOS arm64 |
-| --- | --- | --- |
-| （无） | 55.7 MiB | 51.2 MiB |
-| `with_gvisor` | 69.4 MiB | 64.2 MiB |
-| `with_gvisor,no_tailscale` | 59.6 MiB | 55.1 MiB |
-| `no_easytier` | 46.4 MiB | 41.9 MiB |
-| `no_zerotier` | 54.7 MiB | 50.3 MiB |
-| `no_tailscale`、`no_fake_tcp`、`with_low_memory`（单独） | 不变 | 不变 |
-| `no_tailscale,no_zerotier,no_easytier,no_fake_tcp` | 45.4 MiB | 41.0 MiB |
-| 上一行加 `with_gvisor`（再加 `with_low_memory` 体积不变） | 49.2 MiB | 44.8 MiB |
-
-- 体积大头是 easytier 出站（约 9.3 MiB）和 tailscale 出站（约 9.1–9.8 MiB）。tailscale 出站只在 `with_gvisor`
-  构建里编入，所以单独加 `no_tailscale` 没有效果；gVisor 栈本身约 3.8 MiB。
 - TUN 栈：`system` 和 `mips`（mihomo 的默认栈）总是可用；`gvisor` 和 `mixed` 需要 `with_gvisor`，否则要到创建
   TUN 时才报错，所以准入流水线在缺少该标签时直接以 `invalid_config` 拒绝这两种栈，不论它来自配置、覆写还是
   `RunOptions.tun_stack`。用户在设置页的"TUN 协议栈"里选（D3，ui.md §8），两个平台都默认"跟随配置"；各平台的
@@ -249,19 +235,16 @@ mihomo 提供的可选标签有 `with_gvisor`、`with_low_memory`、`no_tailscal
   设置页同时把这两种栈置灰，已选的改成 gVisor。CI 的 fd 模式测试对这两种栈再各跑一次打开它的情形。
 - 系统扩展的可执行文件（Release，`with_gvisor,with_naive`）由 Xcode 在签名前做 `strip -x`（`STRIP_STYLE: non-global`），
   最终体积包含下文静态链接的 Cronet 原生库。
-- 各标签组合在两个平台上都能编译。真实 TUN 下，四种栈在 Linux 的自管模式里都能建立 TUN 并转发流量（CI 的
-  网络命名空间测试，见第 11 节）；Windows 上 wintun 的真机验收见 [maintenance.md](maintenance.md) 2.1 节。
+- TUN 自动化在 Linux 网络命名空间中运行（第 11 节）；平台验收按 [维护清单](maintenance.md) 执行。
 
-Solaris 使用 mihomo 增强版，保留 `github.com/metacubex/mihomo` 的导入路径和 v1.19.33 require，通过 go.mod replace 固定到
-[`Ember-Moth/mihomo` 的 Meta 分支](https://github.com/Ember-Moth/mihomo/tree/Meta)提交
-`c2de0f865c7e7723220df3b9033d208afa4e2388`（`v1.19.33-0.20261103155416-c2de0f865c7e`，D38）。
-用户侧的配置方式、参数及完整示例见 [mihomo 增强版配置指南](mihomo-fork.md)。
-它基于上游 `3f27ef3`，增加 Naive、AnyTLS+REALITY，以及与 Xray 26.10.29 对齐的 REALITY 握手版本和
-默认 X25519MLKEM768 行为；显式 `support-x25519mlkem768: false` 仍保留。状态和许可证清单使用实际替换版本。
+Solaris 保留 `github.com/metacubex/mihomo` 导入路径，通过 go.mod replace 锁定
+[Ember-Moth/mihomo](https://github.com/Ember-Moth/mihomo) 的明确版本（D38）。内核和原生依赖版本以
+[`src/core/go.mod`](../src/core/go.mod) 与 go.sum 为准，状态和许可证清单使用实际替换版本。
+用户侧参数及示例见 [mihomo 配置指南](mihomo-fork.md)。
 Snell v4/v5 改由 sing-snell 实现，保留 v1–v3，并增加 v6、`user-key` 与 `version6-mode`；这些字段在订阅和自定义方案中保留。
 Snell v3–v6 的 UDP 经 TCP 承载，不支持 v5 QUIC proxy；v4/v5 数据报仍受单条记录的载荷上限约束。
 v6 模式需与服务端一致，显式 `unsafe-raw` 模式不提供加密及 PSK 验证；默认模式不变。Cronet Go 绑定与 sing-snell 使用 Ember-Moth 的 MetaCubeX/sing 适配版本；
-Cronet 原生库仍为 `d5437a0df01a`，由 `Ember-Moth/cronet-go/all` 选定原有 SagerNet 原生模块。
+Cronet 原生库由 `Ember-Moth/cronet-go/all` 的模块依赖选定。
 Windows 的绝对路径加载必须调用同一套 Ember-Moth 绑定，不能混入旧 SagerNet Go 绑定的加载状态。
 
 发布标签在 macOS 为 `with_gvisor,with_naive`，Windows 为 `with_gvisor,with_naive,with_purego`。
@@ -658,8 +641,8 @@ Solaris.app/Contents/
 
 - 源码、构建与签名见 [apple/README.md](../apple/README.md)：XcodeGen 工程 `apple/project.yml`，原生部分的构建
   脚本 `scripts/build_apple.py`，整个 app 的组装与签名 `scripts/build_app.py`。只构建 arm64（D2）；扩展和管理库的
-  最低系统版本是 macOS 15.0，app 取 bundle 里所有库要求的最高版本（PySide6 6.12.0 要求 26.0，见 apple/README.md）；
-  支持的最低 macOS 是 26（决策 D28）。
+  最低系统版本是 macOS 15.0；主应用以 macOS 26.0 为底线，并取 bundle 中更高的库版本要求（见 apple/README.md）。
+  CI 和发布环境均为 macOS 26（决策 D28）。
 - 需要 Developer ID 签名、公证，以及 `packet-tunnel-provider-systemextension` entitlement。可执行文件叫
   `SolarisUI`，因为卷不区分大小写，`MacOS/solaris/` 是 Python 包的数据目录。
 - 管理库用 `OSSystemExtensionRequest` 激活扩展（用户需在系统设置中批准；包内的扩展总是替换其他构建激活的
@@ -778,12 +761,13 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
     HKCU；用户自己的 HKCU 里如有其他客户端注册的 `clash:`，对这个用户仍是它优先。完成页的"打开 Solaris"经 Explorer
     以登录用户的身份打开界面，不继承安装器的管理员权限。
   - 升级：注册表里已有安装时，先关闭正在运行的界面（见下面的"关闭界面"；隧道在服务里，不受影响），停止服务并等它
-    的进程退出，再以 `/UPGRADE` 静默运行旧版本的
-    卸载器：它只按自己的清单删除装过的文件，服务、计划任务和注册都留着。然后复制新文件，把服务指向新文件并启动，
+    的进程退出，再以 `/UPGRADE` 静默运行旧版本的卸载器。它只按自己的清单删除装过的文件，服务、计划任务和注册
+    都留着；删除前清除这些文件的只读属性，遇到占用有限重试，仍失败则报告文件路径和非零退出码，停止本次升级。
+    然后复制新文件，核对全部 EXE/DLL/PYD 的架构（NSIS 卸载器除外），再把服务指向新文件并启动，
     服务按 `was_running` 恢复隧道（5.2 节）。升级始终沿用注册表记录的位置，包括自定义目录；如需迁移位置，先卸载再安装。
   - 卸载：关闭界面；停止并删除服务；删除每个用户指向本安装的"登录时打开"计划任务（`Solaris (<域>_<用户>)`，
     `src/solaris/desktop/login.py`）、开始菜单快捷方式和卸载信息；两个 scheme 只在仍指向本安装时删除；按清单逐个
-    删除装过的文件，安装目录只在空了时删除，不递归删除未知文件。
+    删除装过的文件并确认删除成功，安装目录只在空了时删除，不递归删除未知文件，也不修改未知文件的属性。
   - 关闭界面：`setup.ps1` 以安装目录里的 `Solaris.exe --quit` 请界面退出（ui.md 第 8 节），最多等 15 秒；之后
     再给各会话里从安装目录运行的 `Solaris.exe` 共 5 秒，仍在运行的直接结束。`--quit` 以运行安装器的用户身份
     执行，只请得到这个用户的界面；其他用户的界面（快速切换用户，或以另一个管理员账户提权安装时）等完这 5 秒后被
@@ -849,7 +833,9 @@ Windows 安装器为两个 Solaris 可执行文件设置独立的 WER mini dump 
 Windows ARM64（D40）最低支持 Windows 11。GUI 必须用 ARM64 Python/Nuitka 构建，Go 服务、Cronet 和 Wintun 同为 ARM64；
 NSIS 及自定义安装窗口是 x86 引导组件，由系统仿真运行。更新器通过 `IsWow64Process2` 优先识别原生 OS 架构，
 即使当前 GUI 是仿真运行的 x64 版本，也会选择 ARM64 更新包。安装器沿用已有目录，先停止旧 GUI/服务并调用旧卸载清单，
-再替换为同架构新文件；用户与服务数据保持原位。`windows-arm64-upgrade` 在原生 ARM runner 验证 x64 → ARM64 迁移。
+再替换为同架构新文件；用户与服务数据保持原位。`windows-arm64-upgrade` 在原生 ARM runner 验证 x64 → ARM64 迁移，
+包含只读的旧 protobuf 扩展；两种 Windows 安装器 job 还运行独立的临时目录回归，验证只读文件、占用失败、释放后重试
+与未知文件保留。该回归只复制和删除测试文件，不安装服务或启动 Solaris。
 
 ## 11. 开发与测试
 

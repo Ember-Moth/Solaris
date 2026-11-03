@@ -1,5 +1,7 @@
 # 发布与更新
 
+本文面向发布维护者。安装和应用内更新见 [使用指南](usage.md#更新与卸载)。
+
 本文描述发布物和创建 Release 的工作流（第 1 节），以及界面这一侧的四件事：检查更新与下载（决策 D11）、
 诊断信息导出、第三方许可证清单、订阅一键导入（决策 D6）；决策见 [decisions.md](decisions.md)。macOS 的签名与公证见
 [apple/README.md](../apple/README.md)，Windows 安装器见 [architecture.md](architecture.md) 第 9 节。界面放在设置页的

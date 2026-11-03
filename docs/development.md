@@ -53,15 +53,9 @@ Windows x64 / ARM64 原生配置测试使用 `with_gvisor,with_naive,with_purego
 目录；已安装的服务只加载自身目录里的 DLL。各目标的构建与验证均已接入 CI。
 Go 1.27 的竞态运行时不支持 Windows ARM64，该平台运行普通测试与原生配置测试；竞态检查继续在其他受支持平台运行。
 
-普通构建使用 `src/core/go.mod` 锁定的远端 fork 提交。需要修改 fork 时，可在本地用 `go.work` 联调（该文件不提交）：
-在仓库根目录执行
-`go work init ./src/core`，再执行 `go work edit -replace=github.com/metacubex/mihomo=/绝对路径/mihomo`。
-配套 API 为 `geodata.SetExternalDownloads`、`geodata.Usage`、`mmdb.InstallIP` 和 `mmdb.InstallASN`。
-竞态修复同时将 resolver 的共享对象/开关改为原子值，调用方使用 `Load` / `Store`；hosts 树必须构建完成后发布，
-发布后的树不能再修改。Solaris 的两个 resolver 调用点已同步。
-此时内核版本为 `(devel)`，固定版本断言 `TestCoreVersionIsTheMihomoInGoMod` 不适用于该本地构建；其余回归照常运行。
-完成 fork 联调后，先提交并发布 fork，再将 `src/core/go.mod` 固定到真实提交、更新 go.sum 和许可证清单，最后使用 `GOWORK=off`
-完成包含版本断言的全量验证。不能把开发工作区替换作为发布依赖。
+与 fork 联调时，可以用本地 `go.work` 将 `github.com/metacubex/mihomo` 替换为 fork 工作区；该文件不提交。
+集成时先发布 fork，再更新 `src/core/go.mod` 的固定版本、go.sum 和许可证清单。使用 `GOWORK=off` 完成全部检查，
+确保发布构建只依赖锁定的远端代码。共享 resolver 使用 `Load` / `Store`，hosts 树构建完成后发布，不修改已发布的树。
 
 ## 测试与开发服务
 
@@ -137,21 +131,34 @@ uv run python scripts/gen_i18n.py
 
 ## 文档
 
+用户文档：[使用指南](usage.md)、[mihomo 配置指南](mihomo-fork.md)、[隐私说明](../PRIVACY.md)。
+
+开发与维护资料：
+
 | 文档 | 内容 |
 | --- | --- |
-| [mihomo 增强版配置指南](mihomo-fork.md) | 用户指南：增强能力、参数、完整 YAML、导入步骤与排错 |
-| [maintenance.md](maintenance.md) | 现状、真机验收、已知问题、发布步骤与工作规则 |
-| [decisions.md](decisions.md) | 设计决策 |
-| [architecture.md](architecture.md) | 系统架构：engine、控制协议、Windows 服务、macOS 扩展、安全模型、构建与测试 |
-| [ui.md](ui.md) | 界面：宿主接口、配置存储、订阅、覆写、多语言、外观、连接与日志、设置与桌面行为、分流页 |
-| [storage.md](storage.md) | 本地数据库与备份：文件、Google Drive、iCloud |
-| [routing.md](routing.md) | 自定义分流 |
-| [exits.md](exits.md) | 链式出口：WARP、VPN Gate；Tor（未实现） |
-| [mesh.md](mesh.md) | 组网：Tailscale、ZeroTier、EasyTier |
-| [release.md](release.md) | 发布与更新：发布工作流、检查更新、诊断信息、第三方许可证、一键导入 |
-| [apple/README.md](../apple/README.md) | macOS 原生部分：管理库、系统扩展、签名与公证、iCloud |
-| [DESIGN.md](../DESIGN.md) | 视觉规范与文案规则 |
-| [PRIVACY.md](../PRIVACY.md) | 隐私说明 |
+| [维护与发布](maintenance.md) | 验收要求、发布步骤、数据迁移与工作约束 |
+| [设计决策](decisions.md) | 各模块共用的设计约定 |
+| [系统架构](architecture.md) | 进程、权限、配置准入、控制协议与宿主实现 |
+| [界面设计](ui.md) | ViewModel、宿主接口、页面行为与设置 |
+| [存储设计](storage.md) | 数据库、备份格式和云端提供方 |
+| [分流设计](routing.md) | 规则模型、配置拼装与方案格式 |
+| [链式出口设计](exits.md) | WARP、VPN Gate 与 Tor 预留设计 |
+| [组网设计](mesh.md) | Tailscale、ZeroTier、EasyTier 的接入与生命周期 |
+| [发布与更新](release.md) | 安装包、更新校验、诊断和许可证生成 |
+| [macOS 原生开发](../apple/README.md) | 管理库、系统扩展、签名、公证与 iCloud |
+| [视觉规范](../DESIGN.md) | 视觉 token、交互和文案规则 |
+
+## 内核参数参考
+
+维护配置示例时，按 `src/core/go.mod` 锁定的版本核对参数、互斥条件和服务端要求：
+
+- [mihomo 增强版 Naive 说明](https://github.com/Ember-Moth/mihomo/blob/c2de0f865c7e7723220df3b9033d208afa4e2388/docs/naive.md)
+- [Naive 参数与校验](https://github.com/Ember-Moth/mihomo/blob/c2de0f865c7e7723220df3b9033d208afa4e2388/adapter/outbound/naive_options.go)
+- [AnyTLS 参数与模式互斥](https://github.com/Ember-Moth/mihomo/blob/c2de0f865c7e7723220df3b9033d208afa4e2388/adapter/outbound/anytls.go)
+- [REALITY 参数](https://github.com/Ember-Moth/mihomo/blob/c2de0f865c7e7723220df3b9033d208afa4e2388/adapter/outbound/reality.go)与[握手实现](https://github.com/Ember-Moth/mihomo/blob/c2de0f865c7e7723220df3b9033d208afa4e2388/component/tls/reality.go)
+- [Snell 参数](https://github.com/Ember-Moth/mihomo/blob/c2de0f865c7e7723220df3b9033d208afa4e2388/adapter/outbound/snell.go)与[v4–v6 适配](https://github.com/Ember-Moth/mihomo/blob/c2de0f865c7e7723220df3b9033d208afa4e2388/adapter/outbound/snell_sing.go)
+- [Solaris 的内核集成与约束](architecture.md)
 
 ## 目录
 

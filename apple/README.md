@@ -1,4 +1,6 @@
-# macOS 原生部分
+# macOS 原生开发
+
+本文面向 macOS 开发与签名维护者。安装和授权操作见 [使用指南](../docs/usage.md)。
 
 Xcode 工程由 XcodeGen 从 `project.yml` 生成，包含两个 target（docs/architecture.md §6）：
 
@@ -12,8 +14,7 @@ Xcode 工程由 XcodeGen 从 `project.yml` 生成，包含两个 target（docs/a
 
 扩展用途说明位于 `Tunnel/en.lproj/InfoPlist.strings` 与 `Tunnel/zh-Hans.lproj/InfoPlist.strings`，
 由 XcodeGen 的 Tunnel 资源扫描进入最终扩展。基础 `Info.plist` 保留英文回退；主 app 声明 `en`、`zh-Hans`。
-`build_apple.check_localizations` 验证编译资源与源码一致，`test_apple_localization.py` 通过独立进程中的
-Foundation Bundle 验证中文、英文及其他语言回退，不提交系统扩展请求。实际系统弹窗待测试 Mac 验收（D36）。
+构建时校验本地化资源；系统授权提示按 [维护清单](../docs/maintenance.md) 验收（D36）。
 
 provider 初始化时即为 Go 注册本地崩溃日志，保存到扩展自己的 `Solaris/core/crashes`；未配置的 TUN 在连续两分钟
 没有界面消息后终止，避免 UI 崩溃后遗留空隧道，批量解析期间的消息会刷新预算。系统身份的容器及原生系统报告由管理员提取，不假定它与用户 App Group 相同，
@@ -44,9 +45,7 @@ apple/
     └── Core.swift                   调 Go 归档导出的函数
 ```
 
-生成的 `Solaris.xcodeproj` 不提交（已在 .gitignore）。`project.yml` 是唯一的来源：pbxproj 是生成物，
-提交了就要防着两者不一致，还要在 CI 里重新生成再比对，结果仍离不开 XcodeGen；pbxproj 的改动也难以审阅、
-容易冲突。生成只要一秒，做法与 hypervpn 相同。
+`project.yml` 是工程配置的唯一来源；用 XcodeGen 生成的 `Solaris.xcodeproj` 不提交。
 
 ## 构建
 
@@ -154,10 +153,9 @@ uv run --with nuitka==4.2.2 python scripts/build_app.py --unsigned
   `translations/`），编译后的模块在那里找它们。程序坞、菜单栏和“登录项”显示的是 `CFBundleName`（Solaris）。
 - `Contents/MacOS` 里的数据文件（QML、字体、翻译）带 Nuitka 的 ad hoc 签名，签名存在扩展属性里，复制时要用
   `ditto` 保留；hypervpn 同样的布局能通过公证。
-- **最低系统版本**：PySide6 6.12.0（`uv.lock` 锁定的版本）的 wheel 标着 macOS 14.0，绑定库实际的部署版本却是
-  26.0，所以脚本把 app 的 `LSMinimumSystemVersion` 设为 bundle 里所有 Mach-O 要求的最高版本（现在是 26.0），
-  并打印警告。最低支持 macOS 26（决策 D28），所以不为 macOS 15 把 PySide6 降到 6.11.x。扩展和管理库的部署目标
-  仍是 15.0。
+- **最低系统版本**：主应用固定以 macOS 26.0 为最低支持版本（D28），Nuitka、编译环境与 app 的
+  `LSMinimumSystemVersion` 都遵循这一底线；bundle 中的 Mach-O 若要求更新版本，检查会提高 app 的最低版本并报警。
+  单个依赖要求更低的系统版本不会降低产品底线。CI 和发布构建都使用 `macos-26`，扩展和管理库自身的部署目标仍是 15.0。
 - **JIT**：主应用的 entitlement 带 `com.apple.security.cs.allow-jit`，Qt Quick 的 JavaScript 引擎在 hardened
   runtime 下要用（hypervpn 同样需要）；它不需要描述文件授权。
 - 脚本不运行、不安装 app，也不公证。
@@ -307,8 +305,8 @@ mihomo home 在扩展容器的 `Application Support/Solaris/core`，`startTunnel
 
 ## iCloud 备份
 
-iCloud 备份已接入并正式启用。受支持的签名安装版可在「设置 → 备份与同步 → iCloud」中开启，使用系统 Apple 账户的
-私有数据库保存快照。以下是已上线功能的实现、生产配置与维护说明；源码运行和无相应授权的构建仍按不可用处理。
+iCloud 备份可在受支持的签名安装版中，通过「设置 → 备份与同步 → iCloud」开启，使用系统 Apple 账户的
+私有数据库保存快照。源码运行和无相应授权的构建按不可用处理。
 
 设计见 docs/storage.md 第 5 节。管理库被加载进主应用的进程，所以 CloudKit 用的是主应用的签名和
 `App/Solaris.entitlements`：container `iCloud.dev.tschen.solaris`、服务 `CloudKit`、环境 `Production`（Developer ID
@@ -340,9 +338,7 @@ com.apple.developer.icloud-container-identifiers"，在开发者网站编辑 App
 
 ## Apple Developer 配置
 
-分发方式是 Developer ID（不上 App Store），系统扩展是 PacketTunnel。参照 hypervpn-desktop 已跑通的做法。
-
-**Team ID**：`GY9ZKZMAZA`
+分发方式是 Developer ID（不上 App Store），系统扩展是 PacketTunnel。发行 Team ID 必须与构建配置、证书和描述文件一致。
 
 ### 标识
 
@@ -355,12 +351,11 @@ com.apple.developer.icloud-container-identifiers"，在开发者网站编辑 App
 
 ### 证书与描述文件
 
-- **证书**：Developer ID Application，G2 签发，2027-11-29 到期。证书每年要续：续期后重新生成两份描述文件，再更新
-  `MACOS_CERTIFICATE_*` 和两个描述文件机密。新建证书要在开发者网站上选 G2 Sub-CA；G1 签发的证书只能用到
-  2027-02-01。
+- **证书**：使用有效的 Developer ID Application 证书。续期或更换后重新生成两份描述文件，并更新
+  `MACOS_CERTIFICATE_*` 和描述文件机密；有效期与指纹从当前签名材料读取。
 - **描述文件**：`Solaris Developer ID`、`Solaris Tunnel Developer ID`，都授权上面这张证书，都含 App Group
   `group.dev.tschen.solaris`。
-- **公证**：Herta Network LLC 的 Team Key `2QSRW72GKA`（Developer 权限）。
+- **公证**：使用发行团队授权的 App Store Connect API Key。
 
 ### 测试机与调试签名
 
@@ -379,17 +374,17 @@ com.apple.developer.icloud-container-identifiers"，在开发者网站编辑 App
 ### 机密的保管
 
 证书的 `.p12` 及其密码、两份描述文件、`.p8` 私钥都不进仓库，也不贴到对话里。发布 CI 从 GitHub 的 `release`
-Environment 读取它们；这个 Environment 只允许 `main` 分支和 `v*` 标签部署，每次部署都要 Ember-Moth 批准。
+Environment 读取它们；这个 Environment 只允许 `main` 分支和 `v*` 标签部署，部署审批由该 Environment 的保护规则控制。
 
 | 名称 | 类型 | 内容 |
 | --- | --- | --- |
-| `APPLE_TEAM_ID` | 变量 | `GY9ZKZMAZA` |
-| `MACOS_CERTIFICATE_NAME` | 变量 | `Developer ID Application: Herta Network LLC (GY9ZKZMAZA)` |
-| `APP_STORE_CONNECT_KEY_ID` | 变量 | `2QSRW72GKA`（Herta Network LLC 的 Team Key，Developer 权限） |
+| `APPLE_TEAM_ID` | 变量 | 发行团队的 Team ID |
+| `MACOS_CERTIFICATE_NAME` | 变量 | 当前 Developer ID Application 证书的完整名称 |
+| `APP_STORE_CONNECT_KEY_ID` | 变量 | 公证 API Key 的 ID |
 | `APP_STORE_CONNECT_ISSUER_ID` | 变量 | API Key 的 Issuer ID |
 | `APP_STORE_CONNECT_API_KEY` | 机密 | API Key 的 `.p8` 私钥 |
 | `KEYCHAIN_PASSWORD` | 机密 | 临时钥匙串的密码（随机生成） |
-| `MACOS_CERTIFICATE_BASE64`、`MACOS_CERTIFICATE_PASSWORD` | 机密 | G2 证书的 `.p12` 及其密码，SHA-1 `F462D4E8…FC33`，2027-11-29 到期 |
+| `MACOS_CERTIFICATE_BASE64`、`MACOS_CERTIFICATE_PASSWORD` | 机密 | Developer ID Application 证书的 `.p12` 及其密码 |
 | `MACOS_APP_PROFILE_BASE64`、`MACOS_NETWORK_EXTENSION_PROFILE_BASE64` | 机密 | `Solaris Developer ID`、`Solaris Tunnel Developer ID`，都授权上面这张证书 |
 
 `.github/workflows/release.yml` 读取它们（见“发布工作流”）。它和 `build_app.py` 一起校验证书、Team、有效期，

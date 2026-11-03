@@ -1,5 +1,7 @@
 # 链式出口：WARP、Tor（未实现）与 VPN Gate
 
+本文面向开发者，说明链式出口的接入与生命周期。用户操作见 [使用指南](usage.md#链式出口与组网)。
+
 本文写三种"链式出口"：流量先经用户自己的节点，再进入 Cloudflare WARP、Tor 网络或 VPN Gate 的服务器，最后
 才到达目标网站。Tor 出口未实现，第 4 节只是它的设计。决策是 [decisions.md](decisions.md) 的 D21、D22、
 D23（Tor，未实现）、D25；界面的细节见 [ui.md](ui.md) 第 9 节。叫"链式出口"而不是"隐私出口"，因为 VPN Gate 的用途

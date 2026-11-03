@@ -1,19 +1,13 @@
-# 维护
+# 维护与发布
 
-Solaris 从 1.0.0 起进入维护。本文是日常工作的依据：各平台的现状（第 1 节）、要在真机上做的验收（第 2 节）、已知
-问题（第 3 节）、发布步骤（第 4 节）和工作规则（第 5 节）。决策见 [decisions.md](decisions.md)，各部分的设计见
-[development.md](development.md#文档) 的文档一览。
+本文面向维护者，记录验证要求、发布步骤和改动约束。安装、连接与常见问题见 [使用指南](usage.md)，
+构建命令与技术文档入口见 [开发文档](development.md)。
 
-## 1. 现状
+## 1. 支持范围与验证要求
 
-内核使用 mihomo 增强版，固定在 `Meta` 提交 `c2de0f865c7e`（D38）。更新 replace 后同时检查 go.sum、Cronet 绑定和
-原生库版本、许可证清单、macOS 最终链接和 Windows 安装目录的 `libcronet.dll`。`go` CI 另带发布标签验证
-Naive 原生加载与配置拼装；不带 `with_naive` 的普通 Go 开发构建会明确拒绝 Naive 节点。Naive HTTP/2、QUIC/UoT
-及 AnyTLS+REALITY 已用测试服务端验证；真实节点与系统 TUN 下的端到端行为仍需实机验收。
-
-除 1.4 节列出的以外，功能都已实现。现有 macOS 安装包已由用户确认安装可用；**macOS iCloud 备份已完成接入并正式启用**
-（2026-10-31 确认），按已上线功能维护。近期内核、连接生命周期和安装器变更的验证主要来自 CI、替身和本机测试服务器；
-新版本签名发布、专项实机验收及后续回归按第 2 节执行。
+支持 macOS 26 及以上的 Apple Silicon、Windows 10/11 x64 和 Windows 11 ARM64。
+依赖版本以 `uv.lock`、`src/core/go.mod` 和 `src/core/go.sum` 为准；功能限制见 1.4 节。
+每个发布候选版本按第 2 节验收，结果随对应的 CI 运行、Issue 或 Release 记录。
 
 ### 1.1 CI 覆盖
 
@@ -35,35 +29,25 @@ home 目录的 ACL 和 WinINet 代理设置的读写在 `go` job 的 Windows run
 `python` job 的 Windows runner 上测（runner 本来就提权，不弹 UAC 提示）。服务的属主逻辑（认领、换属主重启、管理员
 接管、注销停止、登录恢复、系统代理的开启与还原）用替身平台在所有平台上测。
 
-### 1.2 Windows：没在真机上运行过的
+### 1.2 Windows 发布检查
 
-Windows 11 ARM64 的原生构建、安装和 x64 原位迁移由 ARM runner 验证；真实 ARM 设备的 TUN/驱动、电源和多用户专项验收仍按本节进行。
+CI 覆盖构建、安装器界面、文件清理和架构迁移。发布验收还须覆盖：
 
-安装器界面由 `installer-ui` 自动化生成原生窗口截图，并由 `windows-installer` 执行一次交互式真实安装。
-多显示器切换、实际显示缩放和 Narrator 的完整阅读体验仍需实机验证；CI 的 DPI 探针验证的是布局处理路径。
+- 实际 UAC 提示、管理员接管和不同用户之间的隔离；
+- TUN、系统代理、DNS/IPv6、用户目录 ACL 与驱动行为；
+- 开机、登录/注销、睡眠/休眠、网络切换和升级后的恢复；
+- 多显示器、显示缩放、窗口操作与 Narrator。
 
-- 服务以 SYSTEM 身份运行时的认领与重启辅助进程、`SessionLogon` / `SessionLogoff`、开机后登录时恢复；
-- 管理员接管（D5b）：UAC 的同意提示、提权的接管辅助进程通过客户端校验、两个登录用户之间的接管；
-- 模拟属主 token 写系统代理，浏览器随之生效；
-- 真实 ProgramData 下的 ACL，Nuitka 构建的界面通过客户端校验；
-- wintun、strict-route、四种 TUN 栈和 DNS 泄漏；Windows 的默认栈还没定（设置页默认"跟随配置"）；
-- UAC 提示、升级后恢复隧道；
-- 睡眠、休眠和现代待机的真实通知，唤醒后更换网络、恢复期间断开/注销、多用户切换，以及卡死后 SCM 回收；
-- 界面只在 CI 的离屏环境里运行过：渲染、自绘顶部区域的窗口按钮、拖动和贴靠、读屏软件都没在 Windows 上看过。
+操作清单见 2.1 节。
 
-### 1.3 macOS：仍需专项实机验收
+### 1.3 macOS 发布检查
 
-- 本轮改动的新签名包及公证发布；现有安装可用性已经确认，不再作为阻塞项；
-- 系统扩展的激活与批准，hardened runtime 下的启动，登录项（`SMAppService`）；
-- 扩展找 utun 描述符、四种栈经过 utun 的流量、DNS 劫持、重连时描述符的归属；macOS 的默认栈还没定；
-- `includeAllNetworks`（D19），provider message 的大小上限（D8）；
-- 隧道断开时导入订阅、连接后再读（D27）；
-- 新增停用入口的系统授权、取消、待处理结果、VPN 配置清理，以及停用后重新启用（D35）；
-- 中英文系统的首次授权与停用提示（D36）；自动化已验证 Bundle 对中文、英文及英文回退的解析。
+- 使用签名并公证的完整安装包验证启动、扩展授权、VPN 配置和登录项；
+- 验证 TUN 流量、DNS/IPv6、`includeAllNetworks`、重连与睡眠唤醒；
+- 验证扩展停用、取消授权、清理后重新启用，以及中英文系统提示；
+- 使用真实账户与网络验证云备份、链式出口、组网和应用更新。
 
-两个平台都没做过的：真实订阅（e2e 的节点是本机起的代理）、WARP 与 VPN Gate 出口和组网（只对假服务器、构造的出站和
-模拟宿主测过）、"检查更新"对真实 Release（只对本机的假服务器测过）、Google Drive 备份（只对本机的假 OAuth 和 Drive
-服务器测过；Google Cloud 的项目和 OAuth 客户端还没建，2.8 节）。
+操作清单见 2.2 至 2.8 节。平台替身和回环测试用于自动回归，正式包的系统集成另行验收。
 
 ### 1.4 没有实现的
 
@@ -75,10 +59,8 @@ Windows 11 ARM64 的原生构建、安装和 x64 原位迁移由 ARM runner 验�
 
 ### 崩溃诊断（D37）
 
-- 自动化使用隔离子进程验证 Python 主线程/线程/asyncio 异常、`faulthandler` 的原生中止和 Go panic；
-  正常退出、取消、存储不可写、清理边界、普通诊断排除原始内容均有测试。测试不修改本机网络或 WER 配置。
-- Windows CI 安装冒烟检查两项 per-image WER 策略及卸载移除。实际 UI/服务故障产生 `.dmp`、符号化和
-  Windows 睡眠/休眠仍需测试机；已有自定义 WER 键不会被安装器覆盖。
+- 崩溃处理变更需覆盖 Python 异常、原生中止、Go panic，以及正常退出、取消、存储不可写和清理边界。
+- Windows 的 WER 配置、卸载清理、实际转储和符号化在测试机上检查；已有自定义 WER 键不得被覆盖。
 - UI 日志在用户数据目录 `crashes/`。Windows Go 日志在
   `%ProgramData%\Solaris\users\<当前进程 SID>\crashes`，由原有 ACL 允许本人读取；服务的启动日志与
   原生转储在 `%ProgramData%\Solaris\crashes`，仅 SYSTEM/管理员可访问。
@@ -160,8 +142,7 @@ Windows 11 ARM64 的原生构建、安装和 x64 原位迁移由 ARM runner 验�
 
 ### 2.3 iCloud 备份
 
-iCloud 备份已接入并正式启用。用户在受支持的 macOS 签名安装版中，通过「设置 → 备份与同步 → iCloud」主动开启；
-功能是快照备份与恢复，不做双向实时同步。以下保留生产配置的维护说明和后续版本回归清单。
+iCloud 在受支持的 macOS 签名安装版中提供快照备份与恢复。验收时从「设置 → 备份与同步 → iCloud」开启。
 
 重建容器或调整 schema 时，在 CloudKit Console 中维护定义。Production 环境不能由应用自动建 schema，所以 record type
 先在 Development 里建好，再部署：
@@ -306,27 +287,13 @@ exits.md 第 9 节的待实测项。
     重新登录后立即备份一次。
 11. 账户的存储空间满时，失败原因是"储存空间已满"。
 
-## 3. 已知问题
+## 3. 已知限制
 
-- **Gatekeeper 对公证过的 app 有两种说法**：发布工作流里公证被接受、票据已 staple，同一个 app 下载到 Mac 上用
-  `syspolicy_check distribution` 检查是"可以分发"，`spctl --assess --type execute` 却拒绝，syspolicyd 的日志里是十来个
-  `errSecCSUnsigned`（被当成代码却没有签名的项目）和"没有匹配的规则"，路径被系统打码。怀疑是 Nuitka 放在
-  `Contents/MacOS` 里、签名存在扩展属性里的数据文件（QML、字体等，三百多个），还没坐实。runner 上的
-  `syspolicy_check` 另外报 "Internal Xprotect Error"，在 Mac 上不出现。所以发布工作流只把公证与 staple 当关卡，这两项
-  检查只报警告；以测试 Mac 上下载后打开的结果为准（2.2 节）。要是那里被拒，就从这些数据文件查起，例如把它们移出
-  `Contents/MacOS`。
-- **mihomo 竞态修复**：已锁定的 fork 修复了日志级别读写、队列空检查/弹出越界、入站权限切片和认证对象、
-  控制器重建，以及连接接入期间重载暴露的 resolver/hosts、IPv6/IP4P、路由模式和嗅探状态竞争。权限列表复制后发布，
-  控制器串行交接 listener，resolver/hosts 与嗅探对象通过原子快照读取。Solaris 已删除 race 专用终结器等待，恢复
-  控制器安全测试，并移除测速和端口探测中的竞态绕过。回归覆盖并发更新、旧控制器不得在停止后复活、TLS 错误不得
-  泄漏端口，以及 4 条持续传输连接并行接入新连接和 40 次重载。不能据此断言整个 fork 不再有其他竞态。
-- **GEO 自动更新**已迁到 Python；Go 在生命周期锁内接收和安装，下载不占用该锁。fork 的 MMDB/ASN 更新保留旧
-  reader，DAT 下次应用配置时生效。配套 fork 已固定到依赖锁，普通构建不依赖本地 `go.work`；Windows/NE 的真实
-  传输和更新仍需打包后验收。
-- **macOS 的登录项**由 `SMAppService` 不带参数启动 app，所以登录后界面会显示窗口；Windows 的计划任务带
-  `--background`，只进托盘（[ui.md](ui.md) 第 8 节）。
-- **WARP 的注册接口不是官方的**：Cloudflare 改动或限流时注册会失败。失败时拒绝连接，不退回普通代理；接口的常量
-  集中在 `src/core/internal/warp`。
+- macOS 的登录项启动 app 后会显示窗口；Windows 的登录任务仅进入托盘。
+- WARP 注册使用第三方接口，服务方变动或限流可能导致失败；失败时拒绝连接，不切换到未经选择的出口。
+- Tor 出口和 Windows 代码签名尚未实现，见 1.4 节。
+
+版本相关的问题和修复记录保留在 Issue、提交与发布说明中。
 
 ## 4. 发布
 
@@ -357,8 +324,8 @@ exits.md 第 9 节的待实测项。
 和 `SHA256SUMS`。下载后核对 SHA-256；macOS 还核对签名、公证和 Team ID；Windows 安装包不签名（D29），只核对
 SHA-256。界面从不静默安装，用户确认后才打开安装包。
 
-第一次运行时另外核对：公证通过；磁盘映像的窗口在深色模式下也看得清（只在开发机的浅色模式下看过）；已安装的版本
-检查更新显示"已是最新版本"；下一个版本发布后，在旧版本上走一遍检查、下载、校验、打开安装包。
+每个候选版本核对公证与系统启动检查、浅深色下的磁盘映像、当前版本提示，以及从上一版本检查、下载、校验和安装的完整路径。
+签名或启动检查的结论不一致时，保留对应日志和失败资源路径，按该版本的问题跟踪处理。
 
 ## 5. 工作规则
 
@@ -381,7 +348,9 @@ SHA-256。界面从不静默安装，用户确认后才打开安装包。
 - **文案**：中文是源语言；改动文案后运行 `scripts/gen_i18n.py`，并在 `src/solaris/translations/en.ts` 里补齐英文。
   文案保持中立、简短（DESIGN.md 的 Typography 一节）。
 - **决策**：新的设计决策在 [decisions.md](decisions.md) 的最后一条之后接着编号；已有的编号不变，代码注释引用它们。
-- 每个改动先开 PR，CI 全绿再合并；main 变红时先修。
+- **文档**：用户说明只保留功能、操作和必要限制；技术文档记录现行设计与维护步骤。临时调试结论、测试次数和
+  单次构建结果放在 Issue、CI 或提交说明中，依赖版本引用锁文件，避免在正文重复记录。
+- 按仓库的集成流程提交改动；完成相关检查，保持 main 可构建。
 
 ### 5.3 表结构与存下的格式
 
@@ -400,8 +369,8 @@ SHA-256。界面从不静默安装，用户确认后才打开安装包。
 - **mihomo 增强版**：固定到 `Meta` 分支的明确提交或 tag（`src/core/go.mod`），不使用浮动分支作为构建输入。mihomo 的运行时（`hub`、`executor`、`tunnel` 等
   包级状态）只在 engine 里用（`imports_test.go` 检查）；`admission`、`compose`、`vpngate` 用 mihomo 无状态的解析
   函数、类型和常量，升级时这几处也要核对。升级前跑完整测试，并按 [architecture.md](architecture.md) §3.3 逐条复核
-  安全要求；3.4 节的体积表随之更新。
+  安全要求和 3.4 节的发布构建标签。
 - **GEO 数据**的版本和 SHA-256 钉在 `scripts/fetch_geodata.py` 里；改了之后用 `--categories` 重新生成附带的分类名
   清单（`src/solaris/host/geo_categories.py`），CI 用 `--check` 核对。
-- **PySide6** 决定 macOS 的最低版本：6.12 要求 macOS 26（D28），升级前先看新版本要求的系统版本。**Nuitka** 的版本是 `scripts/build_app.py` 的 `NUITKA_VERSION`，CI 和
+- **macOS** 的产品最低版本固定为 26（D28）；构建器同时检查 PySide6 等依赖的实际 Mach-O 版本要求，只能提高该底线。**Nuitka** 的版本是 `scripts/build_app.py` 的 `NUITKA_VERSION`，CI 和
   发布工作流里的 `--with nuitka==` 要一起改。

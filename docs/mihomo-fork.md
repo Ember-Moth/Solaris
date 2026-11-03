@@ -1,18 +1,16 @@
 # mihomo 增强版配置指南
 
 本文面向使用 Solaris 的用户，介绍 [mihomo 增强版](https://github.com/Ember-Moth/mihomo)的扩展能力及其客户端配置方法。
-示例以 `Meta` 提交 `f499052f0550` 为核对基准；Solaris 当前锁定版本见 [go.mod](../src/core/go.mod)。
-源码主分支和已发布安装包可能使用不同内核，请在「设置 → 关于 → 内核」及对应版本的发布说明中核对支持情况。
+不同版本的安装包可能支持不同参数，请在「设置 → 关于 → 内核」和对应版本的发布说明中核对支持情况。
 
 | 能力 | 主要变化 | 服务端要求 |
 | --- | --- | --- |
 | Naive | `type: naive`，HTTP/2、HTTP/3/QUIC、可选 UoT | Naive 兼容服务端；QUIC、UoT 分别需要服务端支持 |
 | AnyTLS + REALITY | AnyTLS 节点可以使用 `reality-opts` | 同时支持 AnyTLS 协议和 REALITY 的端点 |
 | REALITY 握手 | 版本标识对齐 `26.10.29`，默认保留指纹中的 X25519MLKEM768 | 服务端的版本策略和密钥交换能力需要匹配 |
-| Snell v4–v6 | v4/v5 使用 sing-snell，新增 v6 模式和 `user-key`；v1–v3 保留 | 与客户端相同的版本、PSK、模式及用户密钥设置 |
+| Snell v4–v6 | 支持 v4、v5、v6，包含 v6 模式和 `user-key` | 与客户端相同的版本、PSK、模式及用户密钥设置 |
 
-Solaris 的安装包按发布配置启用 Naive。自行编译普通无标签 Go 开发服务时，Naive 不可用；构建方式见
-[开发文档](development.md#从源码构建)。
+使用完整的 Solaris 安装包，以获得配套的协议支持。
 
 ## 先导入一个完整示例
 
@@ -229,7 +227,7 @@ v4/v5 的 UDP 数据报受当前记录载荷窗口限制，过大的单个数据
 
 | 现象 | 检查方式 |
 | --- | --- |
-| Naive 提示缺少 `with_naive` 或原生运行库 | 核对实际内核和构建。使用完整的 Solaris 安装包；开发构建按 [开发文档](development.md) 启用标签与匹配的原生库，不单独替换来历不同的 Cronet DLL |
+| Naive 提示缺少运行库或不支持此协议 | 安装完整的对应平台版本，不单独替换内核或 DLL；从源码构建时参见 [开发文档](development.md) |
 | Naive 证书错误 | 检查域名、`sni`、系统时间和证书链；私有 CA 用节点 `certificate`，不要设置 `skip-cert-verify: true` |
 | QUIC 能连接，但 UDP 应用不通 | QUIC 传输和目标 UDP 转发是两件事。Naive 需要 UoT，Snell 需要 `udp: true`，两者都需要服务端支持 |
 | REALITY 公钥或 short ID 校验失败 | 替换占位符；公钥使用 32 字节的无填充 Base64URL；short ID 使用最多 16 位的偶数长度十六进制字符串 |
@@ -238,14 +236,7 @@ v4/v5 的 UDP 数据报受当前记录载荷窗口限制，过大的单个数据
 | 导入后仍使用旧节点 | 确认正在使用该订阅的规则，或已把它加入「我的方案」节点池，再检查出站模式、策略组选择和分流规则 |
 | TCP 测速成功但实际请求失败 | TCP 测速只证明端口连接，不验证协议认证、REALITY 或 UDP；继续做 HTTP 测速和实际请求。Naive 请使用 HTTP 测速 |
 
-示例测试检查 YAML、参数组合和 Solaris 配置准入；占位公钥会在测试中替换为测试值，不会使用真实节点凭据。
-解析通过不代表你的服务端一定可达，实际连通性仍需用自己的服务端验证。
+## 相关文档
 
-## 参数依据与进一步阅读
-
-- [mihomo 增强版 Naive 说明](https://github.com/Ember-Moth/mihomo/blob/f499052f05502a9a27ff4e4e2382feaca978e55b/docs/naive.md)
-- [Naive 参数与校验](https://github.com/Ember-Moth/mihomo/blob/f499052f05502a9a27ff4e4e2382feaca978e55b/adapter/outbound/naive_options.go)
-- [AnyTLS 参数与模式互斥](https://github.com/Ember-Moth/mihomo/blob/f499052f05502a9a27ff4e4e2382feaca978e55b/adapter/outbound/anytls.go)
-- [REALITY 参数](https://github.com/Ember-Moth/mihomo/blob/f499052f05502a9a27ff4e4e2382feaca978e55b/adapter/outbound/reality.go)与[握手实现](https://github.com/Ember-Moth/mihomo/blob/f499052f05502a9a27ff4e4e2382feaca978e55b/component/tls/reality.go)
-- [Snell 参数](https://github.com/Ember-Moth/mihomo/blob/f499052f05502a9a27ff4e4e2382feaca978e55b/adapter/outbound/snell.go)与[v4–v6 适配](https://github.com/Ember-Moth/mihomo/blob/f499052f05502a9a27ff4e4e2382feaca978e55b/adapter/outbound/snell_sing.go)
-- [Solaris 的内核集成与约束](architecture.md)
+- [Solaris 使用指南](usage.md)
+- [开发者参数参考](development.md#内核参数参考)

@@ -9,7 +9,7 @@ Solaris 是网络代理客户端。它没有账户，不收集使用数据，不
 | --- | --- | --- |
 | 下载和更新订阅 | 订阅链接所在的服务器 | 一次普通的 HTTP 请求：订阅链接（常含令牌）、你的 IP、User-Agent `solaris/<版本> clash.meta`。由界面以当前用户身份发出，跟随系统代理设置；订阅默认每 12 小时自动更新一次，可以按订阅关闭 |
 | 连接代理 | 配置里的节点和服务器 | 内核按配置连接节点；配置里的 proxy provider 和规则集由内核按配置下载；策略组的延迟测试访问配置里的测速地址 |
-| GEO 数据更新 | GitHub（MetaCubeX/meta-rules-dat） | 内核每 24 小时检查一次 GEOSITE、GEOIP 数据，过期时下载新文件，按规则经代理或直连 |
+| GEO 数据更新 | 配置指定的下载站点，默认是 GitHub（MetaCubeX/meta-rules-dat） | 启用自动更新时，按配置周期更新正在使用的数据库，默认周期为 24 小时。请求从界面进程发出，遵循系统代理设置；完全退出界面后暂停，下次打开补查 |
 | 检查更新 | GitHub（`api.github.com`） | 一次不带认证的请求：你的 IP、User-Agent `solaris/<版本>`。自动检查默认开启，可以在设置页"关于"里关闭；下载安装包和 `SHA256SUMS` 也来自 GitHub |
 | 注册 WARP 出口 | Cloudflare（`api.cloudflareclient.com`） | 只在你注册时：内核新生成的公钥、随机的设备标识、时间、语言 `en-US`。请求经你选择的"经由"节点发出，Cloudflare 看到的是节点的 IP。之后经 WARP 出口的流量由 Cloudflare 转发，适用 Cloudflare 的隐私政策 |
 | 使用 VPN Gate 出口 | VPN Gate（`www.vpngate.net`）和它的志愿者服务器 | 打开出口后，内核经你选择的"经由"节点下载公开的服务器列表，VPN Gate 看到的是节点的 IP。之后经这个出口的流量由志愿者运营的服务器转发 |

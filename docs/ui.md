@@ -1,5 +1,7 @@
 # 界面
 
+本文面向开发者，说明界面结构与行为约定。日常操作见 [使用指南](usage.md)。
+
 本文描述 Python 界面的结构和各部分的设计：宿主接口、配置存储、订阅、覆写、多语言、外观、连接与日志、设置与桌面行为。
 系统整体的架构见 [architecture.md](architecture.md)，视觉规范见 [DESIGN.md](../DESIGN.md)。备份的设计见
 [storage.md](storage.md)，界面部分见第 8 节；自定义分流的设计见 [routing.md](routing.md)，界面部分见第 9 节。
@@ -217,7 +219,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   - 这个目录不在 `gen_i18n.py` 的流程里（lupdate 扫不到 Qt 的源码），改动后用
     `pyside6-lrelease -nounfinished -silent src/solaris/translations/qtquick_zh_CN.ts -qm src/solaris/translations/qtquick_zh_CN.qm`
     编译；`.qm` 同样提交进仓库，打包时随 `translations/*.qm` 一起复制。
-  - `tests/test_qt_translations.py` 核对：每个条目都是 Qt 那个文件里的 `qsTr` 原文，Basic 样式的菜单正好用这几个
+  - `tests/test_i18n.py` 核对：每个条目都是 Qt 那个文件里的 `qsTr` 原文，Basic 样式的菜单正好用这几个
     Action（升级 Qt 后有变化就失败）；`.qm` 与 `.ts` 一致；在中文和英文界面下实际创建这些 Action，读出的文字分别是
     中文和 Qt 的英文原文。
   - 其他 Qt 自带的文案（如系统文件对话框）由操作系统提供，跟随系统语言。
@@ -286,7 +288,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   再让 Qt 执行删除，保留编辑信号与撤销栈；只读、输入法组合和带修饰键的操作交给原生控件。
   `text.utf8_prefix` 仅用于受字节数限制的云端摘要，保留完整字素；
   备份正文仍保存完整原文。新字体或 Qt 升级必须运行 `tests/test_fonts.py` 与 `tests/test_text.py`。
-- **测试**：`tests/test_theme.py` 检查 Theme.qml 与 DESIGN.md 一致、两组颜色角色相同，并按 DESIGN.md 的用法
+- **测试**：`tests/test_qml.py` 检查 Theme.qml 与 DESIGN.md 一致、两组颜色角色相同，并按 DESIGN.md 的用法
   核对两种外观的对比度；`tests/test_appearance.py` 用 `tests/support/appearance.py` 模拟系统切换外观；
   `tests/test_app.py` 在浅色和深色下加载界面，并检查系统切换后窗口立即重绘。
   字体与编码专项可运行 `uv run pytest -q tests/test_fonts.py tests/test_text.py tests/test_logs.py tests/test_licenses.py`：

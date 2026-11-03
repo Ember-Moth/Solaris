@@ -1,12 +1,14 @@
 # 组网：Tailscale、ZeroTier、EasyTier
 
+本文面向开发者，说明组网接入与状态管理。用户操作见 [使用指南](usage.md#链式出口与组网)。
+
 mihomo 自带三种组网出站：`tailscale`、`zerotier`、`easytier`。它们用来访问自己的设备和内网，不是代理出口。
 本文写怎样把它们和代理节点分开，以及在应用里添加网络（第 10 节）。决策是 [decisions.md](decisions.md) 的 D24；
 界面的细节见 [ui.md](ui.md) 第 9 节。
 
 ## 1. 目标与边界
 
-**保留**（D24）：三种出站都编进内核，体积不变（[architecture.md](architecture.md) §3.4）。
+**保留**（D24）：三种出站都包含在发布构建中（[architecture.md](architecture.md) §3.4）。
 
 **单独处理**：
 
