@@ -247,14 +247,16 @@ def _deepest_first(directory: Path) -> Iterator[Path]:
 
 
 def uninstall_list(directory: Path) -> str:
-    """NSIS lines that remove exactly the files and directories in ``directory`` from
+    """NSIS calls that remove exactly the files and directories in ``directory`` from
     $INSTDIR, contents before their directories; the uninstaller never removes a directory
     recursively, so files it did not install stay."""
     lines = []
     for path in _deepest_first(directory):
         relative = nsis_string(str(path.relative_to(directory)).replace("/", "\\"))
-        action = "RMDir" if path.is_dir() else "Delete"
-        lines.append(f'{action} "$INSTDIR\\{relative}"')
+        if path.is_dir():
+            lines.append(f'RMDir "$INSTDIR\\{relative}"')
+        else:
+            lines.append(f'!insertmacro RemoveInstalledFile "$INSTDIR\\{relative}"')
     return "\n".join(lines) + "\n"
 
 
@@ -290,6 +292,7 @@ def build_installer(
         "SETUP_SCRIPT": SETUP_SCRIPT,
         "APP_ICON": ICON,
         "UNINSTALL_FILES": files,
+        "REMOVE_FILES_INCLUDE": PACKAGE / "remove-files.nsh",
         "INSTALLER_UI_DIR": plugin.parent,
         "INSTALLER_UI_INCLUDE": PACKAGE / "ui" / "interface.nsh",
         "INSTALLER_FONTS": ROOT / "src" / "solaris" / "ui" / "fonts",

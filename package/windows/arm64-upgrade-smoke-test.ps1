@@ -32,18 +32,18 @@ $serviceData = Join-Path $env:ProgramData 'Solaris'
 if ((Test-Path $root) -or (Test-Path $key) -or (Get-Service SolarisService -ErrorAction SilentlyContinue) -or
     (Test-Path $userData) -or (Test-Path $serviceData)) { throw 'The migration test needs a fresh runner.' }
 
-function Run-Installer([string] $Executable, [string] $Arguments) {
+function Run-Installer([string] $Executable, [string] $Arguments, [int] $ExpectedExit = 0) {
     Write-Output "> $([IO.Path]::GetFileName($Executable)) $Arguments"
     $setupProcess = Start-Process -FilePath $Executable -ArgumentList $Arguments -PassThru
     try {
         $null = $setupProcess.Handle
         if (-not $setupProcess.WaitForExit(300000)) { $setupProcess.Kill(); throw 'Installer timed out' }
-        if ($setupProcess.ExitCode -ne 0) {
+        if ($setupProcess.ExitCode -ne $ExpectedExit) {
             $errorLog = Join-Path $env:TEMP 'Solaris-setup-error.log'
             if (Test-Path $errorLog) { Get-Content -LiteralPath $errorLog | Write-Output }
-            throw "Installer returned $($setupProcess.ExitCode)"
+            throw "Installer returned $($setupProcess.ExitCode), expected $ExpectedExit"
         }
-        Write-Output 'Installer exited successfully.'
+        Write-Output "Installer exited with expected code $ExpectedExit."
     } finally { $setupProcess.Dispose() }
 }
 
@@ -94,12 +94,34 @@ try {
     Run-Installer $X64Installer "/S /D=$root"
     Assert-Architecture 'x64' 0x8664
     $oldUI = Open-Client
+    # Exercise a read-only legacy extension, including the protobuf binary that may
+    # be absent from the native ARM64 payload. It still belongs to the old manifest.
+    $legacyExtension = Join-Path $root 'google\_upb\_message.pyd'
+    if (Test-Path -LiteralPath $legacyExtension) {
+        (Get-Item -LiteralPath $legacyExtension).IsReadOnly = $true
+        Write-Output "Marked legacy extension read-only: $legacyExtension"
+    }
     $markers = foreach ($folder in @($userData, $serviceData)) {
         $marker = Join-Path $folder 'architecture-migration-marker'
         [IO.File]::WriteAllText($marker, 'keep across architecture upgrade')
         $marker
     }
-    Write-Output 'Migrating the running x64 installation to ARM64.'
+    # A foreign x64 DLL is deliberately outside the old uninstaller's manifest.
+    # Preserve it, reject the mixed runtime before service startup, then retry after
+    # the test removes its own injected file. Never delete unknown files to pass.
+    $staleRuntime = Join-Path $root 'ci-stale-x64.dll'
+    [IO.File]::Copy((Join-Path $root 'libcronet.dll'), $staleRuntime)
+    Write-Output 'Checking that mixed architecture residue blocks service startup.'
+    Run-Installer $ARM64Installer '/S' 1603
+    if ((Get-Service SolarisService).Status -ne 'Stopped') { throw 'A mixed runtime started the service.' }
+    $errorLog = Join-Path $env:TEMP 'Solaris-setup-error.log'
+    if (-not (Test-Path $staleRuntime) -or
+        -not ([IO.File]::ReadAllText($errorLog, [Text.Encoding]::Unicode).Contains('ci-stale-x64.dll'))) {
+        throw 'The mixed architecture failure did not preserve and identify the foreign DLL.'
+    }
+    (Get-Item -LiteralPath $staleRuntime).IsReadOnly = $false
+    Remove-Item -LiteralPath $staleRuntime
+    Write-Output 'Retrying ARM64 migration after removing the injected DLL.'
     Run-Installer $ARM64Installer '/S'
     if (-not $oldUI.WaitForExit(30000) -or $oldUI.ExitCode -ne 0) { throw 'The x64 GUI did not quit cleanly during migration' }
     Assert-Architecture 'arm64' 0xAA64
@@ -107,8 +129,12 @@ try {
         if ([IO.File]::ReadAllText($marker) -ne 'keep across architecture upgrade') { throw 'User or service data was lost' }
     }
     foreach ($file in Get-ChildItem -LiteralPath $root -Recurse -File) {
-        if ($file.FullName -ne $uninstaller -and $file.Extension -in @('.exe', '.dll', '.pyd') -and
-            (Read-Machine $file.FullName) -ne 0xAA64) { throw "A non-ARM64 runtime file remains: $($file.FullName)" }
+        if ($file.FullName -eq $uninstaller -or $file.Extension -notin @('.exe', '.dll', '.pyd')) { continue }
+        $actual = Read-Machine $file.FullName
+        if ($actual -ne 0xAA64) {
+            Write-Output ('Remaining runtime: {0}, machine 0x{1:X4}, attributes {2}' -f $file.FullName, $actual, $file.Attributes)
+            throw "A non-ARM64 runtime file remains: $($file.FullName)"
+        }
     }
     $newUI = Open-Client
     $quit = Start-Process -FilePath $client -ArgumentList '--quit' -PassThru

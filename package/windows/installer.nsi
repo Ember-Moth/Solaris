@@ -4,7 +4,8 @@
 ;   APP_VERSION      pyproject.toml's version, X.Y.Z
 ;   OUTPUT_FILE      Solaris-<version>-windows-x64-setup.exe
 ;   SETUP_SCRIPT     package/windows/setup.ps1, which closes the UI and handles the service
-;   UNINSTALL_FILES  Delete and RMDir lines for exactly the files in APP_DIRECTORY
+;   UNINSTALL_FILES  RemoveInstalledFile and RMDir lines for the owned payload
+;   REMOVE_FILES_INCLUDE  shared removal routine with retries and error propagation
 ;
 ; It is the only place Solaris asks for elevation: the installer and the uninstaller run as
 ; administrator, the UI never does. Custom directories are verified and protected before
@@ -72,6 +73,8 @@ LangString RegisteringApp ${LANG_ENGLISH} "Registering Solaris…"
 LangString RegisteringApp ${LANG_SIMPCHINESE} "正在注册 Solaris…"
 LangString RemovingFiles ${LANG_ENGLISH} "Removing application files…"
 LangString RemovingFiles ${LANG_SIMPCHINESE} "正在移除应用文件…"
+LangString RemovalFailed ${LANG_ENGLISH} "An installed file could not be removed. Close programs using Solaris files and run the installer again:"
+LangString RemovalFailed ${LANG_SIMPCHINESE} "无法移除已安装的文件。请关闭正在使用 Solaris 文件的程序，然后重新运行安装程序："
 LangString ClearingData ${LANG_ENGLISH} "Clearing selected application data…"
 LangString ClearingData ${LANG_SIMPCHINESE} "正在清除所选应用数据…"
 
@@ -216,7 +219,17 @@ Section
     ExecWait '"$INSTDIR\${UNINSTALLER}" /S /UPGRADE _?=$INSTDIR' $0
     ${If} ${Errors}
     ${OrIf} $0 != 0
-      !insertmacro Fail "$(UninstallerFailed)" 1603
+      ; Keep the old uninstaller's failing path in the parent installer's error.
+      StrCpy $1 ""
+      ${If} ${FileExists} "${ERROR_LOG}"
+        ClearErrors
+        FileOpen $8 "${ERROR_LOG}" r
+        ${IfNot} ${Errors}
+          FileReadUTF16LE $8 $1
+          FileClose $8
+        ${EndIf}
+      ${EndIf}
+      !insertmacro Fail "$(UninstallerFailed)$\r$\n$1" 1603
     ${EndIf}
   ${EndIf}
 
@@ -310,9 +323,11 @@ Function un.onUninstFailed
   ${EndIf}
 FunctionEnd
 
+!include "${REMOVE_FILES_INCLUDE}"
+
 Function un.RemoveFiles
   !include "${UNINSTALL_FILES}"
-  Delete "$INSTDIR\.solaris-install-root"
+  !insertmacro RemoveInstalledFile "$INSTDIR\.solaris-install-root"
 FunctionEnd
 
 Section "!un.${PRODUCT}" UninstallProgram

@@ -300,7 +300,7 @@ try {
     $lockedRuntime = [IO.File]::Open((Join-Path $Root 'libcronet.dll'), [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
     try {
         Invoke-Setup $Installer '/S' 1603
-        Expect ((Get-SolarisService).State -eq 'Stopped') 'A failed copy started the service with an incomplete runtime'
+        Expect ((Get-SolarisService).State -eq 'Stopped') 'A failed upgrade started the service with an incomplete runtime'
         Expect ((Test-Path -LiteralPath $ErrorLog) -and (Get-Item -LiteralPath $ErrorLog).Length -gt 0) 'The failed upgrade did not report its error'
     } finally { $lockedRuntime.Dispose() }
     Invoke-Setup $Installer '/S'

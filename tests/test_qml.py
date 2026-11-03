@@ -1,6 +1,9 @@
+"""QML static validation and generated theme/accessibility constraints."""
+
 import pytest
 
 from scripts.gen_theme import DESIGN_MD, THEME_QML, color_modes, frontmatter, render
+from scripts.qmllint import check
 
 TOKENS = frontmatter(DESIGN_MD.read_text(encoding="utf-8"))
 LIGHT, DARK = color_modes(TOKENS["colors"])
@@ -80,3 +83,10 @@ def test_dark_backgrounds_are_not_black_and_rise_with_elevation() -> None:
     levels = [luminance(DARK[name]) for name in layers]
     assert levels == sorted(levels)
     assert all(DARK[name] != "#000000" for name in layers)
+
+
+def test_qml_passes_qmllint() -> None:
+    """Nothing beyond scripts/qmllint_exemptions.toml, and no exemption left unused."""
+    unexpected, stale = check()
+    assert [str(finding) for finding in unexpected] == []
+    assert stale == []

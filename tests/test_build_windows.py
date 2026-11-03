@@ -4,8 +4,11 @@ directory, when makensis is installed."""
 
 from __future__ import annotations
 
+import ctypes
 import shutil
+import stat
 import struct
+import subprocess
 import sys
 from pathlib import Path
 
@@ -96,9 +99,11 @@ def test_check_refuses_other_architectures(tmp_path: Path) -> None:
 
 def test_uninstall_list_removes_contents_before_their_directories(tmp_path: Path) -> None:
     lines = build_windows.uninstall_list(_install_directory(tmp_path)).splitlines()
-    assert 'Delete "$INSTDIR\\Solaris.exe"' in lines
-    assert 'Delete "$INSTDIR\\PySide6\\qml\\QtQuick\\price$$1.qml"' in lines
-    assert all(line.startswith(("Delete ", "RMDir ")) for line in lines)
+    assert '!insertmacro RemoveInstalledFile "$INSTDIR\\Solaris.exe"' in lines
+    assert (
+        '!insertmacro RemoveInstalledFile "$INSTDIR\\PySide6\\qml\\QtQuick\\price$$1.qml"' in lines
+    )
+    assert all(line.startswith(("!insertmacro RemoveInstalledFile ", "RMDir ")) for line in lines)
     assert not any("/r" in line for line in lines)
     order = {line: index for index, line in enumerate(lines)}
     for directory in ("PySide6", "PySide6\\qml", "PySide6\\qml\\QtQuick", "geodata"):
@@ -133,3 +138,150 @@ def test_installer_compiles(tmp_path: Path, arch: str) -> None:
     installer = build_windows.build_installer(directory, "0.2.0", makensis, tmp_path / "out", arch)
     assert installer.name == f"Solaris-0.2.0-windows-{arch}-setup.exe"
     assert installer.read_bytes()[:2] == b"MZ"
+
+
+try:
+    MAKENSIS = build_windows.find_makensis(None)
+except BuildError:
+    MAKENSIS = None
+REQUIRES_NSIS = pytest.mark.skipif(MAKENSIS is None, reason="needs NSIS")
+
+
+def build_harness(directory: Path) -> tuple[Path, Path]:
+    payload = directory / "payload"
+    module = payload / "google" / "_upb" / "_message.pyd"
+    module.parent.mkdir(parents=True)
+    module.write_bytes(b"old extension module")
+    (payload / "Solaris.exe").write_bytes(b"stand-in, never executed")
+    owned = directory / "remove-payload.nsh"
+    owned.write_text(build_windows.uninstall_list(payload), encoding="utf-8-sig")
+    installed = directory / "Solaris test $folder"
+    installer = directory / "cleanup-fixture.exe"
+    script = directory / "harness.nsi"
+    source = r"""
+Unicode true
+RequestExecutionLevel user
+SilentInstall silent
+SilentUnInstall silent
+!include LogicLib.nsh
+LoadLanguageFile "${NSISDIR}\Contrib\Language files\English.nlf"
+LangString RemovalFailed ${LANG_ENGLISH} "Could not remove installed file:"
+!macro Fail MESSAGE CODE
+  FileOpen $9 "$INSTDIR\cleanup-error.txt" w
+  FileWriteUTF16LE /BOM $9 "${MESSAGE}$\r$\n"
+  FileClose $9
+  SetErrorLevel ${CODE}
+  Abort
+!macroend
+!include "@INCLUDE@"
+Name "Solaris cleanup test"
+OutFile "@OUTPUT@"
+InstallDir "@INSTALLED@"
+Section
+  SetOutPath "$INSTDIR"
+  File /r "@PAYLOAD@\*"
+  WriteUninstaller "$INSTDIR\uninstall.exe"
+SectionEnd
+Section "Uninstall"
+  !include "@OWNED@"
+SectionEnd
+"""
+    for name, path in {
+        "INCLUDE": build_windows.PACKAGE / "remove-files.nsh",
+        "OUTPUT": installer,
+        "INSTALLED": installed,
+        "PAYLOAD": payload,
+        "OWNED": owned,
+    }.items():
+        source = source.replace(f"@{name}@", build_windows.nsis_string(str(path)))
+    script.write_text(source, encoding="utf-8-sig")
+    compiled = subprocess.run(
+        [str(MAKENSIS), "-V2", "-WX", str(script)],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    assert compiled.returncode == 0, compiled.stdout + compiled.stderr
+    return installer, installed
+
+
+@REQUIRES_NSIS
+def test_removal_routine_compiles(tmp_path: Path) -> None:
+    installer, _ = build_harness(tmp_path)
+    assert installer.read_bytes()[:2] == b"MZ"
+
+
+def install_harness(directory: Path) -> Path:
+    installer, installed = build_harness(directory)
+    subprocess.run([str(installer), "/S"], check=True, timeout=20)
+    return installed
+
+
+def uninstall(installed: Path) -> subprocess.CompletedProcess[bytes]:
+    # NSIS requires _?= to be the last, unquoted part of its Windows command line.
+    return subprocess.run(
+        f'"{installed / "uninstall.exe"}" /S _?={installed}',
+        timeout=20,
+        check=False,
+    )
+
+
+@pytest.mark.skipif(
+    sys.platform != "win32", reason="needs Windows file attributes and NSIS runtime"
+)
+@REQUIRES_NSIS
+def test_removes_readonly_owned_files_and_preserves_unknown_files(tmp_path: Path) -> None:
+    if sys.platform != "win32":
+        pytest.skip("Windows only")
+    installed = install_harness(tmp_path)
+    old = installed / "google" / "_upb" / "_message.pyd"
+    old.chmod(stat.S_IREAD)
+    extra = old.parent / "user-note.txt"
+    extra.write_text("keep me", encoding="utf-8")
+    extra.chmod(stat.S_IREAD)
+    try:
+        assert uninstall(installed).returncode == 0
+        assert not old.exists()
+        assert not (installed / "Solaris.exe").exists()
+        assert extra.read_text(encoding="utf-8") == "keep me"
+        assert extra.stat().st_file_attributes & stat.FILE_ATTRIBUTE_READONLY
+    finally:
+        extra.chmod(stat.S_IWRITE)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="needs Windows file locking and NSIS runtime")
+@REQUIRES_NSIS
+def test_locked_old_extension_fails_then_retry_cleans_it(tmp_path: Path) -> None:
+    if sys.platform != "win32":
+        pytest.skip("Windows only")
+    from ctypes import wintypes
+
+    installed = install_harness(tmp_path)
+    old = installed / "google" / "_upb" / "_message.pyd"
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.CreateFileW.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    ]
+    kernel.CreateFileW.restype = wintypes.HANDLE
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel.CloseHandle.restype = wintypes.BOOL
+    handle = kernel.CreateFileW(str(old), 0x80000000, 1, None, 3, 0x80, None)
+    if handle == wintypes.HANDLE(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        assert uninstall(installed).returncode == 1603
+        assert old.exists()
+        assert "_message.pyd" in (installed / "cleanup-error.txt").read_text(encoding="utf-16")
+    finally:
+        kernel.CloseHandle(handle)
+    assert uninstall(installed).returncode == 0
+    assert not old.exists()
+    # A previously removed file is harmless on retry.
+    assert not (installed / "Solaris.exe").exists()

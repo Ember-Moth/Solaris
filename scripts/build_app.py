@@ -52,6 +52,7 @@ ENTRY = ROOT / "package" / "entry.py"
 CORE = ROOT / "src" / "core"
 
 APP_NAME = "Solaris"
+MINIMUM_MACOS = "26.0"  # Product floor (D28), independent of individual library targets.
 # Not "Solaris": the volume is case-insensitive, and Contents/MacOS/solaris holds the package's
 # data (ui/, translations/) where the compiled modules look for it.
 EXECUTABLE = "SolarisUI"
@@ -223,7 +224,7 @@ def build_ui(version: str) -> Path:
         "CC": str(clang),
         "PATH": f"{clang.parent}{os.pathsep}{os.environ['PATH']}",
         "SDKROOT": _output(["xcrun", "--show-sdk-path"]).strip(),
-        "MACOSX_DEPLOYMENT_TARGET": build_apple.DEPLOYMENT_TARGET,
+        "MACOSX_DEPLOYMENT_TARGET": MINIMUM_MACOS,
     }
     command: list[str | Path] = [
         sys.executable,
@@ -239,7 +240,7 @@ def build_ui(version: str) -> Path:
         f"--macos-app-name={APP_NAME}",
         f"--macos-signed-app-name={build_apple.APP_ID}",
         f"--macos-app-version={version}",
-        f"--macos-app-macos-min-version={build_apple.DEPLOYMENT_TARGET}",
+        f"--macos-app-macos-min-version={MINIMUM_MACOS}",
         f"--macos-app-icon={ROOT / 'package' / 'icons' / 'solaris.icns'}",
         f"--output-filename={EXECUTABLE}",
         f"--output-dir={output}",
@@ -317,10 +318,10 @@ def _outside(path: str) -> bool:
 def check_ui(ui: Path) -> str:
     """Every Mach-O is arm64 alone and loads nothing outside the bundle and the system.
     Install names and rpaths that still point into the build machine become @rpath names or
-    go. Returns the oldest macOS all of them run on: the deployment target, unless a
+    go. Returns the oldest supported macOS: the product floor, unless a
     dependency was built for a newer one (PySide6's wheels tag an older macOS than their
     binaries need)."""
-    minimum = build_apple.DEPLOYMENT_TARGET
+    minimum = MINIMUM_MACOS
     newer: dict[str, list[str]] = {}
     count = 0
     for path in _machos(ui / "Contents"):
@@ -334,7 +335,7 @@ def check_ui(ui: Path) -> str:
             command = re.search(r"^\s*cmd (\w+)$", block, re.MULTILINE)
             value = re.search(r"^\s*(?:name|path) (\S+) \(offset", block, re.MULTILINE)
             version = re.search(r"^\s*minos (\S+)$", block, re.MULTILINE)
-            if version and _version_key(version[1]) > _version_key(build_apple.DEPLOYMENT_TARGET):
+            if version and _version_key(version[1]) > _version_key(MINIMUM_MACOS):
                 newer.setdefault(version[1], []).append(name)
                 minimum = max(minimum, version[1], key=_version_key)
             if command is None or value is None or not _outside(value[1]):
@@ -351,8 +352,8 @@ def check_ui(ui: Path) -> str:
     for version, names in sorted(newer.items(), key=lambda item: _version_key(item[0])):
         shown = ", ".join(names[:3]) + (f" and {len(names) - 3} more" if len(names) > 3 else "")
         print(f"warning: macOS {version} needed by {shown}")
-    if minimum != build_apple.DEPLOYMENT_TARGET:
-        print(f"warning: Solaris.app needs macOS {minimum}, above {build_apple.DEPLOYMENT_TARGET}")
+    if minimum != MINIMUM_MACOS:
+        print(f"warning: Solaris.app needs macOS {minimum}, above {MINIMUM_MACOS}")
     return minimum
 
 

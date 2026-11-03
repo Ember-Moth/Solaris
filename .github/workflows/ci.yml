@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-15
+          - os: macos-26
             python_arch: aarch64
           - os: windows-latest
             python_arch: x86_64
@@ -63,7 +63,7 @@ jobs:
   # The UI against the real development service (docs/architecture.md §11): no TUN, only
   # loopback traffic to local servers through the mixed port.
   e2e:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
@@ -98,7 +98,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, windows-latest, windows-11-arm, ubuntu-latest]
+        os: [macos-26, windows-latest, windows-11-arm, ubuntu-latest]
     env:
       CGO_ENABLED: ${{ matrix.os == 'windows-11-arm' && '0' || '1' }}
     defaults:
@@ -155,9 +155,9 @@ jobs:
 
   # The macOS manager library and system extension (apple/README.md), built unsigned so that the
   # Xcode project keeps compiling; signing and notarization belong to the release workflow.
-  # XcodeGen's projects need Xcode 16 or later, which macos-15 runs by default.
+  # Match the app's minimum supported macOS version (D28), as the release job does.
   apple:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
@@ -263,6 +263,8 @@ jobs:
         run: choco install nsis --yes --no-progress
       - name: Install (locked)
         run: uv sync --frozen
+      - name: Installer cleanup regression
+        run: uv run --frozen pytest -q tests/test_build_windows.py -k "removal_routine or readonly_owned_files or locked_old_extension"
       - uses: actions/cache@v6
         with:
           path: build/geodata

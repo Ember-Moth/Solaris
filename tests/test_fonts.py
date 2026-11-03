@@ -42,11 +42,11 @@ def fonts(qapp: QCoreApplication) -> None:
 def test_bundled_assets_match_their_pinned_sources() -> None:
     records = json.loads((DIRECTORY / "sources.json").read_text("utf-8"))["files"]
     files = {item["file"] for item in records}
-    assert {str(p.relative_to(DIRECTORY)) for p in DIRECTORY.rglob("*.ttf")} == {
+    assert {p.relative_to(DIRECTORY).as_posix() for p in DIRECTORY.rglob("*.ttf")} == {
         relative for relative, _ in BUNDLED
     }
     assert files == {
-        str(p.relative_to(DIRECTORY))
+        p.relative_to(DIRECTORY).as_posix()
         for p in DIRECTORY.rglob("*")
         if p.suffix == ".ttf" or p.name == "OFL.txt"
     }

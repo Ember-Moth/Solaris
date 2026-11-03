@@ -118,9 +118,18 @@ function Read-BinaryMachine([string] $Path) {
 function Install-SolarisService {
     $machine = Read-BinaryMachine $ServiceExecutable
     if ($machine -notin @(0x8664, 0xAA64)) { throw 'The service is not an x64 or ARM64 executable.' }
-    foreach ($binary in @($Client, (Join-Path $InstallDirectory 'libcronet.dll'))) {
-        if ((Read-BinaryMachine $binary) -ne $machine) {
-            throw "The installed runtime has mixed architectures: $binary. Run the matching installer again."
+    foreach ($required in @($Client, (Join-Path $InstallDirectory 'libcronet.dll'))) {
+        if (-not (Test-Path -LiteralPath $required -PathType Leaf)) {
+            throw "An installed runtime file is missing: $required. Run the matching installer again."
+        }
+    }
+    # Check every native runtime file, including extension modules no longer shipped
+    # by this architecture. Older uninstallers could ignore a failed Delete operation.
+    $uninstaller = Join-Path $InstallDirectory 'uninstall.exe'
+    foreach ($binary in Get-ChildItem -LiteralPath $InstallDirectory -Recurse -File) {
+        if ($binary.FullName -ne $uninstaller -and $binary.Extension -in @('.exe', '.dll', '.pyd') -and
+            (Read-BinaryMachine $binary.FullName) -ne $machine) {
+            throw "The installed runtime has mixed architectures: $($binary.FullName). Run the matching installer again."
         }
     }
     Set-CrashDumps
