@@ -19,234 +19,391 @@ Corresponding source code:
 Python
 ------
 
-jaraco.classes 3.4.0 -- MIT -- https://github.com/jaraco/jaraco.classes [1]
-jaraco.context 6.1.2 -- MIT -- https://github.com/jaraco/jaraco.context [2]
-jaraco.functools 4.6.0 -- MIT -- https://github.com/jaraco/jaraco.functools [2]
-keyring 25.7.0 -- MIT -- https://github.com/jaraco/keyring [3]
-more-itertools 11.2.1 -- MIT -- https://github.com/more-itertools/more-itertools [4]
-protobuf 6.33.4 -- BSD-3-Clause -- https://developers.google.com/protocol-buffers/ [5]
-PySide6 6.12.0 -- LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only -- https://pyside.org [6]
-PySide6_Addons 6.12.0 -- LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only -- https://pyside.org [6]
-PySide6_Essentials 6.12.0 -- LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only -- https://pyside.org [6]
-shiboken6 6.12.0 -- LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only -- https://pyside.org [6]
-CPython 3.14.7 -- PSF-2.0 -- https://www.python.org/ [7], [8]
-OpenSSL (CPython _ssl, _hashlib) 3.5.8 -- Apache-2.0 -- https://openssl-library.org/ [9]
-SQLite (CPython _sqlite3) 3.53.1 -- LicenseRef-Public-Domain -- https://sqlite.org/ [10]
-libffi (CPython _ctypes, macOS) 3.4.8 -- MIT -- https://sourceware.org/libffi/ [11]
-libffi (CPython _ctypes, Windows) 3.4.7 -- MIT -- https://sourceware.org/libffi/ [11]
-bzip2 (CPython _bz2) 1.0.8 -- bzip2-1.0.6 -- https://sourceware.org/bzip2/ [12]
-XZ Utils (liblzma) (CPython _lzma) 5.8.3 -- 0BSD -- https://tukaani.org/xz/ [13]
-Zstandard (CPython _zstd) 1.5.7 -- BSD-3-Clause -- https://facebook.github.io/zstd/ [14]
-Expat (CPython pyexpat, macOS) 2.8.4 -- MIT -- https://libexpat.github.io/ [15]
-Expat (CPython pyexpat, Windows) 2.8.2 -- MIT -- https://libexpat.github.io/ [15]
-mpdecimal (CPython _decimal) 4.0.0 -- BSD-2-Clause -- https://www.bytereef.org/mpdecimal/ [16]
-libuuid (CPython _uuid, macOS) 1.0.3 -- BSD-3-Clause -- https://sourceforge.net/projects/libuuid/ [17]
-zlib-ng (CPython zlib, binascii, Windows) 2.2.4 -- Zlib -- https://github.com/zlib-ng/zlib-ng [18]
+anyio 4.16.0 -- MIT -- https://pypi.org/project/anyio/ [1]
+certifi 2026.10.23 -- MPL-2.0 -- https://github.com/certifi/python-certifi [2]
+h11 0.16.0 -- MIT -- https://github.com/python-hyper/h11 [3]
+httpcore 1.0.9 -- BSD-3-Clause -- https://www.encode.io/httpcore/ [4]
+httpx 0.28.1 -- BSD-3-Clause -- https://github.com/encode/httpx [5]
+idna 3.20 -- BSD-3-Clause -- https://github.com/kjd/idna [6]
+jaraco.classes 3.4.0 -- MIT -- https://github.com/jaraco/jaraco.classes [7]
+jaraco.context 6.1.2 -- MIT -- https://github.com/jaraco/jaraco.context [8]
+jaraco.functools 4.6.0 -- MIT -- https://github.com/jaraco/jaraco.functools [8]
+keyring 25.7.0 -- MIT -- https://github.com/jaraco/keyring [9]
+more-itertools 11.2.1 -- MIT -- https://github.com/more-itertools/more-itertools [10]
+protobuf 6.33.4 -- BSD-3-Clause -- https://developers.google.com/protocol-buffers/ [11]
+PySide6 6.12.0 -- LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only -- https://pyside.org [12]
+PySide6_Addons 6.12.0 -- LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only -- https://pyside.org [12]
+PySide6_Essentials 6.12.0 -- LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only -- https://pyside.org [12]
+shiboken6 6.12.0 -- LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only -- https://pyside.org [12]
+typing_extensions 4.16.0 -- PSF-2.0 -- https://github.com/python/typing_extensions [13]
+CPython 3.14.7 -- PSF-2.0 -- https://www.python.org/ [14], [15]
+OpenSSL (CPython _ssl, _hashlib) 3.5.8 -- Apache-2.0 -- https://openssl-library.org/ [16]
+SQLite (CPython _sqlite3) 3.53.1 -- LicenseRef-Public-Domain -- https://sqlite.org/ [17]
+libffi (CPython _ctypes, macOS) 3.4.8 -- MIT -- https://sourceware.org/libffi/ [18]
+libffi (CPython _ctypes, Windows) 3.4.7 -- MIT -- https://sourceware.org/libffi/ [18]
+bzip2 (CPython _bz2) 1.0.8 -- bzip2-1.0.6 -- https://sourceware.org/bzip2/ [19]
+XZ Utils (liblzma) (CPython _lzma) 5.8.3 -- 0BSD -- https://tukaani.org/xz/ [20]
+Zstandard (CPython _zstd) 1.5.7 -- BSD-3-Clause -- https://facebook.github.io/zstd/ [21]
+Expat (CPython pyexpat, macOS) 2.8.4 -- MIT -- https://libexpat.github.io/ [22]
+Expat (CPython pyexpat, Windows) 2.8.2 -- MIT -- https://libexpat.github.io/ [22]
+mpdecimal (CPython _decimal) 4.0.0 -- BSD-2-Clause -- https://www.bytereef.org/mpdecimal/ [23]
+libuuid (CPython _uuid, macOS) 1.0.3 -- BSD-3-Clause -- https://sourceforge.net/projects/libuuid/ [24]
+zlib-ng (CPython zlib, binascii, Windows) 2.2.4 -- Zlib -- https://github.com/zlib-ng/zlib-ng [25]
 
 Go
 --
 
-github.com/ajg/form v1.7.1 -- BSD-3-Clause -- https://github.com/ajg/form [19]
-github.com/andybalholm/brotli v1.1.1 -- MIT -- https://github.com/andybalholm/brotli [20]
-github.com/bahlo/generic-list-go v0.2.0 -- BSD-3-Clause -- https://github.com/bahlo/generic-list-go [21]
-github.com/bodgit/plumbing v1.3.0 -- BSD-3-Clause -- https://github.com/bodgit/plumbing [22]
-github.com/bodgit/windows v1.0.1 -- BSD-3-Clause -- https://github.com/bodgit/windows [23]
-github.com/dlclark/regexp2 v1.12.0 -- MIT -- https://github.com/dlclark/regexp2 [24]
-github.com/dunglas/httpsfv v1.0.2 -- BSD-3-Clause -- https://github.com/dunglas/httpsfv [25]
-github.com/easytier/easytier/easytier-go v0.0.0-20260910071355-3d0c9c3ca5e2 -- LGPL-3.0-only -- https://github.com/easytier/easytier [6]
-github.com/ebitengine/purego v0.10.0 -- Apache-2.0 -- https://github.com/ebitengine/purego [26]
-github.com/Ember-Moth/cronet-go v0.0.0-20261103143108-5a29f59dd943 -- GPL-3.0-or-later -- https://github.com/Ember-Moth/cronet-go [27]
-github.com/Ember-Moth/cronet-go/all v0.0.0-20261103143108-5a29f59dd943 -- GPL-3.0-or-later -- https://github.com/Ember-Moth/cronet-go [27]
-github.com/Ember-Moth/mihomo v1.19.33-0.20261103143402-f499052f0550 -- GPL-3.0-only -- https://github.com/Ember-Moth/mihomo [28]
-github.com/Ember-Moth/sing-snell v0.0.0-20261103142549-a3b26775de24 -- GPL-3.0-or-later -- https://github.com/Ember-Moth/sing-snell [27]
-github.com/enfein/mieru/v3 v3.38.1 -- GPL-3.0-only -- https://github.com/enfein/mieru [28]
-github.com/ericlagergren/aegis v0.0.0-20250325060835-cd0defd64358 -- BSD-2-Clause -- https://github.com/ericlagergren/aegis [29]
-github.com/ericlagergren/polyval v0.0.0-20220411101811-e25bc10ba391 -- BSD-2-Clause -- https://github.com/ericlagergren/polyval [30]
-github.com/ericlagergren/siv v0.0.0-20220507050439-0b757b3aa5f1 -- BSD-3-Clause -- https://github.com/ericlagergren/siv [31]
-github.com/ericlagergren/subtle v0.0.0-20220507045147-890d697da010 -- BSD-3-Clause -- https://github.com/ericlagergren/subtle [31]
-github.com/fsnotify/fsnotify v1.9.0 -- BSD-3-Clause -- https://github.com/fsnotify/fsnotify [32]
-github.com/fxamacker/cbor/v2 v2.9.0 -- MIT -- https://github.com/fxamacker/cbor [33]
-github.com/gaukas/godicttls v0.0.4 -- BSD-3-Clause -- https://github.com/gaukas/godicttls [34]
-github.com/go-ole/go-ole v1.3.0 -- MIT -- https://github.com/go-ole/go-ole [35]
-github.com/gobwas/httphead v0.1.0 -- MIT -- https://github.com/gobwas/httphead [36]
-github.com/gobwas/pool v0.2.1 -- MIT -- https://github.com/gobwas/pool [37]
-github.com/gobwas/ws v1.4.0 -- MIT -- https://github.com/gobwas/ws [38]
-github.com/gofrs/uuid/v5 v5.4.0 -- MIT -- https://github.com/gofrs/uuid [39]
-github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 -- Apache-2.0 -- https://github.com/golang/groupcache [40]
-github.com/golang/snappy v1.0.0 -- BSD-3-Clause -- https://github.com/golang/snappy [41]
-github.com/google/btree v1.1.3 -- Apache-2.0 -- https://github.com/google/btree [42]
-github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8 -- Apache-2.0 -- https://github.com/google/pprof [42]
-github.com/hashicorp/golang-lru/v2 v2.0.7 -- MPL-2.0 -- https://github.com/hashicorp/golang-lru [43]
-github.com/insomniacslk/dhcp v0.0.0-20250109001534-8abf58130905 -- BSD-3-Clause -- https://github.com/insomniacslk/dhcp [44]
-github.com/josharian/native v1.1.0 -- MIT -- https://github.com/josharian/native [45]
-github.com/klauspost/compress v1.17.9 -- BSD-3-Clause -- https://github.com/klauspost/compress [46]
-github.com/klauspost/cpuid/v2 v2.2.6 -- MIT -- https://github.com/klauspost/cpuid [47]
-github.com/klauspost/reedsolomon v1.12.3 -- MIT -- https://github.com/klauspost/reedsolomon [48]
-github.com/metacubex/age v0.0.0-20260603010618-28d156b4ea78 -- BSD-3-Clause -- https://github.com/metacubex/age [49]
-github.com/metacubex/amneziawg-go v0.0.0-20260908071407-0c1c6f40ecd7 -- MIT -- https://github.com/metacubex/amneziawg-go [50]
-github.com/metacubex/ascon v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/ascon [51]
-github.com/metacubex/bart v0.29.0 -- MIT -- https://github.com/metacubex/bart [52]
-github.com/metacubex/bbolt v0.0.0-20260706163408-d4ec34ad7c48 -- MIT -- https://github.com/metacubex/bbolt [53]
-github.com/metacubex/blake3 v0.1.0 -- MIT -- https://github.com/metacubex/blake3 [54]
-github.com/metacubex/chacha v0.1.5 -- MIT -- https://github.com/metacubex/chacha [55], [56]
-github.com/metacubex/chi v0.1.1 -- MIT -- https://github.com/metacubex/chi [57]
-github.com/metacubex/connect-ip-go v0.0.0-20260727083417-67ccdb0cf771 -- MIT -- https://github.com/metacubex/connect-ip-go [58]
-github.com/metacubex/cpu v0.1.2 -- BSD-3-Clause -- https://github.com/metacubex/cpu [59]
-github.com/metacubex/edwards25519 v1.2.0 -- BSD-3-Clause -- https://github.com/metacubex/edwards25519 [21]
-github.com/metacubex/fswatch v0.1.1 -- GPL-3.0-or-later -- https://github.com/metacubex/fswatch [27]
-github.com/metacubex/gvisor v0.0.0-20260922041103-e2cbcd6e7400 -- Apache-2.0 -- https://github.com/metacubex/gvisor [60]
-github.com/metacubex/hkdf v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/hkdf [59]
-github.com/metacubex/hpke v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/hpke [59]
-github.com/metacubex/http v0.1.8 -- BSD-3-Clause -- https://github.com/metacubex/http [59]
-github.com/metacubex/jls-quic-go v0.0.0-20260727080412-732f2fc9a34d -- MIT -- https://github.com/metacubex/jls-quic-go [61]
-github.com/metacubex/jls-tls v0.0.0-20260723084315-67adc0e2f796 -- BSD-3-Clause -- https://github.com/metacubex/jls-tls [59]
-github.com/metacubex/jsonv2 v0.0.0-20260721082349-16b4998c8f89 -- BSD-3-Clause -- https://github.com/metacubex/jsonv2 [62]
-github.com/metacubex/kcp-go v0.0.0-20260105040817-550693377604 -- MIT -- https://github.com/metacubex/kcp-go [63]
-github.com/metacubex/mhurl v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/mhurl [59]
-github.com/metacubex/mipstack v0.0.0-20261019124225-9a80a07eaeb9 -- MPL-2.0 -- https://github.com/metacubex/mipstack [64]
-github.com/metacubex/mlkem v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/mlkem [59]
-github.com/metacubex/qpack v0.6.0 -- MIT -- https://github.com/metacubex/qpack [65]
-github.com/metacubex/quic-go v0.61.1-0.20260727080200-2548683b76f4 -- MIT -- https://github.com/metacubex/quic-go [61]
-github.com/metacubex/randv2 v0.2.0 -- GPL-3.0-only -- https://github.com/metacubex/randv2 [28]
-github.com/metacubex/restls-client-go v0.1.9 -- BSD-3-Clause -- https://github.com/metacubex/restls-client-go [21], [66]
-github.com/metacubex/sevenzip v1.6.4 -- BSD-3-Clause -- https://github.com/metacubex/sevenzip [23]
-github.com/metacubex/sing v0.5.8 -- GPL-3.0-or-later -- https://github.com/metacubex/sing [27]
-github.com/metacubex/sing-mux v0.3.12 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-mux [27]
-github.com/metacubex/sing-quic v0.0.0-20260904234848-1c242664697a -- GPL-3.0-or-later -- https://github.com/metacubex/sing-quic [27]
-github.com/metacubex/sing-shadowsocks v0.2.13 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-shadowsocks [27]
-github.com/metacubex/sing-shadowsocks2 v0.2.8 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-shadowsocks2 [27]
-github.com/metacubex/sing-tun v0.4.28 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-tun [27]
-Wintun (wintun.dll in github.com/metacubex/sing-tun) 0.14.1 -- LicenseRef-Wintun-Prebuilt-Binaries -- https://www.wintun.net/ [67]
-github.com/metacubex/sing-vmess v0.2.5 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-vmess [27]
-github.com/metacubex/sing-wireguard v0.0.0-20261002050126-e5fa1a607406 -- GPL-3.0-only -- https://github.com/metacubex/sing-wireguard [28]
-github.com/metacubex/smux v0.0.0-20260105030934-d0c8756d3141 -- MIT -- https://github.com/metacubex/smux [68]
-github.com/metacubex/ssh v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/ssh [59]
-github.com/metacubex/tailscale v0.0.0-20260821153257-ff0ecd818181 -- BSD-3-Clause -- https://github.com/metacubex/tailscale [69]
-github.com/metacubex/tailscale-wireguard-go v0.0.0-20260725073821-e61ab99cede2 -- MIT -- https://github.com/metacubex/tailscale-wireguard-go [70]
-github.com/metacubex/tfo-go v0.0.0-20260623020846-376a77860b8c -- MIT -- https://github.com/metacubex/tfo-go [71]
-github.com/metacubex/tls v0.1.9 -- BSD-3-Clause -- https://github.com/metacubex/tls [59]
-github.com/metacubex/utls v1.8.8 -- BSD-3-Clause -- https://github.com/metacubex/utls [21]
-github.com/metacubex/wazero v0.0.0-20260628025728-9ae6bdcf2a7d -- Apache-2.0 -- https://github.com/metacubex/wazero [72], [73]
-github.com/metacubex/wireguard-go v0.0.0-20250820062549-a6cecdd7f57f -- MIT -- https://github.com/metacubex/wireguard-go [70]
-github.com/metacubex/yamux v0.0.0-20250918083631-dd5f17c0be49 -- MPL-2.0 AND BSD-3-Clause -- https://github.com/metacubex/yamux [74], [21]
-github.com/metacubex/zerotier-go v0.0.0-20260813124750-13fa6f45da5f -- MPL-2.0 -- https://github.com/metacubex/zerotier-go [64], [75]
-github.com/Microsoft/go-winio v0.6.4 -- MIT -- https://github.com/Microsoft/go-winio [76]
-github.com/miekg/dns v1.1.72 -- BSD-3-Clause -- https://github.com/miekg/dns [77]
-github.com/mitchellh/go-ps v1.0.0 -- MIT -- https://github.com/mitchellh/go-ps [78]
-github.com/mroth/weightedrand/v2 v2.1.0 -- MIT -- https://github.com/mroth/weightedrand [79]
-github.com/oasisprotocol/deoxysii v0.0.0-20220228165953-2091330c22b7 -- MIT -- https://github.com/oasisprotocol/deoxysii [80]
-github.com/openacid/low v0.1.21 -- MIT -- https://github.com/openacid/low [81]
-github.com/oschwald/maxminddb-golang v1.12.0 -- ISC -- https://github.com/oschwald/maxminddb-golang [82]
-github.com/pierrec/lz4/v4 v4.1.27 -- BSD-3-Clause -- https://github.com/pierrec/lz4 [83]
-github.com/pires/go-proxyproto v0.8.0 -- Apache-2.0 -- https://github.com/pires/go-proxyproto [84]
-github.com/rasky/go-lzo v0.0.0-20200203143853-96a758eda86e -- GPL-2.0-or-later -- https://github.com/rasky/go-lzo [85]
-github.com/RyuaNerin/go-krypto v1.3.0 -- MIT -- https://github.com/RyuaNerin/go-krypto [86]
-github.com/sagernet/cronet-go/lib/darwin_arm64 v0.0.0-20261023055542-d5437a0df01a -- GPL-3.0-or-later -- https://github.com/sagernet/cronet-go [27]
-github.com/sagernet/cronet-go/lib/windows_amd64 v0.0.0-20261023055542-d5437a0df01a -- GPL-3.0-or-later -- https://github.com/sagernet/cronet-go [27]
-github.com/sagernet/cronet-go/lib/windows_arm64 v0.0.0-20261023055542-d5437a0df01a -- GPL-3.0-or-later -- https://github.com/sagernet/cronet-go [27]
-github.com/samber/lo v1.53.0 -- MIT -- https://github.com/samber/lo [87]
-github.com/sina-ghaderi/poly1305 v0.0.0-20220724002748-c5926b03988b -- GPL-3.0-only -- https://github.com/sina-ghaderi/poly1305 [28]
-github.com/sina-ghaderi/rabaead v0.0.0-20220730151906-ab6e06b96e8c -- GPL-3.0-only -- https://github.com/sina-ghaderi/rabaead [28]
-github.com/sina-ghaderi/rabbitio v0.0.0-20220730151941-9ce26f4f872e -- Apache-2.0 -- https://github.com/sina-ghaderi/rabbitio [42]
-github.com/sirupsen/logrus v1.10.2 -- MIT -- https://github.com/sirupsen/logrus [88]
-github.com/stangelandcl/ppmd v0.1.1 -- MIT -- https://github.com/stangelandcl/ppmd [89]
-github.com/tailscale/certstore v0.1.1-0.20260409135935-3638fb84b77d -- MIT -- https://github.com/tailscale/certstore [90]
-github.com/tailscale/go-winio v0.0.0-20231025203758-c4f33415bf55 -- MIT -- https://github.com/tailscale/go-winio [76]
-github.com/tailscale/hujson v0.0.0-20221223112325-20486734a56a -- BSD-3-Clause -- https://github.com/tailscale/hujson [91]
-github.com/tailscale/peercred v0.0.0-20250107143737-35a0c7bd7edc -- BSD-3-Clause -- https://github.com/tailscale/peercred [92]
-github.com/u-root/uio v0.0.0-20230220225925-ffce2a382923 -- BSD-3-Clause -- https://github.com/u-root/uio [93]
-github.com/ulikunitz/xz v0.5.15 -- BSD-3-Clause -- https://github.com/ulikunitz/xz [94]
-github.com/vmihailenco/msgpack/v5 v5.4.1 -- BSD-2-Clause -- https://github.com/vmihailenco/msgpack [95]
-github.com/vmihailenco/tagparser/v2 v2.0.0 -- BSD-2-Clause -- https://github.com/vmihailenco/tagparser [96]
-github.com/x448/float16 v0.8.4 -- MIT -- https://github.com/x448/float16 [97]
-github.com/Yawning/aez v0.0.0-20211027044916-e49e68abd344 -- CC0-1.0 -- https://github.com/Yawning/aez [98]
-github.com/yosida95/uritemplate/v3 v3.0.2 -- BSD-3-Clause -- https://github.com/yosida95/uritemplate [99]
-gitlab.com/go-extension/aes-ccm v0.0.0-20230221065045-e58665ef23c7 -- MIT -- https://gitlab.com/go-extension/aes-ccm [100]
-gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec -- MIT -- https://gitlab.com/yawning/bsaes.git [101]
-go.yaml.in/yaml/v3 v3.0.5 -- MIT -- https://pkg.go.dev/go.yaml.in/yaml/v3 [102], [103]
-go4.org/mem v0.0.0-20240501181205-ae6ca9944745 -- Apache-2.0 -- https://pkg.go.dev/go4.org/mem [26]
-go4.org/netipx v0.0.0-20260823151212-3075585bcbeb -- BSD-3-Clause -- https://pkg.go.dev/go4.org/netipx [104]
-golang.org/x/crypto v0.57.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/crypto [59]
-golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/exp [59]
-golang.org/x/net v0.59.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/net [59]
-golang.org/x/sync v0.23.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/sync [59]
-golang.org/x/sys v0.49.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/sys [59]
-golang.org/x/term v0.46.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/term [59]
-golang.org/x/text v0.42.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/text [59]
-golang.org/x/time v0.10.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/time [59]
-google.golang.org/protobuf v1.36.10 -- BSD-3-Clause -- https://pkg.go.dev/google.golang.org/protobuf [105]
-Go standard library go1.27.3 -- BSD-3-Clause -- https://go.dev/ [59], [106]
+github.com/ajg/form v1.7.1 -- BSD-3-Clause -- https://github.com/ajg/form [26]
+github.com/andybalholm/brotli v1.1.1 -- MIT -- https://github.com/andybalholm/brotli [27]
+github.com/bahlo/generic-list-go v0.2.0 -- BSD-3-Clause -- https://github.com/bahlo/generic-list-go [28]
+github.com/bodgit/plumbing v1.3.0 -- BSD-3-Clause -- https://github.com/bodgit/plumbing [29]
+github.com/bodgit/windows v1.0.1 -- BSD-3-Clause -- https://github.com/bodgit/windows [30]
+github.com/dlclark/regexp2 v1.12.0 -- MIT -- https://github.com/dlclark/regexp2 [31]
+github.com/dunglas/httpsfv v1.0.2 -- BSD-3-Clause -- https://github.com/dunglas/httpsfv [32]
+github.com/easytier/easytier/easytier-go v0.0.0-20260910071355-3d0c9c3ca5e2 -- LGPL-3.0-only -- https://github.com/easytier/easytier [12]
+github.com/ebitengine/purego v0.10.0 -- Apache-2.0 -- https://github.com/ebitengine/purego [33]
+github.com/Ember-Moth/cronet-go v0.0.0-20261103143108-5a29f59dd943 -- GPL-3.0-or-later -- https://github.com/Ember-Moth/cronet-go [34]
+github.com/Ember-Moth/cronet-go/all v0.0.0-20261103143108-5a29f59dd943 -- GPL-3.0-or-later -- https://github.com/Ember-Moth/cronet-go [34]
+github.com/Ember-Moth/mihomo v1.19.33-0.20261103155416-c2de0f865c7e -- GPL-3.0-only -- https://github.com/Ember-Moth/mihomo [35]
+github.com/Ember-Moth/sing-snell v0.0.0-20261103142549-a3b26775de24 -- GPL-3.0-or-later -- https://github.com/Ember-Moth/sing-snell [34]
+github.com/enfein/mieru/v3 v3.38.1 -- GPL-3.0-only -- https://github.com/enfein/mieru [35]
+github.com/ericlagergren/aegis v0.0.0-20250325060835-cd0defd64358 -- BSD-2-Clause -- https://github.com/ericlagergren/aegis [36]
+github.com/ericlagergren/polyval v0.0.0-20220411101811-e25bc10ba391 -- BSD-2-Clause -- https://github.com/ericlagergren/polyval [37]
+github.com/ericlagergren/siv v0.0.0-20220507050439-0b757b3aa5f1 -- BSD-3-Clause -- https://github.com/ericlagergren/siv [38]
+github.com/ericlagergren/subtle v0.0.0-20220507045147-890d697da010 -- BSD-3-Clause -- https://github.com/ericlagergren/subtle [38]
+github.com/fsnotify/fsnotify v1.9.0 -- BSD-3-Clause -- https://github.com/fsnotify/fsnotify [39]
+github.com/fxamacker/cbor/v2 v2.9.0 -- MIT -- https://github.com/fxamacker/cbor [40]
+github.com/gaukas/godicttls v0.0.4 -- BSD-3-Clause -- https://github.com/gaukas/godicttls [41]
+github.com/go-ole/go-ole v1.3.0 -- MIT -- https://github.com/go-ole/go-ole [42]
+github.com/gobwas/httphead v0.1.0 -- MIT -- https://github.com/gobwas/httphead [43]
+github.com/gobwas/pool v0.2.1 -- MIT -- https://github.com/gobwas/pool [44]
+github.com/gobwas/ws v1.4.0 -- MIT -- https://github.com/gobwas/ws [45]
+github.com/gofrs/uuid/v5 v5.4.0 -- MIT -- https://github.com/gofrs/uuid [46]
+github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 -- Apache-2.0 -- https://github.com/golang/groupcache [47]
+github.com/golang/snappy v1.0.0 -- BSD-3-Clause -- https://github.com/golang/snappy [48]
+github.com/google/btree v1.1.3 -- Apache-2.0 -- https://github.com/google/btree [49]
+github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8 -- Apache-2.0 -- https://github.com/google/pprof [49]
+github.com/hashicorp/golang-lru/v2 v2.0.7 -- MPL-2.0 -- https://github.com/hashicorp/golang-lru [50]
+github.com/insomniacslk/dhcp v0.0.0-20250109001534-8abf58130905 -- BSD-3-Clause -- https://github.com/insomniacslk/dhcp [51]
+github.com/josharian/native v1.1.0 -- MIT -- https://github.com/josharian/native [52]
+github.com/klauspost/compress v1.17.9 -- BSD-3-Clause -- https://github.com/klauspost/compress [53]
+github.com/klauspost/cpuid/v2 v2.2.6 -- MIT -- https://github.com/klauspost/cpuid [54]
+github.com/klauspost/reedsolomon v1.12.3 -- MIT -- https://github.com/klauspost/reedsolomon [55]
+github.com/metacubex/age v0.0.0-20260603010618-28d156b4ea78 -- BSD-3-Clause -- https://github.com/metacubex/age [56]
+github.com/metacubex/amneziawg-go v0.0.0-20260908071407-0c1c6f40ecd7 -- MIT -- https://github.com/metacubex/amneziawg-go [57]
+github.com/metacubex/ascon v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/ascon [58]
+github.com/metacubex/bart v0.29.0 -- MIT -- https://github.com/metacubex/bart [59]
+github.com/metacubex/bbolt v0.0.0-20260706163408-d4ec34ad7c48 -- MIT -- https://github.com/metacubex/bbolt [60]
+github.com/metacubex/blake3 v0.1.0 -- MIT -- https://github.com/metacubex/blake3 [61]
+github.com/metacubex/chacha v0.1.5 -- MIT -- https://github.com/metacubex/chacha [62], [63]
+github.com/metacubex/chi v0.1.1 -- MIT -- https://github.com/metacubex/chi [64]
+github.com/metacubex/connect-ip-go v0.0.0-20260727083417-67ccdb0cf771 -- MIT -- https://github.com/metacubex/connect-ip-go [65]
+github.com/metacubex/cpu v0.1.2 -- BSD-3-Clause -- https://github.com/metacubex/cpu [66]
+github.com/metacubex/edwards25519 v1.2.0 -- BSD-3-Clause -- https://github.com/metacubex/edwards25519 [28]
+github.com/metacubex/fswatch v0.1.1 -- GPL-3.0-or-later -- https://github.com/metacubex/fswatch [34]
+github.com/metacubex/gvisor v0.0.0-20260922041103-e2cbcd6e7400 -- Apache-2.0 -- https://github.com/metacubex/gvisor [67]
+github.com/metacubex/hkdf v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/hkdf [66]
+github.com/metacubex/hpke v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/hpke [66]
+github.com/metacubex/http v0.1.8 -- BSD-3-Clause -- https://github.com/metacubex/http [66]
+github.com/metacubex/jls-quic-go v0.0.0-20260727080412-732f2fc9a34d -- MIT -- https://github.com/metacubex/jls-quic-go [68]
+github.com/metacubex/jls-tls v0.0.0-20260723084315-67adc0e2f796 -- BSD-3-Clause -- https://github.com/metacubex/jls-tls [66]
+github.com/metacubex/jsonv2 v0.0.0-20260721082349-16b4998c8f89 -- BSD-3-Clause -- https://github.com/metacubex/jsonv2 [69]
+github.com/metacubex/kcp-go v0.0.0-20260105040817-550693377604 -- MIT -- https://github.com/metacubex/kcp-go [70]
+github.com/metacubex/mhurl v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/mhurl [66]
+github.com/metacubex/mipstack v0.0.0-20261019124225-9a80a07eaeb9 -- MPL-2.0 -- https://github.com/metacubex/mipstack [71]
+github.com/metacubex/mlkem v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/mlkem [66]
+github.com/metacubex/qpack v0.6.0 -- MIT -- https://github.com/metacubex/qpack [72]
+github.com/metacubex/quic-go v0.61.1-0.20260727080200-2548683b76f4 -- MIT -- https://github.com/metacubex/quic-go [68]
+github.com/metacubex/randv2 v0.2.0 -- GPL-3.0-only -- https://github.com/metacubex/randv2 [35]
+github.com/metacubex/restls-client-go v0.1.9 -- BSD-3-Clause -- https://github.com/metacubex/restls-client-go [28], [73]
+github.com/metacubex/sevenzip v1.6.4 -- BSD-3-Clause -- https://github.com/metacubex/sevenzip [30]
+github.com/metacubex/sing v0.5.8 -- GPL-3.0-or-later -- https://github.com/metacubex/sing [34]
+github.com/metacubex/sing-mux v0.3.12 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-mux [34]
+github.com/metacubex/sing-quic v0.0.0-20260904234848-1c242664697a -- GPL-3.0-or-later -- https://github.com/metacubex/sing-quic [34]
+github.com/metacubex/sing-shadowsocks v0.2.13 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-shadowsocks [34]
+github.com/metacubex/sing-shadowsocks2 v0.2.8 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-shadowsocks2 [34]
+github.com/metacubex/sing-tun v0.4.28 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-tun [34]
+Wintun (wintun.dll in github.com/metacubex/sing-tun) 0.14.1 -- LicenseRef-Wintun-Prebuilt-Binaries -- https://www.wintun.net/ [74]
+github.com/metacubex/sing-vmess v0.2.5 -- GPL-3.0-or-later -- https://github.com/metacubex/sing-vmess [34]
+github.com/metacubex/sing-wireguard v0.0.0-20261002050126-e5fa1a607406 -- GPL-3.0-only -- https://github.com/metacubex/sing-wireguard [35]
+github.com/metacubex/smux v0.0.0-20260105030934-d0c8756d3141 -- MIT -- https://github.com/metacubex/smux [75]
+github.com/metacubex/ssh v0.1.0 -- BSD-3-Clause -- https://github.com/metacubex/ssh [66]
+github.com/metacubex/tailscale v0.0.0-20260821153257-ff0ecd818181 -- BSD-3-Clause -- https://github.com/metacubex/tailscale [76]
+github.com/metacubex/tailscale-wireguard-go v0.0.0-20260725073821-e61ab99cede2 -- MIT -- https://github.com/metacubex/tailscale-wireguard-go [77]
+github.com/metacubex/tfo-go v0.0.0-20260623020846-376a77860b8c -- MIT -- https://github.com/metacubex/tfo-go [78]
+github.com/metacubex/tls v0.1.9 -- BSD-3-Clause -- https://github.com/metacubex/tls [66]
+github.com/metacubex/utls v1.8.8 -- BSD-3-Clause -- https://github.com/metacubex/utls [28]
+github.com/metacubex/wazero v0.0.0-20260628025728-9ae6bdcf2a7d -- Apache-2.0 -- https://github.com/metacubex/wazero [79], [80]
+github.com/metacubex/wireguard-go v0.0.0-20250820062549-a6cecdd7f57f -- MIT -- https://github.com/metacubex/wireguard-go [77]
+github.com/metacubex/yamux v0.0.0-20250918083631-dd5f17c0be49 -- MPL-2.0 AND BSD-3-Clause -- https://github.com/metacubex/yamux [81], [28]
+github.com/metacubex/zerotier-go v0.0.0-20260813124750-13fa6f45da5f -- MPL-2.0 -- https://github.com/metacubex/zerotier-go [71], [82]
+github.com/Microsoft/go-winio v0.6.4 -- MIT -- https://github.com/Microsoft/go-winio [83]
+github.com/miekg/dns v1.1.72 -- BSD-3-Clause -- https://github.com/miekg/dns [84]
+github.com/mitchellh/go-ps v1.0.0 -- MIT -- https://github.com/mitchellh/go-ps [85]
+github.com/mroth/weightedrand/v2 v2.1.0 -- MIT -- https://github.com/mroth/weightedrand [86]
+github.com/oasisprotocol/deoxysii v0.0.0-20220228165953-2091330c22b7 -- MIT -- https://github.com/oasisprotocol/deoxysii [87]
+github.com/openacid/low v0.1.21 -- MIT -- https://github.com/openacid/low [88]
+github.com/oschwald/maxminddb-golang v1.12.0 -- ISC -- https://github.com/oschwald/maxminddb-golang [89]
+github.com/pierrec/lz4/v4 v4.1.27 -- BSD-3-Clause -- https://github.com/pierrec/lz4 [90]
+github.com/pires/go-proxyproto v0.8.0 -- Apache-2.0 -- https://github.com/pires/go-proxyproto [91]
+github.com/rasky/go-lzo v0.0.0-20200203143853-96a758eda86e -- GPL-2.0-or-later -- https://github.com/rasky/go-lzo [92]
+github.com/RyuaNerin/go-krypto v1.3.0 -- MIT -- https://github.com/RyuaNerin/go-krypto [93]
+github.com/sagernet/cronet-go/lib/darwin_arm64 v0.0.0-20261023055542-d5437a0df01a -- GPL-3.0-or-later -- https://github.com/sagernet/cronet-go [34]
+github.com/sagernet/cronet-go/lib/windows_amd64 v0.0.0-20261023055542-d5437a0df01a -- GPL-3.0-or-later -- https://github.com/sagernet/cronet-go [34]
+github.com/sagernet/cronet-go/lib/windows_arm64 v0.0.0-20261023055542-d5437a0df01a -- GPL-3.0-or-later -- https://github.com/sagernet/cronet-go [34]
+github.com/samber/lo v1.53.0 -- MIT -- https://github.com/samber/lo [94]
+github.com/sina-ghaderi/poly1305 v0.0.0-20220724002748-c5926b03988b -- GPL-3.0-only -- https://github.com/sina-ghaderi/poly1305 [35]
+github.com/sina-ghaderi/rabaead v0.0.0-20220730151906-ab6e06b96e8c -- GPL-3.0-only -- https://github.com/sina-ghaderi/rabaead [35]
+github.com/sina-ghaderi/rabbitio v0.0.0-20220730151941-9ce26f4f872e -- Apache-2.0 -- https://github.com/sina-ghaderi/rabbitio [49]
+github.com/sirupsen/logrus v1.10.2 -- MIT -- https://github.com/sirupsen/logrus [95]
+github.com/stangelandcl/ppmd v0.1.1 -- MIT -- https://github.com/stangelandcl/ppmd [96]
+github.com/tailscale/certstore v0.1.1-0.20260409135935-3638fb84b77d -- MIT -- https://github.com/tailscale/certstore [97]
+github.com/tailscale/go-winio v0.0.0-20231025203758-c4f33415bf55 -- MIT -- https://github.com/tailscale/go-winio [83]
+github.com/tailscale/hujson v0.0.0-20221223112325-20486734a56a -- BSD-3-Clause -- https://github.com/tailscale/hujson [98]
+github.com/tailscale/peercred v0.0.0-20250107143737-35a0c7bd7edc -- BSD-3-Clause -- https://github.com/tailscale/peercred [99]
+github.com/u-root/uio v0.0.0-20230220225925-ffce2a382923 -- BSD-3-Clause -- https://github.com/u-root/uio [100]
+github.com/ulikunitz/xz v0.5.15 -- BSD-3-Clause -- https://github.com/ulikunitz/xz [101]
+github.com/vmihailenco/msgpack/v5 v5.4.1 -- BSD-2-Clause -- https://github.com/vmihailenco/msgpack [102]
+github.com/vmihailenco/tagparser/v2 v2.0.0 -- BSD-2-Clause -- https://github.com/vmihailenco/tagparser [103]
+github.com/x448/float16 v0.8.4 -- MIT -- https://github.com/x448/float16 [104]
+github.com/Yawning/aez v0.0.0-20211027044916-e49e68abd344 -- CC0-1.0 -- https://github.com/Yawning/aez [105]
+github.com/yosida95/uritemplate/v3 v3.0.2 -- BSD-3-Clause -- https://github.com/yosida95/uritemplate [106]
+gitlab.com/go-extension/aes-ccm v0.0.0-20230221065045-e58665ef23c7 -- MIT -- https://gitlab.com/go-extension/aes-ccm [107]
+gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec -- MIT -- https://gitlab.com/yawning/bsaes.git [108]
+go.yaml.in/yaml/v3 v3.0.5 -- MIT -- https://pkg.go.dev/go.yaml.in/yaml/v3 [109], [110]
+go4.org/mem v0.0.0-20240501181205-ae6ca9944745 -- Apache-2.0 -- https://pkg.go.dev/go4.org/mem [33]
+go4.org/netipx v0.0.0-20260823151212-3075585bcbeb -- BSD-3-Clause -- https://pkg.go.dev/go4.org/netipx [111]
+golang.org/x/crypto v0.57.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/crypto [66]
+golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/exp [66]
+golang.org/x/net v0.59.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/net [66]
+golang.org/x/sync v0.23.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/sync [66]
+golang.org/x/sys v0.49.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/sys [66]
+golang.org/x/term v0.46.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/term [66]
+golang.org/x/text v0.42.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/text [66]
+golang.org/x/time v0.10.0 -- BSD-3-Clause -- https://pkg.go.dev/golang.org/x/time [66]
+google.golang.org/protobuf v1.36.10 -- BSD-3-Clause -- https://pkg.go.dev/google.golang.org/protobuf [112]
+Go standard library go1.27.3 -- BSD-3-Clause -- https://go.dev/ [66], [113]
 
 Qt
 --
 
-Qt 6.12.0 -- LGPL-3.0-only -- https://download.qt.io/official_releases/qt/6.12/6.12.0/ [6]
-Apache Tika MimeType Definitions (Qt Core) c29724782854bb5a319f4a1940d0828a58ace3f9 -- Apache-2.0 -- https://github.com/apache/tika/tree/main/tika-core/src/main/resources/org/apache/tika/mime [107]
-BLAKE2 (reference implementation) (Qt Core) ed1974ea83433eba7b2d95c5dcd9ac33cb847913 -- CC0-1.0 OR Apache-2.0 -- https://blake2.net/ [108]
-Data Compression Library (zlib) (Qt Core) 1.3.2 -- Zlib -- https://zlib.net/ [109]
-Easing Equations by Robert Penner (Qt Core) -- BSD-3-Clause -- http://robertpenner.com/easing/ [110]
-Efficient Binary-Decimal and Decimal-Binary Conversion Routines for IEEE Doubles (Qt Core) 3.4.0 -- BSD-3-Clause -- https://github.com/google/double-conversion [111]
-MD4 (Qt Core) -- LicenseRef-Public-Domain -- https://doc.qt.io/qt-6/qtcore-attribution-md4.html [112]
-MD5 (Qt Core) -- LicenseRef-Public-Domain -- https://doc.qt.io/qt-6/qtcore-attribution-md5.html [113]
-PCRE2 - Stack-less Just-In-Time Compiler (Qt Core) 10.48 -- BSD-2-Clause -- http://www.pcre.org/ [114]
-PCRE2 (Qt Core) 10.48 -- BSD-3-Clause WITH PCRE2-exception -- http://www.pcre.org/ [115]
-QEventDispatcher on macOS (Qt Core) -- BSD-3-Clause -- https://doc.qt.io/qt-6/qtcore-attribution-qeventdispatcher-cf.html [116]
-Secure Hash Algorithm SHA-1 (Qt Core) -- LicenseRef-Public-Domain -- http://www.dominik-reichl.de/projects/csha1/ [117]
-Secure Hash Algorithm SHA-3 - Keccak (Qt Core) 3.2 -- CC0-1.0 -- https://doc.qt.io/qt-6/qtcore-attribution-sha3-keccak.html [118]
-Secure Hash Algorithm SHA-3 - brg_endian (Qt Core) 1.0.0 -- BSD-2-Clause -- https://doc.qt.io/qt-6/qtcore-attribution-sha3-endian.html [119]
-Secure Hash Algorithms SHA-384 and SHA-512 (Qt Core) -- BSD-3-Clause -- https://doc.qt.io/qt-6/qtcore-attribution-rfc6234.html [120]
-SipHash Algorithm (Qt Core) -- CC0-1.0 -- https://131002.net/siphash/ [121]
-TinyCBOR (Qt Core) 7.0 -- MIT -- https://github.com/intel/tinycbor [122]
-Unicode Character Database (UCD) (Qt Core) 36 -- Unicode-DFS-2016 -- https://www.unicode.org/ucd/ [123]
-Unicode Common Locale Data Repository (CLDR) (Qt Core) v48.2 -- Unicode-3.0 -- https://cldr.unicode.org/ [124]
-forkfd (Qt Core) -- MIT -- https://doc.qt.io/qt-6/qtcore-attribution-forkfd.html [125]
-tl::expected (Qt Core) 41d3e1f48d682992a2230b2a715bca38b848b269 -- CC0-1.0 -- https://github.com/TartanLlama/expected/ [126]
-Adobe Glyph List For New Fonts (Qt GUI) 1.7 -- BSD-3-Clause -- https://github.com/adobe-type-tools/agl-aglfn [127]
-Anti-aliasing rasterizer from FreeType 2 (Qt GUI) -- FTL OR GPL-2.0-only -- http://www.freetype.org [128]
-Cocoa Platform Plugin (Qt GUI) -- BSD-3-Clause -- https://doc.qt.io/qt-6/qtgui-attribution-cocoa-platform-plugin.html [116]
-D3D12 Memory Allocator (Qt GUI) v3.1.0 -- MIT -- https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator [129]
-DejaVu Fonts (Qt GUI) 2.37 -- Bitstream-Vera -- https://dejavu-fonts.github.io/ [130]
-Emoji Segmenter (Qt GUI) 0.4.0 -- Apache-2.0 -- https://github.com/google/emoji-segmenter [131]
-Freetype 2 - Bitmap Distribution Format (BDF) support (Qt GUI) -- MIT -- http://www.freetype.org [132]
-Freetype 2 - Portable Compiled Format (PCF) support (Qt GUI) -- MIT AND MIT-open-group -- http://www.freetype.org [133]
-Freetype 2 - zlib (Qt GUI) -- Zlib -- http://www.freetype.org [134]
-Freetype 2 (Qt GUI) 2.14.3 -- FTL OR GPL-2.0-only -- http://www.freetype.org [135]
-HarfBuzz-NG (Qt GUI) 14.5.0 -- MIT -- http://harfbuzz.org [136]
-LibJPEG-turbo (Qt GUI) 3.2.0 -- IJG AND BSD-3-Clause -- http://libjpeg-turbo.virtualgl.org/ [137]
-LibPNG (Qt GUI) 1.6.58 -- Libpng AND libpng-2.0 -- http://www.libpng.org/pub/png/libpng.html [138]
-MD4C (Qt GUI) 0.5.3 -- MIT -- https://github.com/mity/md4c [139]
-Mipmap generator for D3D12 (Qt GUI) 0aa79bad78992da0b6a8279ddb9002c1753cb849 -- MIT -- https://github.com/microsoft/DirectX-Graphics-Samples [140]
-OpenGL ES 2 Headers (Qt GUI) Revision 27673 -- MIT -- https://www.khronos.org/ [141]
-OpenGL Headers (Qt GUI) Revision 27684 -- MIT -- https://www.khronos.org/ [141]
-Pixman (Qt GUI) 0.17.12 -- MIT -- http://www.pixman.org/ [142]
-Smooth Scaling Algorithm (Qt GUI) -- BSD-2-Clause AND Imlib2 -- https://doc.qt.io/qt-6/qtgui-attribution-smooth-scaling-algorithm.html [143]
-Vulkan API Registry (Qt GUI) 1.4.308 -- Apache-2.0 OR MIT -- https://www.khronos.org/ [144]
-Vulkan Memory Allocator (Qt GUI) 3.3.0 -- MIT -- https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator [145]
-WebGradients (Qt GUI) -- MIT -- https://webgradients.com/ [146]
-Wintab API (Qt GUI) -- LicenseRef-LCS-Telegraphics -- https://doc.qt.io/qt-6/qtgui-attribution-wintab.html [147]
-sRGB color profile icc file (Qt GUI) -- LicenseRef-ICC -- http://www.color.org/ [148]
-TIFF Software Distribution (libtiff) (Qt Image Formats) 4.7.2 -- libtiff -- http://www.simplesystems.org/libtiff/ [149]
-WebP (libwebp) (Qt Image Formats) 1.6.0 -- BSD-3-Clause -- https://developers.google.com/speed/webp/ [150]
-The Public Suffix List (Qt Network) 2026-05-14_08-35-31_UTC -- MPL-2.0 -- http://publicsuffix.org/ [151]
-libpsl - C library to handle the Public Suffix List (Qt Network) 664f3dc85259ec65e30248a61fa1c45b7b0e4c3f -- BSD-3-Clause -- https://github.com/rockdaboot/libpsl [152]
-JavaScriptCore Macro Assembler (Qt Qml) -- BSD-2-Clause -- https://trac.webkit.org/wiki/JavaScriptCore [153]
-Yoga (Qt Quick) 2.0.1 -- MIT -- https://www.yogalayout.dev/ [154]
-Shadow values from Angular Material (Qt Quick Controls) -- MIT -- https://angularjs.org/ [155]
+Qt 6.12.0 -- LGPL-3.0-only -- https://download.qt.io/official_releases/qt/6.12/6.12.0/ [12]
+Apache Tika MimeType Definitions (Qt Core) c29724782854bb5a319f4a1940d0828a58ace3f9 -- Apache-2.0 -- https://github.com/apache/tika/tree/main/tika-core/src/main/resources/org/apache/tika/mime [114]
+BLAKE2 (reference implementation) (Qt Core) ed1974ea83433eba7b2d95c5dcd9ac33cb847913 -- CC0-1.0 OR Apache-2.0 -- https://blake2.net/ [115]
+Data Compression Library (zlib) (Qt Core) 1.3.2 -- Zlib -- https://zlib.net/ [116]
+Easing Equations by Robert Penner (Qt Core) -- BSD-3-Clause -- http://robertpenner.com/easing/ [117]
+Efficient Binary-Decimal and Decimal-Binary Conversion Routines for IEEE Doubles (Qt Core) 3.4.0 -- BSD-3-Clause -- https://github.com/google/double-conversion [118]
+MD4 (Qt Core) -- LicenseRef-Public-Domain -- https://doc.qt.io/qt-6/qtcore-attribution-md4.html [119]
+MD5 (Qt Core) -- LicenseRef-Public-Domain -- https://doc.qt.io/qt-6/qtcore-attribution-md5.html [120]
+PCRE2 - Stack-less Just-In-Time Compiler (Qt Core) 10.48 -- BSD-2-Clause -- http://www.pcre.org/ [121]
+PCRE2 (Qt Core) 10.48 -- BSD-3-Clause WITH PCRE2-exception -- http://www.pcre.org/ [122]
+QEventDispatcher on macOS (Qt Core) -- BSD-3-Clause -- https://doc.qt.io/qt-6/qtcore-attribution-qeventdispatcher-cf.html [123]
+Secure Hash Algorithm SHA-1 (Qt Core) -- LicenseRef-Public-Domain -- http://www.dominik-reichl.de/projects/csha1/ [124]
+Secure Hash Algorithm SHA-3 - Keccak (Qt Core) 3.2 -- CC0-1.0 -- https://doc.qt.io/qt-6/qtcore-attribution-sha3-keccak.html [125]
+Secure Hash Algorithm SHA-3 - brg_endian (Qt Core) 1.0.0 -- BSD-2-Clause -- https://doc.qt.io/qt-6/qtcore-attribution-sha3-endian.html [126]
+Secure Hash Algorithms SHA-384 and SHA-512 (Qt Core) -- BSD-3-Clause -- https://doc.qt.io/qt-6/qtcore-attribution-rfc6234.html [127]
+SipHash Algorithm (Qt Core) -- CC0-1.0 -- https://131002.net/siphash/ [128]
+TinyCBOR (Qt Core) 7.0 -- MIT -- https://github.com/intel/tinycbor [129]
+Unicode Character Database (UCD) (Qt Core) 36 -- Unicode-DFS-2016 -- https://www.unicode.org/ucd/ [130]
+Unicode Common Locale Data Repository (CLDR) (Qt Core) v48.2 -- Unicode-3.0 -- https://cldr.unicode.org/ [131]
+forkfd (Qt Core) -- MIT -- https://doc.qt.io/qt-6/qtcore-attribution-forkfd.html [132]
+tl::expected (Qt Core) 41d3e1f48d682992a2230b2a715bca38b848b269 -- CC0-1.0 -- https://github.com/TartanLlama/expected/ [133]
+Adobe Glyph List For New Fonts (Qt GUI) 1.7 -- BSD-3-Clause -- https://github.com/adobe-type-tools/agl-aglfn [134]
+Anti-aliasing rasterizer from FreeType 2 (Qt GUI) -- FTL OR GPL-2.0-only -- http://www.freetype.org [135]
+Cocoa Platform Plugin (Qt GUI) -- BSD-3-Clause -- https://doc.qt.io/qt-6/qtgui-attribution-cocoa-platform-plugin.html [123]
+D3D12 Memory Allocator (Qt GUI) v3.1.0 -- MIT -- https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator [136]
+DejaVu Fonts (Qt GUI) 2.37 -- Bitstream-Vera -- https://dejavu-fonts.github.io/ [137]
+Emoji Segmenter (Qt GUI) 0.4.0 -- Apache-2.0 -- https://github.com/google/emoji-segmenter [138]
+Freetype 2 - Bitmap Distribution Format (BDF) support (Qt GUI) -- MIT -- http://www.freetype.org [139]
+Freetype 2 - Portable Compiled Format (PCF) support (Qt GUI) -- MIT AND MIT-open-group -- http://www.freetype.org [140]
+Freetype 2 - zlib (Qt GUI) -- Zlib -- http://www.freetype.org [141]
+Freetype 2 (Qt GUI) 2.14.3 -- FTL OR GPL-2.0-only -- http://www.freetype.org [142]
+HarfBuzz-NG (Qt GUI) 14.5.0 -- MIT -- http://harfbuzz.org [143]
+LibJPEG-turbo (Qt GUI) 3.2.0 -- IJG AND BSD-3-Clause -- http://libjpeg-turbo.virtualgl.org/ [144]
+LibPNG (Qt GUI) 1.6.58 -- Libpng AND libpng-2.0 -- http://www.libpng.org/pub/png/libpng.html [145]
+MD4C (Qt GUI) 0.5.3 -- MIT -- https://github.com/mity/md4c [146]
+Mipmap generator for D3D12 (Qt GUI) 0aa79bad78992da0b6a8279ddb9002c1753cb849 -- MIT -- https://github.com/microsoft/DirectX-Graphics-Samples [147]
+OpenGL ES 2 Headers (Qt GUI) Revision 27673 -- MIT -- https://www.khronos.org/ [148]
+OpenGL Headers (Qt GUI) Revision 27684 -- MIT -- https://www.khronos.org/ [148]
+Pixman (Qt GUI) 0.17.12 -- MIT -- http://www.pixman.org/ [149]
+Smooth Scaling Algorithm (Qt GUI) -- BSD-2-Clause AND Imlib2 -- https://doc.qt.io/qt-6/qtgui-attribution-smooth-scaling-algorithm.html [150]
+Vulkan API Registry (Qt GUI) 1.4.308 -- Apache-2.0 OR MIT -- https://www.khronos.org/ [151]
+Vulkan Memory Allocator (Qt GUI) 3.3.0 -- MIT -- https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator [152]
+WebGradients (Qt GUI) -- MIT -- https://webgradients.com/ [153]
+Wintab API (Qt GUI) -- LicenseRef-LCS-Telegraphics -- https://doc.qt.io/qt-6/qtgui-attribution-wintab.html [154]
+sRGB color profile icc file (Qt GUI) -- LicenseRef-ICC -- http://www.color.org/ [155]
+TIFF Software Distribution (libtiff) (Qt Image Formats) 4.7.2 -- libtiff -- http://www.simplesystems.org/libtiff/ [156]
+WebP (libwebp) (Qt Image Formats) 1.6.0 -- BSD-3-Clause -- https://developers.google.com/speed/webp/ [157]
+The Public Suffix List (Qt Network) 2026-05-14_08-35-31_UTC -- MPL-2.0 -- http://publicsuffix.org/ [158]
+libpsl - C library to handle the Public Suffix List (Qt Network) 664f3dc85259ec65e30248a61fa1c45b7b0e4c3f -- BSD-3-Clause -- https://github.com/rockdaboot/libpsl [159]
+JavaScriptCore Macro Assembler (Qt Qml) -- BSD-2-Clause -- https://trac.webkit.org/wiki/JavaScriptCore [160]
+Yoga (Qt Quick) 2.0.1 -- MIT -- https://www.yogalayout.dev/ [161]
+Shadow values from Angular Material (Qt Quick Controls) -- MIT -- https://angularjs.org/ [162]
 
 Fonts
 -----
 
-Inter 4.001 -- OFL-1.1 -- https://github.com/rsms/inter [156]
-JetBrains Mono 2.304 -- OFL-1.1 -- https://github.com/JetBrains/JetBrainsMono [157]
-Noto Color Emoji 2.057 -- OFL-1.1 -- https://github.com/googlefonts/noto-emoji [158]
-Noto Sans SC 2.004-H2 -- OFL-1.1 -- https://github.com/notofonts/noto-cjk [159]
-Noto Sans Symbols 2 2.008 -- OFL-1.1 -- https://github.com/notofonts/symbols [160]
+Inter 4.001 -- OFL-1.1 -- https://github.com/rsms/inter [163]
+JetBrains Mono 2.304 -- OFL-1.1 -- https://github.com/JetBrains/JetBrainsMono [164]
+Noto Color Emoji 2.057 -- OFL-1.1 -- https://github.com/googlefonts/noto-emoji [165]
+Noto Sans SC 2.004-H2 -- OFL-1.1 -- https://github.com/notofonts/noto-cjk [166]
+Noto Sans Symbols 2 2.008 -- OFL-1.1 -- https://github.com/notofonts/symbols [167]
 
 
 License texts
 =============
 
----- [1] used by: jaraco.classes 3.4.0
+---- [1] used by: anyio 4.16.0
+
+The MIT License (MIT)
+
+Copyright (c) 2018 Alex Grönholm
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---- [2] used by: certifi 2026.10.23
+
+This package contains a modified version of ca-bundle.crt:
+
+ca-bundle.crt -- Bundle of CA Root Certificates
+
+This is a bundle of X.509 certificates of public Certificate Authorities
+(CA). These were automatically extracted from Mozilla's root certificates
+file (certdata.txt).  This file can be found in the mozilla source tree:
+https://hg.mozilla.org/mozilla-central/file/tip/security/nss/lib/ckfw/builtins/certdata.txt
+It contains the certificates in PEM format and therefore
+can be directly used with curl / libcurl / php_curl, or with
+an Apache+mod_ssl webserver for SSL client authentication.
+Just configure this file as the SSLCACertificateFile.#
+
+***** BEGIN LICENSE BLOCK *****
+This Source Code Form is subject to the terms of the Mozilla Public License,
+v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain
+one at http://mozilla.org/MPL/2.0/.
+
+***** END LICENSE BLOCK *****
+@(#) $RCSfile: certdata.txt,v $ $Revision: 1.80 $ $Date: 2011/11/03 15:11:58 $
+
+---- [3] used by: h11 0.16.0
+
+The MIT License (MIT)
+
+Copyright (c) 2016 Nathaniel J. Smith <njs@pobox.com> and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---- [4] used by: httpcore 1.0.9
+
+Copyright © 2020, [Encode OSS Ltd](https://www.encode.io/).
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+* Neither the name of the copyright holder nor the names of its
+  contributors may be used to endorse or promote products derived from
+  this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+---- [5] used by: httpx 0.28.1
+
+Copyright © 2019, [Encode OSS Ltd](https://www.encode.io/).
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+* Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+---- [6] used by: idna 3.20
+
+BSD 3-Clause License
+
+Copyright (c) 2013-2026, Kim Davies and contributors.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+---- [7] used by: jaraco.classes 3.4.0
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to
@@ -266,7 +423,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 IN THE SOFTWARE.
 
----- [2] used by: jaraco.context 6.1.2, jaraco.functools 4.6.0
+---- [8] used by: jaraco.context 6.1.2, jaraco.functools 4.6.0
 
 MIT License
 
@@ -287,7 +444,7 @@ EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [3] used by: keyring 25.7.0
+---- [9] used by: keyring 25.7.0
 
 MIT License
 
@@ -308,7 +465,7 @@ EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [4] used by: more-itertools 11.2.1
+---- [10] used by: more-itertools 11.2.1
 
 Copyright (c) 2012 Erik Rose
 
@@ -330,7 +487,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [5] used by: protobuf 6.33.4
+---- [11] used by: protobuf 6.33.4
 
 Copyright 2008 Google Inc.  All rights reserved.
 
@@ -365,7 +522,7 @@ of the input file used when generating it.  This code is not
 standalone and requires a support library to be linked with it.  This
 support library is itself covered by the above license.
 
----- [6] used by: PySide6 6.12.0, PySide6_Addons 6.12.0, PySide6_Essentials 6.12.0, shiboken6 6.12.0, github.com/easytier/easytier/easytier-go v0.0.0-20260910071355-3d0c9c3ca5e2, Qt 6.12.0
+---- [12] used by: PySide6 6.12.0, PySide6_Addons 6.12.0, PySide6_Essentials 6.12.0, shiboken6 6.12.0, github.com/easytier/easytier/easytier-go v0.0.0-20260910071355-3d0c9c3ca5e2, Qt 6.12.0
 
 GNU LESSER GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
@@ -533,7 +690,289 @@ apply, that proxy's public statement of acceptance of any version is
 permanent authorization for you to choose that version for the
 Library.
 
----- [7] used by: CPython 3.14.7
+---- [13] used by: typing_extensions 4.16.0
+
+A. HISTORY OF THE SOFTWARE
+==========================
+
+Python was created in the early 1990s by Guido van Rossum at Stichting
+Mathematisch Centrum (CWI, see https://www.cwi.nl) in the Netherlands
+as a successor of a language called ABC.  Guido remains Python's
+principal author, although it includes many contributions from others.
+
+In 1995, Guido continued his work on Python at the Corporation for
+National Research Initiatives (CNRI, see https://www.cnri.reston.va.us)
+in Reston, Virginia where he released several versions of the
+software.
+
+In May 2000, Guido and the Python core development team moved to
+BeOpen.com to form the BeOpen PythonLabs team.  In October of the same
+year, the PythonLabs team moved to Digital Creations, which became
+Zope Corporation.  In 2001, the Python Software Foundation (PSF, see
+https://www.python.org/psf/) was formed, a non-profit organization
+created specifically to own Python-related Intellectual Property.
+Zope Corporation was a sponsoring member of the PSF.
+
+All Python releases are Open Source (see https://opensource.org for
+the Open Source Definition).  Historically, most, but not all, Python
+releases have also been GPL-compatible; the table below summarizes
+the various releases.
+
+    Release         Derived     Year        Owner       GPL-
+                    from                                compatible? (1)
+
+    0.9.0 thru 1.2              1991-1995   CWI         yes
+    1.3 thru 1.5.2  1.2         1995-1999   CNRI        yes
+    1.6             1.5.2       2000        CNRI        no
+    2.0             1.6         2000        BeOpen.com  no
+    1.6.1           1.6         2001        CNRI        yes (2)
+    2.1             2.0+1.6.1   2001        PSF         no
+    2.0.1           2.0+1.6.1   2001        PSF         yes
+    2.1.1           2.1+2.0.1   2001        PSF         yes
+    2.1.2           2.1.1       2002        PSF         yes
+    2.1.3           2.1.2       2002        PSF         yes
+    2.2 and above   2.1.1       2001-now    PSF         yes
+
+Footnotes:
+
+(1) GPL-compatible doesn't mean that we're distributing Python under
+    the GPL.  All Python licenses, unlike the GPL, let you distribute
+    a modified version without making your changes open source.  The
+    GPL-compatible licenses make it possible to combine Python with
+    other software that is released under the GPL; the others don't.
+
+(2) According to Richard Stallman, 1.6.1 is not GPL-compatible,
+    because its license has a choice of law clause.  According to
+    CNRI, however, Stallman's lawyer has told CNRI's lawyer that 1.6.1
+    is "not incompatible" with the GPL.
+
+Thanks to the many outside volunteers who have worked under Guido's
+direction to make these releases possible.
+
+
+B. TERMS AND CONDITIONS FOR ACCESSING OR OTHERWISE USING PYTHON
+===============================================================
+
+Python software and documentation are licensed under the
+Python Software Foundation License Version 2.
+
+Starting with Python 3.8.6, examples, recipes, and other code in
+the documentation are dual licensed under the PSF License Version 2
+and the Zero-Clause BSD license.
+
+Some software incorporated into Python is under different licenses.
+The licenses are listed with code falling under that license.
+
+
+PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2
+--------------------------------------------
+
+1. This LICENSE AGREEMENT is between the Python Software Foundation
+("PSF"), and the Individual or Organization ("Licensee") accessing and
+otherwise using this software ("Python") in source or binary form and
+its associated documentation.
+
+2. Subject to the terms and conditions of this License Agreement, PSF hereby
+grants Licensee a nonexclusive, royalty-free, world-wide license to reproduce,
+analyze, test, perform and/or display publicly, prepare derivative works,
+distribute, and otherwise use Python alone or in any derivative version,
+provided, however, that PSF's License Agreement and PSF's notice of copyright,
+i.e., "Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010,
+2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023 Python Software Foundation;
+All Rights Reserved" are retained in Python alone or in any derivative version
+prepared by Licensee.
+
+3. In the event Licensee prepares a derivative work that is based on
+or incorporates Python or any part thereof, and wants to make
+the derivative work available to others as provided herein, then
+Licensee hereby agrees to include in any such work a brief summary of
+the changes made to Python.
+
+4. PSF is making Python available to Licensee on an "AS IS"
+basis.  PSF MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR
+IMPLIED.  BY WAY OF EXAMPLE, BUT NOT LIMITATION, PSF MAKES NO AND
+DISCLAIMS ANY REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS
+FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF PYTHON WILL NOT
+INFRINGE ANY THIRD PARTY RIGHTS.
+
+5. PSF SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF PYTHON
+FOR ANY INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES OR LOSS AS
+A RESULT OF MODIFYING, DISTRIBUTING, OR OTHERWISE USING PYTHON,
+OR ANY DERIVATIVE THEREOF, EVEN IF ADVISED OF THE POSSIBILITY THEREOF.
+
+6. This License Agreement will automatically terminate upon a material
+breach of its terms and conditions.
+
+7. Nothing in this License Agreement shall be deemed to create any
+relationship of agency, partnership, or joint venture between PSF and
+Licensee.  This License Agreement does not grant permission to use PSF
+trademarks or trade name in a trademark sense to endorse or promote
+products or services of Licensee, or any third party.
+
+8. By copying, installing or otherwise using Python, Licensee
+agrees to be bound by the terms and conditions of this License
+Agreement.
+
+
+BEOPEN.COM LICENSE AGREEMENT FOR PYTHON 2.0
+-------------------------------------------
+
+BEOPEN PYTHON OPEN SOURCE LICENSE AGREEMENT VERSION 1
+
+1. This LICENSE AGREEMENT is between BeOpen.com ("BeOpen"), having an
+office at 160 Saratoga Avenue, Santa Clara, CA 95051, and the
+Individual or Organization ("Licensee") accessing and otherwise using
+this software in source or binary form and its associated
+documentation ("the Software").
+
+2. Subject to the terms and conditions of this BeOpen Python License
+Agreement, BeOpen hereby grants Licensee a non-exclusive,
+royalty-free, world-wide license to reproduce, analyze, test, perform
+and/or display publicly, prepare derivative works, distribute, and
+otherwise use the Software alone or in any derivative version,
+provided, however, that the BeOpen Python License is retained in the
+Software, alone or in any derivative version prepared by Licensee.
+
+3. BeOpen is making the Software available to Licensee on an "AS IS"
+basis.  BEOPEN MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR
+IMPLIED.  BY WAY OF EXAMPLE, BUT NOT LIMITATION, BEOPEN MAKES NO AND
+DISCLAIMS ANY REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS
+FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF THE SOFTWARE WILL NOT
+INFRINGE ANY THIRD PARTY RIGHTS.
+
+4. BEOPEN SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF THE
+SOFTWARE FOR ANY INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES OR LOSS
+AS A RESULT OF USING, MODIFYING OR DISTRIBUTING THE SOFTWARE, OR ANY
+DERIVATIVE THEREOF, EVEN IF ADVISED OF THE POSSIBILITY THEREOF.
+
+5. This License Agreement will automatically terminate upon a material
+breach of its terms and conditions.
+
+6. This License Agreement shall be governed by and interpreted in all
+respects by the law of the State of California, excluding conflict of
+law provisions.  Nothing in this License Agreement shall be deemed to
+create any relationship of agency, partnership, or joint venture
+between BeOpen and Licensee.  This License Agreement does not grant
+permission to use BeOpen trademarks or trade names in a trademark
+sense to endorse or promote products or services of Licensee, or any
+third party.  As an exception, the "BeOpen Python" logos available at
+http://www.pythonlabs.com/logos.html may be used according to the
+permissions granted on that web page.
+
+7. By copying, installing or otherwise using the software, Licensee
+agrees to be bound by the terms and conditions of this License
+Agreement.
+
+
+CNRI LICENSE AGREEMENT FOR PYTHON 1.6.1
+---------------------------------------
+
+1. This LICENSE AGREEMENT is between the Corporation for National
+Research Initiatives, having an office at 1895 Preston White Drive,
+Reston, VA 20191 ("CNRI"), and the Individual or Organization
+("Licensee") accessing and otherwise using Python 1.6.1 software in
+source or binary form and its associated documentation.
+
+2. Subject to the terms and conditions of this License Agreement, CNRI
+hereby grants Licensee a nonexclusive, royalty-free, world-wide
+license to reproduce, analyze, test, perform and/or display publicly,
+prepare derivative works, distribute, and otherwise use Python 1.6.1
+alone or in any derivative version, provided, however, that CNRI's
+License Agreement and CNRI's notice of copyright, i.e., "Copyright (c)
+1995-2001 Corporation for National Research Initiatives; All Rights
+Reserved" are retained in Python 1.6.1 alone or in any derivative
+version prepared by Licensee.  Alternately, in lieu of CNRI's License
+Agreement, Licensee may substitute the following text (omitting the
+quotes): "Python 1.6.1 is made available subject to the terms and
+conditions in CNRI's License Agreement.  This Agreement together with
+Python 1.6.1 may be located on the internet using the following
+unique, persistent identifier (known as a handle): 1895.22/1013.  This
+Agreement may also be obtained from a proxy server on the internet
+using the following URL: http://hdl.handle.net/1895.22/1013".
+
+3. In the event Licensee prepares a derivative work that is based on
+or incorporates Python 1.6.1 or any part thereof, and wants to make
+the derivative work available to others as provided herein, then
+Licensee hereby agrees to include in any such work a brief summary of
+the changes made to Python 1.6.1.
+
+4. CNRI is making Python 1.6.1 available to Licensee on an "AS IS"
+basis.  CNRI MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR
+IMPLIED.  BY WAY OF EXAMPLE, BUT NOT LIMITATION, CNRI MAKES NO AND
+DISCLAIMS ANY REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS
+FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF PYTHON 1.6.1 WILL NOT
+INFRINGE ANY THIRD PARTY RIGHTS.
+
+5. CNRI SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF PYTHON
+1.6.1 FOR ANY INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES OR LOSS AS
+A RESULT OF MODIFYING, DISTRIBUTING, OR OTHERWISE USING PYTHON 1.6.1,
+OR ANY DERIVATIVE THEREOF, EVEN IF ADVISED OF THE POSSIBILITY THEREOF.
+
+6. This License Agreement will automatically terminate upon a material
+breach of its terms and conditions.
+
+7. This License Agreement shall be governed by the federal
+intellectual property law of the United States, including without
+limitation the federal copyright law, and, to the extent such
+U.S. federal law does not apply, by the law of the Commonwealth of
+Virginia, excluding Virginia's conflict of law provisions.
+Notwithstanding the foregoing, with regard to derivative works based
+on Python 1.6.1 that incorporate non-separable material that was
+previously distributed under the GNU General Public License (GPL), the
+law of the Commonwealth of Virginia shall govern this License
+Agreement only as to issues arising under or with respect to
+Paragraphs 4, 5, and 7 of this License Agreement.  Nothing in this
+License Agreement shall be deemed to create any relationship of
+agency, partnership, or joint venture between CNRI and Licensee.  This
+License Agreement does not grant permission to use CNRI trademarks or
+trade name in a trademark sense to endorse or promote products or
+services of Licensee, or any third party.
+
+8. By clicking on the "ACCEPT" button where indicated, or by copying,
+installing or otherwise using Python 1.6.1, Licensee agrees to be
+bound by the terms and conditions of this License Agreement.
+
+        ACCEPT
+
+
+CWI LICENSE AGREEMENT FOR PYTHON 0.9.0 THROUGH 1.2
+--------------------------------------------------
+
+Copyright (c) 1991 - 1995, Stichting Mathematisch Centrum Amsterdam,
+The Netherlands.  All rights reserved.
+
+Permission to use, copy, modify, and distribute this software and its
+documentation for any purpose and without fee is hereby granted,
+provided that the above copyright notice appear in all copies and that
+both that copyright notice and this permission notice appear in
+supporting documentation, and that the name of Stichting Mathematisch
+Centrum or CWI not be used in advertising or publicity pertaining to
+distribution of the software without specific, written prior
+permission.
+
+STICHTING MATHEMATISCH CENTRUM DISCLAIMS ALL WARRANTIES WITH REGARD TO
+THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS, IN NO EVENT SHALL STICHTING MATHEMATISCH CENTRUM BE LIABLE
+FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
+OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+ZERO-CLAUSE BSD LICENSE FOR CODE IN THE PYTHON DOCUMENTATION
+----------------------------------------------------------------------
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
+
+---- [14] used by: CPython 3.14.7
 
 A. HISTORY OF THE SOFTWARE
 ==========================
@@ -813,7 +1252,7 @@ LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
 OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 
----- [8] used by: CPython 3.14.7
+---- [15] used by: CPython 3.14.7
 
 Licenses and Acknowledgements for Incorporated Software
 =======================================================
@@ -1738,7 +2177,7 @@ files are distributed under the Unicode License (https://www.unicode.org/license
   dealings in these Data Files or Software without prior written
   authorization of the copyright holder.
 
----- [9] used by: OpenSSL (CPython _ssl, _hashlib) 3.5.8
+---- [16] used by: OpenSSL (CPython _ssl, _hashlib) 3.5.8
 
 Apache License
                            Version 2.0, January 2004
@@ -1917,7 +2356,7 @@ Apache License
 
    END OF TERMS AND CONDITIONS
 
----- [10] used by: SQLite (CPython _sqlite3) 3.53.1
+---- [17] used by: SQLite (CPython _sqlite3) 3.53.1
 
 All of the code and documentation in SQLite has been dedicated to the public
 domain by the authors. All code authors, and representatives of the companies
@@ -1943,7 +2382,7 @@ be traced back to its original author, and all of those authors have public
 domain dedications on file. So the SQLite code base is clean and is
 uncontaminated with licensed code from other projects.
 
----- [11] used by: libffi (CPython _ctypes, macOS) 3.4.8, libffi (CPython _ctypes, Windows) 3.4.7
+---- [18] used by: libffi (CPython _ctypes, macOS) 3.4.8, libffi (CPython _ctypes, Windows) 3.4.7
 
 libffi - Copyright (c) 1996-2024  Anthony Green, Red Hat, Inc and others.
 See source files for details.
@@ -1967,7 +2406,7 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [12] used by: bzip2 (CPython _bz2) 1.0.8
+---- [19] used by: bzip2 (CPython _bz2) 1.0.8
 
 --------------------------------------------------------------------------
 
@@ -2011,7 +2450,7 @@ bzip2/libbzip2 version 1.0.8 of 13 July 2019
 
 --------------------------------------------------------------------------
 
----- [13] used by: XZ Utils (liblzma) (CPython _lzma) 5.8.3
+---- [20] used by: XZ Utils (liblzma) (CPython _lzma) 5.8.3
 
 Copyright (C) The XZ Utils authors and contributors
 
@@ -2027,7 +2466,7 @@ LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
 NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
----- [14] used by: Zstandard (CPython _zstd) 1.5.7
+---- [21] used by: Zstandard (CPython _zstd) 1.5.7
 
 BSD License
 
@@ -2060,7 +2499,7 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [15] used by: Expat (CPython pyexpat, macOS) 2.8.4, Expat (CPython pyexpat, Windows) 2.8.2
+---- [22] used by: Expat (CPython pyexpat, macOS) 2.8.4, Expat (CPython pyexpat, Windows) 2.8.2
 
 Copyright (c) 1998-2000 Thai Open Source Software Center Ltd and Clark Cooper
 Copyright (c) 2001-2025 Expat maintainers
@@ -2084,7 +2523,7 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [16] used by: mpdecimal (CPython _decimal) 4.0.0
+---- [23] used by: mpdecimal (CPython _decimal) 4.0.0
 
 Copyright (c) 2008-2020 Stefan Krah. All rights reserved.
 
@@ -2111,7 +2550,7 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
 OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 SUCH DAMAGE.
 
----- [17] used by: libuuid (CPython _uuid, macOS) 1.0.3
+---- [24] used by: libuuid (CPython _uuid, macOS) 1.0.3
 
 Copyright (C) 1996, 1997 Theodore Ts'o.
 
@@ -2141,7 +2580,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 USE OF THIS SOFTWARE, EVEN IF NOT ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 
----- [18] used by: zlib-ng (CPython zlib, binascii, Windows) 2.2.4
+---- [25] used by: zlib-ng (CPython zlib, binascii, Windows) 2.2.4
 
 (C) 1995-2024 Jean-loup Gailly and Mark Adler
 
@@ -2163,7 +2602,7 @@ freely, subject to the following restrictions:
 
 3. This notice may not be removed or altered from any source distribution.
 
----- [19] used by: github.com/ajg/form v1.7.1
+---- [26] used by: github.com/ajg/form v1.7.1
 
 Copyright (c) 2014 Alvaro J. Genial. All rights reserved.
 
@@ -2193,7 +2632,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [20] used by: github.com/andybalholm/brotli v1.1.1
+---- [27] used by: github.com/andybalholm/brotli v1.1.1
 
 Copyright (c) 2009, 2010, 2013-2016 by the Brotli Authors.
 
@@ -2215,7 +2654,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
----- [21] used by: github.com/bahlo/generic-list-go v0.2.0, github.com/metacubex/edwards25519 v1.2.0, github.com/metacubex/restls-client-go v0.1.9, github.com/metacubex/utls v1.8.8, github.com/metacubex/yamux v0.0.0-20250918083631-dd5f17c0be49
+---- [28] used by: github.com/bahlo/generic-list-go v0.2.0, github.com/metacubex/edwards25519 v1.2.0, github.com/metacubex/restls-client-go v0.1.9, github.com/metacubex/utls v1.8.8, github.com/metacubex/yamux v0.0.0-20250918083631-dd5f17c0be49
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -2245,7 +2684,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [22] used by: github.com/bodgit/plumbing v1.3.0
+---- [29] used by: github.com/bodgit/plumbing v1.3.0
 
 BSD 3-Clause License
 
@@ -2277,7 +2716,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [23] used by: github.com/bodgit/windows v1.0.1, github.com/metacubex/sevenzip v1.6.4
+---- [30] used by: github.com/bodgit/windows v1.0.1, github.com/metacubex/sevenzip v1.6.4
 
 BSD 3-Clause License
 
@@ -2309,7 +2748,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [24] used by: github.com/dlclark/regexp2 v1.12.0
+---- [31] used by: github.com/dlclark/regexp2 v1.12.0
 
 The MIT License (MIT)
 
@@ -2333,7 +2772,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [25] used by: github.com/dunglas/httpsfv v1.0.2
+---- [32] used by: github.com/dunglas/httpsfv v1.0.2
 
 Copyright (c) 2020 Kévin Dunglas. All rights reserved.
 
@@ -2363,7 +2802,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [26] used by: github.com/ebitengine/purego v0.10.0, go4.org/mem v0.0.0-20240501181205-ae6ca9944745
+---- [33] used by: github.com/ebitengine/purego v0.10.0, go4.org/mem v0.0.0-20240501181205-ae6ca9944745
 
 Apache License
                            Version 2.0, January 2004
@@ -2567,7 +3006,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
----- [27] used by: github.com/Ember-Moth/cronet-go v0.0.0-20261103143108-5a29f59dd943, github.com/Ember-Moth/cronet-go/all v0.0.0-20261103143108-5a29f59dd943, github.com/Ember-Moth/sing-snell v0.0.0-20261103142549-a3b26775de24, github.com/metacubex/fswatch v0.1.1, github.com/metacubex/sing v0.5.8, github.com/metacubex/sing-mux v0.3.12, github.com/metacubex/sing-quic v0.0.0-20260904234848-1c242664697a, github.com/metacubex/sing-shadowsocks v0.2.13, github.com/metacubex/sing-shadowsocks2 v0.2.8, github.com/metacubex/sing-tun v0.4.28, github.com/metacubex/sing-vmess v0.2.5, github.com/sagernet/cronet-go/lib/darwin_arm64 v0.0.0-20261023055542-d5437a0df01a, github.com/sagernet/cronet-go/lib/windows_amd64 v0.0.0-20261023055542-d5437a0df01a, github.com/sagernet/cronet-go/lib/windows_arm64 v0.0.0-20261023055542-d5437a0df01a
+---- [34] used by: github.com/Ember-Moth/cronet-go v0.0.0-20261103143108-5a29f59dd943, github.com/Ember-Moth/cronet-go/all v0.0.0-20261103143108-5a29f59dd943, github.com/Ember-Moth/sing-snell v0.0.0-20261103142549-a3b26775de24, github.com/metacubex/fswatch v0.1.1, github.com/metacubex/sing v0.5.8, github.com/metacubex/sing-mux v0.3.12, github.com/metacubex/sing-quic v0.0.0-20260904234848-1c242664697a, github.com/metacubex/sing-shadowsocks v0.2.13, github.com/metacubex/sing-shadowsocks2 v0.2.8, github.com/metacubex/sing-tun v0.4.28, github.com/metacubex/sing-vmess v0.2.5, github.com/sagernet/cronet-go/lib/darwin_arm64 v0.0.0-20261023055542-d5437a0df01a, github.com/sagernet/cronet-go/lib/windows_amd64 v0.0.0-20261023055542-d5437a0df01a, github.com/sagernet/cronet-go/lib/windows_arm64 v0.0.0-20261023055542-d5437a0df01a
 
 Copyright (C) 2022 by nekohasekai <contact-sagernet@sekai.icu>
 
@@ -2584,7 +3023,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 
----- [28] used by: github.com/Ember-Moth/mihomo v1.19.33-0.20261103143402-f499052f0550, github.com/enfein/mieru/v3 v3.38.1, github.com/metacubex/randv2 v0.2.0, github.com/metacubex/sing-wireguard v0.0.0-20261002050126-e5fa1a607406, github.com/sina-ghaderi/poly1305 v0.0.0-20220724002748-c5926b03988b, github.com/sina-ghaderi/rabaead v0.0.0-20220730151906-ab6e06b96e8c
+---- [35] used by: github.com/Ember-Moth/mihomo v1.19.33-0.20261103155416-c2de0f865c7e, github.com/enfein/mieru/v3 v3.38.1, github.com/metacubex/randv2 v0.2.0, github.com/metacubex/sing-wireguard v0.0.0-20261002050126-e5fa1a607406, github.com/sina-ghaderi/poly1305 v0.0.0-20220724002748-c5926b03988b, github.com/sina-ghaderi/rabaead v0.0.0-20220730151906-ab6e06b96e8c
 
 GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
@@ -3261,7 +3700,7 @@ the library.  If this is what you want to do, use the GNU Lesser General
 Public License instead of this License.  But first, please read
 <https://www.gnu.org/licenses/why-not-lgpl.html>.
 
----- [29] used by: github.com/ericlagergren/aegis v0.0.0-20250325060835-cd0defd64358
+---- [36] used by: github.com/ericlagergren/aegis v0.0.0-20250325060835-cd0defd64358
 
 BSD 2-Clause License
 
@@ -3289,7 +3728,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [30] used by: github.com/ericlagergren/polyval v0.0.0-20220411101811-e25bc10ba391
+---- [37] used by: github.com/ericlagergren/polyval v0.0.0-20220411101811-e25bc10ba391
 
 BSD 2-Clause License
 
@@ -3317,7 +3756,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [31] used by: github.com/ericlagergren/siv v0.0.0-20220507050439-0b757b3aa5f1, github.com/ericlagergren/subtle v0.0.0-20220507045147-890d697da010
+---- [38] used by: github.com/ericlagergren/siv v0.0.0-20220507050439-0b757b3aa5f1, github.com/ericlagergren/subtle v0.0.0-20220507045147-890d697da010
 
 BSD 3-Clause License
 
@@ -3349,7 +3788,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [32] used by: github.com/fsnotify/fsnotify v1.9.0
+---- [39] used by: github.com/fsnotify/fsnotify v1.9.0
 
 Copyright © 2012 The Go Authors. All rights reserved.
 Copyright © fsnotify Authors. All rights reserved.
@@ -3377,7 +3816,7 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [33] used by: github.com/fxamacker/cbor/v2 v2.9.0
+---- [40] used by: github.com/fxamacker/cbor/v2 v2.9.0
 
 MIT License
 
@@ -3401,7 +3840,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [34] used by: github.com/gaukas/godicttls v0.0.4
+---- [41] used by: github.com/gaukas/godicttls v0.0.4
 
 BSD 3-Clause License
 
@@ -3432,7 +3871,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [35] used by: github.com/go-ole/go-ole v1.3.0
+---- [42] used by: github.com/go-ole/go-ole v1.3.0
 
 The MIT License (MIT)
 
@@ -3456,7 +3895,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [36] used by: github.com/gobwas/httphead v0.1.0
+---- [43] used by: github.com/gobwas/httphead v0.1.0
 
 The MIT License (MIT)
 
@@ -3480,7 +3919,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [37] used by: github.com/gobwas/pool v0.2.1
+---- [44] used by: github.com/gobwas/pool v0.2.1
 
 The MIT License (MIT)
 
@@ -3504,7 +3943,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [38] used by: github.com/gobwas/ws v1.4.0
+---- [45] used by: github.com/gobwas/ws v1.4.0
 
 The MIT License (MIT)
 
@@ -3528,7 +3967,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [39] used by: github.com/gofrs/uuid/v5 v5.4.0
+---- [46] used by: github.com/gofrs/uuid/v5 v5.4.0
 
 Copyright (C) 2013-2018 by Maxim Bublis <b@codemonkey.ru>
 
@@ -3551,7 +3990,7 @@ LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [40] used by: github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8
+---- [47] used by: github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8
 
 Apache License
 Version 2.0, January 2004
@@ -3745,7 +4184,7 @@ third-party archives.
    See the License for the specific language governing permissions and
    limitations under the License.
 
----- [41] used by: github.com/golang/snappy v1.0.0
+---- [48] used by: github.com/golang/snappy v1.0.0
 
 Copyright (c) 2011 The Snappy-Go Authors. All rights reserved.
 
@@ -3775,7 +4214,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [42] used by: github.com/google/btree v1.1.3, github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8, github.com/sina-ghaderi/rabbitio v0.0.0-20220730151941-9ce26f4f872e
+---- [49] used by: github.com/google/btree v1.1.3, github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8, github.com/sina-ghaderi/rabbitio v0.0.0-20220730151941-9ce26f4f872e
 
 Apache License
                            Version 2.0, January 2004
@@ -3979,7 +4418,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
----- [43] used by: github.com/hashicorp/golang-lru/v2 v2.0.7
+---- [50] used by: github.com/hashicorp/golang-lru/v2 v2.0.7
 
 Copyright (c) 2014 HashiCorp, Inc.
 
@@ -4346,7 +4785,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       With Secondary Licenses", as defined by
       the Mozilla Public License, v. 2.0.
 
----- [44] used by: github.com/insomniacslk/dhcp v0.0.0-20250109001534-8abf58130905
+---- [51] used by: github.com/insomniacslk/dhcp v0.0.0-20250109001534-8abf58130905
 
 BSD 3-Clause License
 
@@ -4378,7 +4817,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [45] used by: github.com/josharian/native v1.1.0
+---- [52] used by: github.com/josharian/native v1.1.0
 
 Copyright 2020 Josh Bleecher Snyder
 
@@ -4388,7 +4827,7 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [46] used by: github.com/klauspost/compress v1.17.9
+---- [53] used by: github.com/klauspost/compress v1.17.9
 
 Copyright (c) 2012 The Go Authors. All rights reserved.
 Copyright (c) 2019 Klaus Post. All rights reserved.
@@ -4695,7 +5134,7 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [47] used by: github.com/klauspost/cpuid/v2 v2.2.6
+---- [54] used by: github.com/klauspost/cpuid/v2 v2.2.6
 
 The MIT License (MIT)
 
@@ -4719,7 +5158,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [48] used by: github.com/klauspost/reedsolomon v1.12.3
+---- [55] used by: github.com/klauspost/reedsolomon v1.12.3
 
 The MIT License (MIT)
 
@@ -4744,7 +5183,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [49] used by: github.com/metacubex/age v0.0.0-20260603010618-28d156b4ea78
+---- [56] used by: github.com/metacubex/age v0.0.0-20260603010618-28d156b4ea78
 
 Copyright 2019 The age Authors
 Copyright 2019 Google LLC
@@ -4776,7 +5215,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [50] used by: github.com/metacubex/amneziawg-go v0.0.0-20260908071407-0c1c6f40ecd7
+---- [57] used by: github.com/metacubex/amneziawg-go v0.0.0-20260908071407-0c1c6f40ecd7
 
 Copyright (C) 2017-2025 WireGuard LLC. All Rights Reserved.
 
@@ -4798,7 +5237,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [51] used by: github.com/metacubex/ascon v0.1.0
+---- [58] used by: github.com/metacubex/ascon v0.1.0
 
 Copyright (c) 2019 Cloudflare. All rights reserved.
 
@@ -4858,7 +5297,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [52] used by: github.com/metacubex/bart v0.29.0
+---- [59] used by: github.com/metacubex/bart v0.29.0
 
 MIT License
 
@@ -4882,7 +5321,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [53] used by: github.com/metacubex/bbolt v0.0.0-20260706163408-d4ec34ad7c48
+---- [60] used by: github.com/metacubex/bbolt v0.0.0-20260706163408-d4ec34ad7c48
 
 The MIT License (MIT)
 
@@ -4905,7 +5344,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [54] used by: github.com/metacubex/blake3 v0.1.0
+---- [61] used by: github.com/metacubex/blake3 v0.1.0
 
 The MIT License (MIT)
 
@@ -4929,7 +5368,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
----- [55] used by: github.com/metacubex/chacha v0.1.5
+---- [62] used by: github.com/metacubex/chacha v0.1.5
 
 MIT License
 
@@ -4953,7 +5392,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [56] used by: github.com/metacubex/chacha v0.1.5
+---- [63] used by: github.com/metacubex/chacha v0.1.5
 
 The MIT License (MIT)
 
@@ -4977,7 +5416,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [57] used by: github.com/metacubex/chi v0.1.1
+---- [64] used by: github.com/metacubex/chi v0.1.1
 
 Copyright (c) 2015-present Peter Kieltyka (https://github.com/pkieltyka), Google Inc.
 
@@ -5000,7 +5439,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [58] used by: github.com/metacubex/connect-ip-go v0.0.0-20260727083417-67ccdb0cf771
+---- [65] used by: github.com/metacubex/connect-ip-go v0.0.0-20260727083417-67ccdb0cf771
 
 Copyright 2024 Marten Seemann
 
@@ -5010,7 +5449,7 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [59] used by: github.com/metacubex/cpu v0.1.2, github.com/metacubex/hkdf v0.1.0, github.com/metacubex/hpke v0.1.0, github.com/metacubex/http v0.1.8, github.com/metacubex/jls-tls v0.0.0-20260723084315-67adc0e2f796, github.com/metacubex/mhurl v0.1.0, github.com/metacubex/mlkem v0.1.0, github.com/metacubex/ssh v0.1.0, github.com/metacubex/tls v0.1.9, golang.org/x/crypto v0.57.0, golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e, golang.org/x/net v0.59.0, golang.org/x/sync v0.23.0, golang.org/x/sys v0.49.0, golang.org/x/term v0.46.0, golang.org/x/text v0.42.0, golang.org/x/time v0.10.0, Go standard library go1.27.3
+---- [66] used by: github.com/metacubex/cpu v0.1.2, github.com/metacubex/hkdf v0.1.0, github.com/metacubex/hpke v0.1.0, github.com/metacubex/http v0.1.8, github.com/metacubex/jls-tls v0.0.0-20260723084315-67adc0e2f796, github.com/metacubex/mhurl v0.1.0, github.com/metacubex/mlkem v0.1.0, github.com/metacubex/ssh v0.1.0, github.com/metacubex/tls v0.1.9, golang.org/x/crypto v0.57.0, golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e, golang.org/x/net v0.59.0, golang.org/x/sync v0.23.0, golang.org/x/sys v0.49.0, golang.org/x/term v0.46.0, golang.org/x/text v0.42.0, golang.org/x/time v0.10.0, Go standard library go1.27.3
 
 Copyright 2009 The Go Authors.
 
@@ -5040,7 +5479,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [60] used by: github.com/metacubex/gvisor v0.0.0-20260922041103-e2cbcd6e7400
+---- [67] used by: github.com/metacubex/gvisor v0.0.0-20260922041103-e2cbcd6e7400
 
 Apache License
                            Version 2.0, January 2004
@@ -5296,7 +5735,7 @@ Some files carry the "BSD" license, noted at the top of each file:
    ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
    POSSIBILITY OF SUCH DAMAGE.
 
----- [61] used by: github.com/metacubex/jls-quic-go v0.0.0-20260727080412-732f2fc9a34d, github.com/metacubex/quic-go v0.61.1-0.20260727080200-2548683b76f4
+---- [68] used by: github.com/metacubex/jls-quic-go v0.0.0-20260727080412-732f2fc9a34d, github.com/metacubex/quic-go v0.61.1-0.20260727080200-2548683b76f4
 
 MIT License
 
@@ -5320,7 +5759,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [62] used by: github.com/metacubex/jsonv2 v0.0.0-20260721082349-16b4998c8f89
+---- [69] used by: github.com/metacubex/jsonv2 v0.0.0-20260721082349-16b4998c8f89
 
 Copyright (c) 2020 The Go Authors. All rights reserved.
 
@@ -5350,7 +5789,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [63] used by: github.com/metacubex/kcp-go v0.0.0-20260105040817-550693377604
+---- [70] used by: github.com/metacubex/kcp-go v0.0.0-20260105040817-550693377604
 
 The MIT License (MIT)
 
@@ -5374,7 +5813,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [64] used by: github.com/metacubex/mipstack v0.0.0-20261019124225-9a80a07eaeb9, github.com/metacubex/zerotier-go v0.0.0-20260813124750-13fa6f45da5f
+---- [71] used by: github.com/metacubex/mipstack v0.0.0-20261019124225-9a80a07eaeb9, github.com/metacubex/zerotier-go v0.0.0-20260813124750-13fa6f45da5f
 
 Mozilla Public License Version 2.0
 ==================================
@@ -5750,7 +6189,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
   This Source Code Form is "Incompatible With Secondary Licenses", as
   defined by the Mozilla Public License, v. 2.0.
 
----- [65] used by: github.com/metacubex/qpack v0.6.0
+---- [72] used by: github.com/metacubex/qpack v0.6.0
 
 Copyright 2019 Marten Seemann
 
@@ -5760,7 +6199,7 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [66] used by: github.com/metacubex/restls-client-go v0.1.9
+---- [73] used by: github.com/metacubex/restls-client-go v0.1.9
 
 Copyright (c) 2023, 3andne 
 All rights reserved. 
@@ -5789,7 +6228,7 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 POSSIBILITY OF SUCH DAMAGE.
 
----- [67] used by: Wintun (wintun.dll in github.com/metacubex/sing-tun) 0.14.1
+---- [74] used by: Wintun (wintun.dll in github.com/metacubex/sing-tun) 0.14.1
 
 Prebuilt Binaries License
 -------------------------
@@ -5876,7 +6315,7 @@ Prebuilt Binaries License
    terms, release dates, APIs, ABIs, general availability, or other
    characteristics of the Software.
 
----- [68] used by: github.com/metacubex/smux v0.0.0-20260105030934-d0c8756d3141
+---- [75] used by: github.com/metacubex/smux v0.0.0-20260105030934-d0c8756d3141
 
 MIT License
 
@@ -5900,7 +6339,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [69] used by: github.com/metacubex/tailscale v0.0.0-20260821153257-ff0ecd818181
+---- [76] used by: github.com/metacubex/tailscale v0.0.0-20260821153257-ff0ecd818181
 
 BSD 3-Clause License
 
@@ -5931,7 +6370,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [70] used by: github.com/metacubex/tailscale-wireguard-go v0.0.0-20260725073821-e61ab99cede2, github.com/metacubex/wireguard-go v0.0.0-20250820062549-a6cecdd7f57f
+---- [77] used by: github.com/metacubex/tailscale-wireguard-go v0.0.0-20260725073821-e61ab99cede2, github.com/metacubex/wireguard-go v0.0.0-20250820062549-a6cecdd7f57f
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
@@ -5951,7 +6390,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [71] used by: github.com/metacubex/tfo-go v0.0.0-20260623020846-376a77860b8c
+---- [78] used by: github.com/metacubex/tfo-go v0.0.0-20260623020846-376a77860b8c
 
 MIT License
 
@@ -5975,7 +6414,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [72] used by: github.com/metacubex/wazero v0.0.0-20260628025728-9ae6bdcf2a7d
+---- [79] used by: github.com/metacubex/wazero v0.0.0-20260628025728-9ae6bdcf2a7d
 
 Apache License
                            Version 2.0, January 2004
@@ -6179,12 +6618,12 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
----- [73] used by: github.com/metacubex/wazero v0.0.0-20260628025728-9ae6bdcf2a7d
+---- [80] used by: github.com/metacubex/wazero v0.0.0-20260628025728-9ae6bdcf2a7d
 
 wazero
 Copyright 2020-2023 wazero authors
 
----- [74] used by: github.com/metacubex/yamux v0.0.0-20250918083631-dd5f17c0be49
+---- [81] used by: github.com/metacubex/yamux v0.0.0-20250918083631-dd5f17c0be49
 
 Mozilla Public License, version 2.0
 
@@ -6549,7 +6988,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       With Secondary Licenses", as defined by
       the Mozilla Public License, v. 2.0.
 
----- [75] used by: github.com/metacubex/zerotier-go v0.0.0-20260813124750-13fa6f45da5f
+---- [82] used by: github.com/metacubex/zerotier-go v0.0.0-20260813124750-13fa6f45da5f
 
 This project contains a clean Go translation of portions of the ZeroTierOne
 network virtualization engine.
@@ -6560,7 +6999,7 @@ Reference source: https://github.com/zerotier/ZeroTierOne
 Translated files retain the Mozilla Public License 2.0 notices required by the
 upstream project. See LICENSE for the applicable license.
 
----- [76] used by: github.com/Microsoft/go-winio v0.6.4, github.com/tailscale/go-winio v0.0.0-20231025203758-c4f33415bf55
+---- [83] used by: github.com/Microsoft/go-winio v0.6.4, github.com/tailscale/go-winio v0.0.0-20231025203758-c4f33415bf55
 
 The MIT License (MIT)
 
@@ -6584,7 +7023,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [77] used by: github.com/miekg/dns v1.1.72
+---- [84] used by: github.com/miekg/dns v1.1.72
 
 BSD 3-Clause License
 
@@ -6616,7 +7055,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [78] used by: github.com/mitchellh/go-ps v1.0.0
+---- [85] used by: github.com/mitchellh/go-ps v1.0.0
 
 The MIT License (MIT)
 
@@ -6640,7 +7079,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
----- [79] used by: github.com/mroth/weightedrand/v2 v2.1.0
+---- [86] used by: github.com/mroth/weightedrand/v2 v2.1.0
 
 MIT License
 
@@ -6664,7 +7103,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [80] used by: github.com/oasisprotocol/deoxysii v0.0.0-20220228165953-2091330c22b7
+---- [87] used by: github.com/oasisprotocol/deoxysii v0.0.0-20220228165953-2091330c22b7
 
 Copyright (c) 2016 Thomas Pornin <pornin@bolet.org>
 Copyright (c) 2017 Yawning Angel <yawning at schwanenlied dot me>
@@ -6690,7 +7129,7 @@ ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [81] used by: github.com/openacid/low v0.1.21
+---- [88] used by: github.com/openacid/low v0.1.21
 
 MIT License
 
@@ -6714,7 +7153,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [82] used by: github.com/oschwald/maxminddb-golang v1.12.0
+---- [89] used by: github.com/oschwald/maxminddb-golang v1.12.0
 
 ISC License
 
@@ -6732,7 +7171,7 @@ LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
 OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 
----- [83] used by: github.com/pierrec/lz4/v4 v4.1.27
+---- [90] used by: github.com/pierrec/lz4/v4 v4.1.27
 
 Copyright (c) 2015, Pierre Curto
 All rights reserved.
@@ -6762,7 +7201,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [84] used by: github.com/pires/go-proxyproto v0.8.0
+---- [91] used by: github.com/pires/go-proxyproto v0.8.0
 
 Apache License
                            Version 2.0, January 2004
@@ -6966,7 +7405,7 @@ Apache License
    See the License for the specific language governing permissions and
    limitations under the License.
 
----- [85] used by: github.com/rasky/go-lzo v0.0.0-20200203143853-96a758eda86e
+---- [92] used by: github.com/rasky/go-lzo v0.0.0-20200203143853-96a758eda86e
 
 GNU GENERAL PUBLIC LICENSE
                        Version 2, June 1991
@@ -7308,7 +7747,7 @@ consider it more useful to permit linking proprietary applications with the
 library.  If this is what you want to do, use the GNU Lesser General
 Public License instead of this License.
 
----- [86] used by: github.com/RyuaNerin/go-krypto v1.3.0
+---- [93] used by: github.com/RyuaNerin/go-krypto v1.3.0
 
 MIT License
 
@@ -7332,7 +7771,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [87] used by: github.com/samber/lo v1.53.0
+---- [94] used by: github.com/samber/lo v1.53.0
 
 MIT License
 
@@ -7356,7 +7795,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [88] used by: github.com/sirupsen/logrus v1.10.2
+---- [95] used by: github.com/sirupsen/logrus v1.10.2
 
 The MIT License (MIT)
 
@@ -7380,7 +7819,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
----- [89] used by: github.com/stangelandcl/ppmd v0.1.1
+---- [96] used by: github.com/stangelandcl/ppmd v0.1.1
 
 The MIT License (MIT)
 
@@ -7405,7 +7844,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
----- [90] used by: github.com/tailscale/certstore v0.1.1-0.20260409135935-3638fb84b77d
+---- [97] used by: github.com/tailscale/certstore v0.1.1-0.20260409135935-3638fb84b77d
 
 MIT License
 
@@ -7429,7 +7868,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [91] used by: github.com/tailscale/hujson v0.0.0-20221223112325-20486734a56a
+---- [98] used by: github.com/tailscale/hujson v0.0.0-20221223112325-20486734a56a
 
 Copyright (c) 2019 Tailscale Inc. All rights reserved.
 
@@ -7459,7 +7898,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [92] used by: github.com/tailscale/peercred v0.0.0-20250107143737-35a0c7bd7edc
+---- [99] used by: github.com/tailscale/peercred v0.0.0-20250107143737-35a0c7bd7edc
 
 BSD 3-Clause License
 
@@ -7491,7 +7930,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [93] used by: github.com/u-root/uio v0.0.0-20230220225925-ffce2a382923
+---- [100] used by: github.com/u-root/uio v0.0.0-20230220225925-ffce2a382923
 
 BSD 3-Clause License
 
@@ -7523,7 +7962,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [94] used by: github.com/ulikunitz/xz v0.5.15
+---- [101] used by: github.com/ulikunitz/xz v0.5.15
 
 Copyright (c) 2014-2022  Ulrich Kunitz
 All rights reserved.
@@ -7552,7 +7991,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [95] used by: github.com/vmihailenco/msgpack/v5 v5.4.1
+---- [102] used by: github.com/vmihailenco/msgpack/v5 v5.4.1
 
 Copyright (c) 2013 The github.com/vmihailenco/msgpack Authors.
 All rights reserved.
@@ -7580,7 +8019,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [96] used by: github.com/vmihailenco/tagparser/v2 v2.0.0
+---- [103] used by: github.com/vmihailenco/tagparser/v2 v2.0.0
 
 Copyright (c) 2019 The github.com/vmihailenco/tagparser Authors.
 All rights reserved.
@@ -7608,7 +8047,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [97] used by: github.com/x448/float16 v0.8.4
+---- [104] used by: github.com/x448/float16 v0.8.4
 
 MIT License
 
@@ -7632,7 +8071,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [98] used by: github.com/Yawning/aez v0.0.0-20211027044916-e49e68abd344
+---- [105] used by: github.com/Yawning/aez v0.0.0-20211027044916-e49e68abd344
 
 Creative Commons Legal Code
 
@@ -7756,7 +8195,7 @@ express Statement of Purpose.
     party to this document and has no duty or obligation with respect to
     this CC0 or use of the Work.
 
----- [99] used by: github.com/yosida95/uritemplate/v3 v3.0.2
+---- [106] used by: github.com/yosida95/uritemplate/v3 v3.0.2
 
 Copyright (C) 2016, Kohei YOSHIDA <https://yosida95.com/>. All rights reserved.
 
@@ -7784,7 +8223,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [100] used by: gitlab.com/go-extension/aes-ccm v0.0.0-20230221065045-e58665ef23c7
+---- [107] used by: gitlab.com/go-extension/aes-ccm v0.0.0-20230221065045-e58665ef23c7
 
 MIT License
 
@@ -7808,7 +8247,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [101] used by: gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec
+---- [108] used by: gitlab.com/yawning/bsaes.git v0.0.0-20190805113838-0a714cd429ec
 
 Copyright (c) 2016 Thomas Pornin <pornin@bolet.org>
 Copyright (c) 2017 Yawning Angel <yawning at schwanenlied dot me>
@@ -7833,7 +8272,7 @@ ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [102] used by: go.yaml.in/yaml/v3 v3.0.5
+---- [109] used by: go.yaml.in/yaml/v3 v3.0.5
 
 This project is covered by two different licenses: MIT and Apache.
 
@@ -7885,7 +8324,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
----- [103] used by: go.yaml.in/yaml/v3 v3.0.5
+---- [110] used by: go.yaml.in/yaml/v3 v3.0.5
 
 Copyright 2011-2016 Canonical Ltd.
 
@@ -7901,7 +8340,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
----- [104] used by: go4.org/netipx v0.0.0-20260823151212-3075585bcbeb
+---- [111] used by: go4.org/netipx v0.0.0-20260823151212-3075585bcbeb
 
 Copyright (c) 2020 The Inet.af AUTHORS. All rights reserved.
 
@@ -7931,7 +8370,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [105] used by: google.golang.org/protobuf v1.36.10
+---- [112] used by: google.golang.org/protobuf v1.36.10
 
 Copyright (c) 2018 The Go Authors. All rights reserved.
 
@@ -7961,7 +8400,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [106] used by: Go standard library go1.27.3
+---- [113] used by: Go standard library go1.27.3
 
 Additional IP Rights Grant (Patents)
 
@@ -7986,7 +8425,7 @@ infringement, or inducement of patent infringement, then any patent
 rights granted to you under this License for this implementation of Go
 shall terminate as of the date such litigation is filed.
 
----- [107] used by: Apache Tika MimeType Definitions (Qt Core) c29724782854bb5a319f4a1940d0828a58ace3f9
+---- [114] used by: Apache Tika MimeType Definitions (Qt Core) c29724782854bb5a319f4a1940d0828a58ace3f9
 
 Copyright 2026 The Apache Software Foundation
 
@@ -8052,7 +8491,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
----- [108] used by: BLAKE2 (reference implementation) (Qt Core) ed1974ea83433eba7b2d95c5dcd9ac33cb847913
+---- [115] used by: BLAKE2 (reference implementation) (Qt Core) ed1974ea83433eba7b2d95c5dcd9ac33cb847913
 
 Copyright 2012, Samuel Neves <sneves@dei.uc.pt>
 
@@ -8376,7 +8815,7 @@ For more information, please see
    See the License for the specific language governing permissions and
    limitations under the License.
 
----- [109] used by: Data Compression Library (zlib) (Qt Core) 1.3.2
+---- [116] used by: Data Compression Library (zlib) (Qt Core) 1.3.2
 
 (C) 1995-2026 Jean-loup Gailly and Mark Adler
 
@@ -8408,7 +8847,7 @@ If you redistribute modified sources, we would appreciate that you include in
 the file ChangeLog history information documenting your changes.  Please read
 the FAQ for more information on the distribution of modified source versions.
 
----- [110] used by: Easing Equations by Robert Penner (Qt Core)
+---- [117] used by: Easing Equations by Robert Penner (Qt Core)
 
 Copyright (c) 2001 Robert Penner
 
@@ -8438,7 +8877,7 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [111] used by: Efficient Binary-Decimal and Decimal-Binary Conversion Routines for IEEE Doubles (Qt Core) 3.4.0
+---- [118] used by: Efficient Binary-Decimal and Decimal-Binary Conversion Routines for IEEE Doubles (Qt Core) 3.4.0
 
 Copyright 2006-2012, the V8 project authors
 
@@ -8469,7 +8908,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [112] used by: MD4 (Qt Core)
+---- [119] used by: MD4 (Qt Core)
 
 Written by Alexander Peslyak - better known as Solar Designer <solar@openwall.com> - in 2001, and placed in the public domain. There's absolutely no warranty.
 
@@ -8595,7 +9034,7 @@ express Statement of Purpose.
     party to this document and has no duty or obligation with respect to
     this CC0 or use of the Work.
 
----- [113] used by: MD5 (Qt Core)
+---- [120] used by: MD5 (Qt Core)
 
 Written by Colin Plumb in 1993, no copyright is claimed. Ian Jackson <ian@chiark.greenend.org.uk>.
 
@@ -8721,7 +9160,7 @@ express Statement of Purpose.
     party to this document and has no duty or obligation with respect to
     this CC0 or use of the Work.
 
----- [114] used by: PCRE2 - Stack-less Just-In-Time Compiler (Qt Core) 10.48
+---- [121] used by: PCRE2 - Stack-less Just-In-Time Compiler (Qt Core) 10.48
 
 Copyright Zoltan Herczeg
 
@@ -8751,7 +9190,7 @@ Copyright Zoltan Herczeg
  * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
----- [115] used by: PCRE2 (Qt Core) 10.48
+---- [122] used by: PCRE2 (Qt Core) 10.48
 
 Copyright (c) 1997-2007 University of Cambridge
 Copyright (c) 2007-2024 Philip Hazel
@@ -8862,7 +9301,7 @@ PCRE2, it must respect the condition, but if package B is software that
 includes package A, the condition is not imposed on package B unless it uses
 PCRE2 independently.
 
----- [116] used by: QEventDispatcher on macOS (Qt Core), Cocoa Platform Plugin (Qt GUI)
+---- [123] used by: QEventDispatcher on macOS (Qt Core), Cocoa Platform Plugin (Qt GUI)
 
 Copyright (c) 2007-2008, Apple, Inc.
 
@@ -8896,7 +9335,7 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [117] used by: Secure Hash Algorithm SHA-1 (Qt Core)
+---- [124] used by: Secure Hash Algorithm SHA-1 (Qt Core)
 
 Copyright (C) Dominik Reichl <dominik.reichl@t-online.de>
 Copyright (C) 2016 The Qt Company Ltd
@@ -8905,7 +9344,7 @@ Copyright (C) 2016 The Qt Company Ltd
 by Dominik Reichl <dominik.reichl@t-online.de>
 Web: http://www.dominik-reichl.de/
 
----- [118] used by: Secure Hash Algorithm SHA-3 - Keccak (Qt Core) 3.2
+---- [125] used by: Secure Hash Algorithm SHA-3 - Keccak (Qt Core) 3.2
 
 Guido Bertoni, Joan Daemen, Michaël Peeters and Gilles Van Assche.
 To the extent possible under law, the implementers have waived all copyright
@@ -9011,7 +9450,7 @@ c. Affirmer disclaims responsibility for clearing rights of other persons that m
 d. Affirmer understands and acknowledges that Creative Commons is not a party to this document and
    has no duty or obligation with respect to this CC0 or use of the Work.
 
----- [119] used by: Secure Hash Algorithm SHA-3 - brg_endian (Qt Core) 1.0.0
+---- [126] used by: Secure Hash Algorithm SHA-3 - brg_endian (Qt Core) 1.0.0
 
 Copyright (c) 1998-2013, Brian Gladman, Worcester, UK. All rights reserved.
 
@@ -9030,7 +9469,7 @@ This software is provided 'as is' with no explicit or implied warranties
 in respect of its operation, including, but not limited to, correctness
 and fitness for purpose.
 
----- [120] used by: Secure Hash Algorithms SHA-384 and SHA-512 (Qt Core)
+---- [127] used by: Secure Hash Algorithms SHA-384 and SHA-512 (Qt Core)
 
 Copyright (c) 2011 IETF Trust and the persons identified as authors of the code.
 
@@ -9069,7 +9508,7 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [121] used by: SipHash Algorithm (Qt Core)
+---- [128] used by: SipHash Algorithm (Qt Core)
 
 Copyright (C) 2012-2014 Jean-Philippe Aumasson
 Copyright (C) 2012-2014 Daniel J. Bernstein <djb@cr.yp.to>
@@ -9197,7 +9636,7 @@ express Statement of Purpose.
     party to this document and has no duty or obligation with respect to
     this CC0 or use of the Work.
 
----- [122] used by: TinyCBOR (Qt Core) 7.0
+---- [129] used by: TinyCBOR (Qt Core) 7.0
 
 Copyright (C) 2015-2025 Intel Corporation
 
@@ -9223,7 +9662,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [123] used by: Unicode Character Database (UCD) (Qt Core) 36
+---- [130] used by: Unicode Character Database (UCD) (Qt Core) 36
 
 Copyright (C) 1991-2025 Unicode, Inc.
 
@@ -9267,7 +9706,7 @@ not be used in advertising or otherwise to promote the sale, use or other
 dealings in these Data Files or Software without prior written
 authorization of the copyright holder.
 
----- [124] used by: Unicode Common Locale Data Repository (CLDR) (Qt Core) v48.2
+---- [131] used by: Unicode Common Locale Data Repository (CLDR) (Qt Core) v48.2
 
 Copyright (C) 2004-2025 Unicode, Inc.
 
@@ -9311,7 +9750,7 @@ not be used in advertising or otherwise to promote the sale, use or other
 dealings in these Data Files or Software without prior written
 authorization of the copyright holder.
 
----- [125] used by: forkfd (Qt Core)
+---- [132] used by: forkfd (Qt Core)
 
 Copyright (C) 2016 Intel Corporation
 Copyright (C) 2015 Klarälvdalens Datakonsult AB, a KDAB Group company, info@kdab.com
@@ -9337,7 +9776,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
----- [126] used by: tl::expected (Qt Core) 41d3e1f48d682992a2230b2a715bca38b848b269
+---- [133] used by: tl::expected (Qt Core) 41d3e1f48d682992a2230b2a715bca38b848b269
 
 To the extent possible under law, Sy Brand has waived all copyright and related or neighboring rights to the expected library. This work is published from: United Kingdom.
 
@@ -9463,7 +9902,7 @@ express Statement of Purpose.
     party to this document and has no duty or obligation with respect to
     this CC0 or use of the Work.
 
----- [127] used by: Adobe Glyph List For New Fonts (Qt GUI) 1.7
+---- [134] used by: Adobe Glyph List For New Fonts (Qt GUI) 1.7
 
 Copyright 2002, 2003, 2005, 2006, 2008, 2010, 2015 Adobe Systems
 
@@ -9494,7 +9933,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [128] used by: Anti-aliasing rasterizer from FreeType 2 (Qt GUI)
+---- [135] used by: Anti-aliasing rasterizer from FreeType 2 (Qt GUI)
 
 Copyright 2000-2016 by David Turner, Robert Wilhelm, and Werner Lemberg.
 
@@ -10055,7 +10494,7 @@ Public License instead of this License.
 
 --- end of GPLv2.TXT ---
 
----- [129] used by: D3D12 Memory Allocator (Qt GUI) v3.1.0
+---- [136] used by: D3D12 Memory Allocator (Qt GUI) v3.1.0
 
 Copyright (c) 2019-2026 Advanced Micro Devices, Inc. All rights reserved.
 
@@ -10079,7 +10518,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
----- [130] used by: DejaVu Fonts (Qt GUI) 2.37
+---- [137] used by: DejaVu Fonts (Qt GUI) 2.37
 
 Copyright (c) 2003 by Bitstream, Inc
 Copyright (c) 2006 by Tavmjong Bah
@@ -10273,7 +10712,7 @@ given a different name.
 
 $Id$
 
----- [131] used by: Emoji Segmenter (Qt GUI) 0.4.0
+---- [138] used by: Emoji Segmenter (Qt GUI) 0.4.0
 
 Copyright 2019 Google LLC
 
@@ -10339,7 +10778,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
----- [132] used by: Freetype 2 - Bitmap Distribution Format (BDF) support (Qt GUI)
+---- [139] used by: Freetype 2 - Bitmap Distribution Format (BDF) support (Qt GUI)
 
 Copyright (c) 2000 Computing Research Labs, New Mexico State University
 Copyright (c) 2001-2014 Francesco Zappa Nardelli
@@ -10388,7 +10827,7 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT
 OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
 THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
----- [133] used by: Freetype 2 - Portable Compiled Format (PCF) support (Qt GUI)
+---- [140] used by: Freetype 2 - Portable Compiled Format (PCF) support (Qt GUI)
 
 Copyright (c) 2001, 2012 David Turner, Robert Wilhelm, and Werner Lemberg
 Copyright (c) 2000-2014 Francesco Zappa Nardelli
@@ -10439,7 +10878,7 @@ Except as contained in this notice, the name of The Open Group shall not be
 used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization from The Open Group.
 
----- [134] used by: Freetype 2 - zlib (Qt GUI)
+---- [141] used by: Freetype 2 - zlib (Qt GUI)
 
 Copyright (C) 1995-2024 Jean-loup Gailly and Mark Adler
 
@@ -10464,7 +10903,7 @@ freely, subject to the following restrictions:
 Jean-loup Gailly        Mark Adler
 jloup@gzip.org          madler@alumni.caltech.edu
 
----- [135] used by: Freetype 2 (Qt GUI) 2.14.3
+---- [142] used by: Freetype 2 (Qt GUI) 2.14.3
 
 Copyright (c) 2007-2014 Adobe Systems Incorporated
 Copyright (c) 2004-2026 Albert Chin-A-Young
@@ -11054,7 +11493,7 @@ Public License instead of this License.
 
 --- end of GPLv2.TXT ---
 
----- [136] used by: HarfBuzz-NG (Qt GUI) 14.5.0
+---- [143] used by: HarfBuzz-NG (Qt GUI) 14.5.0
 
 Copyright © 2010-2022  Google, Inc.
 Copyright © 2015-2020  Ebrahim Byagowi
@@ -11117,7 +11556,7 @@ FITNESS FOR A PARTICULAR PURPOSE.  THE SOFTWARE PROVIDED HEREUNDER IS
 ON AN "AS IS" BASIS, AND THE COPYRIGHT HOLDER HAS NO OBLIGATION TO
 PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
----- [137] used by: LibJPEG-turbo (Qt GUI) 3.2.0
+---- [144] used by: LibJPEG-turbo (Qt GUI) 3.2.0
 
 Copyright (C) 2009-2026 D. R. Commander
 Copyright (C) 1991-1998 Thomas G. Lane
@@ -11318,7 +11757,7 @@ We specifically permit and encourage the use of this software as the basis of
 commercial products, provided that all warranty or liability claims are
 assumed by the product vendor.
 
----- [138] used by: LibPNG (Qt GUI) 1.6.58
+---- [145] used by: LibPNG (Qt GUI) 1.6.58
 
 Copyright (c) 1995-2026 The PNG Reference Library Authors
 Copyright (c) 2000-2026 Cosmin Truta
@@ -11478,7 +11917,7 @@ to supporting the PNG file format in commercial products.  If you use
 this source code in a product, acknowledgment is not required but would
 be appreciated.
 
----- [139] used by: MD4C (Qt GUI) 0.5.3
+---- [146] used by: MD4C (Qt GUI) 0.5.3
 
 Copyright © 2016-2024 Martin Mitáš
 
@@ -11504,7 +11943,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 IN THE SOFTWARE.
 
----- [140] used by: Mipmap generator for D3D12 (Qt GUI) 0aa79bad78992da0b6a8279ddb9002c1753cb849
+---- [147] used by: Mipmap generator for D3D12 (Qt GUI) 0aa79bad78992da0b6a8279ddb9002c1753cb849
 
 Copyright (c) 2015 Microsoft
 
@@ -11530,7 +11969,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [141] used by: OpenGL ES 2 Headers (Qt GUI) Revision 27673, OpenGL Headers (Qt GUI) Revision 27684
+---- [148] used by: OpenGL ES 2 Headers (Qt GUI) Revision 27673, OpenGL Headers (Qt GUI) Revision 27684
 
 Copyright (c) 2013-2014 The Khronos Group Inc.
 
@@ -11555,7 +11994,7 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 
----- [142] used by: Pixman (Qt GUI) 0.17.12
+---- [149] used by: Pixman (Qt GUI) 0.17.12
 
 Copyright © 2009 Nokia Corporation
 
@@ -11580,7 +12019,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
----- [143] used by: Smooth Scaling Algorithm (Qt GUI)
+---- [150] used by: Smooth Scaling Algorithm (Qt GUI)
 
 Copyright (C) 2004, 2005 Daniel M. Duley.
 (C) Carsten Haitzler and various contributors.
@@ -11647,7 +12086,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
----- [144] used by: Vulkan API Registry (Qt GUI) 1.4.308
+---- [151] used by: Vulkan API Registry (Qt GUI) 1.4.308
 
 Copyright (c) 2015-2025 The Khronos Group Inc.
 
@@ -11735,7 +12174,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
----- [145] used by: Vulkan Memory Allocator (Qt GUI) 3.3.0
+---- [152] used by: Vulkan Memory Allocator (Qt GUI) 3.3.0
 
 Copyright (c) 2017-2025 Advanced Micro Devices, Inc. All rights reserved.
 
@@ -11759,7 +12198,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
----- [146] used by: WebGradients (Qt GUI)
+---- [153] used by: WebGradients (Qt GUI)
 
 Copyright (c) 2017 itmeo
 
@@ -11785,14 +12224,14 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [147] used by: Wintab API (Qt GUI)
+---- [154] used by: Wintab API (Qt GUI)
 
 Copyright 1991-1998 by LCS/Telegraphics.
 
 The text and information contained in this file may be freely used,
 copied, or distributed without compensation or licensing restrictions.
 
----- [148] used by: sRGB color profile icc file (Qt GUI)
+---- [155] used by: sRGB color profile icc file (Qt GUI)
 
 Copyright International Color Consortium, 2015
 
@@ -11807,7 +12246,7 @@ shall not be misrepresented as the original profile.
 
 (original source location: http://www.color.org/srgbprofiles.xalter)
 
----- [149] used by: TIFF Software Distribution (libtiff) (Qt Image Formats) 4.7.2
+---- [156] used by: TIFF Software Distribution (libtiff) (Qt Image Formats) 4.7.2
 
 Copyright (c) 1988-1997 Sam Leffler
 Copyright (c) 1991-1997 Silicon Graphics, Inc.
@@ -11834,7 +12273,7 @@ WHETHER OR NOT ADVISED OF THE POSSIBILITY OF DAMAGE, AND ON ANY THEORY OF
 LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE 
 OF THIS SOFTWARE.
 
----- [150] used by: WebP (libwebp) (Qt Image Formats) 1.6.0
+---- [157] used by: WebP (libwebp) (Qt Image Formats) 1.6.0
 
 Copyright (c) 2010, Google Inc. All rights reserved.
 
@@ -11868,7 +12307,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [151] used by: The Public Suffix List (Qt Network) 2026-05-14_08-35-31_UTC
+---- [158] used by: The Public Suffix List (Qt Network) 2026-05-14_08-35-31_UTC
 
 The list was originally provided by Jo Hermans <jo.hermans@gmail.com>.
 It is now maintained on github (https://github.com/publicsuffix/list).
@@ -12247,7 +12686,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
   This Source Code Form is "Incompatible With Secondary Licenses", as
   defined by the Mozilla Public License, v. 2.0.
 
----- [152] used by: libpsl - C library to handle the Public Suffix List (Qt Network) 664f3dc85259ec65e30248a61fa1c45b7b0e4c3f
+---- [159] used by: libpsl - C library to handle the Public Suffix List (Qt Network) 664f3dc85259ec65e30248a61fa1c45b7b0e4c3f
 
 Copyright 2014-2016 The Chromium Authors. All rights reserved.
 
@@ -12282,7 +12721,7 @@ Copyright 2014-2016 The Chromium Authors. All rights reserved.
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [153] used by: JavaScriptCore Macro Assembler (Qt Qml)
+---- [160] used by: JavaScriptCore Macro Assembler (Qt Qml)
 
 Copyright (C) 2003-2018 Apple Inc. All rights reserved.
 Copyright (C) 2007 Justin Haygood (jhaygood@reaktix.com)
@@ -12321,7 +12760,7 @@ OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
----- [154] used by: Yoga (Qt Quick) 2.0.1
+---- [161] used by: Yoga (Qt Quick) 2.0.1
 
 Copyright (c) Facebook, Inc. and its affiliates.
 Copyright (c) Meta Platforms, Inc. and affiliates.
@@ -12348,7 +12787,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [155] used by: Shadow values from Angular Material (Qt Quick Controls)
+---- [162] used by: Shadow values from Angular Material (Qt Quick Controls)
 
 Copyright (c) 2014-2016 Google, Inc
 
@@ -12372,7 +12811,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----- [156] used by: Inter 4.001
+---- [163] used by: Inter 4.001
 
 Copyright (c) 2016 The Inter Project Authors (https://github.com/rsms/inter)
 
@@ -12467,7 +12906,7 @@ DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 
----- [157] used by: JetBrains Mono 2.304
+---- [164] used by: JetBrains Mono 2.304
 
 Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
 
@@ -12563,7 +13002,7 @@ DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 
----- [158] used by: Noto Color Emoji 2.057
+---- [165] used by: Noto Color Emoji 2.057
 
 This Font Software is licensed under the SIL Open Font License,
 Version 1.1.
@@ -12658,7 +13097,7 @@ DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 
----- [159] used by: Noto Sans SC 2.004-H2
+---- [166] used by: Noto Sans SC 2.004-H2
 
 Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'
 
@@ -12754,7 +13193,7 @@ DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 
----- [160] used by: Noto Sans Symbols 2 2.008
+---- [167] used by: Noto Sans Symbols 2 2.008
 
 Copyright 2022 The Noto Project Authors (https://github.com/notofonts/symbols)
 

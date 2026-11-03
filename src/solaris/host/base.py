@@ -358,6 +358,20 @@ class GeoCategories:
     geoip: GeoDataset
 
 
+@dataclass(frozen=True)
+class GeoUpdateFile:
+    name: str
+    url: str
+    updated_at_unix_ms: int
+
+
+@dataclass(frozen=True)
+class GeoUpdatePlan:
+    generation: str = ""
+    interval_hours: int = 0
+    files: tuple[GeoUpdateFile, ...] = ()
+
+
 def bundled_geo_categories() -> GeoCategories:
     """The categories of the GEO data the installer ships, for when the core has none to list
     or cannot be reached (docs/routing.md §8.4)."""
@@ -522,6 +536,22 @@ class TunnelHost(Protocol):
         """The GEOSITE and GEOIP categories of the core's GEO data; the installer's list for
         a kind the core has no data of."""
         ...
+
+    async def get_geo_update(self) -> GeoUpdatePlan: ...
+
+    async def upload_geo(
+        self,
+        generation: str,
+        transfer_id: str,
+        name: str,
+        size: int,
+        sha256: str,
+        offset: int,
+        data: bytes = b"",
+        *,
+        complete: bool = False,
+        abort: bool = False,
+    ) -> None: ...
 
     async def preview_group(self, composition: Composition, group_id: str) -> GroupPreview:
         """The members of a group of the composition's plan; raises

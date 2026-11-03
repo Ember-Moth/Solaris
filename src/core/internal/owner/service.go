@@ -112,8 +112,8 @@ func Open(ctx context.Context, root, geodataDir string, platform Platform, log *
 	if err := platform.SecureDir(home, record.SID); err != nil {
 		return nil, "", err
 	}
-	// Without the data mihomo downloads it the first time a rule needs it, which still
-	// beats a service that does not start.
+	// Keep the service available for diagnostics if seeding fails. The embedded core
+	// rejects profiles needing missing GEO data; it does not download during admission.
 	if err := geodata.Seed(geodataDir, home); err != nil {
 		log.Warn("seed the GEO data", "error", err)
 	}

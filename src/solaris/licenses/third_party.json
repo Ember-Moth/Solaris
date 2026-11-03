@@ -2,13 +2,73 @@
   "generated_by": "scripts/gen_licenses.py",
   "components": [
     {
+      "name": "anyio",
+      "version": "4.16.0",
+      "license": "MIT",
+      "kind": "python",
+      "url": "https://pypi.org/project/anyio/",
+      "notices": [
+        1
+      ]
+    },
+    {
+      "name": "certifi",
+      "version": "2026.10.23",
+      "license": "MPL-2.0",
+      "kind": "python",
+      "url": "https://github.com/certifi/python-certifi",
+      "notices": [
+        2
+      ]
+    },
+    {
+      "name": "h11",
+      "version": "0.16.0",
+      "license": "MIT",
+      "kind": "python",
+      "url": "https://github.com/python-hyper/h11",
+      "notices": [
+        3
+      ]
+    },
+    {
+      "name": "httpcore",
+      "version": "1.0.9",
+      "license": "BSD-3-Clause",
+      "kind": "python",
+      "url": "https://www.encode.io/httpcore/",
+      "notices": [
+        4
+      ]
+    },
+    {
+      "name": "httpx",
+      "version": "0.28.1",
+      "license": "BSD-3-Clause",
+      "kind": "python",
+      "url": "https://github.com/encode/httpx",
+      "notices": [
+        5
+      ]
+    },
+    {
+      "name": "idna",
+      "version": "3.20",
+      "license": "BSD-3-Clause",
+      "kind": "python",
+      "url": "https://github.com/kjd/idna",
+      "notices": [
+        6
+      ]
+    },
+    {
       "name": "jaraco.classes",
       "version": "3.4.0",
       "license": "MIT",
       "kind": "python",
       "url": "https://github.com/jaraco/jaraco.classes",
       "notices": [
-        1
+        7
       ]
     },
     {
@@ -18,7 +78,7 @@
       "kind": "python",
       "url": "https://github.com/jaraco/jaraco.context",
       "notices": [
-        2
+        8
       ]
     },
     {
@@ -28,7 +88,7 @@
       "kind": "python",
       "url": "https://github.com/jaraco/jaraco.functools",
       "notices": [
-        2
+        8
       ]
     },
     {
@@ -38,7 +98,7 @@
       "kind": "python",
       "url": "https://github.com/jaraco/keyring",
       "notices": [
-        3
+        9
       ]
     },
     {
@@ -48,7 +108,7 @@
       "kind": "python",
       "url": "https://github.com/more-itertools/more-itertools",
       "notices": [
-        4
+        10
       ]
     },
     {
@@ -58,7 +118,7 @@
       "kind": "python",
       "url": "https://developers.google.com/protocol-buffers/",
       "notices": [
-        5
+        11
       ]
     },
     {
@@ -68,7 +128,7 @@
       "kind": "python",
       "url": "https://pyside.org",
       "notices": [
-        6
+        12
       ]
     },
     {
@@ -78,7 +138,7 @@
       "kind": "python",
       "url": "https://pyside.org",
       "notices": [
-        6
+        12
       ]
     },
     {
@@ -88,7 +148,7 @@
       "kind": "python",
       "url": "https://pyside.org",
       "notices": [
-        6
+        12
       ]
     },
     {
@@ -98,7 +158,17 @@
       "kind": "python",
       "url": "https://pyside.org",
       "notices": [
-        6
+        12
+      ]
+    },
+    {
+      "name": "typing_extensions",
+      "version": "4.16.0",
+      "license": "PSF-2.0",
+      "kind": "python",
+      "url": "https://github.com/python/typing_extensions",
+      "notices": [
+        13
       ]
     },
     {
@@ -108,8 +178,8 @@
       "kind": "python",
       "url": "https://www.python.org/",
       "notices": [
-        7,
-        8
+        14,
+        15
       ]
     },
     {
@@ -119,7 +189,7 @@
       "kind": "python",
       "url": "https://openssl-library.org/",
       "notices": [
-        9
+        16
       ]
     },
     {
@@ -129,7 +199,7 @@
       "kind": "python",
       "url": "https://sqlite.org/",
       "notices": [
-        10
+        17
       ]
     },
     {
@@ -139,7 +209,7 @@
       "kind": "python",
       "url": "https://sourceware.org/libffi/",
       "notices": [
-        11
+        18
       ]
     },
     {
@@ -149,7 +219,7 @@
       "kind": "python",
       "url": "https://sourceware.org/libffi/",
       "notices": [
-        11
+        18
       ]
     },
     {
@@ -159,7 +229,7 @@
       "kind": "python",
       "url": "https://sourceware.org/bzip2/",
       "notices": [
-        12
+        19
       ]
     },
     {
@@ -169,7 +239,7 @@
       "kind": "python",
       "url": "https://tukaani.org/xz/",
       "notices": [
-        13
+        20
       ]
     },
     {
@@ -179,7 +249,7 @@
       "kind": "python",
       "url": "https://facebook.github.io/zstd/",
       "notices": [
-        14
+        21
       ]
     },
     {
@@ -189,7 +259,7 @@
       "kind": "python",
       "url": "https://libexpat.github.io/",
       "notices": [
-        15
+        22
       ]
     },
     {
@@ -199,7 +269,7 @@
       "kind": "python",
       "url": "https://libexpat.github.io/",
       "notices": [
-        15
+        22
       ]
     },
     {
@@ -209,7 +279,7 @@
       "kind": "python",
       "url": "https://www.bytereef.org/mpdecimal/",
       "notices": [
-        16
+        23
       ]
     },
     {
@@ -219,7 +289,7 @@
       "kind": "python",
       "url": "https://sourceforge.net/projects/libuuid/",
       "notices": [
-        17
+        24
       ]
     },
     {
@@ -229,7 +299,7 @@
       "kind": "python",
       "url": "https://github.com/zlib-ng/zlib-ng",
       "notices": [
-        18
+        25
       ]
     },
     {
@@ -239,7 +309,7 @@
       "kind": "go",
       "url": "https://github.com/ajg/form",
       "notices": [
-        19
+        26
       ]
     },
     {
@@ -249,7 +319,7 @@
       "kind": "go",
       "url": "https://github.com/andybalholm/brotli",
       "notices": [
-        20
+        27
       ]
     },
     {
@@ -259,7 +329,7 @@
       "kind": "go",
       "url": "https://github.com/bahlo/generic-list-go",
       "notices": [
-        21
+        28
       ]
     },
     {
@@ -269,7 +339,7 @@
       "kind": "go",
       "url": "https://github.com/bodgit/plumbing",
       "notices": [
-        22
+        29
       ]
     },
     {
@@ -279,7 +349,7 @@
       "kind": "go",
       "url": "https://github.com/bodgit/windows",
       "notices": [
-        23
+        30
       ]
     },
     {
@@ -289,7 +359,7 @@
       "kind": "go",
       "url": "https://github.com/dlclark/regexp2",
       "notices": [
-        24
+        31
       ]
     },
     {
@@ -299,7 +369,7 @@
       "kind": "go",
       "url": "https://github.com/dunglas/httpsfv",
       "notices": [
-        25
+        32
       ]
     },
     {
@@ -309,7 +379,7 @@
       "kind": "go",
       "url": "https://github.com/easytier/easytier",
       "notices": [
-        6
+        12
       ]
     },
     {
@@ -319,7 +389,7 @@
       "kind": "go",
       "url": "https://github.com/ebitengine/purego",
       "notices": [
-        26
+        33
       ]
     },
     {
@@ -329,7 +399,7 @@
       "kind": "go",
       "url": "https://github.com/Ember-Moth/cronet-go",
       "notices": [
-        27
+        34
       ]
     },
     {
@@ -339,17 +409,17 @@
       "kind": "go",
       "url": "https://github.com/Ember-Moth/cronet-go",
       "notices": [
-        27
+        34
       ]
     },
     {
       "name": "github.com/Ember-Moth/mihomo",
-      "version": "v1.19.33-0.20261103143402-f499052f0550",
+      "version": "v1.19.33-0.20261103155416-c2de0f865c7e",
       "license": "GPL-3.0-only",
       "kind": "go",
       "url": "https://github.com/Ember-Moth/mihomo",
       "notices": [
-        28
+        35
       ]
     },
     {
@@ -359,7 +429,7 @@
       "kind": "go",
       "url": "https://github.com/Ember-Moth/sing-snell",
       "notices": [
-        27
+        34
       ]
     },
     {
@@ -369,7 +439,7 @@
       "kind": "go",
       "url": "https://github.com/enfein/mieru",
       "notices": [
-        28
+        35
       ]
     },
     {
@@ -379,7 +449,7 @@
       "kind": "go",
       "url": "https://github.com/ericlagergren/aegis",
       "notices": [
-        29
+        36
       ]
     },
     {
@@ -389,7 +459,7 @@
       "kind": "go",
       "url": "https://github.com/ericlagergren/polyval",
       "notices": [
-        30
+        37
       ]
     },
     {
@@ -399,7 +469,7 @@
       "kind": "go",
       "url": "https://github.com/ericlagergren/siv",
       "notices": [
-        31
+        38
       ]
     },
     {
@@ -409,7 +479,7 @@
       "kind": "go",
       "url": "https://github.com/ericlagergren/subtle",
       "notices": [
-        31
+        38
       ]
     },
     {
@@ -419,7 +489,7 @@
       "kind": "go",
       "url": "https://github.com/fsnotify/fsnotify",
       "notices": [
-        32
+        39
       ]
     },
     {
@@ -429,7 +499,7 @@
       "kind": "go",
       "url": "https://github.com/fxamacker/cbor",
       "notices": [
-        33
+        40
       ]
     },
     {
@@ -439,7 +509,7 @@
       "kind": "go",
       "url": "https://github.com/gaukas/godicttls",
       "notices": [
-        34
+        41
       ]
     },
     {
@@ -449,7 +519,7 @@
       "kind": "go",
       "url": "https://github.com/go-ole/go-ole",
       "notices": [
-        35
+        42
       ]
     },
     {
@@ -459,7 +529,7 @@
       "kind": "go",
       "url": "https://github.com/gobwas/httphead",
       "notices": [
-        36
+        43
       ]
     },
     {
@@ -469,7 +539,7 @@
       "kind": "go",
       "url": "https://github.com/gobwas/pool",
       "notices": [
-        37
+        44
       ]
     },
     {
@@ -479,7 +549,7 @@
       "kind": "go",
       "url": "https://github.com/gobwas/ws",
       "notices": [
-        38
+        45
       ]
     },
     {
@@ -489,7 +559,7 @@
       "kind": "go",
       "url": "https://github.com/gofrs/uuid",
       "notices": [
-        39
+        46
       ]
     },
     {
@@ -499,7 +569,7 @@
       "kind": "go",
       "url": "https://github.com/golang/groupcache",
       "notices": [
-        40
+        47
       ]
     },
     {
@@ -509,7 +579,7 @@
       "kind": "go",
       "url": "https://github.com/golang/snappy",
       "notices": [
-        41
+        48
       ]
     },
     {
@@ -519,7 +589,7 @@
       "kind": "go",
       "url": "https://github.com/google/btree",
       "notices": [
-        42
+        49
       ]
     },
     {
@@ -529,7 +599,7 @@
       "kind": "go",
       "url": "https://github.com/google/pprof",
       "notices": [
-        42
+        49
       ]
     },
     {
@@ -539,7 +609,7 @@
       "kind": "go",
       "url": "https://github.com/hashicorp/golang-lru",
       "notices": [
-        43
+        50
       ]
     },
     {
@@ -549,7 +619,7 @@
       "kind": "go",
       "url": "https://github.com/insomniacslk/dhcp",
       "notices": [
-        44
+        51
       ]
     },
     {
@@ -559,7 +629,7 @@
       "kind": "go",
       "url": "https://github.com/josharian/native",
       "notices": [
-        45
+        52
       ]
     },
     {
@@ -569,7 +639,7 @@
       "kind": "go",
       "url": "https://github.com/klauspost/compress",
       "notices": [
-        46
+        53
       ]
     },
     {
@@ -579,7 +649,7 @@
       "kind": "go",
       "url": "https://github.com/klauspost/cpuid",
       "notices": [
-        47
+        54
       ]
     },
     {
@@ -589,7 +659,7 @@
       "kind": "go",
       "url": "https://github.com/klauspost/reedsolomon",
       "notices": [
-        48
+        55
       ]
     },
     {
@@ -599,7 +669,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/age",
       "notices": [
-        49
+        56
       ]
     },
     {
@@ -609,7 +679,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/amneziawg-go",
       "notices": [
-        50
+        57
       ]
     },
     {
@@ -619,7 +689,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/ascon",
       "notices": [
-        51
+        58
       ]
     },
     {
@@ -629,7 +699,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/bart",
       "notices": [
-        52
+        59
       ]
     },
     {
@@ -639,7 +709,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/bbolt",
       "notices": [
-        53
+        60
       ]
     },
     {
@@ -649,7 +719,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/blake3",
       "notices": [
-        54
+        61
       ]
     },
     {
@@ -659,8 +729,8 @@
       "kind": "go",
       "url": "https://github.com/metacubex/chacha",
       "notices": [
-        55,
-        56
+        62,
+        63
       ]
     },
     {
@@ -670,7 +740,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/chi",
       "notices": [
-        57
+        64
       ]
     },
     {
@@ -680,7 +750,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/connect-ip-go",
       "notices": [
-        58
+        65
       ]
     },
     {
@@ -690,7 +760,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/cpu",
       "notices": [
-        59
+        66
       ]
     },
     {
@@ -700,7 +770,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/edwards25519",
       "notices": [
-        21
+        28
       ]
     },
     {
@@ -710,7 +780,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/fswatch",
       "notices": [
-        27
+        34
       ]
     },
     {
@@ -720,7 +790,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/gvisor",
       "notices": [
-        60
+        67
       ]
     },
     {
@@ -730,7 +800,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/hkdf",
       "notices": [
-        59
+        66
       ]
     },
     {
@@ -740,7 +810,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/hpke",
       "notices": [
-        59
+        66
       ]
     },
     {
@@ -750,7 +820,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/http",
       "notices": [
-        59
+        66
       ]
     },
     {
@@ -760,7 +830,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/jls-quic-go",
       "notices": [
-        61
+        68
       ]
     },
     {
@@ -770,7 +840,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/jls-tls",
       "notices": [
-        59
+        66
       ]
     },
     {
@@ -780,7 +850,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/jsonv2",
       "notices": [
-        62
+        69
       ]
     },
     {
@@ -790,7 +860,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/kcp-go",
       "notices": [
-        63
+        70
       ]
     },
     {
@@ -800,7 +870,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/mhurl",
       "notices": [
-        59
+        66
       ]
     },
     {
@@ -810,7 +880,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/mipstack",
       "notices": [
-        64
+        71
       ]
     },
     {
@@ -820,7 +890,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/mlkem",
       "notices": [
-        59
+        66
       ]
     },
     {
@@ -830,7 +900,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/qpack",
       "notices": [
-        65
+        72
       ]
     },
     {
@@ -840,7 +910,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/quic-go",
       "notices": [
-        61
+        68
       ]
     },
     {
@@ -850,7 +920,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/randv2",
       "notices": [
-        28
+        35
       ]
     },
     {
@@ -860,8 +930,8 @@
       "kind": "go",
       "url": "https://github.com/metacubex/restls-client-go",
       "notices": [
-        21,
-        66
+        28,
+        73
       ]
     },
     {
@@ -871,7 +941,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/sevenzip",
       "notices": [
-        23
+        30
       ]
     },
     {
@@ -881,7 +951,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/sing",
       "notices": [
-        27
+        34
       ]
     },
     {
@@ -891,7 +961,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/sing-mux",
       "notices": [
-        27
+        34
       ]
     },
     {
@@ -901,7 +971,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/sing-quic",
       "notices": [
-        27
+        34
       ]
     },
     {
@@ -911,7 +981,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/sing-shadowsocks",
       "notices": [
-        27
+        34
       ]
     },
     {
@@ -921,7 +991,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/sing-shadowsocks2",
       "notices": [
-        27
+        34
       ]
     },
     {
@@ -931,7 +1001,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/sing-tun",
       "notices": [
-        27
+        34
       ]
     },
     {
@@ -941,7 +1011,7 @@
       "kind": "go",
       "url": "https://www.wintun.net/",
       "notices": [
-        67
+        74
       ]
     },
     {
@@ -951,7 +1021,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/sing-vmess",
       "notices": [
-        27
+        34
       ]
     },
     {
@@ -961,7 +1031,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/sing-wireguard",
       "notices": [
-        28
+        35
       ]
     },
     {
@@ -971,7 +1041,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/smux",
       "notices": [
-        68
+        75
       ]
     },
     {
@@ -981,7 +1051,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/ssh",
       "notices": [
-        59
+        66
       ]
     },
     {
@@ -991,7 +1061,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/tailscale",
       "notices": [
-        69
+        76
       ]
     },
     {
@@ -1001,7 +1071,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/tailscale-wireguard-go",
       "notices": [
-        70
+        77
       ]
     },
     {
@@ -1011,7 +1081,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/tfo-go",
       "notices": [
-        71
+        78
       ]
     },
     {
@@ -1021,7 +1091,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/tls",
       "notices": [
-        59
+        66
       ]
     },
     {
@@ -1031,7 +1101,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/utls",
       "notices": [
-        21
+        28
       ]
     },
     {
@@ -1041,8 +1111,8 @@
       "kind": "go",
       "url": "https://github.com/metacubex/wazero",
       "notices": [
-        72,
-        73
+        79,
+        80
       ]
     },
     {
@@ -1052,7 +1122,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/wireguard-go",
       "notices": [
-        70
+        77
       ]
     },
     {
@@ -1062,8 +1132,8 @@
       "kind": "go",
       "url": "https://github.com/metacubex/yamux",
       "notices": [
-        74,
-        21
+        81,
+        28
       ]
     },
     {
@@ -1073,8 +1143,8 @@
       "kind": "go",
       "url": "https://github.com/metacubex/zerotier-go",
       "notices": [
-        64,
-        75
+        71,
+        82
       ]
     },
     {
@@ -1084,7 +1154,7 @@
       "kind": "go",
       "url": "https://github.com/Microsoft/go-winio",
       "notices": [
-        76
+        83
       ]
     },
     {
@@ -1094,7 +1164,7 @@
       "kind": "go",
       "url": "https://github.com/miekg/dns",
       "notices": [
-        77
+        84
       ]
     },
     {
@@ -1104,7 +1174,7 @@
       "kind": "go",
       "url": "https://github.com/mitchellh/go-ps",
       "notices": [
-        78
+        85
       ]
     },
     {
@@ -1114,7 +1184,7 @@
       "kind": "go",
       "url": "https://github.com/mroth/weightedrand",
       "notices": [
-        79
+        86
       ]
     },
     {
@@ -1124,7 +1194,7 @@
       "kind": "go",
       "url": "https://github.com/oasisprotocol/deoxysii",
       "notices": [
-        80
+        87
       ]
     },
     {
@@ -1134,7 +1204,7 @@
       "kind": "go",
       "url": "https://github.com/openacid/low",
       "notices": [
-        81
+        88
       ]
     },
     {
@@ -1144,7 +1214,7 @@
       "kind": "go",
       "url": "https://github.com/oschwald/maxminddb-golang",
       "notices": [
-        82
+        89
       ]
     },
     {
@@ -1154,7 +1224,7 @@
       "kind": "go",
       "url": "https://github.com/pierrec/lz4",
       "notices": [
-        83
+        90
       ]
     },
     {
@@ -1164,7 +1234,7 @@
       "kind": "go",
       "url": "https://github.com/pires/go-proxyproto",
       "notices": [
-        84
+        91
       ]
     },
     {
@@ -1174,7 +1244,7 @@
       "kind": "go",
       "url": "https://github.com/rasky/go-lzo",
       "notices": [
-        85
+        92
       ]
     },
     {
@@ -1184,7 +1254,7 @@
       "kind": "go",
       "url": "https://github.com/RyuaNerin/go-krypto",
       "notices": [
-        86
+        93
       ]
     },
     {
@@ -1194,7 +1264,7 @@
       "kind": "go",
       "url": "https://github.com/sagernet/cronet-go",
       "notices": [
-        27
+        34
       ]
     },
     {
@@ -1204,7 +1274,7 @@
       "kind": "go",
       "url": "https://github.com/sagernet/cronet-go",
       "notices": [
-        27
+        34
       ]
     },
     {
@@ -1214,7 +1284,7 @@
       "kind": "go",
       "url": "https://github.com/sagernet/cronet-go",
       "notices": [
-        27
+        34
       ]
     },
     {
@@ -1224,7 +1294,7 @@
       "kind": "go",
       "url": "https://github.com/samber/lo",
       "notices": [
-        87
+        94
       ]
     },
     {
@@ -1234,7 +1304,7 @@
       "kind": "go",
       "url": "https://github.com/sina-ghaderi/poly1305",
       "notices": [
-        28
+        35
       ]
     },
     {
@@ -1244,7 +1314,7 @@
       "kind": "go",
       "url": "https://github.com/sina-ghaderi/rabaead",
       "notices": [
-        28
+        35
       ]
     },
     {
@@ -1254,7 +1324,7 @@
       "kind": "go",
       "url": "https://github.com/sina-ghaderi/rabbitio",
       "notices": [
-        42
+        49
       ]
     },
     {
@@ -1264,7 +1334,7 @@
       "kind": "go",
       "url": "https://github.com/sirupsen/logrus",
       "notices": [
-        88
+        95
       ]
     },
     {
@@ -1274,7 +1344,7 @@
       "kind": "go",
       "url": "https://github.com/stangelandcl/ppmd",
       "notices": [
-        89
+        96
       ]
     },
     {
@@ -1284,7 +1354,7 @@
       "kind": "go",
       "url": "https://github.com/tailscale/certstore",
       "notices": [
-        90
+        97
       ]
     },
     {
@@ -1294,7 +1364,7 @@
       "kind": "go",
       "url": "https://github.com/tailscale/go-winio",
       "notices": [
-        76
+        83
       ]
     },
     {
@@ -1304,7 +1374,7 @@
       "kind": "go",
       "url": "https://github.com/tailscale/hujson",
       "notices": [
-        91
+        98
       ]
     },
     {
@@ -1314,7 +1384,7 @@
       "kind": "go",
       "url": "https://github.com/tailscale/peercred",
       "notices": [
-        92
+        99
       ]
     },
     {
@@ -1324,7 +1394,7 @@
       "kind": "go",
       "url": "https://github.com/u-root/uio",
       "notices": [
-        93
+        100
       ]
     },
     {
@@ -1334,7 +1404,7 @@
       "kind": "go",
       "url": "https://github.com/ulikunitz/xz",
       "notices": [
-        94
+        101
       ]
     },
     {
@@ -1344,7 +1414,7 @@
       "kind": "go",
       "url": "https://github.com/vmihailenco/msgpack",
       "notices": [
-        95
+        102
       ]
     },
     {
@@ -1354,7 +1424,7 @@
       "kind": "go",
       "url": "https://github.com/vmihailenco/tagparser",
       "notices": [
-        96
+        103
       ]
     },
     {
@@ -1364,7 +1434,7 @@
       "kind": "go",
       "url": "https://github.com/x448/float16",
       "notices": [
-        97
+        104
       ]
     },
     {
@@ -1374,7 +1444,7 @@
       "kind": "go",
       "url": "https://github.com/Yawning/aez",
       "notices": [
-        98
+        105
       ]
     },
     {
@@ -1384,7 +1454,7 @@
       "kind": "go",
       "url": "https://github.com/yosida95/uritemplate",
       "notices": [
-        99
+        106
       ]
     },
     {
@@ -1394,7 +1464,7 @@
       "kind": "go",
       "url": "https://gitlab.com/go-extension/aes-ccm",
       "notices": [
-        100
+        107
       ]
     },
     {
@@ -1404,7 +1474,7 @@
       "kind": "go",
       "url": "https://gitlab.com/yawning/bsaes.git",
       "notices": [
-        101
+        108
       ]
     },
     {
@@ -1414,8 +1484,8 @@
       "kind": "go",
       "url": "https://pkg.go.dev/go.yaml.in/yaml/v3",
       "notices": [
-        102,
-        103
+        109,
+        110
       ]
     },
     {
@@ -1425,7 +1495,7 @@
       "kind": "go",
       "url": "https://pkg.go.dev/go4.org/mem",
       "notices": [
-        26
+        33
       ]
     },
     {
@@ -1435,7 +1505,7 @@
       "kind": "go",
       "url": "https://pkg.go.dev/go4.org/netipx",
       "notices": [
-        104
+        111
       ]
     },
     {
@@ -1445,7 +1515,7 @@
       "kind": "go",
       "url": "https://pkg.go.dev/golang.org/x/crypto",
       "notices": [
-        59
+        66
       ]
     },
     {
@@ -1455,7 +1525,7 @@
       "kind": "go",
       "url": "https://pkg.go.dev/golang.org/x/exp",
       "notices": [
-        59
+        66
       ]
     },
     {
@@ -1465,7 +1535,7 @@
       "kind": "go",
       "url": "https://pkg.go.dev/golang.org/x/net",
       "notices": [
-        59
+        66
       ]
     },
     {
@@ -1475,7 +1545,7 @@
       "kind": "go",
       "url": "https://pkg.go.dev/golang.org/x/sync",
       "notices": [
-        59
+        66
       ]
     },
     {
@@ -1485,7 +1555,7 @@
       "kind": "go",
       "url": "https://pkg.go.dev/golang.org/x/sys",
       "notices": [
-        59
+        66
       ]
     },
     {
@@ -1495,7 +1565,7 @@
       "kind": "go",
       "url": "https://pkg.go.dev/golang.org/x/term",
       "notices": [
-        59
+        66
       ]
     },
     {
@@ -1505,7 +1575,7 @@
       "kind": "go",
       "url": "https://pkg.go.dev/golang.org/x/text",
       "notices": [
-        59
+        66
       ]
     },
     {
@@ -1515,7 +1585,7 @@
       "kind": "go",
       "url": "https://pkg.go.dev/golang.org/x/time",
       "notices": [
-        59
+        66
       ]
     },
     {
@@ -1525,7 +1595,7 @@
       "kind": "go",
       "url": "https://pkg.go.dev/google.golang.org/protobuf",
       "notices": [
-        105
+        112
       ]
     },
     {
@@ -1535,8 +1605,8 @@
       "kind": "go",
       "url": "https://go.dev/",
       "notices": [
-        59,
-        106
+        66,
+        113
       ]
     },
     {
@@ -1546,7 +1616,7 @@
       "kind": "qt",
       "url": "https://download.qt.io/official_releases/qt/6.12/6.12.0/",
       "notices": [
-        6
+        12
       ]
     },
     {
@@ -1556,7 +1626,7 @@
       "kind": "qt",
       "url": "https://github.com/apache/tika/tree/main/tika-core/src/main/resources/org/apache/tika/mime",
       "notices": [
-        107
+        114
       ]
     },
     {
@@ -1566,7 +1636,7 @@
       "kind": "qt",
       "url": "https://blake2.net/",
       "notices": [
-        108
+        115
       ]
     },
     {
@@ -1576,7 +1646,7 @@
       "kind": "qt",
       "url": "https://zlib.net/",
       "notices": [
-        109
+        116
       ]
     },
     {
@@ -1586,7 +1656,7 @@
       "kind": "qt",
       "url": "http://robertpenner.com/easing/",
       "notices": [
-        110
+        117
       ]
     },
     {
@@ -1596,7 +1666,7 @@
       "kind": "qt",
       "url": "https://github.com/google/double-conversion",
       "notices": [
-        111
+        118
       ]
     },
     {
@@ -1606,7 +1676,7 @@
       "kind": "qt",
       "url": "https://doc.qt.io/qt-6/qtcore-attribution-md4.html",
       "notices": [
-        112
+        119
       ]
     },
     {
@@ -1616,7 +1686,7 @@
       "kind": "qt",
       "url": "https://doc.qt.io/qt-6/qtcore-attribution-md5.html",
       "notices": [
-        113
+        120
       ]
     },
     {
@@ -1626,7 +1696,7 @@
       "kind": "qt",
       "url": "http://www.pcre.org/",
       "notices": [
-        114
+        121
       ]
     },
     {
@@ -1636,7 +1706,7 @@
       "kind": "qt",
       "url": "http://www.pcre.org/",
       "notices": [
-        115
+        122
       ]
     },
     {
@@ -1646,7 +1716,7 @@
       "kind": "qt",
       "url": "https://doc.qt.io/qt-6/qtcore-attribution-qeventdispatcher-cf.html",
       "notices": [
-        116
+        123
       ]
     },
     {
@@ -1656,7 +1726,7 @@
       "kind": "qt",
       "url": "http://www.dominik-reichl.de/projects/csha1/",
       "notices": [
-        117
+        124
       ]
     },
     {
@@ -1666,7 +1736,7 @@
       "kind": "qt",
       "url": "https://doc.qt.io/qt-6/qtcore-attribution-sha3-keccak.html",
       "notices": [
-        118
+        125
       ]
     },
     {
@@ -1676,7 +1746,7 @@
       "kind": "qt",
       "url": "https://doc.qt.io/qt-6/qtcore-attribution-sha3-endian.html",
       "notices": [
-        119
+        126
       ]
     },
     {
@@ -1686,7 +1756,7 @@
       "kind": "qt",
       "url": "https://doc.qt.io/qt-6/qtcore-attribution-rfc6234.html",
       "notices": [
-        120
+        127
       ]
     },
     {
@@ -1696,7 +1766,7 @@
       "kind": "qt",
       "url": "https://131002.net/siphash/",
       "notices": [
-        121
+        128
       ]
     },
     {
@@ -1706,7 +1776,7 @@
       "kind": "qt",
       "url": "https://github.com/intel/tinycbor",
       "notices": [
-        122
+        129
       ]
     },
     {
@@ -1716,7 +1786,7 @@
       "kind": "qt",
       "url": "https://www.unicode.org/ucd/",
       "notices": [
-        123
+        130
       ]
     },
     {
@@ -1726,7 +1796,7 @@
       "kind": "qt",
       "url": "https://cldr.unicode.org/",
       "notices": [
-        124
+        131
       ]
     },
     {
@@ -1736,7 +1806,7 @@
       "kind": "qt",
       "url": "https://doc.qt.io/qt-6/qtcore-attribution-forkfd.html",
       "notices": [
-        125
+        132
       ]
     },
     {
@@ -1746,7 +1816,7 @@
       "kind": "qt",
       "url": "https://github.com/TartanLlama/expected/",
       "notices": [
-        126
+        133
       ]
     },
     {
@@ -1756,7 +1826,7 @@
       "kind": "qt",
       "url": "https://github.com/adobe-type-tools/agl-aglfn",
       "notices": [
-        127
+        134
       ]
     },
     {
@@ -1766,7 +1836,7 @@
       "kind": "qt",
       "url": "http://www.freetype.org",
       "notices": [
-        128
+        135
       ]
     },
     {
@@ -1776,7 +1846,7 @@
       "kind": "qt",
       "url": "https://doc.qt.io/qt-6/qtgui-attribution-cocoa-platform-plugin.html",
       "notices": [
-        116
+        123
       ]
     },
     {
@@ -1786,7 +1856,7 @@
       "kind": "qt",
       "url": "https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator",
       "notices": [
-        129
+        136
       ]
     },
     {
@@ -1796,7 +1866,7 @@
       "kind": "qt",
       "url": "https://dejavu-fonts.github.io/",
       "notices": [
-        130
+        137
       ]
     },
     {
@@ -1806,7 +1876,7 @@
       "kind": "qt",
       "url": "https://github.com/google/emoji-segmenter",
       "notices": [
-        131
+        138
       ]
     },
     {
@@ -1816,7 +1886,7 @@
       "kind": "qt",
       "url": "http://www.freetype.org",
       "notices": [
-        132
+        139
       ]
     },
     {
@@ -1826,7 +1896,7 @@
       "kind": "qt",
       "url": "http://www.freetype.org",
       "notices": [
-        133
+        140
       ]
     },
     {
@@ -1836,7 +1906,7 @@
       "kind": "qt",
       "url": "http://www.freetype.org",
       "notices": [
-        134
+        141
       ]
     },
     {
@@ -1846,7 +1916,7 @@
       "kind": "qt",
       "url": "http://www.freetype.org",
       "notices": [
-        135
+        142
       ]
     },
     {
@@ -1856,7 +1926,7 @@
       "kind": "qt",
       "url": "http://harfbuzz.org",
       "notices": [
-        136
+        143
       ]
     },
     {
@@ -1866,7 +1936,7 @@
       "kind": "qt",
       "url": "http://libjpeg-turbo.virtualgl.org/",
       "notices": [
-        137
+        144
       ]
     },
     {
@@ -1876,7 +1946,7 @@
       "kind": "qt",
       "url": "http://www.libpng.org/pub/png/libpng.html",
       "notices": [
-        138
+        145
       ]
     },
     {
@@ -1886,7 +1956,7 @@
       "kind": "qt",
       "url": "https://github.com/mity/md4c",
       "notices": [
-        139
+        146
       ]
     },
     {
@@ -1896,7 +1966,7 @@
       "kind": "qt",
       "url": "https://github.com/microsoft/DirectX-Graphics-Samples",
       "notices": [
-        140
+        147
       ]
     },
     {
@@ -1906,7 +1976,7 @@
       "kind": "qt",
       "url": "https://www.khronos.org/",
       "notices": [
-        141
+        148
       ]
     },
     {
@@ -1916,7 +1986,7 @@
       "kind": "qt",
       "url": "https://www.khronos.org/",
       "notices": [
-        141
+        148
       ]
     },
     {
@@ -1926,7 +1996,7 @@
       "kind": "qt",
       "url": "http://www.pixman.org/",
       "notices": [
-        142
+        149
       ]
     },
     {
@@ -1936,7 +2006,7 @@
       "kind": "qt",
       "url": "https://doc.qt.io/qt-6/qtgui-attribution-smooth-scaling-algorithm.html",
       "notices": [
-        143
+        150
       ]
     },
     {
@@ -1946,7 +2016,7 @@
       "kind": "qt",
       "url": "https://www.khronos.org/",
       "notices": [
-        144
+        151
       ]
     },
     {
@@ -1956,7 +2026,7 @@
       "kind": "qt",
       "url": "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator",
       "notices": [
-        145
+        152
       ]
     },
     {
@@ -1966,7 +2036,7 @@
       "kind": "qt",
       "url": "https://webgradients.com/",
       "notices": [
-        146
+        153
       ]
     },
     {
@@ -1976,7 +2046,7 @@
       "kind": "qt",
       "url": "https://doc.qt.io/qt-6/qtgui-attribution-wintab.html",
       "notices": [
-        147
+        154
       ]
     },
     {
@@ -1986,7 +2056,7 @@
       "kind": "qt",
       "url": "http://www.color.org/",
       "notices": [
-        148
+        155
       ]
     },
     {
@@ -1996,7 +2066,7 @@
       "kind": "qt",
       "url": "http://www.simplesystems.org/libtiff/",
       "notices": [
-        149
+        156
       ]
     },
     {
@@ -2006,7 +2076,7 @@
       "kind": "qt",
       "url": "https://developers.google.com/speed/webp/",
       "notices": [
-        150
+        157
       ]
     },
     {
@@ -2016,7 +2086,7 @@
       "kind": "qt",
       "url": "http://publicsuffix.org/",
       "notices": [
-        151
+        158
       ]
     },
     {
@@ -2026,7 +2096,7 @@
       "kind": "qt",
       "url": "https://github.com/rockdaboot/libpsl",
       "notices": [
-        152
+        159
       ]
     },
     {
@@ -2036,7 +2106,7 @@
       "kind": "qt",
       "url": "https://trac.webkit.org/wiki/JavaScriptCore",
       "notices": [
-        153
+        160
       ]
     },
     {
@@ -2046,7 +2116,7 @@
       "kind": "qt",
       "url": "https://www.yogalayout.dev/",
       "notices": [
-        154
+        161
       ]
     },
     {
@@ -2056,7 +2126,7 @@
       "kind": "qt",
       "url": "https://angularjs.org/",
       "notices": [
-        155
+        162
       ]
     },
     {
@@ -2066,7 +2136,7 @@
       "kind": "font",
       "url": "https://github.com/rsms/inter",
       "notices": [
-        156
+        163
       ]
     },
     {
@@ -2076,7 +2146,7 @@
       "kind": "font",
       "url": "https://github.com/JetBrains/JetBrainsMono",
       "notices": [
-        157
+        164
       ]
     },
     {
@@ -2086,7 +2156,7 @@
       "kind": "font",
       "url": "https://github.com/googlefonts/noto-emoji",
       "notices": [
-        158
+        165
       ]
     },
     {
@@ -2096,7 +2166,7 @@
       "kind": "font",
       "url": "https://github.com/notofonts/noto-cjk",
       "notices": [
-        159
+        166
       ]
     },
     {
@@ -2106,7 +2176,7 @@
       "kind": "font",
       "url": "https://github.com/notofonts/symbols",
       "notices": [
-        160
+        167
       ]
     }
   ]

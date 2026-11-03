@@ -46,4 +46,6 @@ Thumbs.db
 
 # Local-only config
 .env
+/go.work
+/go.work.sum
 .claude/settings.local.json

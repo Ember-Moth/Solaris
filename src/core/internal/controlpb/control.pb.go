@@ -758,6 +758,8 @@ type Request struct {
 	//	*Request_ListVpnGate
 	//	*Request_GetMeshStatus
 	//	*Request_LoginMesh
+	//	*Request_GetGeoUpdate
+	//	*Request_UploadGeo
 	Method        isRequest_Method `protobuf_oneof:"method"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1152,6 +1154,24 @@ func (x *Request) GetLoginMesh() *LoginMeshRequest {
 	return nil
 }
 
+func (x *Request) GetGetGeoUpdate() *GetGeoUpdateRequest {
+	if x != nil {
+		if x, ok := x.Method.(*Request_GetGeoUpdate); ok {
+			return x.GetGeoUpdate
+		}
+	}
+	return nil
+}
+
+func (x *Request) GetUploadGeo() *UploadGeoRequest {
+	if x != nil {
+		if x, ok := x.Method.(*Request_UploadGeo); ok {
+			return x.UploadGeo
+		}
+	}
+	return nil
+}
+
 type isRequest_Method interface {
 	isRequest_Method()
 }
@@ -1309,6 +1329,14 @@ type Request_LoginMesh struct {
 	LoginMesh *LoginMeshRequest `protobuf:"bytes,58,opt,name=login_mesh,json=loginMesh,proto3,oneof"`
 }
 
+type Request_GetGeoUpdate struct {
+	GetGeoUpdate *GetGeoUpdateRequest `protobuf:"bytes,59,opt,name=get_geo_update,json=getGeoUpdate,proto3,oneof"`
+}
+
+type Request_UploadGeo struct {
+	UploadGeo *UploadGeoRequest `protobuf:"bytes,60,opt,name=upload_geo,json=uploadGeo,proto3,oneof"`
+}
+
 func (*Request_GetInfo) isRequest_Method() {}
 
 func (*Request_Claim) isRequest_Method() {}
@@ -1381,6 +1409,10 @@ func (*Request_GetMeshStatus) isRequest_Method() {}
 
 func (*Request_LoginMesh) isRequest_Method() {}
 
+func (*Request_GetGeoUpdate) isRequest_Method() {}
+
+func (*Request_UploadGeo) isRequest_Method() {}
+
 type Response struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	ProtocolVersion uint32                 `protobuf:"varint,1,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
@@ -1409,6 +1441,7 @@ type Response struct {
 	//	*Response_ListVpnGate
 	//	*Response_GetMeshStatus
 	//	*Response_LoginMesh
+	//	*Response_GetGeoUpdate
 	Result        isResponse_Result `protobuf_oneof:"result"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1663,6 +1696,15 @@ func (x *Response) GetLoginMesh() *LoginMeshResponse {
 	return nil
 }
 
+func (x *Response) GetGetGeoUpdate() *GetGeoUpdateResponse {
+	if x != nil {
+		if x, ok := x.Result.(*Response_GetGeoUpdate); ok {
+			return x.GetGeoUpdate
+		}
+	}
+	return nil
+}
+
 type isResponse_Result interface {
 	isResponse_Result()
 }
@@ -1756,6 +1798,10 @@ type Response_LoginMesh struct {
 	LoginMesh *LoginMeshResponse `protobuf:"bytes,58,opt,name=login_mesh,json=loginMesh,proto3,oneof"`
 }
 
+type Response_GetGeoUpdate struct {
+	GetGeoUpdate *GetGeoUpdateResponse `protobuf:"bytes,59,opt,name=get_geo_update,json=getGeoUpdate,proto3,oneof"`
+}
+
 func (*Response_Error) isResponse_Result() {}
 
 func (*Response_Empty) isResponse_Result() {}
@@ -1800,6 +1846,8 @@ func (*Response_GetMeshStatus) isResponse_Result() {}
 
 func (*Response_LoginMesh) isResponse_Result() {}
 
+func (*Response_GetGeoUpdate) isResponse_Result() {}
+
 type Empty struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -1836,6 +1884,273 @@ func (*Empty) Descriptor() ([]byte, []int) {
 	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{2}
 }
 
+// The GUI owns downloads and scheduling. The core only describes the applied profile
+// and accepts bounded chunks into its private home. MMDB readers are exchanged safely;
+// DAT matchers use the new data on the next profile reload.
+type GetGeoUpdateRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetGeoUpdateRequest) Reset() {
+	*x = GetGeoUpdateRequest{}
+	mi := &file_solaris_protocol_control_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetGeoUpdateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetGeoUpdateRequest) ProtoMessage() {}
+
+func (x *GetGeoUpdateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_solaris_protocol_control_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetGeoUpdateRequest.ProtoReflect.Descriptor instead.
+func (*GetGeoUpdateRequest) Descriptor() ([]byte, []int) {
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{3}
+}
+
+type GeoUpdateFile struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Name            string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Url             string                 `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
+	UpdatedAtUnixMs int64                  `protobuf:"varint,3,opt,name=updated_at_unix_ms,json=updatedAtUnixMs,proto3" json:"updated_at_unix_ms,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *GeoUpdateFile) Reset() {
+	*x = GeoUpdateFile{}
+	mi := &file_solaris_protocol_control_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GeoUpdateFile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GeoUpdateFile) ProtoMessage() {}
+
+func (x *GeoUpdateFile) ProtoReflect() protoreflect.Message {
+	mi := &file_solaris_protocol_control_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GeoUpdateFile.ProtoReflect.Descriptor instead.
+func (*GeoUpdateFile) Descriptor() ([]byte, []int) {
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GeoUpdateFile) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *GeoUpdateFile) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *GeoUpdateFile) GetUpdatedAtUnixMs() int64 {
+	if x != nil {
+		return x.UpdatedAtUnixMs
+	}
+	return 0
+}
+
+type GetGeoUpdateResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Generation    string                 `protobuf:"bytes,1,opt,name=generation,proto3" json:"generation,omitempty"`                             // changes on apply/stop and across core processes
+	IntervalHours uint32                 `protobuf:"varint,2,opt,name=interval_hours,json=intervalHours,proto3" json:"interval_hours,omitempty"` // zero means automatic updates are disabled
+	Files         []*GeoUpdateFile       `protobuf:"bytes,3,rep,name=files,proto3" json:"files,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetGeoUpdateResponse) Reset() {
+	*x = GetGeoUpdateResponse{}
+	mi := &file_solaris_protocol_control_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetGeoUpdateResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetGeoUpdateResponse) ProtoMessage() {}
+
+func (x *GetGeoUpdateResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_solaris_protocol_control_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetGeoUpdateResponse.ProtoReflect.Descriptor instead.
+func (*GetGeoUpdateResponse) Descriptor() ([]byte, []int) {
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GetGeoUpdateResponse) GetGeneration() string {
+	if x != nil {
+		return x.Generation
+	}
+	return ""
+}
+
+func (x *GetGeoUpdateResponse) GetIntervalHours() uint32 {
+	if x != nil {
+		return x.IntervalHours
+	}
+	return 0
+}
+
+func (x *GetGeoUpdateResponse) GetFiles() []*GeoUpdateFile {
+	if x != nil {
+		return x.Files
+	}
+	return nil
+}
+
+type UploadGeoRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Generation    string                 `protobuf:"bytes,1,opt,name=generation,proto3" json:"generation,omitempty"`
+	TransferId    string                 `protobuf:"bytes,2,opt,name=transfer_id,json=transferId,proto3" json:"transfer_id,omitempty"` // 32 lowercase hex digits generated by the caller
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`                               // one of the files in GetGeoUpdateResponse; never a path
+	Size          uint64                 `protobuf:"varint,4,opt,name=size,proto3" json:"size,omitempty"`                              // 1..256 MiB
+	Sha256        string                 `protobuf:"bytes,5,opt,name=sha256,proto3" json:"sha256,omitempty"`
+	Offset        uint64                 `protobuf:"varint,6,opt,name=offset,proto3" json:"offset,omitempty"`
+	Data          []byte                 `protobuf:"bytes,7,opt,name=data,proto3" json:"data,omitempty"`          // at most 48 KiB per request
+	Complete      bool                   `protobuf:"varint,8,opt,name=complete,proto3" json:"complete,omitempty"` // validate and persist after the last chunk
+	Abort         bool                   `protobuf:"varint,9,opt,name=abort,proto3" json:"abort,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UploadGeoRequest) Reset() {
+	*x = UploadGeoRequest{}
+	mi := &file_solaris_protocol_control_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UploadGeoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UploadGeoRequest) ProtoMessage() {}
+
+func (x *UploadGeoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_solaris_protocol_control_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UploadGeoRequest.ProtoReflect.Descriptor instead.
+func (*UploadGeoRequest) Descriptor() ([]byte, []int) {
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *UploadGeoRequest) GetGeneration() string {
+	if x != nil {
+		return x.Generation
+	}
+	return ""
+}
+
+func (x *UploadGeoRequest) GetTransferId() string {
+	if x != nil {
+		return x.TransferId
+	}
+	return ""
+}
+
+func (x *UploadGeoRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *UploadGeoRequest) GetSize() uint64 {
+	if x != nil {
+		return x.Size
+	}
+	return 0
+}
+
+func (x *UploadGeoRequest) GetSha256() string {
+	if x != nil {
+		return x.Sha256
+	}
+	return ""
+}
+
+func (x *UploadGeoRequest) GetOffset() uint64 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
+}
+
+func (x *UploadGeoRequest) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+func (x *UploadGeoRequest) GetComplete() bool {
+	if x != nil {
+		return x.Complete
+	}
+	return false
+}
+
+func (x *UploadGeoRequest) GetAbort() bool {
+	if x != nil {
+		return x.Abort
+	}
+	return false
+}
+
 type Error struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
@@ -1847,7 +2162,7 @@ type Error struct {
 
 func (x *Error) Reset() {
 	*x = Error{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[3]
+	mi := &file_solaris_protocol_control_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1859,7 +2174,7 @@ func (x *Error) String() string {
 func (*Error) ProtoMessage() {}
 
 func (x *Error) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[3]
+	mi := &file_solaris_protocol_control_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1872,7 +2187,7 @@ func (x *Error) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Error.ProtoReflect.Descriptor instead.
 func (*Error) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{3}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *Error) GetCode() string {
@@ -1904,7 +2219,7 @@ type GetInfoRequest struct {
 
 func (x *GetInfoRequest) Reset() {
 	*x = GetInfoRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[4]
+	mi := &file_solaris_protocol_control_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1916,7 +2231,7 @@ func (x *GetInfoRequest) String() string {
 func (*GetInfoRequest) ProtoMessage() {}
 
 func (x *GetInfoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[4]
+	mi := &file_solaris_protocol_control_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1929,7 +2244,7 @@ func (x *GetInfoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetInfoRequest.ProtoReflect.Descriptor instead.
 func (*GetInfoRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{4}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{8}
 }
 
 type GetInfoResponse struct {
@@ -1945,7 +2260,7 @@ type GetInfoResponse struct {
 
 func (x *GetInfoResponse) Reset() {
 	*x = GetInfoResponse{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[5]
+	mi := &file_solaris_protocol_control_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1957,7 +2272,7 @@ func (x *GetInfoResponse) String() string {
 func (*GetInfoResponse) ProtoMessage() {}
 
 func (x *GetInfoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[5]
+	mi := &file_solaris_protocol_control_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1970,7 +2285,7 @@ func (x *GetInfoResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetInfoResponse.ProtoReflect.Descriptor instead.
 func (*GetInfoResponse) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{5}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GetInfoResponse) GetProtocolVersion() uint32 {
@@ -2019,7 +2334,7 @@ type ClaimRequest struct {
 
 func (x *ClaimRequest) Reset() {
 	*x = ClaimRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[6]
+	mi := &file_solaris_protocol_control_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2031,7 +2346,7 @@ func (x *ClaimRequest) String() string {
 func (*ClaimRequest) ProtoMessage() {}
 
 func (x *ClaimRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[6]
+	mi := &file_solaris_protocol_control_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2044,7 +2359,7 @@ func (x *ClaimRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClaimRequest.ProtoReflect.Descriptor instead.
 func (*ClaimRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{6}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ClaimRequest) GetTakeOver() bool {
@@ -2067,7 +2382,7 @@ type RunOptions struct {
 
 func (x *RunOptions) Reset() {
 	*x = RunOptions{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[7]
+	mi := &file_solaris_protocol_control_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2079,7 +2394,7 @@ func (x *RunOptions) String() string {
 func (*RunOptions) ProtoMessage() {}
 
 func (x *RunOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[7]
+	mi := &file_solaris_protocol_control_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2092,7 +2407,7 @@ func (x *RunOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunOptions.ProtoReflect.Descriptor instead.
 func (*RunOptions) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{7}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *RunOptions) GetTunEnabled() bool {
@@ -2147,7 +2462,7 @@ type ValidateRequest struct {
 
 func (x *ValidateRequest) Reset() {
 	*x = ValidateRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[8]
+	mi := &file_solaris_protocol_control_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2159,7 +2474,7 @@ func (x *ValidateRequest) String() string {
 func (*ValidateRequest) ProtoMessage() {}
 
 func (x *ValidateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[8]
+	mi := &file_solaris_protocol_control_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2172,7 +2487,7 @@ func (x *ValidateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ValidateRequest.ProtoReflect.Descriptor instead.
 func (*ValidateRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{8}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ValidateRequest) GetSource() isValidateRequest_Source {
@@ -2238,7 +2553,7 @@ type StartRequest struct {
 
 func (x *StartRequest) Reset() {
 	*x = StartRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[9]
+	mi := &file_solaris_protocol_control_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2250,7 +2565,7 @@ func (x *StartRequest) String() string {
 func (*StartRequest) ProtoMessage() {}
 
 func (x *StartRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[9]
+	mi := &file_solaris_protocol_control_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2263,7 +2578,7 @@ func (x *StartRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartRequest.ProtoReflect.Descriptor instead.
 func (*StartRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{9}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *StartRequest) GetSource() isStartRequest_Source {
@@ -2336,7 +2651,7 @@ type ReloadRequest struct {
 
 func (x *ReloadRequest) Reset() {
 	*x = ReloadRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[10]
+	mi := &file_solaris_protocol_control_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2348,7 +2663,7 @@ func (x *ReloadRequest) String() string {
 func (*ReloadRequest) ProtoMessage() {}
 
 func (x *ReloadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[10]
+	mi := &file_solaris_protocol_control_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2361,7 +2676,7 @@ func (x *ReloadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReloadRequest.ProtoReflect.Descriptor instead.
 func (*ReloadRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{10}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ReloadRequest) GetSource() isReloadRequest_Source {
@@ -2445,7 +2760,7 @@ type Composition struct {
 
 func (x *Composition) Reset() {
 	*x = Composition{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[11]
+	mi := &file_solaris_protocol_control_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2457,7 +2772,7 @@ func (x *Composition) String() string {
 func (*Composition) ProtoMessage() {}
 
 func (x *Composition) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[11]
+	mi := &file_solaris_protocol_control_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2470,7 +2785,7 @@ func (x *Composition) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Composition.ProtoReflect.Descriptor instead.
 func (*Composition) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{11}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *Composition) GetSources() []*CompositionSource {
@@ -2529,7 +2844,7 @@ type MeshNetwork struct {
 
 func (x *MeshNetwork) Reset() {
 	*x = MeshNetwork{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[12]
+	mi := &file_solaris_protocol_control_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2541,7 +2856,7 @@ func (x *MeshNetwork) String() string {
 func (*MeshNetwork) ProtoMessage() {}
 
 func (x *MeshNetwork) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[12]
+	mi := &file_solaris_protocol_control_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2554,7 +2869,7 @@ func (x *MeshNetwork) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MeshNetwork.ProtoReflect.Descriptor instead.
 func (*MeshNetwork) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{12}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *MeshNetwork) GetId() string {
@@ -2645,7 +2960,7 @@ type TailscaleNetwork struct {
 
 func (x *TailscaleNetwork) Reset() {
 	*x = TailscaleNetwork{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[13]
+	mi := &file_solaris_protocol_control_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2657,7 +2972,7 @@ func (x *TailscaleNetwork) String() string {
 func (*TailscaleNetwork) ProtoMessage() {}
 
 func (x *TailscaleNetwork) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[13]
+	mi := &file_solaris_protocol_control_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2670,7 +2985,7 @@ func (x *TailscaleNetwork) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TailscaleNetwork.ProtoReflect.Descriptor instead.
 func (*TailscaleNetwork) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{13}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *TailscaleNetwork) GetAuthKey() string {
@@ -2704,7 +3019,7 @@ type ZeroTierNetwork struct {
 
 func (x *ZeroTierNetwork) Reset() {
 	*x = ZeroTierNetwork{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[14]
+	mi := &file_solaris_protocol_control_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2716,7 +3031,7 @@ func (x *ZeroTierNetwork) String() string {
 func (*ZeroTierNetwork) ProtoMessage() {}
 
 func (x *ZeroTierNetwork) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[14]
+	mi := &file_solaris_protocol_control_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2729,7 +3044,7 @@ func (x *ZeroTierNetwork) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ZeroTierNetwork.ProtoReflect.Descriptor instead.
 func (*ZeroTierNetwork) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{14}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ZeroTierNetwork) GetNetworkId() string {
@@ -2759,7 +3074,7 @@ type EasyTierNetwork struct {
 
 func (x *EasyTierNetwork) Reset() {
 	*x = EasyTierNetwork{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[15]
+	mi := &file_solaris_protocol_control_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2771,7 +3086,7 @@ func (x *EasyTierNetwork) String() string {
 func (*EasyTierNetwork) ProtoMessage() {}
 
 func (x *EasyTierNetwork) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[15]
+	mi := &file_solaris_protocol_control_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2784,7 +3099,7 @@ func (x *EasyTierNetwork) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EasyTierNetwork.ProtoReflect.Descriptor instead.
 func (*EasyTierNetwork) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{15}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *EasyTierNetwork) GetNetworkName() string {
@@ -2834,7 +3149,7 @@ type Egress struct {
 
 func (x *Egress) Reset() {
 	*x = Egress{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[16]
+	mi := &file_solaris_protocol_control_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2846,7 +3161,7 @@ func (x *Egress) String() string {
 func (*Egress) ProtoMessage() {}
 
 func (x *Egress) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[16]
+	mi := &file_solaris_protocol_control_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2859,7 +3174,7 @@ func (x *Egress) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Egress.ProtoReflect.Descriptor instead.
 func (*Egress) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{16}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *Egress) GetWarp() *WarpAccount {
@@ -2897,7 +3212,7 @@ type WarpAccount struct {
 
 func (x *WarpAccount) Reset() {
 	*x = WarpAccount{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[17]
+	mi := &file_solaris_protocol_control_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2909,7 +3224,7 @@ func (x *WarpAccount) String() string {
 func (*WarpAccount) ProtoMessage() {}
 
 func (x *WarpAccount) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[17]
+	mi := &file_solaris_protocol_control_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2922,7 +3237,7 @@ func (x *WarpAccount) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WarpAccount.ProtoReflect.Descriptor instead.
 func (*WarpAccount) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{17}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *WarpAccount) GetDeviceId() string {
@@ -3006,7 +3321,7 @@ type CompositionSource struct {
 
 func (x *CompositionSource) Reset() {
 	*x = CompositionSource{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[18]
+	mi := &file_solaris_protocol_control_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3018,7 +3333,7 @@ func (x *CompositionSource) String() string {
 func (*CompositionSource) ProtoMessage() {}
 
 func (x *CompositionSource) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[18]
+	mi := &file_solaris_protocol_control_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3031,7 +3346,7 @@ func (x *CompositionSource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompositionSource.ProtoReflect.Descriptor instead.
 func (*CompositionSource) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{18}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *CompositionSource) GetId() string {
@@ -3071,7 +3386,7 @@ type CompositionReport struct {
 
 func (x *CompositionReport) Reset() {
 	*x = CompositionReport{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[19]
+	mi := &file_solaris_protocol_control_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3083,7 +3398,7 @@ func (x *CompositionReport) String() string {
 func (*CompositionReport) ProtoMessage() {}
 
 func (x *CompositionReport) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[19]
+	mi := &file_solaris_protocol_control_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3096,7 +3411,7 @@ func (x *CompositionReport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompositionReport.ProtoReflect.Descriptor instead.
 func (*CompositionReport) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{19}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *CompositionReport) GetWarnings() []*CompositionWarning {
@@ -3148,7 +3463,7 @@ type MeshOutbound struct {
 
 func (x *MeshOutbound) Reset() {
 	*x = MeshOutbound{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[20]
+	mi := &file_solaris_protocol_control_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3160,7 +3475,7 @@ func (x *MeshOutbound) String() string {
 func (*MeshOutbound) ProtoMessage() {}
 
 func (x *MeshOutbound) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[20]
+	mi := &file_solaris_protocol_control_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3173,7 +3488,7 @@ func (x *MeshOutbound) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MeshOutbound.ProtoReflect.Descriptor instead.
 func (*MeshOutbound) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{20}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *MeshOutbound) GetId() string {
@@ -3223,7 +3538,7 @@ type CompositionWarning struct {
 
 func (x *CompositionWarning) Reset() {
 	*x = CompositionWarning{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[21]
+	mi := &file_solaris_protocol_control_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3235,7 +3550,7 @@ func (x *CompositionWarning) String() string {
 func (*CompositionWarning) ProtoMessage() {}
 
 func (x *CompositionWarning) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[21]
+	mi := &file_solaris_protocol_control_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3248,7 +3563,7 @@ func (x *CompositionWarning) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompositionWarning.ProtoReflect.Descriptor instead.
 func (*CompositionWarning) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{21}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *CompositionWarning) GetEntryId() string {
@@ -3285,7 +3600,7 @@ type ComposedGroup struct {
 
 func (x *ComposedGroup) Reset() {
 	*x = ComposedGroup{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[22]
+	mi := &file_solaris_protocol_control_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3297,7 +3612,7 @@ func (x *ComposedGroup) String() string {
 func (*ComposedGroup) ProtoMessage() {}
 
 func (x *ComposedGroup) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[22]
+	mi := &file_solaris_protocol_control_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3310,7 +3625,7 @@ func (x *ComposedGroup) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ComposedGroup.ProtoReflect.Descriptor instead.
 func (*ComposedGroup) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{22}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ComposedGroup) GetId() string {
@@ -3361,7 +3676,7 @@ type PoolNode struct {
 
 func (x *PoolNode) Reset() {
 	*x = PoolNode{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[23]
+	mi := &file_solaris_protocol_control_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3373,7 +3688,7 @@ func (x *PoolNode) String() string {
 func (*PoolNode) ProtoMessage() {}
 
 func (x *PoolNode) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[23]
+	mi := &file_solaris_protocol_control_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3386,7 +3701,7 @@ func (x *PoolNode) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PoolNode.ProtoReflect.Descriptor instead.
 func (*PoolNode) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{23}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *PoolNode) GetName() string {
@@ -3432,7 +3747,7 @@ type StopRequest struct {
 
 func (x *StopRequest) Reset() {
 	*x = StopRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[24]
+	mi := &file_solaris_protocol_control_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3444,7 +3759,7 @@ func (x *StopRequest) String() string {
 func (*StopRequest) ProtoMessage() {}
 
 func (x *StopRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[24]
+	mi := &file_solaris_protocol_control_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3457,7 +3772,7 @@ func (x *StopRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopRequest.ProtoReflect.Descriptor instead.
 func (*StopRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{24}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{28}
 }
 
 type SetSystemProxyRequest struct {
@@ -3469,7 +3784,7 @@ type SetSystemProxyRequest struct {
 
 func (x *SetSystemProxyRequest) Reset() {
 	*x = SetSystemProxyRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[25]
+	mi := &file_solaris_protocol_control_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3481,7 +3796,7 @@ func (x *SetSystemProxyRequest) String() string {
 func (*SetSystemProxyRequest) ProtoMessage() {}
 
 func (x *SetSystemProxyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[25]
+	mi := &file_solaris_protocol_control_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3494,7 +3809,7 @@ func (x *SetSystemProxyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetSystemProxyRequest.ProtoReflect.Descriptor instead.
 func (*SetSystemProxyRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{25}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *SetSystemProxyRequest) GetEnabled() bool {
@@ -3512,7 +3827,7 @@ type GetStatusRequest struct {
 
 func (x *GetStatusRequest) Reset() {
 	*x = GetStatusRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[26]
+	mi := &file_solaris_protocol_control_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3524,7 +3839,7 @@ func (x *GetStatusRequest) String() string {
 func (*GetStatusRequest) ProtoMessage() {}
 
 func (x *GetStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[26]
+	mi := &file_solaris_protocol_control_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3537,7 +3852,7 @@ func (x *GetStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetStatusRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{26}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{30}
 }
 
 type GetStatusResponse struct {
@@ -3558,7 +3873,7 @@ type GetStatusResponse struct {
 
 func (x *GetStatusResponse) Reset() {
 	*x = GetStatusResponse{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[27]
+	mi := &file_solaris_protocol_control_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3570,7 +3885,7 @@ func (x *GetStatusResponse) String() string {
 func (*GetStatusResponse) ProtoMessage() {}
 
 func (x *GetStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[27]
+	mi := &file_solaris_protocol_control_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3583,7 +3898,7 @@ func (x *GetStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetStatusResponse) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{27}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *GetStatusResponse) GetState() RunState {
@@ -3665,7 +3980,7 @@ type SetModeRequest struct {
 
 func (x *SetModeRequest) Reset() {
 	*x = SetModeRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[28]
+	mi := &file_solaris_protocol_control_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3677,7 +3992,7 @@ func (x *SetModeRequest) String() string {
 func (*SetModeRequest) ProtoMessage() {}
 
 func (x *SetModeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[28]
+	mi := &file_solaris_protocol_control_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3690,7 +4005,7 @@ func (x *SetModeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetModeRequest.ProtoReflect.Descriptor instead.
 func (*SetModeRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{28}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *SetModeRequest) GetMode() Mode {
@@ -3714,7 +4029,7 @@ type Proxy struct {
 
 func (x *Proxy) Reset() {
 	*x = Proxy{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[29]
+	mi := &file_solaris_protocol_control_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3726,7 +4041,7 @@ func (x *Proxy) String() string {
 func (*Proxy) ProtoMessage() {}
 
 func (x *Proxy) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[29]
+	mi := &file_solaris_protocol_control_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3739,7 +4054,7 @@ func (x *Proxy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Proxy.ProtoReflect.Descriptor instead.
 func (*Proxy) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{29}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *Proxy) GetName() string {
@@ -3783,7 +4098,7 @@ type ProxyGroup struct {
 
 func (x *ProxyGroup) Reset() {
 	*x = ProxyGroup{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[30]
+	mi := &file_solaris_protocol_control_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3795,7 +4110,7 @@ func (x *ProxyGroup) String() string {
 func (*ProxyGroup) ProtoMessage() {}
 
 func (x *ProxyGroup) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[30]
+	mi := &file_solaris_protocol_control_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3808,7 +4123,7 @@ func (x *ProxyGroup) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProxyGroup.ProtoReflect.Descriptor instead.
 func (*ProxyGroup) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{30}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *ProxyGroup) GetName() string {
@@ -3856,7 +4171,7 @@ type ListGroupsRequest struct {
 
 func (x *ListGroupsRequest) Reset() {
 	*x = ListGroupsRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[31]
+	mi := &file_solaris_protocol_control_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3868,7 +4183,7 @@ func (x *ListGroupsRequest) String() string {
 func (*ListGroupsRequest) ProtoMessage() {}
 
 func (x *ListGroupsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[31]
+	mi := &file_solaris_protocol_control_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3881,7 +4196,7 @@ func (x *ListGroupsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGroupsRequest.ProtoReflect.Descriptor instead.
 func (*ListGroupsRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{31}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *ListGroupsRequest) GetSort() GroupSort {
@@ -3907,7 +4222,7 @@ type ListGroupsResponse struct {
 
 func (x *ListGroupsResponse) Reset() {
 	*x = ListGroupsResponse{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[32]
+	mi := &file_solaris_protocol_control_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3919,7 +4234,7 @@ func (x *ListGroupsResponse) String() string {
 func (*ListGroupsResponse) ProtoMessage() {}
 
 func (x *ListGroupsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[32]
+	mi := &file_solaris_protocol_control_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3932,7 +4247,7 @@ func (x *ListGroupsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGroupsResponse.ProtoReflect.Descriptor instead.
 func (*ListGroupsResponse) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{32}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *ListGroupsResponse) GetGroups() []*ProxyGroup {
@@ -3952,7 +4267,7 @@ type GetGroupRequest struct {
 
 func (x *GetGroupRequest) Reset() {
 	*x = GetGroupRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[33]
+	mi := &file_solaris_protocol_control_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3964,7 +4279,7 @@ func (x *GetGroupRequest) String() string {
 func (*GetGroupRequest) ProtoMessage() {}
 
 func (x *GetGroupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[33]
+	mi := &file_solaris_protocol_control_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3977,7 +4292,7 @@ func (x *GetGroupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGroupRequest.ProtoReflect.Descriptor instead.
 func (*GetGroupRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{33}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *GetGroupRequest) GetName() string {
@@ -4003,7 +4318,7 @@ type GetGroupResponse struct {
 
 func (x *GetGroupResponse) Reset() {
 	*x = GetGroupResponse{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[34]
+	mi := &file_solaris_protocol_control_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4015,7 +4330,7 @@ func (x *GetGroupResponse) String() string {
 func (*GetGroupResponse) ProtoMessage() {}
 
 func (x *GetGroupResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[34]
+	mi := &file_solaris_protocol_control_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4028,7 +4343,7 @@ func (x *GetGroupResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGroupResponse.ProtoReflect.Descriptor instead.
 func (*GetGroupResponse) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{34}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *GetGroupResponse) GetGroup() *ProxyGroup {
@@ -4048,7 +4363,7 @@ type SelectProxyRequest struct {
 
 func (x *SelectProxyRequest) Reset() {
 	*x = SelectProxyRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[35]
+	mi := &file_solaris_protocol_control_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4060,7 +4375,7 @@ func (x *SelectProxyRequest) String() string {
 func (*SelectProxyRequest) ProtoMessage() {}
 
 func (x *SelectProxyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[35]
+	mi := &file_solaris_protocol_control_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4073,7 +4388,7 @@ func (x *SelectProxyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SelectProxyRequest.ProtoReflect.Descriptor instead.
 func (*SelectProxyRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{35}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *SelectProxyRequest) GetGroup() string {
@@ -4100,7 +4415,7 @@ type HealthCheckRequest struct {
 
 func (x *HealthCheckRequest) Reset() {
 	*x = HealthCheckRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[36]
+	mi := &file_solaris_protocol_control_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4112,7 +4427,7 @@ func (x *HealthCheckRequest) String() string {
 func (*HealthCheckRequest) ProtoMessage() {}
 
 func (x *HealthCheckRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[36]
+	mi := &file_solaris_protocol_control_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4125,7 +4440,7 @@ func (x *HealthCheckRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HealthCheckRequest.ProtoReflect.Descriptor instead.
 func (*HealthCheckRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{36}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *HealthCheckRequest) GetGroup() string {
@@ -4154,7 +4469,7 @@ type TestDelayRequest struct {
 
 func (x *TestDelayRequest) Reset() {
 	*x = TestDelayRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[37]
+	mi := &file_solaris_protocol_control_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4166,7 +4481,7 @@ func (x *TestDelayRequest) String() string {
 func (*TestDelayRequest) ProtoMessage() {}
 
 func (x *TestDelayRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[37]
+	mi := &file_solaris_protocol_control_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4179,7 +4494,7 @@ func (x *TestDelayRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TestDelayRequest.ProtoReflect.Descriptor instead.
 func (*TestDelayRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{37}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *TestDelayRequest) GetProxy() string {
@@ -4219,7 +4534,7 @@ type TestDelayResponse struct {
 
 func (x *TestDelayResponse) Reset() {
 	*x = TestDelayResponse{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[38]
+	mi := &file_solaris_protocol_control_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4231,7 +4546,7 @@ func (x *TestDelayResponse) String() string {
 func (*TestDelayResponse) ProtoMessage() {}
 
 func (x *TestDelayResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[38]
+	mi := &file_solaris_protocol_control_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4244,7 +4559,7 @@ func (x *TestDelayResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TestDelayResponse.ProtoReflect.Descriptor instead.
 func (*TestDelayResponse) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{38}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *TestDelayResponse) GetDelayMs() uint32 {
@@ -4266,7 +4581,7 @@ type Provider struct {
 
 func (x *Provider) Reset() {
 	*x = Provider{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[39]
+	mi := &file_solaris_protocol_control_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4278,7 +4593,7 @@ func (x *Provider) String() string {
 func (*Provider) ProtoMessage() {}
 
 func (x *Provider) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[39]
+	mi := &file_solaris_protocol_control_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4291,7 +4606,7 @@ func (x *Provider) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Provider.ProtoReflect.Descriptor instead.
 func (*Provider) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{39}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *Provider) GetName() string {
@@ -4330,7 +4645,7 @@ type ListProvidersRequest struct {
 
 func (x *ListProvidersRequest) Reset() {
 	*x = ListProvidersRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[40]
+	mi := &file_solaris_protocol_control_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4342,7 +4657,7 @@ func (x *ListProvidersRequest) String() string {
 func (*ListProvidersRequest) ProtoMessage() {}
 
 func (x *ListProvidersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[40]
+	mi := &file_solaris_protocol_control_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4355,7 +4670,7 @@ func (x *ListProvidersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProvidersRequest.ProtoReflect.Descriptor instead.
 func (*ListProvidersRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{40}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{44}
 }
 
 type ListProvidersResponse struct {
@@ -4367,7 +4682,7 @@ type ListProvidersResponse struct {
 
 func (x *ListProvidersResponse) Reset() {
 	*x = ListProvidersResponse{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[41]
+	mi := &file_solaris_protocol_control_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4379,7 +4694,7 @@ func (x *ListProvidersResponse) String() string {
 func (*ListProvidersResponse) ProtoMessage() {}
 
 func (x *ListProvidersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[41]
+	mi := &file_solaris_protocol_control_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4392,7 +4707,7 @@ func (x *ListProvidersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProvidersResponse.ProtoReflect.Descriptor instead.
 func (*ListProvidersResponse) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{41}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *ListProvidersResponse) GetProviders() []*Provider {
@@ -4412,7 +4727,7 @@ type UpdateProviderRequest struct {
 
 func (x *UpdateProviderRequest) Reset() {
 	*x = UpdateProviderRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[42]
+	mi := &file_solaris_protocol_control_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4424,7 +4739,7 @@ func (x *UpdateProviderRequest) String() string {
 func (*UpdateProviderRequest) ProtoMessage() {}
 
 func (x *UpdateProviderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[42]
+	mi := &file_solaris_protocol_control_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4437,7 +4752,7 @@ func (x *UpdateProviderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateProviderRequest.ProtoReflect.Descriptor instead.
 func (*UpdateProviderRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{42}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *UpdateProviderRequest) GetKind() ProviderKind {
@@ -4468,7 +4783,7 @@ type Rule struct {
 
 func (x *Rule) Reset() {
 	*x = Rule{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[43]
+	mi := &file_solaris_protocol_control_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4480,7 +4795,7 @@ func (x *Rule) String() string {
 func (*Rule) ProtoMessage() {}
 
 func (x *Rule) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[43]
+	mi := &file_solaris_protocol_control_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4493,7 +4808,7 @@ func (x *Rule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Rule.ProtoReflect.Descriptor instead.
 func (*Rule) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{43}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *Rule) GetType() string {
@@ -4532,7 +4847,7 @@ type ListRulesRequest struct {
 
 func (x *ListRulesRequest) Reset() {
 	*x = ListRulesRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[44]
+	mi := &file_solaris_protocol_control_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4544,7 +4859,7 @@ func (x *ListRulesRequest) String() string {
 func (*ListRulesRequest) ProtoMessage() {}
 
 func (x *ListRulesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[44]
+	mi := &file_solaris_protocol_control_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4557,7 +4872,7 @@ func (x *ListRulesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRulesRequest.ProtoReflect.Descriptor instead.
 func (*ListRulesRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{44}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{48}
 }
 
 type ListRulesResponse struct {
@@ -4569,7 +4884,7 @@ type ListRulesResponse struct {
 
 func (x *ListRulesResponse) Reset() {
 	*x = ListRulesResponse{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[45]
+	mi := &file_solaris_protocol_control_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4581,7 +4896,7 @@ func (x *ListRulesResponse) String() string {
 func (*ListRulesResponse) ProtoMessage() {}
 
 func (x *ListRulesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[45]
+	mi := &file_solaris_protocol_control_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4594,7 +4909,7 @@ func (x *ListRulesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRulesResponse.ProtoReflect.Descriptor instead.
 func (*ListRulesResponse) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{45}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *ListRulesResponse) GetRules() []*Rule {
@@ -4613,7 +4928,7 @@ type CloseConnectionRequest struct {
 
 func (x *CloseConnectionRequest) Reset() {
 	*x = CloseConnectionRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[46]
+	mi := &file_solaris_protocol_control_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4625,7 +4940,7 @@ func (x *CloseConnectionRequest) String() string {
 func (*CloseConnectionRequest) ProtoMessage() {}
 
 func (x *CloseConnectionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[46]
+	mi := &file_solaris_protocol_control_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4638,7 +4953,7 @@ func (x *CloseConnectionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloseConnectionRequest.ProtoReflect.Descriptor instead.
 func (*CloseConnectionRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{46}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *CloseConnectionRequest) GetId() string {
@@ -4656,7 +4971,7 @@ type CloseAllConnectionsRequest struct {
 
 func (x *CloseAllConnectionsRequest) Reset() {
 	*x = CloseAllConnectionsRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[47]
+	mi := &file_solaris_protocol_control_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4668,7 +4983,7 @@ func (x *CloseAllConnectionsRequest) String() string {
 func (*CloseAllConnectionsRequest) ProtoMessage() {}
 
 func (x *CloseAllConnectionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[47]
+	mi := &file_solaris_protocol_control_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4681,7 +4996,7 @@ func (x *CloseAllConnectionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CloseAllConnectionsRequest.ProtoReflect.Descriptor instead.
 func (*CloseAllConnectionsRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{47}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{51}
 }
 
 type FlushFakeIPRequest struct {
@@ -4692,7 +5007,7 @@ type FlushFakeIPRequest struct {
 
 func (x *FlushFakeIPRequest) Reset() {
 	*x = FlushFakeIPRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[48]
+	mi := &file_solaris_protocol_control_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4704,7 +5019,7 @@ func (x *FlushFakeIPRequest) String() string {
 func (*FlushFakeIPRequest) ProtoMessage() {}
 
 func (x *FlushFakeIPRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[48]
+	mi := &file_solaris_protocol_control_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4717,7 +5032,7 @@ func (x *FlushFakeIPRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FlushFakeIPRequest.ProtoReflect.Descriptor instead.
 func (*FlushFakeIPRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{48}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{52}
 }
 
 type FlushDNSCacheRequest struct {
@@ -4728,7 +5043,7 @@ type FlushDNSCacheRequest struct {
 
 func (x *FlushDNSCacheRequest) Reset() {
 	*x = FlushDNSCacheRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[49]
+	mi := &file_solaris_protocol_control_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4740,7 +5055,7 @@ func (x *FlushDNSCacheRequest) String() string {
 func (*FlushDNSCacheRequest) ProtoMessage() {}
 
 func (x *FlushDNSCacheRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[49]
+	mi := &file_solaris_protocol_control_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4753,7 +5068,7 @@ func (x *FlushDNSCacheRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FlushDNSCacheRequest.ProtoReflect.Descriptor instead.
 func (*FlushDNSCacheRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{49}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{53}
 }
 
 type SubscribeLogsRequest struct {
@@ -4765,7 +5080,7 @@ type SubscribeLogsRequest struct {
 
 func (x *SubscribeLogsRequest) Reset() {
 	*x = SubscribeLogsRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[50]
+	mi := &file_solaris_protocol_control_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4777,7 +5092,7 @@ func (x *SubscribeLogsRequest) String() string {
 func (*SubscribeLogsRequest) ProtoMessage() {}
 
 func (x *SubscribeLogsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[50]
+	mi := &file_solaris_protocol_control_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4790,7 +5105,7 @@ func (x *SubscribeLogsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeLogsRequest.ProtoReflect.Descriptor instead.
 func (*SubscribeLogsRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{50}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *SubscribeLogsRequest) GetLevel() LogLevel {
@@ -4808,7 +5123,7 @@ type SubscribeTrafficRequest struct {
 
 func (x *SubscribeTrafficRequest) Reset() {
 	*x = SubscribeTrafficRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[51]
+	mi := &file_solaris_protocol_control_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4820,7 +5135,7 @@ func (x *SubscribeTrafficRequest) String() string {
 func (*SubscribeTrafficRequest) ProtoMessage() {}
 
 func (x *SubscribeTrafficRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[51]
+	mi := &file_solaris_protocol_control_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4833,7 +5148,7 @@ func (x *SubscribeTrafficRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeTrafficRequest.ProtoReflect.Descriptor instead.
 func (*SubscribeTrafficRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{51}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{55}
 }
 
 type SubscribeConnectionsRequest struct {
@@ -4844,7 +5159,7 @@ type SubscribeConnectionsRequest struct {
 
 func (x *SubscribeConnectionsRequest) Reset() {
 	*x = SubscribeConnectionsRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[52]
+	mi := &file_solaris_protocol_control_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4856,7 +5171,7 @@ func (x *SubscribeConnectionsRequest) String() string {
 func (*SubscribeConnectionsRequest) ProtoMessage() {}
 
 func (x *SubscribeConnectionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[52]
+	mi := &file_solaris_protocol_control_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4869,7 +5184,7 @@ func (x *SubscribeConnectionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeConnectionsRequest.ProtoReflect.Descriptor instead.
 func (*SubscribeConnectionsRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{52}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{56}
 }
 
 type SubscribeResponse struct {
@@ -4881,7 +5196,7 @@ type SubscribeResponse struct {
 
 func (x *SubscribeResponse) Reset() {
 	*x = SubscribeResponse{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[53]
+	mi := &file_solaris_protocol_control_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4893,7 +5208,7 @@ func (x *SubscribeResponse) String() string {
 func (*SubscribeResponse) ProtoMessage() {}
 
 func (x *SubscribeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[53]
+	mi := &file_solaris_protocol_control_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4906,7 +5221,7 @@ func (x *SubscribeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeResponse.ProtoReflect.Descriptor instead.
 func (*SubscribeResponse) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{53}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *SubscribeResponse) GetSubscriptionId() uint64 {
@@ -4926,7 +5241,7 @@ type PollEventsRequest struct {
 
 func (x *PollEventsRequest) Reset() {
 	*x = PollEventsRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[54]
+	mi := &file_solaris_protocol_control_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4938,7 +5253,7 @@ func (x *PollEventsRequest) String() string {
 func (*PollEventsRequest) ProtoMessage() {}
 
 func (x *PollEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[54]
+	mi := &file_solaris_protocol_control_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4951,7 +5266,7 @@ func (x *PollEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PollEventsRequest.ProtoReflect.Descriptor instead.
 func (*PollEventsRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{54}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *PollEventsRequest) GetSubscriptionId() uint64 {
@@ -4978,7 +5293,7 @@ type PollEventsResponse struct {
 
 func (x *PollEventsResponse) Reset() {
 	*x = PollEventsResponse{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[55]
+	mi := &file_solaris_protocol_control_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4990,7 +5305,7 @@ func (x *PollEventsResponse) String() string {
 func (*PollEventsResponse) ProtoMessage() {}
 
 func (x *PollEventsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[55]
+	mi := &file_solaris_protocol_control_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5003,7 +5318,7 @@ func (x *PollEventsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PollEventsResponse.ProtoReflect.Descriptor instead.
 func (*PollEventsResponse) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{55}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *PollEventsResponse) GetEvents() []*Event {
@@ -5029,7 +5344,7 @@ type UnsubscribeRequest struct {
 
 func (x *UnsubscribeRequest) Reset() {
 	*x = UnsubscribeRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[56]
+	mi := &file_solaris_protocol_control_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5041,7 +5356,7 @@ func (x *UnsubscribeRequest) String() string {
 func (*UnsubscribeRequest) ProtoMessage() {}
 
 func (x *UnsubscribeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[56]
+	mi := &file_solaris_protocol_control_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5054,7 +5369,7 @@ func (x *UnsubscribeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnsubscribeRequest.ProtoReflect.Descriptor instead.
 func (*UnsubscribeRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{56}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *UnsubscribeRequest) GetSubscriptionId() uint64 {
@@ -5078,7 +5393,7 @@ type Event struct {
 
 func (x *Event) Reset() {
 	*x = Event{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[57]
+	mi := &file_solaris_protocol_control_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5090,7 +5405,7 @@ func (x *Event) String() string {
 func (*Event) ProtoMessage() {}
 
 func (x *Event) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[57]
+	mi := &file_solaris_protocol_control_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5103,7 +5418,7 @@ func (x *Event) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Event.ProtoReflect.Descriptor instead.
 func (*Event) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{57}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *Event) GetPayload() isEvent_Payload {
@@ -5173,7 +5488,7 @@ type LogEntry struct {
 
 func (x *LogEntry) Reset() {
 	*x = LogEntry{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[58]
+	mi := &file_solaris_protocol_control_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5185,7 +5500,7 @@ func (x *LogEntry) String() string {
 func (*LogEntry) ProtoMessage() {}
 
 func (x *LogEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[58]
+	mi := &file_solaris_protocol_control_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5198,7 +5513,7 @@ func (x *LogEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogEntry.ProtoReflect.Descriptor instead.
 func (*LogEntry) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{58}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *LogEntry) GetLevel() LogLevel {
@@ -5234,7 +5549,7 @@ type TrafficSample struct {
 
 func (x *TrafficSample) Reset() {
 	*x = TrafficSample{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[59]
+	mi := &file_solaris_protocol_control_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5246,7 +5561,7 @@ func (x *TrafficSample) String() string {
 func (*TrafficSample) ProtoMessage() {}
 
 func (x *TrafficSample) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[59]
+	mi := &file_solaris_protocol_control_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5259,7 +5574,7 @@ func (x *TrafficSample) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrafficSample.ProtoReflect.Descriptor instead.
 func (*TrafficSample) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{59}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *TrafficSample) GetUpBytesPerSecond() uint64 {
@@ -5311,7 +5626,7 @@ type Connection struct {
 
 func (x *Connection) Reset() {
 	*x = Connection{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[60]
+	mi := &file_solaris_protocol_control_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5323,7 +5638,7 @@ func (x *Connection) String() string {
 func (*Connection) ProtoMessage() {}
 
 func (x *Connection) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[60]
+	mi := &file_solaris_protocol_control_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5336,7 +5651,7 @@ func (x *Connection) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Connection.ProtoReflect.Descriptor instead.
 func (*Connection) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{60}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *Connection) GetId() string {
@@ -5439,7 +5754,7 @@ type ConnectionSnapshot struct {
 
 func (x *ConnectionSnapshot) Reset() {
 	*x = ConnectionSnapshot{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[61]
+	mi := &file_solaris_protocol_control_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5451,7 +5766,7 @@ func (x *ConnectionSnapshot) String() string {
 func (*ConnectionSnapshot) ProtoMessage() {}
 
 func (x *ConnectionSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[61]
+	mi := &file_solaris_protocol_control_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5464,7 +5779,7 @@ func (x *ConnectionSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectionSnapshot.ProtoReflect.Descriptor instead.
 func (*ConnectionSnapshot) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{61}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *ConnectionSnapshot) GetConnections() []*Connection {
@@ -5484,7 +5799,7 @@ type InspectSourceRequest struct {
 
 func (x *InspectSourceRequest) Reset() {
 	*x = InspectSourceRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[62]
+	mi := &file_solaris_protocol_control_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5496,7 +5811,7 @@ func (x *InspectSourceRequest) String() string {
 func (*InspectSourceRequest) ProtoMessage() {}
 
 func (x *InspectSourceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[62]
+	mi := &file_solaris_protocol_control_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5509,7 +5824,7 @@ func (x *InspectSourceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InspectSourceRequest.ProtoReflect.Descriptor instead.
 func (*InspectSourceRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{62}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *InspectSourceRequest) GetYaml() string {
@@ -5538,7 +5853,7 @@ type InspectSourceResponse struct {
 
 func (x *InspectSourceResponse) Reset() {
 	*x = InspectSourceResponse{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[63]
+	mi := &file_solaris_protocol_control_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5550,7 +5865,7 @@ func (x *InspectSourceResponse) String() string {
 func (*InspectSourceResponse) ProtoMessage() {}
 
 func (x *InspectSourceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[63]
+	mi := &file_solaris_protocol_control_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5563,7 +5878,7 @@ func (x *InspectSourceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InspectSourceResponse.ProtoReflect.Descriptor instead.
 func (*InspectSourceResponse) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{63}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *InspectSourceResponse) GetNodes() []*SourceNode {
@@ -5607,7 +5922,7 @@ type SourceNode struct {
 
 func (x *SourceNode) Reset() {
 	*x = SourceNode{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[64]
+	mi := &file_solaris_protocol_control_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5619,7 +5934,7 @@ func (x *SourceNode) String() string {
 func (*SourceNode) ProtoMessage() {}
 
 func (x *SourceNode) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[64]
+	mi := &file_solaris_protocol_control_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5632,7 +5947,7 @@ func (x *SourceNode) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SourceNode.ProtoReflect.Descriptor instead.
 func (*SourceNode) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{64}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *SourceNode) GetName() string {
@@ -5686,7 +6001,7 @@ type RegisterWarpRequest struct {
 
 func (x *RegisterWarpRequest) Reset() {
 	*x = RegisterWarpRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[65]
+	mi := &file_solaris_protocol_control_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5698,7 +6013,7 @@ func (x *RegisterWarpRequest) String() string {
 func (*RegisterWarpRequest) ProtoMessage() {}
 
 func (x *RegisterWarpRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[65]
+	mi := &file_solaris_protocol_control_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5711,7 +6026,7 @@ func (x *RegisterWarpRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterWarpRequest.ProtoReflect.Descriptor instead.
 func (*RegisterWarpRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{65}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *RegisterWarpRequest) GetVia() string {
@@ -5751,7 +6066,7 @@ type RegisterWarpResponse struct {
 
 func (x *RegisterWarpResponse) Reset() {
 	*x = RegisterWarpResponse{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[66]
+	mi := &file_solaris_protocol_control_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5763,7 +6078,7 @@ func (x *RegisterWarpResponse) String() string {
 func (*RegisterWarpResponse) ProtoMessage() {}
 
 func (x *RegisterWarpResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[66]
+	mi := &file_solaris_protocol_control_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5776,7 +6091,7 @@ func (x *RegisterWarpResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterWarpResponse.ProtoReflect.Descriptor instead.
 func (*RegisterWarpResponse) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{66}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *RegisterWarpResponse) GetAccount() *WarpAccount {
@@ -5798,7 +6113,7 @@ type ListVpnGateRequest struct {
 
 func (x *ListVpnGateRequest) Reset() {
 	*x = ListVpnGateRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[67]
+	mi := &file_solaris_protocol_control_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5810,7 +6125,7 @@ func (x *ListVpnGateRequest) String() string {
 func (*ListVpnGateRequest) ProtoMessage() {}
 
 func (x *ListVpnGateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[67]
+	mi := &file_solaris_protocol_control_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5823,7 +6138,7 @@ func (x *ListVpnGateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListVpnGateRequest.ProtoReflect.Descriptor instead.
 func (*ListVpnGateRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{67}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *ListVpnGateRequest) GetVia() string {
@@ -5842,7 +6157,7 @@ type ListVpnGateResponse struct {
 
 func (x *ListVpnGateResponse) Reset() {
 	*x = ListVpnGateResponse{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[68]
+	mi := &file_solaris_protocol_control_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5854,7 +6169,7 @@ func (x *ListVpnGateResponse) String() string {
 func (*ListVpnGateResponse) ProtoMessage() {}
 
 func (x *ListVpnGateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[68]
+	mi := &file_solaris_protocol_control_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5867,7 +6182,7 @@ func (x *ListVpnGateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListVpnGateResponse.ProtoReflect.Descriptor instead.
 func (*ListVpnGateResponse) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{68}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *ListVpnGateResponse) GetServers() []*VpnGateServer {
@@ -5897,7 +6212,7 @@ type VpnGateServer struct {
 
 func (x *VpnGateServer) Reset() {
 	*x = VpnGateServer{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[69]
+	mi := &file_solaris_protocol_control_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5909,7 +6224,7 @@ func (x *VpnGateServer) String() string {
 func (*VpnGateServer) ProtoMessage() {}
 
 func (x *VpnGateServer) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[69]
+	mi := &file_solaris_protocol_control_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5922,7 +6237,7 @@ func (x *VpnGateServer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VpnGateServer.ProtoReflect.Descriptor instead.
 func (*VpnGateServer) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{69}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *VpnGateServer) GetHostName() string {
@@ -6016,7 +6331,7 @@ type OpenVpnOptions struct {
 
 func (x *OpenVpnOptions) Reset() {
 	*x = OpenVpnOptions{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[70]
+	mi := &file_solaris_protocol_control_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6028,7 +6343,7 @@ func (x *OpenVpnOptions) String() string {
 func (*OpenVpnOptions) ProtoMessage() {}
 
 func (x *OpenVpnOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[70]
+	mi := &file_solaris_protocol_control_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6041,7 +6356,7 @@ func (x *OpenVpnOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OpenVpnOptions.ProtoReflect.Descriptor instead.
 func (*OpenVpnOptions) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{70}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *OpenVpnOptions) GetServer() string {
@@ -6138,7 +6453,7 @@ type GetMeshStatusRequest struct {
 
 func (x *GetMeshStatusRequest) Reset() {
 	*x = GetMeshStatusRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[71]
+	mi := &file_solaris_protocol_control_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6150,7 +6465,7 @@ func (x *GetMeshStatusRequest) String() string {
 func (*GetMeshStatusRequest) ProtoMessage() {}
 
 func (x *GetMeshStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[71]
+	mi := &file_solaris_protocol_control_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6163,7 +6478,7 @@ func (x *GetMeshStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMeshStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetMeshStatusRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{71}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{75}
 }
 
 type GetMeshStatusResponse struct {
@@ -6175,7 +6490,7 @@ type GetMeshStatusResponse struct {
 
 func (x *GetMeshStatusResponse) Reset() {
 	*x = GetMeshStatusResponse{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[72]
+	mi := &file_solaris_protocol_control_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6187,7 +6502,7 @@ func (x *GetMeshStatusResponse) String() string {
 func (*GetMeshStatusResponse) ProtoMessage() {}
 
 func (x *GetMeshStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[72]
+	mi := &file_solaris_protocol_control_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6200,7 +6515,7 @@ func (x *GetMeshStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMeshStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetMeshStatusResponse) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{72}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *GetMeshStatusResponse) GetNetworks() []*MeshStatus {
@@ -6228,7 +6543,7 @@ type MeshStatus struct {
 
 func (x *MeshStatus) Reset() {
 	*x = MeshStatus{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[73]
+	mi := &file_solaris_protocol_control_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6240,7 +6555,7 @@ func (x *MeshStatus) String() string {
 func (*MeshStatus) ProtoMessage() {}
 
 func (x *MeshStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[73]
+	mi := &file_solaris_protocol_control_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6253,7 +6568,7 @@ func (x *MeshStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MeshStatus.ProtoReflect.Descriptor instead.
 func (*MeshStatus) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{73}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *MeshStatus) GetName() string {
@@ -6338,7 +6653,7 @@ type LoginMeshRequest struct {
 
 func (x *LoginMeshRequest) Reset() {
 	*x = LoginMeshRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[74]
+	mi := &file_solaris_protocol_control_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6350,7 +6665,7 @@ func (x *LoginMeshRequest) String() string {
 func (*LoginMeshRequest) ProtoMessage() {}
 
 func (x *LoginMeshRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[74]
+	mi := &file_solaris_protocol_control_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6363,7 +6678,7 @@ func (x *LoginMeshRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoginMeshRequest.ProtoReflect.Descriptor instead.
 func (*LoginMeshRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{74}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *LoginMeshRequest) GetName() string {
@@ -6382,7 +6697,7 @@ type LoginMeshResponse struct {
 
 func (x *LoginMeshResponse) Reset() {
 	*x = LoginMeshResponse{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[75]
+	mi := &file_solaris_protocol_control_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6394,7 +6709,7 @@ func (x *LoginMeshResponse) String() string {
 func (*LoginMeshResponse) ProtoMessage() {}
 
 func (x *LoginMeshResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[75]
+	mi := &file_solaris_protocol_control_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6407,7 +6722,7 @@ func (x *LoginMeshResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoginMeshResponse.ProtoReflect.Descriptor instead.
 func (*LoginMeshResponse) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{75}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *LoginMeshResponse) GetLoginUrl() string {
@@ -6425,7 +6740,7 @@ type ListGeoCategoriesRequest struct {
 
 func (x *ListGeoCategoriesRequest) Reset() {
 	*x = ListGeoCategoriesRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[76]
+	mi := &file_solaris_protocol_control_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6437,7 +6752,7 @@ func (x *ListGeoCategoriesRequest) String() string {
 func (*ListGeoCategoriesRequest) ProtoMessage() {}
 
 func (x *ListGeoCategoriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[76]
+	mi := &file_solaris_protocol_control_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6450,7 +6765,7 @@ func (x *ListGeoCategoriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGeoCategoriesRequest.ProtoReflect.Descriptor instead.
 func (*ListGeoCategoriesRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{76}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{80}
 }
 
 type ListGeoCategoriesResponse struct {
@@ -6463,7 +6778,7 @@ type ListGeoCategoriesResponse struct {
 
 func (x *ListGeoCategoriesResponse) Reset() {
 	*x = ListGeoCategoriesResponse{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[77]
+	mi := &file_solaris_protocol_control_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6475,7 +6790,7 @@ func (x *ListGeoCategoriesResponse) String() string {
 func (*ListGeoCategoriesResponse) ProtoMessage() {}
 
 func (x *ListGeoCategoriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[77]
+	mi := &file_solaris_protocol_control_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6488,7 +6803,7 @@ func (x *ListGeoCategoriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGeoCategoriesResponse.ProtoReflect.Descriptor instead.
 func (*ListGeoCategoriesResponse) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{77}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *ListGeoCategoriesResponse) GetGeosite() *GeoCategories {
@@ -6518,7 +6833,7 @@ type GeoCategories struct {
 
 func (x *GeoCategories) Reset() {
 	*x = GeoCategories{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[78]
+	mi := &file_solaris_protocol_control_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6530,7 +6845,7 @@ func (x *GeoCategories) String() string {
 func (*GeoCategories) ProtoMessage() {}
 
 func (x *GeoCategories) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[78]
+	mi := &file_solaris_protocol_control_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6543,7 +6858,7 @@ func (x *GeoCategories) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GeoCategories.ProtoReflect.Descriptor instead.
 func (*GeoCategories) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{78}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *GeoCategories) GetNames() []string {
@@ -6579,7 +6894,7 @@ type PreviewGroupRequest struct {
 
 func (x *PreviewGroupRequest) Reset() {
 	*x = PreviewGroupRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[79]
+	mi := &file_solaris_protocol_control_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6591,7 +6906,7 @@ func (x *PreviewGroupRequest) String() string {
 func (*PreviewGroupRequest) ProtoMessage() {}
 
 func (x *PreviewGroupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[79]
+	mi := &file_solaris_protocol_control_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6604,7 +6919,7 @@ func (x *PreviewGroupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviewGroupRequest.ProtoReflect.Descriptor instead.
 func (*PreviewGroupRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{79}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *PreviewGroupRequest) GetComposition() *Composition {
@@ -6633,7 +6948,7 @@ type PreviewGroupResponse struct {
 
 func (x *PreviewGroupResponse) Reset() {
 	*x = PreviewGroupResponse{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[80]
+	mi := &file_solaris_protocol_control_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6645,7 +6960,7 @@ func (x *PreviewGroupResponse) String() string {
 func (*PreviewGroupResponse) ProtoMessage() {}
 
 func (x *PreviewGroupResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[80]
+	mi := &file_solaris_protocol_control_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6658,7 +6973,7 @@ func (x *PreviewGroupResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviewGroupResponse.ProtoReflect.Descriptor instead.
 func (*PreviewGroupResponse) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{80}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *PreviewGroupResponse) GetNodes() []*PoolNode {
@@ -6695,7 +7010,7 @@ type MatchRuleRequest struct {
 
 func (x *MatchRuleRequest) Reset() {
 	*x = MatchRuleRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[81]
+	mi := &file_solaris_protocol_control_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6707,7 +7022,7 @@ func (x *MatchRuleRequest) String() string {
 func (*MatchRuleRequest) ProtoMessage() {}
 
 func (x *MatchRuleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[81]
+	mi := &file_solaris_protocol_control_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6720,7 +7035,7 @@ func (x *MatchRuleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MatchRuleRequest.ProtoReflect.Descriptor instead.
 func (*MatchRuleRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{81}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *MatchRuleRequest) GetSource() isMatchRuleRequest_Source {
@@ -6810,7 +7125,7 @@ type MatchRuleResponse struct {
 
 func (x *MatchRuleResponse) Reset() {
 	*x = MatchRuleResponse{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[82]
+	mi := &file_solaris_protocol_control_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6822,7 +7137,7 @@ func (x *MatchRuleResponse) String() string {
 func (*MatchRuleResponse) ProtoMessage() {}
 
 func (x *MatchRuleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[82]
+	mi := &file_solaris_protocol_control_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6835,7 +7150,7 @@ func (x *MatchRuleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MatchRuleResponse.ProtoReflect.Descriptor instead.
 func (*MatchRuleResponse) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{82}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *MatchRuleResponse) GetMatched() bool {
@@ -6889,7 +7204,7 @@ type ConvertToPlanRequest struct {
 
 func (x *ConvertToPlanRequest) Reset() {
 	*x = ConvertToPlanRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[83]
+	mi := &file_solaris_protocol_control_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6901,7 +7216,7 @@ func (x *ConvertToPlanRequest) String() string {
 func (*ConvertToPlanRequest) ProtoMessage() {}
 
 func (x *ConvertToPlanRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[83]
+	mi := &file_solaris_protocol_control_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6914,7 +7229,7 @@ func (x *ConvertToPlanRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConvertToPlanRequest.ProtoReflect.Descriptor instead.
 func (*ConvertToPlanRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{83}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *ConvertToPlanRequest) GetYaml() string {
@@ -6960,7 +7275,7 @@ type ConvertToPlanResponse struct {
 
 func (x *ConvertToPlanResponse) Reset() {
 	*x = ConvertToPlanResponse{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[84]
+	mi := &file_solaris_protocol_control_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6972,7 +7287,7 @@ func (x *ConvertToPlanResponse) String() string {
 func (*ConvertToPlanResponse) ProtoMessage() {}
 
 func (x *ConvertToPlanResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[84]
+	mi := &file_solaris_protocol_control_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6985,7 +7300,7 @@ func (x *ConvertToPlanResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConvertToPlanResponse.ProtoReflect.Descriptor instead.
 func (*ConvertToPlanResponse) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{84}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *ConvertToPlanResponse) GetPlanJson() string {
@@ -7050,7 +7365,7 @@ type SkippedRule struct {
 
 func (x *SkippedRule) Reset() {
 	*x = SkippedRule{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[85]
+	mi := &file_solaris_protocol_control_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7062,7 +7377,7 @@ func (x *SkippedRule) String() string {
 func (*SkippedRule) ProtoMessage() {}
 
 func (x *SkippedRule) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[85]
+	mi := &file_solaris_protocol_control_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7075,7 +7390,7 @@ func (x *SkippedRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SkippedRule.ProtoReflect.Descriptor instead.
 func (*SkippedRule) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{85}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *SkippedRule) GetRule() string {
@@ -7104,7 +7419,7 @@ type ExportPlanRequest struct {
 
 func (x *ExportPlanRequest) Reset() {
 	*x = ExportPlanRequest{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[86]
+	mi := &file_solaris_protocol_control_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7116,7 +7431,7 @@ func (x *ExportPlanRequest) String() string {
 func (*ExportPlanRequest) ProtoMessage() {}
 
 func (x *ExportPlanRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[86]
+	mi := &file_solaris_protocol_control_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7129,7 +7444,7 @@ func (x *ExportPlanRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExportPlanRequest.ProtoReflect.Descriptor instead.
 func (*ExportPlanRequest) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{86}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{90}
 }
 
 func (x *ExportPlanRequest) GetComposition() *Composition {
@@ -7169,7 +7484,7 @@ type ExportPlanResponse struct {
 
 func (x *ExportPlanResponse) Reset() {
 	*x = ExportPlanResponse{}
-	mi := &file_solaris_protocol_control_proto_msgTypes[87]
+	mi := &file_solaris_protocol_control_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7181,7 +7496,7 @@ func (x *ExportPlanResponse) String() string {
 func (*ExportPlanResponse) ProtoMessage() {}
 
 func (x *ExportPlanResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_solaris_protocol_control_proto_msgTypes[87]
+	mi := &file_solaris_protocol_control_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7194,7 +7509,7 @@ func (x *ExportPlanResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExportPlanResponse.ProtoReflect.Descriptor instead.
 func (*ExportPlanResponse) Descriptor() ([]byte, []int) {
-	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{87}
+	return file_solaris_protocol_control_proto_rawDescGZIP(), []int{91}
 }
 
 func (x *ExportPlanResponse) GetYaml() string {
@@ -7208,7 +7523,7 @@ var File_solaris_protocol_control_proto protoreflect.FileDescriptor
 
 const file_solaris_protocol_control_proto_rawDesc = "" +
 	"\n" +
-	"\x1esolaris/protocol/control.proto\x12\x12solaris.control.v1\"\xf0\x16\n" +
+	"\x1esolaris/protocol/control.proto\x12\x12solaris.control.v1\"\x88\x18\n" +
 	"\aRequest\x12)\n" +
 	"\x10protocol_version\x18\x01 \x01(\rR\x0fprotocolVersion\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\x04R\x02id\x12\x1d\n" +
@@ -7259,8 +7574,11 @@ const file_solaris_protocol_control_proto_rawDesc = "" +
 	"\rlist_vpn_gate\x188 \x01(\v2&.solaris.control.v1.ListVpnGateRequestH\x00R\vlistVpnGate\x12R\n" +
 	"\x0fget_mesh_status\x189 \x01(\v2(.solaris.control.v1.GetMeshStatusRequestH\x00R\rgetMeshStatus\x12E\n" +
 	"\n" +
-	"login_mesh\x18: \x01(\v2$.solaris.control.v1.LoginMeshRequestH\x00R\tloginMeshB\b\n" +
-	"\x06method\"\xbb\r\n" +
+	"login_mesh\x18: \x01(\v2$.solaris.control.v1.LoginMeshRequestH\x00R\tloginMesh\x12O\n" +
+	"\x0eget_geo_update\x18; \x01(\v2'.solaris.control.v1.GetGeoUpdateRequestH\x00R\fgetGeoUpdate\x12E\n" +
+	"\n" +
+	"upload_geo\x18< \x01(\v2$.solaris.control.v1.UploadGeoRequestH\x00R\tuploadGeoB\b\n" +
+	"\x06method\"\x8d\x0e\n" +
 	"\bResponse\x12)\n" +
 	"\x10protocol_version\x18\x01 \x01(\rR\x0fprotocolVersion\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\x04R\x02id\x121\n" +
@@ -7294,9 +7612,34 @@ const file_solaris_protocol_control_proto_rawDesc = "" +
 	"\rlist_vpn_gate\x188 \x01(\v2'.solaris.control.v1.ListVpnGateResponseH\x00R\vlistVpnGate\x12S\n" +
 	"\x0fget_mesh_status\x189 \x01(\v2).solaris.control.v1.GetMeshStatusResponseH\x00R\rgetMeshStatus\x12F\n" +
 	"\n" +
-	"login_mesh\x18: \x01(\v2%.solaris.control.v1.LoginMeshResponseH\x00R\tloginMeshB\b\n" +
+	"login_mesh\x18: \x01(\v2%.solaris.control.v1.LoginMeshResponseH\x00R\tloginMesh\x12P\n" +
+	"\x0eget_geo_update\x18; \x01(\v2(.solaris.control.v1.GetGeoUpdateResponseH\x00R\fgetGeoUpdateB\b\n" +
 	"\x06result\"\a\n" +
-	"\x05Empty\"S\n" +
+	"\x05Empty\"\x15\n" +
+	"\x13GetGeoUpdateRequest\"b\n" +
+	"\rGeoUpdateFile\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
+	"\x03url\x18\x02 \x01(\tR\x03url\x12+\n" +
+	"\x12updated_at_unix_ms\x18\x03 \x01(\x03R\x0fupdatedAtUnixMs\"\x96\x01\n" +
+	"\x14GetGeoUpdateResponse\x12\x1e\n" +
+	"\n" +
+	"generation\x18\x01 \x01(\tR\n" +
+	"generation\x12%\n" +
+	"\x0einterval_hours\x18\x02 \x01(\rR\rintervalHours\x127\n" +
+	"\x05files\x18\x03 \x03(\v2!.solaris.control.v1.GeoUpdateFileR\x05files\"\xf1\x01\n" +
+	"\x10UploadGeoRequest\x12\x1e\n" +
+	"\n" +
+	"generation\x18\x01 \x01(\tR\n" +
+	"generation\x12\x1f\n" +
+	"\vtransfer_id\x18\x02 \x01(\tR\n" +
+	"transferId\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
+	"\x04size\x18\x04 \x01(\x04R\x04size\x12\x16\n" +
+	"\x06sha256\x18\x05 \x01(\tR\x06sha256\x12\x16\n" +
+	"\x06offset\x18\x06 \x01(\x04R\x06offset\x12\x12\n" +
+	"\x04data\x18\a \x01(\fR\x04data\x12\x1a\n" +
+	"\bcomplete\x18\b \x01(\bR\bcomplete\x12\x14\n" +
+	"\x05abort\x18\t \x01(\bR\x05abort\"S\n" +
 	"\x05Error\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12\x1c\n" +
@@ -7766,7 +8109,7 @@ func file_solaris_protocol_control_proto_rawDescGZIP() []byte {
 }
 
 var file_solaris_protocol_control_proto_enumTypes = make([]protoimpl.EnumInfo, 13)
-var file_solaris_protocol_control_proto_msgTypes = make([]protoimpl.MessageInfo, 88)
+var file_solaris_protocol_control_proto_msgTypes = make([]protoimpl.MessageInfo, 92)
 var file_solaris_protocol_control_proto_goTypes = []any{
 	(RunState)(0),                       // 0: solaris.control.v1.RunState
 	(Ownership)(0),                      // 1: solaris.control.v1.Ownership
@@ -7784,219 +8127,227 @@ var file_solaris_protocol_control_proto_goTypes = []any{
 	(*Request)(nil),                     // 13: solaris.control.v1.Request
 	(*Response)(nil),                    // 14: solaris.control.v1.Response
 	(*Empty)(nil),                       // 15: solaris.control.v1.Empty
-	(*Error)(nil),                       // 16: solaris.control.v1.Error
-	(*GetInfoRequest)(nil),              // 17: solaris.control.v1.GetInfoRequest
-	(*GetInfoResponse)(nil),             // 18: solaris.control.v1.GetInfoResponse
-	(*ClaimRequest)(nil),                // 19: solaris.control.v1.ClaimRequest
-	(*RunOptions)(nil),                  // 20: solaris.control.v1.RunOptions
-	(*ValidateRequest)(nil),             // 21: solaris.control.v1.ValidateRequest
-	(*StartRequest)(nil),                // 22: solaris.control.v1.StartRequest
-	(*ReloadRequest)(nil),               // 23: solaris.control.v1.ReloadRequest
-	(*Composition)(nil),                 // 24: solaris.control.v1.Composition
-	(*MeshNetwork)(nil),                 // 25: solaris.control.v1.MeshNetwork
-	(*TailscaleNetwork)(nil),            // 26: solaris.control.v1.TailscaleNetwork
-	(*ZeroTierNetwork)(nil),             // 27: solaris.control.v1.ZeroTierNetwork
-	(*EasyTierNetwork)(nil),             // 28: solaris.control.v1.EasyTierNetwork
-	(*Egress)(nil),                      // 29: solaris.control.v1.Egress
-	(*WarpAccount)(nil),                 // 30: solaris.control.v1.WarpAccount
-	(*CompositionSource)(nil),           // 31: solaris.control.v1.CompositionSource
-	(*CompositionReport)(nil),           // 32: solaris.control.v1.CompositionReport
-	(*MeshOutbound)(nil),                // 33: solaris.control.v1.MeshOutbound
-	(*CompositionWarning)(nil),          // 34: solaris.control.v1.CompositionWarning
-	(*ComposedGroup)(nil),               // 35: solaris.control.v1.ComposedGroup
-	(*PoolNode)(nil),                    // 36: solaris.control.v1.PoolNode
-	(*StopRequest)(nil),                 // 37: solaris.control.v1.StopRequest
-	(*SetSystemProxyRequest)(nil),       // 38: solaris.control.v1.SetSystemProxyRequest
-	(*GetStatusRequest)(nil),            // 39: solaris.control.v1.GetStatusRequest
-	(*GetStatusResponse)(nil),           // 40: solaris.control.v1.GetStatusResponse
-	(*SetModeRequest)(nil),              // 41: solaris.control.v1.SetModeRequest
-	(*Proxy)(nil),                       // 42: solaris.control.v1.Proxy
-	(*ProxyGroup)(nil),                  // 43: solaris.control.v1.ProxyGroup
-	(*ListGroupsRequest)(nil),           // 44: solaris.control.v1.ListGroupsRequest
-	(*ListGroupsResponse)(nil),          // 45: solaris.control.v1.ListGroupsResponse
-	(*GetGroupRequest)(nil),             // 46: solaris.control.v1.GetGroupRequest
-	(*GetGroupResponse)(nil),            // 47: solaris.control.v1.GetGroupResponse
-	(*SelectProxyRequest)(nil),          // 48: solaris.control.v1.SelectProxyRequest
-	(*HealthCheckRequest)(nil),          // 49: solaris.control.v1.HealthCheckRequest
-	(*TestDelayRequest)(nil),            // 50: solaris.control.v1.TestDelayRequest
-	(*TestDelayResponse)(nil),           // 51: solaris.control.v1.TestDelayResponse
-	(*Provider)(nil),                    // 52: solaris.control.v1.Provider
-	(*ListProvidersRequest)(nil),        // 53: solaris.control.v1.ListProvidersRequest
-	(*ListProvidersResponse)(nil),       // 54: solaris.control.v1.ListProvidersResponse
-	(*UpdateProviderRequest)(nil),       // 55: solaris.control.v1.UpdateProviderRequest
-	(*Rule)(nil),                        // 56: solaris.control.v1.Rule
-	(*ListRulesRequest)(nil),            // 57: solaris.control.v1.ListRulesRequest
-	(*ListRulesResponse)(nil),           // 58: solaris.control.v1.ListRulesResponse
-	(*CloseConnectionRequest)(nil),      // 59: solaris.control.v1.CloseConnectionRequest
-	(*CloseAllConnectionsRequest)(nil),  // 60: solaris.control.v1.CloseAllConnectionsRequest
-	(*FlushFakeIPRequest)(nil),          // 61: solaris.control.v1.FlushFakeIPRequest
-	(*FlushDNSCacheRequest)(nil),        // 62: solaris.control.v1.FlushDNSCacheRequest
-	(*SubscribeLogsRequest)(nil),        // 63: solaris.control.v1.SubscribeLogsRequest
-	(*SubscribeTrafficRequest)(nil),     // 64: solaris.control.v1.SubscribeTrafficRequest
-	(*SubscribeConnectionsRequest)(nil), // 65: solaris.control.v1.SubscribeConnectionsRequest
-	(*SubscribeResponse)(nil),           // 66: solaris.control.v1.SubscribeResponse
-	(*PollEventsRequest)(nil),           // 67: solaris.control.v1.PollEventsRequest
-	(*PollEventsResponse)(nil),          // 68: solaris.control.v1.PollEventsResponse
-	(*UnsubscribeRequest)(nil),          // 69: solaris.control.v1.UnsubscribeRequest
-	(*Event)(nil),                       // 70: solaris.control.v1.Event
-	(*LogEntry)(nil),                    // 71: solaris.control.v1.LogEntry
-	(*TrafficSample)(nil),               // 72: solaris.control.v1.TrafficSample
-	(*Connection)(nil),                  // 73: solaris.control.v1.Connection
-	(*ConnectionSnapshot)(nil),          // 74: solaris.control.v1.ConnectionSnapshot
-	(*InspectSourceRequest)(nil),        // 75: solaris.control.v1.InspectSourceRequest
-	(*InspectSourceResponse)(nil),       // 76: solaris.control.v1.InspectSourceResponse
-	(*SourceNode)(nil),                  // 77: solaris.control.v1.SourceNode
-	(*RegisterWarpRequest)(nil),         // 78: solaris.control.v1.RegisterWarpRequest
-	(*RegisterWarpResponse)(nil),        // 79: solaris.control.v1.RegisterWarpResponse
-	(*ListVpnGateRequest)(nil),          // 80: solaris.control.v1.ListVpnGateRequest
-	(*ListVpnGateResponse)(nil),         // 81: solaris.control.v1.ListVpnGateResponse
-	(*VpnGateServer)(nil),               // 82: solaris.control.v1.VpnGateServer
-	(*OpenVpnOptions)(nil),              // 83: solaris.control.v1.OpenVpnOptions
-	(*GetMeshStatusRequest)(nil),        // 84: solaris.control.v1.GetMeshStatusRequest
-	(*GetMeshStatusResponse)(nil),       // 85: solaris.control.v1.GetMeshStatusResponse
-	(*MeshStatus)(nil),                  // 86: solaris.control.v1.MeshStatus
-	(*LoginMeshRequest)(nil),            // 87: solaris.control.v1.LoginMeshRequest
-	(*LoginMeshResponse)(nil),           // 88: solaris.control.v1.LoginMeshResponse
-	(*ListGeoCategoriesRequest)(nil),    // 89: solaris.control.v1.ListGeoCategoriesRequest
-	(*ListGeoCategoriesResponse)(nil),   // 90: solaris.control.v1.ListGeoCategoriesResponse
-	(*GeoCategories)(nil),               // 91: solaris.control.v1.GeoCategories
-	(*PreviewGroupRequest)(nil),         // 92: solaris.control.v1.PreviewGroupRequest
-	(*PreviewGroupResponse)(nil),        // 93: solaris.control.v1.PreviewGroupResponse
-	(*MatchRuleRequest)(nil),            // 94: solaris.control.v1.MatchRuleRequest
-	(*MatchRuleResponse)(nil),           // 95: solaris.control.v1.MatchRuleResponse
-	(*ConvertToPlanRequest)(nil),        // 96: solaris.control.v1.ConvertToPlanRequest
-	(*ConvertToPlanResponse)(nil),       // 97: solaris.control.v1.ConvertToPlanResponse
-	(*SkippedRule)(nil),                 // 98: solaris.control.v1.SkippedRule
-	(*ExportPlanRequest)(nil),           // 99: solaris.control.v1.ExportPlanRequest
-	(*ExportPlanResponse)(nil),          // 100: solaris.control.v1.ExportPlanResponse
+	(*GetGeoUpdateRequest)(nil),         // 16: solaris.control.v1.GetGeoUpdateRequest
+	(*GeoUpdateFile)(nil),               // 17: solaris.control.v1.GeoUpdateFile
+	(*GetGeoUpdateResponse)(nil),        // 18: solaris.control.v1.GetGeoUpdateResponse
+	(*UploadGeoRequest)(nil),            // 19: solaris.control.v1.UploadGeoRequest
+	(*Error)(nil),                       // 20: solaris.control.v1.Error
+	(*GetInfoRequest)(nil),              // 21: solaris.control.v1.GetInfoRequest
+	(*GetInfoResponse)(nil),             // 22: solaris.control.v1.GetInfoResponse
+	(*ClaimRequest)(nil),                // 23: solaris.control.v1.ClaimRequest
+	(*RunOptions)(nil),                  // 24: solaris.control.v1.RunOptions
+	(*ValidateRequest)(nil),             // 25: solaris.control.v1.ValidateRequest
+	(*StartRequest)(nil),                // 26: solaris.control.v1.StartRequest
+	(*ReloadRequest)(nil),               // 27: solaris.control.v1.ReloadRequest
+	(*Composition)(nil),                 // 28: solaris.control.v1.Composition
+	(*MeshNetwork)(nil),                 // 29: solaris.control.v1.MeshNetwork
+	(*TailscaleNetwork)(nil),            // 30: solaris.control.v1.TailscaleNetwork
+	(*ZeroTierNetwork)(nil),             // 31: solaris.control.v1.ZeroTierNetwork
+	(*EasyTierNetwork)(nil),             // 32: solaris.control.v1.EasyTierNetwork
+	(*Egress)(nil),                      // 33: solaris.control.v1.Egress
+	(*WarpAccount)(nil),                 // 34: solaris.control.v1.WarpAccount
+	(*CompositionSource)(nil),           // 35: solaris.control.v1.CompositionSource
+	(*CompositionReport)(nil),           // 36: solaris.control.v1.CompositionReport
+	(*MeshOutbound)(nil),                // 37: solaris.control.v1.MeshOutbound
+	(*CompositionWarning)(nil),          // 38: solaris.control.v1.CompositionWarning
+	(*ComposedGroup)(nil),               // 39: solaris.control.v1.ComposedGroup
+	(*PoolNode)(nil),                    // 40: solaris.control.v1.PoolNode
+	(*StopRequest)(nil),                 // 41: solaris.control.v1.StopRequest
+	(*SetSystemProxyRequest)(nil),       // 42: solaris.control.v1.SetSystemProxyRequest
+	(*GetStatusRequest)(nil),            // 43: solaris.control.v1.GetStatusRequest
+	(*GetStatusResponse)(nil),           // 44: solaris.control.v1.GetStatusResponse
+	(*SetModeRequest)(nil),              // 45: solaris.control.v1.SetModeRequest
+	(*Proxy)(nil),                       // 46: solaris.control.v1.Proxy
+	(*ProxyGroup)(nil),                  // 47: solaris.control.v1.ProxyGroup
+	(*ListGroupsRequest)(nil),           // 48: solaris.control.v1.ListGroupsRequest
+	(*ListGroupsResponse)(nil),          // 49: solaris.control.v1.ListGroupsResponse
+	(*GetGroupRequest)(nil),             // 50: solaris.control.v1.GetGroupRequest
+	(*GetGroupResponse)(nil),            // 51: solaris.control.v1.GetGroupResponse
+	(*SelectProxyRequest)(nil),          // 52: solaris.control.v1.SelectProxyRequest
+	(*HealthCheckRequest)(nil),          // 53: solaris.control.v1.HealthCheckRequest
+	(*TestDelayRequest)(nil),            // 54: solaris.control.v1.TestDelayRequest
+	(*TestDelayResponse)(nil),           // 55: solaris.control.v1.TestDelayResponse
+	(*Provider)(nil),                    // 56: solaris.control.v1.Provider
+	(*ListProvidersRequest)(nil),        // 57: solaris.control.v1.ListProvidersRequest
+	(*ListProvidersResponse)(nil),       // 58: solaris.control.v1.ListProvidersResponse
+	(*UpdateProviderRequest)(nil),       // 59: solaris.control.v1.UpdateProviderRequest
+	(*Rule)(nil),                        // 60: solaris.control.v1.Rule
+	(*ListRulesRequest)(nil),            // 61: solaris.control.v1.ListRulesRequest
+	(*ListRulesResponse)(nil),           // 62: solaris.control.v1.ListRulesResponse
+	(*CloseConnectionRequest)(nil),      // 63: solaris.control.v1.CloseConnectionRequest
+	(*CloseAllConnectionsRequest)(nil),  // 64: solaris.control.v1.CloseAllConnectionsRequest
+	(*FlushFakeIPRequest)(nil),          // 65: solaris.control.v1.FlushFakeIPRequest
+	(*FlushDNSCacheRequest)(nil),        // 66: solaris.control.v1.FlushDNSCacheRequest
+	(*SubscribeLogsRequest)(nil),        // 67: solaris.control.v1.SubscribeLogsRequest
+	(*SubscribeTrafficRequest)(nil),     // 68: solaris.control.v1.SubscribeTrafficRequest
+	(*SubscribeConnectionsRequest)(nil), // 69: solaris.control.v1.SubscribeConnectionsRequest
+	(*SubscribeResponse)(nil),           // 70: solaris.control.v1.SubscribeResponse
+	(*PollEventsRequest)(nil),           // 71: solaris.control.v1.PollEventsRequest
+	(*PollEventsResponse)(nil),          // 72: solaris.control.v1.PollEventsResponse
+	(*UnsubscribeRequest)(nil),          // 73: solaris.control.v1.UnsubscribeRequest
+	(*Event)(nil),                       // 74: solaris.control.v1.Event
+	(*LogEntry)(nil),                    // 75: solaris.control.v1.LogEntry
+	(*TrafficSample)(nil),               // 76: solaris.control.v1.TrafficSample
+	(*Connection)(nil),                  // 77: solaris.control.v1.Connection
+	(*ConnectionSnapshot)(nil),          // 78: solaris.control.v1.ConnectionSnapshot
+	(*InspectSourceRequest)(nil),        // 79: solaris.control.v1.InspectSourceRequest
+	(*InspectSourceResponse)(nil),       // 80: solaris.control.v1.InspectSourceResponse
+	(*SourceNode)(nil),                  // 81: solaris.control.v1.SourceNode
+	(*RegisterWarpRequest)(nil),         // 82: solaris.control.v1.RegisterWarpRequest
+	(*RegisterWarpResponse)(nil),        // 83: solaris.control.v1.RegisterWarpResponse
+	(*ListVpnGateRequest)(nil),          // 84: solaris.control.v1.ListVpnGateRequest
+	(*ListVpnGateResponse)(nil),         // 85: solaris.control.v1.ListVpnGateResponse
+	(*VpnGateServer)(nil),               // 86: solaris.control.v1.VpnGateServer
+	(*OpenVpnOptions)(nil),              // 87: solaris.control.v1.OpenVpnOptions
+	(*GetMeshStatusRequest)(nil),        // 88: solaris.control.v1.GetMeshStatusRequest
+	(*GetMeshStatusResponse)(nil),       // 89: solaris.control.v1.GetMeshStatusResponse
+	(*MeshStatus)(nil),                  // 90: solaris.control.v1.MeshStatus
+	(*LoginMeshRequest)(nil),            // 91: solaris.control.v1.LoginMeshRequest
+	(*LoginMeshResponse)(nil),           // 92: solaris.control.v1.LoginMeshResponse
+	(*ListGeoCategoriesRequest)(nil),    // 93: solaris.control.v1.ListGeoCategoriesRequest
+	(*ListGeoCategoriesResponse)(nil),   // 94: solaris.control.v1.ListGeoCategoriesResponse
+	(*GeoCategories)(nil),               // 95: solaris.control.v1.GeoCategories
+	(*PreviewGroupRequest)(nil),         // 96: solaris.control.v1.PreviewGroupRequest
+	(*PreviewGroupResponse)(nil),        // 97: solaris.control.v1.PreviewGroupResponse
+	(*MatchRuleRequest)(nil),            // 98: solaris.control.v1.MatchRuleRequest
+	(*MatchRuleResponse)(nil),           // 99: solaris.control.v1.MatchRuleResponse
+	(*ConvertToPlanRequest)(nil),        // 100: solaris.control.v1.ConvertToPlanRequest
+	(*ConvertToPlanResponse)(nil),       // 101: solaris.control.v1.ConvertToPlanResponse
+	(*SkippedRule)(nil),                 // 102: solaris.control.v1.SkippedRule
+	(*ExportPlanRequest)(nil),           // 103: solaris.control.v1.ExportPlanRequest
+	(*ExportPlanResponse)(nil),          // 104: solaris.control.v1.ExportPlanResponse
 }
 var file_solaris_protocol_control_proto_depIdxs = []int32{
-	17,  // 0: solaris.control.v1.Request.get_info:type_name -> solaris.control.v1.GetInfoRequest
-	19,  // 1: solaris.control.v1.Request.claim:type_name -> solaris.control.v1.ClaimRequest
-	21,  // 2: solaris.control.v1.Request.validate:type_name -> solaris.control.v1.ValidateRequest
-	22,  // 3: solaris.control.v1.Request.start:type_name -> solaris.control.v1.StartRequest
-	23,  // 4: solaris.control.v1.Request.reload:type_name -> solaris.control.v1.ReloadRequest
-	37,  // 5: solaris.control.v1.Request.stop:type_name -> solaris.control.v1.StopRequest
-	38,  // 6: solaris.control.v1.Request.set_system_proxy:type_name -> solaris.control.v1.SetSystemProxyRequest
-	39,  // 7: solaris.control.v1.Request.get_status:type_name -> solaris.control.v1.GetStatusRequest
-	41,  // 8: solaris.control.v1.Request.set_mode:type_name -> solaris.control.v1.SetModeRequest
-	44,  // 9: solaris.control.v1.Request.list_groups:type_name -> solaris.control.v1.ListGroupsRequest
-	46,  // 10: solaris.control.v1.Request.get_group:type_name -> solaris.control.v1.GetGroupRequest
-	48,  // 11: solaris.control.v1.Request.select_proxy:type_name -> solaris.control.v1.SelectProxyRequest
-	49,  // 12: solaris.control.v1.Request.health_check:type_name -> solaris.control.v1.HealthCheckRequest
-	50,  // 13: solaris.control.v1.Request.test_delay:type_name -> solaris.control.v1.TestDelayRequest
-	53,  // 14: solaris.control.v1.Request.list_providers:type_name -> solaris.control.v1.ListProvidersRequest
-	55,  // 15: solaris.control.v1.Request.update_provider:type_name -> solaris.control.v1.UpdateProviderRequest
-	57,  // 16: solaris.control.v1.Request.list_rules:type_name -> solaris.control.v1.ListRulesRequest
-	59,  // 17: solaris.control.v1.Request.close_connection:type_name -> solaris.control.v1.CloseConnectionRequest
-	60,  // 18: solaris.control.v1.Request.close_all_connections:type_name -> solaris.control.v1.CloseAllConnectionsRequest
-	61,  // 19: solaris.control.v1.Request.flush_fake_ip:type_name -> solaris.control.v1.FlushFakeIPRequest
-	62,  // 20: solaris.control.v1.Request.flush_dns_cache:type_name -> solaris.control.v1.FlushDNSCacheRequest
-	63,  // 21: solaris.control.v1.Request.subscribe_logs:type_name -> solaris.control.v1.SubscribeLogsRequest
-	64,  // 22: solaris.control.v1.Request.subscribe_traffic:type_name -> solaris.control.v1.SubscribeTrafficRequest
-	65,  // 23: solaris.control.v1.Request.subscribe_connections:type_name -> solaris.control.v1.SubscribeConnectionsRequest
-	67,  // 24: solaris.control.v1.Request.poll_events:type_name -> solaris.control.v1.PollEventsRequest
-	69,  // 25: solaris.control.v1.Request.unsubscribe:type_name -> solaris.control.v1.UnsubscribeRequest
-	75,  // 26: solaris.control.v1.Request.inspect_source:type_name -> solaris.control.v1.InspectSourceRequest
-	89,  // 27: solaris.control.v1.Request.list_geo_categories:type_name -> solaris.control.v1.ListGeoCategoriesRequest
-	92,  // 28: solaris.control.v1.Request.preview_group:type_name -> solaris.control.v1.PreviewGroupRequest
-	94,  // 29: solaris.control.v1.Request.match_rule:type_name -> solaris.control.v1.MatchRuleRequest
-	96,  // 30: solaris.control.v1.Request.convert_to_plan:type_name -> solaris.control.v1.ConvertToPlanRequest
-	99,  // 31: solaris.control.v1.Request.export_plan:type_name -> solaris.control.v1.ExportPlanRequest
-	78,  // 32: solaris.control.v1.Request.register_warp:type_name -> solaris.control.v1.RegisterWarpRequest
-	80,  // 33: solaris.control.v1.Request.list_vpn_gate:type_name -> solaris.control.v1.ListVpnGateRequest
-	84,  // 34: solaris.control.v1.Request.get_mesh_status:type_name -> solaris.control.v1.GetMeshStatusRequest
-	87,  // 35: solaris.control.v1.Request.login_mesh:type_name -> solaris.control.v1.LoginMeshRequest
-	16,  // 36: solaris.control.v1.Response.error:type_name -> solaris.control.v1.Error
-	15,  // 37: solaris.control.v1.Response.empty:type_name -> solaris.control.v1.Empty
-	18,  // 38: solaris.control.v1.Response.get_info:type_name -> solaris.control.v1.GetInfoResponse
-	32,  // 39: solaris.control.v1.Response.composition:type_name -> solaris.control.v1.CompositionReport
-	40,  // 40: solaris.control.v1.Response.get_status:type_name -> solaris.control.v1.GetStatusResponse
-	45,  // 41: solaris.control.v1.Response.list_groups:type_name -> solaris.control.v1.ListGroupsResponse
-	47,  // 42: solaris.control.v1.Response.get_group:type_name -> solaris.control.v1.GetGroupResponse
-	51,  // 43: solaris.control.v1.Response.test_delay:type_name -> solaris.control.v1.TestDelayResponse
-	54,  // 44: solaris.control.v1.Response.list_providers:type_name -> solaris.control.v1.ListProvidersResponse
-	58,  // 45: solaris.control.v1.Response.list_rules:type_name -> solaris.control.v1.ListRulesResponse
-	66,  // 46: solaris.control.v1.Response.subscribe:type_name -> solaris.control.v1.SubscribeResponse
-	68,  // 47: solaris.control.v1.Response.poll_events:type_name -> solaris.control.v1.PollEventsResponse
-	76,  // 48: solaris.control.v1.Response.inspect_source:type_name -> solaris.control.v1.InspectSourceResponse
-	90,  // 49: solaris.control.v1.Response.list_geo_categories:type_name -> solaris.control.v1.ListGeoCategoriesResponse
-	93,  // 50: solaris.control.v1.Response.preview_group:type_name -> solaris.control.v1.PreviewGroupResponse
-	95,  // 51: solaris.control.v1.Response.match_rule:type_name -> solaris.control.v1.MatchRuleResponse
-	97,  // 52: solaris.control.v1.Response.convert_to_plan:type_name -> solaris.control.v1.ConvertToPlanResponse
-	100, // 53: solaris.control.v1.Response.export_plan:type_name -> solaris.control.v1.ExportPlanResponse
-	79,  // 54: solaris.control.v1.Response.register_warp:type_name -> solaris.control.v1.RegisterWarpResponse
-	81,  // 55: solaris.control.v1.Response.list_vpn_gate:type_name -> solaris.control.v1.ListVpnGateResponse
-	85,  // 56: solaris.control.v1.Response.get_mesh_status:type_name -> solaris.control.v1.GetMeshStatusResponse
-	88,  // 57: solaris.control.v1.Response.login_mesh:type_name -> solaris.control.v1.LoginMeshResponse
-	0,   // 58: solaris.control.v1.GetInfoResponse.state:type_name -> solaris.control.v1.RunState
-	1,   // 59: solaris.control.v1.GetInfoResponse.ownership:type_name -> solaris.control.v1.Ownership
-	2,   // 60: solaris.control.v1.RunOptions.tun_stack:type_name -> solaris.control.v1.TunStack
-	24,  // 61: solaris.control.v1.ValidateRequest.composition:type_name -> solaris.control.v1.Composition
-	24,  // 62: solaris.control.v1.StartRequest.composition:type_name -> solaris.control.v1.Composition
-	20,  // 63: solaris.control.v1.StartRequest.options:type_name -> solaris.control.v1.RunOptions
-	24,  // 64: solaris.control.v1.ReloadRequest.composition:type_name -> solaris.control.v1.Composition
-	20,  // 65: solaris.control.v1.ReloadRequest.options:type_name -> solaris.control.v1.RunOptions
-	31,  // 66: solaris.control.v1.Composition.sources:type_name -> solaris.control.v1.CompositionSource
-	29,  // 67: solaris.control.v1.Composition.egress:type_name -> solaris.control.v1.Egress
-	25,  // 68: solaris.control.v1.Composition.mesh:type_name -> solaris.control.v1.MeshNetwork
-	26,  // 69: solaris.control.v1.MeshNetwork.tailscale:type_name -> solaris.control.v1.TailscaleNetwork
-	27,  // 70: solaris.control.v1.MeshNetwork.zerotier:type_name -> solaris.control.v1.ZeroTierNetwork
-	28,  // 71: solaris.control.v1.MeshNetwork.easytier:type_name -> solaris.control.v1.EasyTierNetwork
-	30,  // 72: solaris.control.v1.Egress.warp:type_name -> solaris.control.v1.WarpAccount
-	82,  // 73: solaris.control.v1.Egress.vpn_gate:type_name -> solaris.control.v1.VpnGateServer
-	3,   // 74: solaris.control.v1.WarpAccount.protocol:type_name -> solaris.control.v1.WarpProtocol
-	34,  // 75: solaris.control.v1.CompositionReport.warnings:type_name -> solaris.control.v1.CompositionWarning
-	35,  // 76: solaris.control.v1.CompositionReport.groups:type_name -> solaris.control.v1.ComposedGroup
-	56,  // 77: solaris.control.v1.CompositionReport.rules:type_name -> solaris.control.v1.Rule
-	36,  // 78: solaris.control.v1.CompositionReport.nodes:type_name -> solaris.control.v1.PoolNode
-	33,  // 79: solaris.control.v1.CompositionReport.mesh:type_name -> solaris.control.v1.MeshOutbound
-	4,   // 80: solaris.control.v1.ComposedGroup.kind:type_name -> solaris.control.v1.GroupKind
-	0,   // 81: solaris.control.v1.GetStatusResponse.state:type_name -> solaris.control.v1.RunState
-	5,   // 82: solaris.control.v1.GetStatusResponse.mode:type_name -> solaris.control.v1.Mode
-	16,  // 83: solaris.control.v1.GetStatusResponse.last_error:type_name -> solaris.control.v1.Error
-	6,   // 84: solaris.control.v1.GetStatusResponse.recovery_state:type_name -> solaris.control.v1.RecoveryState
-	5,   // 85: solaris.control.v1.SetModeRequest.mode:type_name -> solaris.control.v1.Mode
-	42,  // 86: solaris.control.v1.ProxyGroup.proxies:type_name -> solaris.control.v1.Proxy
-	7,   // 87: solaris.control.v1.ListGroupsRequest.sort:type_name -> solaris.control.v1.GroupSort
-	43,  // 88: solaris.control.v1.ListGroupsResponse.groups:type_name -> solaris.control.v1.ProxyGroup
-	7,   // 89: solaris.control.v1.GetGroupRequest.sort:type_name -> solaris.control.v1.GroupSort
-	43,  // 90: solaris.control.v1.GetGroupResponse.group:type_name -> solaris.control.v1.ProxyGroup
-	8,   // 91: solaris.control.v1.HealthCheckRequest.test:type_name -> solaris.control.v1.DelayTest
-	8,   // 92: solaris.control.v1.TestDelayRequest.test:type_name -> solaris.control.v1.DelayTest
-	9,   // 93: solaris.control.v1.Provider.kind:type_name -> solaris.control.v1.ProviderKind
-	52,  // 94: solaris.control.v1.ListProvidersResponse.providers:type_name -> solaris.control.v1.Provider
-	9,   // 95: solaris.control.v1.UpdateProviderRequest.kind:type_name -> solaris.control.v1.ProviderKind
-	56,  // 96: solaris.control.v1.ListRulesResponse.rules:type_name -> solaris.control.v1.Rule
-	10,  // 97: solaris.control.v1.SubscribeLogsRequest.level:type_name -> solaris.control.v1.LogLevel
-	70,  // 98: solaris.control.v1.PollEventsResponse.events:type_name -> solaris.control.v1.Event
-	71,  // 99: solaris.control.v1.Event.log:type_name -> solaris.control.v1.LogEntry
-	72,  // 100: solaris.control.v1.Event.traffic:type_name -> solaris.control.v1.TrafficSample
-	74,  // 101: solaris.control.v1.Event.connections:type_name -> solaris.control.v1.ConnectionSnapshot
-	10,  // 102: solaris.control.v1.LogEntry.level:type_name -> solaris.control.v1.LogLevel
-	73,  // 103: solaris.control.v1.ConnectionSnapshot.connections:type_name -> solaris.control.v1.Connection
-	77,  // 104: solaris.control.v1.InspectSourceResponse.nodes:type_name -> solaris.control.v1.SourceNode
-	3,   // 105: solaris.control.v1.RegisterWarpRequest.protocol:type_name -> solaris.control.v1.WarpProtocol
-	30,  // 106: solaris.control.v1.RegisterWarpResponse.account:type_name -> solaris.control.v1.WarpAccount
-	82,  // 107: solaris.control.v1.ListVpnGateResponse.servers:type_name -> solaris.control.v1.VpnGateServer
-	83,  // 108: solaris.control.v1.VpnGateServer.openvpn:type_name -> solaris.control.v1.OpenVpnOptions
-	86,  // 109: solaris.control.v1.GetMeshStatusResponse.networks:type_name -> solaris.control.v1.MeshStatus
-	11,  // 110: solaris.control.v1.MeshStatus.state:type_name -> solaris.control.v1.MeshState
-	91,  // 111: solaris.control.v1.ListGeoCategoriesResponse.geosite:type_name -> solaris.control.v1.GeoCategories
-	91,  // 112: solaris.control.v1.ListGeoCategoriesResponse.geoip:type_name -> solaris.control.v1.GeoCategories
-	24,  // 113: solaris.control.v1.PreviewGroupRequest.composition:type_name -> solaris.control.v1.Composition
-	36,  // 114: solaris.control.v1.PreviewGroupResponse.nodes:type_name -> solaris.control.v1.PoolNode
-	24,  // 115: solaris.control.v1.MatchRuleRequest.composition:type_name -> solaris.control.v1.Composition
-	56,  // 116: solaris.control.v1.MatchRuleResponse.rule:type_name -> solaris.control.v1.Rule
-	98,  // 117: solaris.control.v1.ConvertToPlanResponse.skipped:type_name -> solaris.control.v1.SkippedRule
-	24,  // 118: solaris.control.v1.ExportPlanRequest.composition:type_name -> solaris.control.v1.Composition
-	12,  // 119: solaris.control.v1.ExportPlanRequest.format:type_name -> solaris.control.v1.ExportFormat
-	20,  // 120: solaris.control.v1.ExportPlanRequest.options:type_name -> solaris.control.v1.RunOptions
-	121, // [121:121] is the sub-list for method output_type
-	121, // [121:121] is the sub-list for method input_type
-	121, // [121:121] is the sub-list for extension type_name
-	121, // [121:121] is the sub-list for extension extendee
-	0,   // [0:121] is the sub-list for field type_name
+	21,  // 0: solaris.control.v1.Request.get_info:type_name -> solaris.control.v1.GetInfoRequest
+	23,  // 1: solaris.control.v1.Request.claim:type_name -> solaris.control.v1.ClaimRequest
+	25,  // 2: solaris.control.v1.Request.validate:type_name -> solaris.control.v1.ValidateRequest
+	26,  // 3: solaris.control.v1.Request.start:type_name -> solaris.control.v1.StartRequest
+	27,  // 4: solaris.control.v1.Request.reload:type_name -> solaris.control.v1.ReloadRequest
+	41,  // 5: solaris.control.v1.Request.stop:type_name -> solaris.control.v1.StopRequest
+	42,  // 6: solaris.control.v1.Request.set_system_proxy:type_name -> solaris.control.v1.SetSystemProxyRequest
+	43,  // 7: solaris.control.v1.Request.get_status:type_name -> solaris.control.v1.GetStatusRequest
+	45,  // 8: solaris.control.v1.Request.set_mode:type_name -> solaris.control.v1.SetModeRequest
+	48,  // 9: solaris.control.v1.Request.list_groups:type_name -> solaris.control.v1.ListGroupsRequest
+	50,  // 10: solaris.control.v1.Request.get_group:type_name -> solaris.control.v1.GetGroupRequest
+	52,  // 11: solaris.control.v1.Request.select_proxy:type_name -> solaris.control.v1.SelectProxyRequest
+	53,  // 12: solaris.control.v1.Request.health_check:type_name -> solaris.control.v1.HealthCheckRequest
+	54,  // 13: solaris.control.v1.Request.test_delay:type_name -> solaris.control.v1.TestDelayRequest
+	57,  // 14: solaris.control.v1.Request.list_providers:type_name -> solaris.control.v1.ListProvidersRequest
+	59,  // 15: solaris.control.v1.Request.update_provider:type_name -> solaris.control.v1.UpdateProviderRequest
+	61,  // 16: solaris.control.v1.Request.list_rules:type_name -> solaris.control.v1.ListRulesRequest
+	63,  // 17: solaris.control.v1.Request.close_connection:type_name -> solaris.control.v1.CloseConnectionRequest
+	64,  // 18: solaris.control.v1.Request.close_all_connections:type_name -> solaris.control.v1.CloseAllConnectionsRequest
+	65,  // 19: solaris.control.v1.Request.flush_fake_ip:type_name -> solaris.control.v1.FlushFakeIPRequest
+	66,  // 20: solaris.control.v1.Request.flush_dns_cache:type_name -> solaris.control.v1.FlushDNSCacheRequest
+	67,  // 21: solaris.control.v1.Request.subscribe_logs:type_name -> solaris.control.v1.SubscribeLogsRequest
+	68,  // 22: solaris.control.v1.Request.subscribe_traffic:type_name -> solaris.control.v1.SubscribeTrafficRequest
+	69,  // 23: solaris.control.v1.Request.subscribe_connections:type_name -> solaris.control.v1.SubscribeConnectionsRequest
+	71,  // 24: solaris.control.v1.Request.poll_events:type_name -> solaris.control.v1.PollEventsRequest
+	73,  // 25: solaris.control.v1.Request.unsubscribe:type_name -> solaris.control.v1.UnsubscribeRequest
+	79,  // 26: solaris.control.v1.Request.inspect_source:type_name -> solaris.control.v1.InspectSourceRequest
+	93,  // 27: solaris.control.v1.Request.list_geo_categories:type_name -> solaris.control.v1.ListGeoCategoriesRequest
+	96,  // 28: solaris.control.v1.Request.preview_group:type_name -> solaris.control.v1.PreviewGroupRequest
+	98,  // 29: solaris.control.v1.Request.match_rule:type_name -> solaris.control.v1.MatchRuleRequest
+	100, // 30: solaris.control.v1.Request.convert_to_plan:type_name -> solaris.control.v1.ConvertToPlanRequest
+	103, // 31: solaris.control.v1.Request.export_plan:type_name -> solaris.control.v1.ExportPlanRequest
+	82,  // 32: solaris.control.v1.Request.register_warp:type_name -> solaris.control.v1.RegisterWarpRequest
+	84,  // 33: solaris.control.v1.Request.list_vpn_gate:type_name -> solaris.control.v1.ListVpnGateRequest
+	88,  // 34: solaris.control.v1.Request.get_mesh_status:type_name -> solaris.control.v1.GetMeshStatusRequest
+	91,  // 35: solaris.control.v1.Request.login_mesh:type_name -> solaris.control.v1.LoginMeshRequest
+	16,  // 36: solaris.control.v1.Request.get_geo_update:type_name -> solaris.control.v1.GetGeoUpdateRequest
+	19,  // 37: solaris.control.v1.Request.upload_geo:type_name -> solaris.control.v1.UploadGeoRequest
+	20,  // 38: solaris.control.v1.Response.error:type_name -> solaris.control.v1.Error
+	15,  // 39: solaris.control.v1.Response.empty:type_name -> solaris.control.v1.Empty
+	22,  // 40: solaris.control.v1.Response.get_info:type_name -> solaris.control.v1.GetInfoResponse
+	36,  // 41: solaris.control.v1.Response.composition:type_name -> solaris.control.v1.CompositionReport
+	44,  // 42: solaris.control.v1.Response.get_status:type_name -> solaris.control.v1.GetStatusResponse
+	49,  // 43: solaris.control.v1.Response.list_groups:type_name -> solaris.control.v1.ListGroupsResponse
+	51,  // 44: solaris.control.v1.Response.get_group:type_name -> solaris.control.v1.GetGroupResponse
+	55,  // 45: solaris.control.v1.Response.test_delay:type_name -> solaris.control.v1.TestDelayResponse
+	58,  // 46: solaris.control.v1.Response.list_providers:type_name -> solaris.control.v1.ListProvidersResponse
+	62,  // 47: solaris.control.v1.Response.list_rules:type_name -> solaris.control.v1.ListRulesResponse
+	70,  // 48: solaris.control.v1.Response.subscribe:type_name -> solaris.control.v1.SubscribeResponse
+	72,  // 49: solaris.control.v1.Response.poll_events:type_name -> solaris.control.v1.PollEventsResponse
+	80,  // 50: solaris.control.v1.Response.inspect_source:type_name -> solaris.control.v1.InspectSourceResponse
+	94,  // 51: solaris.control.v1.Response.list_geo_categories:type_name -> solaris.control.v1.ListGeoCategoriesResponse
+	97,  // 52: solaris.control.v1.Response.preview_group:type_name -> solaris.control.v1.PreviewGroupResponse
+	99,  // 53: solaris.control.v1.Response.match_rule:type_name -> solaris.control.v1.MatchRuleResponse
+	101, // 54: solaris.control.v1.Response.convert_to_plan:type_name -> solaris.control.v1.ConvertToPlanResponse
+	104, // 55: solaris.control.v1.Response.export_plan:type_name -> solaris.control.v1.ExportPlanResponse
+	83,  // 56: solaris.control.v1.Response.register_warp:type_name -> solaris.control.v1.RegisterWarpResponse
+	85,  // 57: solaris.control.v1.Response.list_vpn_gate:type_name -> solaris.control.v1.ListVpnGateResponse
+	89,  // 58: solaris.control.v1.Response.get_mesh_status:type_name -> solaris.control.v1.GetMeshStatusResponse
+	92,  // 59: solaris.control.v1.Response.login_mesh:type_name -> solaris.control.v1.LoginMeshResponse
+	18,  // 60: solaris.control.v1.Response.get_geo_update:type_name -> solaris.control.v1.GetGeoUpdateResponse
+	17,  // 61: solaris.control.v1.GetGeoUpdateResponse.files:type_name -> solaris.control.v1.GeoUpdateFile
+	0,   // 62: solaris.control.v1.GetInfoResponse.state:type_name -> solaris.control.v1.RunState
+	1,   // 63: solaris.control.v1.GetInfoResponse.ownership:type_name -> solaris.control.v1.Ownership
+	2,   // 64: solaris.control.v1.RunOptions.tun_stack:type_name -> solaris.control.v1.TunStack
+	28,  // 65: solaris.control.v1.ValidateRequest.composition:type_name -> solaris.control.v1.Composition
+	28,  // 66: solaris.control.v1.StartRequest.composition:type_name -> solaris.control.v1.Composition
+	24,  // 67: solaris.control.v1.StartRequest.options:type_name -> solaris.control.v1.RunOptions
+	28,  // 68: solaris.control.v1.ReloadRequest.composition:type_name -> solaris.control.v1.Composition
+	24,  // 69: solaris.control.v1.ReloadRequest.options:type_name -> solaris.control.v1.RunOptions
+	35,  // 70: solaris.control.v1.Composition.sources:type_name -> solaris.control.v1.CompositionSource
+	33,  // 71: solaris.control.v1.Composition.egress:type_name -> solaris.control.v1.Egress
+	29,  // 72: solaris.control.v1.Composition.mesh:type_name -> solaris.control.v1.MeshNetwork
+	30,  // 73: solaris.control.v1.MeshNetwork.tailscale:type_name -> solaris.control.v1.TailscaleNetwork
+	31,  // 74: solaris.control.v1.MeshNetwork.zerotier:type_name -> solaris.control.v1.ZeroTierNetwork
+	32,  // 75: solaris.control.v1.MeshNetwork.easytier:type_name -> solaris.control.v1.EasyTierNetwork
+	34,  // 76: solaris.control.v1.Egress.warp:type_name -> solaris.control.v1.WarpAccount
+	86,  // 77: solaris.control.v1.Egress.vpn_gate:type_name -> solaris.control.v1.VpnGateServer
+	3,   // 78: solaris.control.v1.WarpAccount.protocol:type_name -> solaris.control.v1.WarpProtocol
+	38,  // 79: solaris.control.v1.CompositionReport.warnings:type_name -> solaris.control.v1.CompositionWarning
+	39,  // 80: solaris.control.v1.CompositionReport.groups:type_name -> solaris.control.v1.ComposedGroup
+	60,  // 81: solaris.control.v1.CompositionReport.rules:type_name -> solaris.control.v1.Rule
+	40,  // 82: solaris.control.v1.CompositionReport.nodes:type_name -> solaris.control.v1.PoolNode
+	37,  // 83: solaris.control.v1.CompositionReport.mesh:type_name -> solaris.control.v1.MeshOutbound
+	4,   // 84: solaris.control.v1.ComposedGroup.kind:type_name -> solaris.control.v1.GroupKind
+	0,   // 85: solaris.control.v1.GetStatusResponse.state:type_name -> solaris.control.v1.RunState
+	5,   // 86: solaris.control.v1.GetStatusResponse.mode:type_name -> solaris.control.v1.Mode
+	20,  // 87: solaris.control.v1.GetStatusResponse.last_error:type_name -> solaris.control.v1.Error
+	6,   // 88: solaris.control.v1.GetStatusResponse.recovery_state:type_name -> solaris.control.v1.RecoveryState
+	5,   // 89: solaris.control.v1.SetModeRequest.mode:type_name -> solaris.control.v1.Mode
+	46,  // 90: solaris.control.v1.ProxyGroup.proxies:type_name -> solaris.control.v1.Proxy
+	7,   // 91: solaris.control.v1.ListGroupsRequest.sort:type_name -> solaris.control.v1.GroupSort
+	47,  // 92: solaris.control.v1.ListGroupsResponse.groups:type_name -> solaris.control.v1.ProxyGroup
+	7,   // 93: solaris.control.v1.GetGroupRequest.sort:type_name -> solaris.control.v1.GroupSort
+	47,  // 94: solaris.control.v1.GetGroupResponse.group:type_name -> solaris.control.v1.ProxyGroup
+	8,   // 95: solaris.control.v1.HealthCheckRequest.test:type_name -> solaris.control.v1.DelayTest
+	8,   // 96: solaris.control.v1.TestDelayRequest.test:type_name -> solaris.control.v1.DelayTest
+	9,   // 97: solaris.control.v1.Provider.kind:type_name -> solaris.control.v1.ProviderKind
+	56,  // 98: solaris.control.v1.ListProvidersResponse.providers:type_name -> solaris.control.v1.Provider
+	9,   // 99: solaris.control.v1.UpdateProviderRequest.kind:type_name -> solaris.control.v1.ProviderKind
+	60,  // 100: solaris.control.v1.ListRulesResponse.rules:type_name -> solaris.control.v1.Rule
+	10,  // 101: solaris.control.v1.SubscribeLogsRequest.level:type_name -> solaris.control.v1.LogLevel
+	74,  // 102: solaris.control.v1.PollEventsResponse.events:type_name -> solaris.control.v1.Event
+	75,  // 103: solaris.control.v1.Event.log:type_name -> solaris.control.v1.LogEntry
+	76,  // 104: solaris.control.v1.Event.traffic:type_name -> solaris.control.v1.TrafficSample
+	78,  // 105: solaris.control.v1.Event.connections:type_name -> solaris.control.v1.ConnectionSnapshot
+	10,  // 106: solaris.control.v1.LogEntry.level:type_name -> solaris.control.v1.LogLevel
+	77,  // 107: solaris.control.v1.ConnectionSnapshot.connections:type_name -> solaris.control.v1.Connection
+	81,  // 108: solaris.control.v1.InspectSourceResponse.nodes:type_name -> solaris.control.v1.SourceNode
+	3,   // 109: solaris.control.v1.RegisterWarpRequest.protocol:type_name -> solaris.control.v1.WarpProtocol
+	34,  // 110: solaris.control.v1.RegisterWarpResponse.account:type_name -> solaris.control.v1.WarpAccount
+	86,  // 111: solaris.control.v1.ListVpnGateResponse.servers:type_name -> solaris.control.v1.VpnGateServer
+	87,  // 112: solaris.control.v1.VpnGateServer.openvpn:type_name -> solaris.control.v1.OpenVpnOptions
+	90,  // 113: solaris.control.v1.GetMeshStatusResponse.networks:type_name -> solaris.control.v1.MeshStatus
+	11,  // 114: solaris.control.v1.MeshStatus.state:type_name -> solaris.control.v1.MeshState
+	95,  // 115: solaris.control.v1.ListGeoCategoriesResponse.geosite:type_name -> solaris.control.v1.GeoCategories
+	95,  // 116: solaris.control.v1.ListGeoCategoriesResponse.geoip:type_name -> solaris.control.v1.GeoCategories
+	28,  // 117: solaris.control.v1.PreviewGroupRequest.composition:type_name -> solaris.control.v1.Composition
+	40,  // 118: solaris.control.v1.PreviewGroupResponse.nodes:type_name -> solaris.control.v1.PoolNode
+	28,  // 119: solaris.control.v1.MatchRuleRequest.composition:type_name -> solaris.control.v1.Composition
+	60,  // 120: solaris.control.v1.MatchRuleResponse.rule:type_name -> solaris.control.v1.Rule
+	102, // 121: solaris.control.v1.ConvertToPlanResponse.skipped:type_name -> solaris.control.v1.SkippedRule
+	28,  // 122: solaris.control.v1.ExportPlanRequest.composition:type_name -> solaris.control.v1.Composition
+	12,  // 123: solaris.control.v1.ExportPlanRequest.format:type_name -> solaris.control.v1.ExportFormat
+	24,  // 124: solaris.control.v1.ExportPlanRequest.options:type_name -> solaris.control.v1.RunOptions
+	125, // [125:125] is the sub-list for method output_type
+	125, // [125:125] is the sub-list for method input_type
+	125, // [125:125] is the sub-list for extension type_name
+	125, // [125:125] is the sub-list for extension extendee
+	0,   // [0:125] is the sub-list for field type_name
 }
 
 func init() { file_solaris_protocol_control_proto_init() }
@@ -8041,6 +8392,8 @@ func file_solaris_protocol_control_proto_init() {
 		(*Request_ListVpnGate)(nil),
 		(*Request_GetMeshStatus)(nil),
 		(*Request_LoginMesh)(nil),
+		(*Request_GetGeoUpdate)(nil),
+		(*Request_UploadGeo)(nil),
 	}
 	file_solaris_protocol_control_proto_msgTypes[1].OneofWrappers = []any{
 		(*Response_Error)(nil),
@@ -8065,32 +8418,33 @@ func file_solaris_protocol_control_proto_init() {
 		(*Response_ListVpnGate)(nil),
 		(*Response_GetMeshStatus)(nil),
 		(*Response_LoginMesh)(nil),
+		(*Response_GetGeoUpdate)(nil),
 	}
-	file_solaris_protocol_control_proto_msgTypes[8].OneofWrappers = []any{
+	file_solaris_protocol_control_proto_msgTypes[12].OneofWrappers = []any{
 		(*ValidateRequest_ConfigYaml)(nil),
 		(*ValidateRequest_Composition)(nil),
 	}
-	file_solaris_protocol_control_proto_msgTypes[9].OneofWrappers = []any{
+	file_solaris_protocol_control_proto_msgTypes[13].OneofWrappers = []any{
 		(*StartRequest_ConfigYaml)(nil),
 		(*StartRequest_Composition)(nil),
 	}
-	file_solaris_protocol_control_proto_msgTypes[10].OneofWrappers = []any{
+	file_solaris_protocol_control_proto_msgTypes[14].OneofWrappers = []any{
 		(*ReloadRequest_ConfigYaml)(nil),
 		(*ReloadRequest_Composition)(nil),
 	}
-	file_solaris_protocol_control_proto_msgTypes[12].OneofWrappers = []any{
+	file_solaris_protocol_control_proto_msgTypes[16].OneofWrappers = []any{
 		(*MeshNetwork_Tailscale)(nil),
 		(*MeshNetwork_Zerotier)(nil),
 		(*MeshNetwork_Easytier)(nil),
 	}
-	file_solaris_protocol_control_proto_msgTypes[27].OneofWrappers = []any{}
-	file_solaris_protocol_control_proto_msgTypes[29].OneofWrappers = []any{}
-	file_solaris_protocol_control_proto_msgTypes[57].OneofWrappers = []any{
+	file_solaris_protocol_control_proto_msgTypes[31].OneofWrappers = []any{}
+	file_solaris_protocol_control_proto_msgTypes[33].OneofWrappers = []any{}
+	file_solaris_protocol_control_proto_msgTypes[61].OneofWrappers = []any{
 		(*Event_Log)(nil),
 		(*Event_Traffic)(nil),
 		(*Event_Connections)(nil),
 	}
-	file_solaris_protocol_control_proto_msgTypes[81].OneofWrappers = []any{
+	file_solaris_protocol_control_proto_msgTypes[85].OneofWrappers = []any{
 		(*MatchRuleRequest_ConfigYaml)(nil),
 		(*MatchRuleRequest_Composition)(nil),
 	}
@@ -8100,7 +8454,7 @@ func file_solaris_protocol_control_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_solaris_protocol_control_proto_rawDesc), len(file_solaris_protocol_control_proto_rawDesc)),
 			NumEnums:      13,
-			NumMessages:   88,
+			NumMessages:   92,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

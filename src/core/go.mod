@@ -180,4 +180,4 @@ require (
 	golang.org/x/tools v0.50.0 // indirect
 )
 
-replace github.com/metacubex/mihomo => github.com/Ember-Moth/mihomo v1.19.33-0.20261103143402-f499052f0550
+replace github.com/metacubex/mihomo => github.com/Ember-Moth/mihomo v1.19.33-0.20261103155416-c2de0f865c7e

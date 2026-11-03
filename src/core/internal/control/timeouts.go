@@ -48,6 +48,7 @@ func requestBudget(request *controlpb.Request) time.Duration {
 func serialized(request *controlpb.Request) bool {
 	switch request.Method.(type) {
 	case *controlpb.Request_Claim, *controlpb.Request_Validate, *controlpb.Request_Start,
+		*controlpb.Request_UploadGeo, *controlpb.Request_GetGeoUpdate,
 		*controlpb.Request_Reload, *controlpb.Request_Stop, *controlpb.Request_SetSystemProxy,
 		*controlpb.Request_SetMode, *controlpb.Request_SelectProxy, *controlpb.Request_UpdateProvider,
 		*controlpb.Request_CloseConnection, *controlpb.Request_CloseAllConnections,

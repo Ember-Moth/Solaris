@@ -6,7 +6,7 @@ Solaris 从 1.0.0 起进入维护。本文是日常工作的依据：各平台�
 
 ## 1. 现状
 
-内核使用 mihomo 增强版，固定在 `Meta` 提交 `f499052f0550`（D38）。更新 replace 后同时检查 go.sum、Cronet 绑定和
+内核使用 mihomo 增强版，固定在 `Meta` 提交 `c2de0f865c7e`（D38）。更新 replace 后同时检查 go.sum、Cronet 绑定和
 原生库版本、许可证清单、macOS 最终链接和 Windows 安装目录的 `libcronet.dll`。`go` CI 另带发布标签验证
 Naive 原生加载与配置拼装；不带 `with_naive` 的普通 Go 开发构建会明确拒绝 Naive 节点。Naive HTTP/2、QUIC/UoT
 及 AnyTLS+REALITY 已用测试服务端验证；真实节点与系统 TUN 下的端到端行为仍需实机验收。
@@ -315,19 +315,14 @@ exits.md 第 9 节的待实测项。
   `syspolicy_check` 另外报 "Internal Xprotect Error"，在 Mac 上不出现。所以发布工作流只把公证与 staple 当关卡，这两项
   检查只报警告；以测试 Mac 上下载后打开的结果为准（2.2 节）。要是那里被拒，就从这些数据文件查起，例如把它们移出
   `Contents/MacOS`。
-- **mihomo 内部的数据竞争**：mihomo 用终结器关闭重载换下的出站，关闭时写日志要读日志级别，而下一次
-  `ApplyConfig` 开头的 `log.SetLevel` 不加锁地写它；`ApplyConfig` 还先改写入站对每个连接都要读的局域网、免认证
-  设置，再关闭入站。两处都在 mihomo 里，读写的是一个整数和几个切片。停止时 engine 先关入站、自己关出站，不经过
-  这两处；重载时避不开。`-race` 构建在每次应用配置前等到期的终结器跑完（`internal/engine/race.go`），发布构建
-  不等；入站的那处没法等，所以测试不要连上入站后紧接着重载。mihomo 的 `route.ReCreateServer` 在协程里关闭、替换
-  包级的控制器 server，也不加锁；engine 清掉控制器地址，所以平时只读不写，只有故意直接起控制器的
-  `TestSecurity3EmbedModeGuardsAStrayController` 会写，它在 `-race` 下跳过，普通的 `go test` 照跑。
-- **mihomo 读延迟不加锁**：延迟历史的队列（`common/queue` 的 `Last`）先不加锁地读长度，再加锁取值；url-test、
-  fallback、load-balance 组的后台 URL 测试写入时，读节点最近的延迟或 url-test 组此刻所用的节点（`ListGroups`、
-  TCP 测速找组所用的节点，D32）会被 `-race` 报出，读的只是切片长度。测试先等这些组第一次测完
-  （`tcpdelay_test.go` 的 `urlTested`），再读延迟。
-- **GEO 数据的自动更新**在 engine 的协程里调用 mihomo 的 `UpdateGeoDatabases`，它和解析配置共用 mihomo 的包级
-  状态，没有加锁（mihomo 自己的定时更新也是这样）。测试不跑真实的更新。
+- **mihomo 竞态修复**：已锁定的 fork 修复了日志级别读写、队列空检查/弹出越界、入站权限切片和认证对象、
+  控制器重建，以及连接接入期间重载暴露的 resolver/hosts、IPv6/IP4P、路由模式和嗅探状态竞争。权限列表复制后发布，
+  控制器串行交接 listener，resolver/hosts 与嗅探对象通过原子快照读取。Solaris 已删除 race 专用终结器等待，恢复
+  控制器安全测试，并移除测速和端口探测中的竞态绕过。回归覆盖并发更新、旧控制器不得在停止后复活、TLS 错误不得
+  泄漏端口，以及 4 条持续传输连接并行接入新连接和 40 次重载。不能据此断言整个 fork 不再有其他竞态。
+- **GEO 自动更新**已迁到 Python；Go 在生命周期锁内接收和安装，下载不占用该锁。fork 的 MMDB/ASN 更新保留旧
+  reader，DAT 下次应用配置时生效。配套 fork 已固定到依赖锁，普通构建不依赖本地 `go.work`；Windows/NE 的真实
+  传输和更新仍需打包后验收。
 - **macOS 的登录项**由 `SMAppService` 不带参数启动 app，所以登录后界面会显示窗口；Windows 的计划任务带
   `--background`，只进托盘（[ui.md](ui.md) 第 8 节）。
 - **WARP 的注册接口不是官方的**：Cloudflare 改动或限流时注册会失败。失败时拒绝连接，不退回普通代理；接口的常量

@@ -372,18 +372,24 @@ D 编号也在那里。
   已是 mihomo 的写法，打包时原样放进安装包，由内核所在的进程种进 home：打开 engine 前把 home 里缺少的文件复制
   过去（`internal/geodata` 的 `Seed`，先写临时文件再改名，不会留下半个文件），已有的不动，engine 的 GEO 更新会
   替换它们。macOS 的扩展在 attach 时复制，失败时隧道不启动；Windows 服务在打开属主的 home 时从安装目录的
-  `geodata\` 复制，失败时只记一条警告，照常启动，由 mihomo 在需要时下载。开发服务（`scripts/dev.py`）启动时也会
+  `geodata\` 复制，失败时记警告，依赖缺失数据的配置会报错。开发服务（`scripts/dev.py`）启动时也会
   放一份。
 - **兜底清单**：`src/solaris/host/geo_categories.py`，由 `fetch_geodata.py --categories` 从附带的数据生成，
   28 KB，带两个文件的 sha256。内核没有数据或连不上时（例如 macOS 隧道未连接），分类选择器用它。用 Python
   模块而不是数据文件，Nuitka 打包时自动带上。CI 用 `--check` 核对清单与钉住的数据一致。
-- **更新**：基础段开启 `geo-auto-update`，周期 24 小时。mihomo 只在它自己的 `main` 里启动 GEO 更新器，内嵌时
-  不会运行，所以 engine 在配置开启自动更新时自己运行一个：每小时检查一次，数据文件比更新周期旧时调用 mihomo 的
-  `updater.UpdateGeoDatabases`，从 `geox-url` 下载（mihomo 的下载经内核自己的出站，按规则走）；内核停止时它也
-  停止。新数据在下一次 Start 或 Reload 时生效，已应用的规则不变。
-- 没有数据时，mihomo 在第一次需要时同步下载（解析 GEOSITE / GEOIP 规则，或基础段里的 `geosite:` DNS 策略时），
-  会让那次 Validate 等上下载完成，所以安装包必须附带数据。单元测试写入一份很小的数据（`geodatatest`），
-  从不下载；端到端测试用附带的数据。
+- **更新**：基础段开启 `geo-auto-update`，周期 24 小时。Python 每 30 秒读取已应用配置的 `GetGeoUpdate`，按每份
+  启用数据的安装时间判断过期；模式决定使用 GeoIP.dat 或 MMDB，未使用的 ASN 不参与判断。`Validate` 不改变更新计划。
+  HTTPX 异步流下载遵循系统代理或环境代理（由 Python 进程发起），遵循 `geox-url`，有连接、读取和总时限；失败从
+  60 秒开始退避，最多一小时。完整下载缓存在 GUI 数据目录 `geodata-cache/`，按 URL、时间、大小、SHA-256 重新验证。
+  SHA-256 用于缓存和 IPC 完整性，运行时自定义来源仍由用户信任；随包资源继续使用固定来源和固定哈希。
+- **权限与生效**：Python 不直接写服务或扩展目录。`UploadGeo` 经现有授权通道，以 48 KiB 分块传输，每次安装上限
+  256 MiB。Go 只接受计划内的文件名，校验代次、偏移、长度、摘要和数据格式后原子替换；取消、错误或旧配置不能发布
+  半份文件。MMDB/ASN 使用 fork 的 `InstallIP` / `InstallASN` 发布不可变内存快照，已有查询继续安全读旧快照；DAT
+  清空加载缓存后在下次 Start/Reload 时生效。每次只接收一份文件，未完成上传在停止、重载、关闭、重启或闲置超时后清理。
+- **GUI 生命周期**：完全退出时取消下载并关闭 HTTP 流，内核继续运行；再次打开立即补查。关闭窗口但仍在托盘运行时
+  继续更新。配置改变或内核停止后取消旧任务，Go 同时拒绝旧代次的上传。macOS 扩展未运行时等待下次连接再检查。
+- 内嵌模式禁用 mihomo 的隐式 GEO 下载；缺少或损坏的数据使配置验证明确失败，因此安装包必须附带数据。单元测试
+  写入小数据（`geodatatest`），端到端测试用附带数据。
 
 ### 8.5 方案 JSON（版本 1）
 

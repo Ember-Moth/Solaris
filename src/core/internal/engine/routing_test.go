@@ -278,50 +278,8 @@ func TestInspectSourceAndGeoCategories(t *testing.T) {
 	}
 }
 
-func TestGeoUpdateDue(t *testing.T) {
-	now := time.Date(2026, 10, 29, 12, 0, 0, 0, time.UTC)
-	day := 24 * time.Hour
-	for _, test := range []struct {
-		written  time.Time
-		interval time.Duration
-		want     bool
-	}{
-		{now.Add(-day), day, true},
-		{now.Add(-day + time.Minute), day, false},
-		{time.Time{}, day, false}, // no data
-		{now.Add(-48 * time.Hour), 0, false},
-	} {
-		if got := geoUpdateDue(test.written, test.interval, now); got != test.want {
-			t.Errorf("written %v, interval %v: due = %v, want %v", test.written, test.interval, got, test.want)
-		}
-	}
-}
-
-func TestGeoUpdaterChecksAndStops(t *testing.T) {
-	updates := make(chan struct{}, 8)
-	updater := &geoUpdater{interval: 24 * time.Hour, stop: make(chan struct{}), done: make(chan struct{})}
-	stale := func() time.Time { return time.Now().Add(-1000 * time.Hour) }
-	go updater.run(10*time.Millisecond, stale, func() error {
-		updates <- struct{}{}
-		return errors.New("offline")
-	})
-	for range 2 {
-		select {
-		case <-updates:
-		case <-time.After(5 * time.Second):
-			t.Fatal("the updater did not try")
-		}
-	}
-	close(updater.stop)
-	select {
-	case <-updater.done:
-	case <-time.After(5 * time.Second):
-		t.Fatal("the updater did not stop")
-	}
-}
-
 // Composed configurations start and stop the updater with the core.
-func TestGeoUpdaterFollowsTheCore(t *testing.T) {
+func TestGeoUpdatePlanFollowsTheCore(t *testing.T) {
 	engine := openEngine(t, admission.TunNone)
 	server := target(t)
 	port := porttest.Free(t)
@@ -329,14 +287,14 @@ func TestGeoUpdaterFollowsTheCore(t *testing.T) {
 	if _, err := engine.Start(admission.Profile{Composition: composition(plan), Options: admission.RunOptions{MixedPort: uint16(port)}}); err != nil {
 		t.Fatal(err)
 	}
-	if engine.geo == nil {
+	if engine.geo.plan == nil {
 		t.Fatal("no updater for geo-auto-update")
 	}
 	if _, err := engine.Reload(admission.Profile{Composition: composition(plan), Options: admission.RunOptions{MixedPort: uint16(port)},
 		Overrides: [][]byte{[]byte("geo-auto-update: false\n")}}); err != nil {
 		t.Fatal(err)
 	}
-	if engine.geo != nil {
+	if engine.geo.plan != nil {
 		t.Fatal("the updater runs after geo-auto-update went off")
 	}
 	if _, err := engine.Reload(admission.Profile{Composition: composition(plan), Options: admission.RunOptions{MixedPort: uint16(port)}}); err != nil {
@@ -345,7 +303,7 @@ func TestGeoUpdaterFollowsTheCore(t *testing.T) {
 	if err := engine.Stop(); err != nil {
 		t.Fatal(err)
 	}
-	if engine.geo != nil {
+	if engine.geo.plan != nil {
 		t.Fatal("the updater outlived the core")
 	}
 }

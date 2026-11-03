@@ -53,6 +53,16 @@ Windows x64 / ARM64 原生配置测试使用 `with_gvisor,with_naive,with_purego
 目录；已安装的服务只加载自身目录里的 DLL。各目标的构建与验证均已接入 CI。
 Go 1.27 的竞态运行时不支持 Windows ARM64，该平台运行普通测试与原生配置测试；竞态检查继续在其他受支持平台运行。
 
+普通构建使用 `src/core/go.mod` 锁定的远端 fork 提交。需要修改 fork 时，可在本地用 `go.work` 联调（该文件不提交）：
+在仓库根目录执行
+`go work init ./src/core`，再执行 `go work edit -replace=github.com/metacubex/mihomo=/绝对路径/mihomo`。
+配套 API 为 `geodata.SetExternalDownloads`、`geodata.Usage`、`mmdb.InstallIP` 和 `mmdb.InstallASN`。
+竞态修复同时将 resolver 的共享对象/开关改为原子值，调用方使用 `Load` / `Store`；hosts 树必须构建完成后发布，
+发布后的树不能再修改。Solaris 的两个 resolver 调用点已同步。
+此时内核版本为 `(devel)`，固定版本断言 `TestCoreVersionIsTheMihomoInGoMod` 不适用于该本地构建；其余回归照常运行。
+完成 fork 联调后，先提交并发布 fork，再将 `src/core/go.mod` 固定到真实提交、更新 go.sum 和许可证清单，最后使用 `GOWORK=off`
+完成包含版本断言的全量验证。不能把开发工作区替换作为发布依赖。
+
 ## 测试与开发服务
 
 ```bash

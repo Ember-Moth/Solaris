@@ -15,6 +15,7 @@ from solaris.models.backup_auto import BackupTargets, Changes
 from solaris.models.backup_google import GoogleDriveProvider
 from solaris.models.backup_icloud import ICloudProvider
 from solaris.models.credentials import CredentialStore
+from solaris.models.geodata import GeoDownloader, GeoUpdates
 from solaris.models.library import ProfileLibrary
 from solaris.models.settings import DatabaseSettingsStore, Settings, SettingsStore
 from solaris.models.store import ProfileStore
@@ -55,6 +56,7 @@ class ViewModels:
     about: AboutViewModel
     backup: BackupViewModel
     system_extension: SystemExtensionViewModel
+    geo_updates: GeoUpdates
 
     def initial_properties(self) -> dict[str, object]:
         """Main.qml's required properties."""
@@ -76,6 +78,7 @@ class ViewModels:
 
     def start(self) -> None:
         self.runner.start()
+        self.runner.submit(self.geo_updates.run())
         self.shell.start()
         self.overview.start()
         self.proxies.refresh()
@@ -265,4 +268,5 @@ def compose(
         about,
         backup,
         system_extension,
+        GeoUpdates(host, GeoDownloader(store.directory / "geodata-cache")),
     )

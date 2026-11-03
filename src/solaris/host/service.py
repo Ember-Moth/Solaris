@@ -18,6 +18,8 @@ from solaris.host.base import (
     EasyTierSettings,
     GeoCategories,
     GeoDataset,
+    GeoUpdateFile,
+    GeoUpdatePlan,
     GroupPreview,
     HostError,
     HostInfo,
@@ -80,6 +82,8 @@ _READS = frozenset(
         "list_groups",
         "list_rules",
         "list_geo_categories",
+        "get_geo_update",
+        "upload_geo",
         "subscribe_logs",
         "subscribe_traffic",
         "subscribe_connections",
@@ -520,6 +524,45 @@ class ServiceHost:
             geosite=_dataset(listed.geosite, bundled.geosite),
             geoip=_dataset(listed.geoip, bundled.geoip),
         )
+
+    async def get_geo_update(self) -> GeoUpdatePlan:
+        response = await self._unclaimed(
+            self._call(pb.Request(get_geo_update=pb.GetGeoUpdateRequest())), None
+        )
+        if response is None:
+            return GeoUpdatePlan()
+        plan = response.get_geo_update
+        return GeoUpdatePlan(
+            plan.generation,
+            plan.interval_hours,
+            tuple(GeoUpdateFile(f.name, f.url, f.updated_at_unix_ms) for f in plan.files),
+        )
+
+    async def upload_geo(
+        self,
+        generation: str,
+        transfer_id: str,
+        name: str,
+        size: int,
+        sha256: str,
+        offset: int,
+        data: bytes = b"",
+        *,
+        complete: bool = False,
+        abort: bool = False,
+    ) -> None:
+        request = pb.UploadGeoRequest(
+            generation=generation,
+            transfer_id=transfer_id,
+            name=name,
+            size=size,
+            sha256=sha256,
+            offset=offset,
+            data=data,
+            complete=complete,
+            abort=abort,
+        )
+        await self._call(pb.Request(upload_geo=request))
 
     async def preview_group(self, composition: Composition, group_id: str) -> GroupPreview:
         request = pb.PreviewGroupRequest(composition=_composition(composition), group_id=group_id)

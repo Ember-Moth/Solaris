@@ -23,6 +23,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	geo "github.com/metacubex/mihomo/component/geodata"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/constant/features"
 	"github.com/metacubex/mihomo/hub/route"
@@ -70,9 +71,8 @@ type Engine struct {
 	// global state and must not do two of them at once.
 	lifecycle sync.Mutex
 
-	// geo refreshes the GEO data while a configuration asks for it; the lifecycle lock
-	// guards it.
-	geo *geoUpdater
+	// geo describes the applied profile and receives uploads; lifecycle guards it.
+	geo geoState
 
 	mu        sync.RWMutex
 	state     controlpb.RunState
@@ -130,9 +130,11 @@ func newEngine(options Options) (*Engine, error) {
 	if err := os.MkdirAll(home, 0o700); err != nil {
 		return nil, err
 	}
+	cleanGeoUploads(home)
 	// Second line of defense: should a controller ever start, it cannot restart the
 	// process, rewrite the configuration or upgrade the core (§3.3 #3).
 	route.SetEmbedMode(true)
+	geo.SetExternalDownloads(true)
 	C.SetHomeDir(home)
 	if err := checkPathSandbox(home); err != nil {
 		return nil, err
@@ -212,6 +214,7 @@ func (e *Engine) Close() error {
 	e.closed = true
 	e.state = controlpb.RunState_RUN_STATE_STOPPED
 	e.mu.Unlock()
+	e.geo.reset()
 	open.Store(false)
 	return nil
 }

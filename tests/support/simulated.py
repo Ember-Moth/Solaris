@@ -34,6 +34,7 @@ from solaris.host.base import (
     CompositionReport,
     Connection,
     GeoCategories,
+    GeoUpdatePlan,
     GroupPreview,
     HostError,
     HostInfo,
@@ -415,6 +416,24 @@ def _rank(level: str) -> int:
 
 
 class SimulatedHost:
+    async def get_geo_update(self) -> GeoUpdatePlan:
+        return GeoUpdatePlan()
+
+    async def upload_geo(
+        self,
+        generation: str,
+        transfer_id: str,
+        name: str,
+        size: int,
+        sha256: str,
+        offset: int,
+        data: bytes = b"",
+        *,
+        complete: bool = False,
+        abort: bool = False,
+    ) -> None:
+        raise HostError("unsupported_method", "the preview does not install GEO databases")
+
     def __init__(
         self,
         *,

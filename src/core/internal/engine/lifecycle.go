@@ -38,19 +38,12 @@ func (e *Engine) Validate(profile admission.Profile) (*controlpb.CompositionRepo
 func (e *Engine) apply(admitted *admittedConfig) {
 	mesh := e.adoptMesh(admitted)
 	closeReplaced(mesh)
-	applyConfig(admitted.cfg)
+	hub.ApplyConfig(admitted.cfg)
 	e.settleTUN()
 	e.setEntries(admitted.entries)
 	e.clearTCPDelays()
-	e.syncGeoUpdater(admitted.cfg)
+	e.syncGeoConfig(admitted)
 	e.runMesh(mesh)
-}
-
-// applyConfig is hub.ApplyConfig, once the finalizers that are due have run when the race
-// detector is on (race.go).
-func applyConfig(cfg *config.Config) {
-	settleFinalizers()
-	hub.ApplyConfig(cfg)
 }
 
 // prepareTUN gives mihomo the descriptor its TUN runs on in fd mode, right before apply.
@@ -251,7 +244,7 @@ func idleConfig() (*config.Config, error) {
 // teardown takes the running configuration down. executor.Shutdown alone is meant for
 // process exit: it closes the TUN but leaves the ports, DNS server and providers.
 func (e *Engine) teardown() {
-	e.syncGeoUpdater(nil)
+	e.geo.reset()
 	e.setEntries(nil)
 	e.clearTCPDelays()
 	proxies := tunnel.Proxies()
@@ -262,7 +255,7 @@ func (e *Engine) teardown() {
 	if idle, err := idleConfig(); err != nil {
 		log.Errorln("[engine] idle configuration: %s", err)
 	} else {
-		applyConfig(idle)
+		hub.ApplyConfig(idle)
 	}
 	e.closeMesh()
 	e.settleTUN()
@@ -286,9 +279,8 @@ func (e *Engine) teardown() {
 	}
 }
 
-// closeInbounds closes the inbounds that check each connection against the LAN and
-// authentication settings: hub.ApplyConfig sets those, which the inbounds read without a
-// lock, before it closes the inbounds.
+// closeInbounds closes the plain proxy listeners as part of teardown, before applying
+// the idle configuration and closing the outbounds.
 func closeInbounds() {
 	listener.PatchInboundListeners(nil, tunnel.Tunnel, true)
 	listener.ReCreateHTTP(0, tunnel.Tunnel)

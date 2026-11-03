@@ -3,6 +3,7 @@ package engine
 import (
 	"fmt"
 
+	geo "github.com/metacubex/mihomo/component/geodata"
 	"github.com/metacubex/mihomo/config"
 	"github.com/metacubex/mihomo/hub/executor"
 	"github.com/metacubex/mihomo/log"
@@ -13,7 +14,8 @@ import (
 
 // admittedConfig is a configuration that passed the admission pipeline.
 type admittedConfig struct {
-	cfg *config.Config
+	cfg       *config.Config
+	geoBefore geo.UsageCounters
 	// doc is the configuration as it went to mihomo's parser.
 	doc map[string]any
 	// report and entries come with a composition, and so do the ids of its mesh networks,
@@ -40,6 +42,7 @@ func admitProfile(profile admission.Profile, host admission.Host) (*admittedConf
 	if err != nil {
 		return nil, err
 	}
+	before := geo.Usage()
 	cfg, err := executor.ParseWithBytes(prepared.YAML)
 	if err != nil {
 		return nil, invalidConfig(err)
@@ -47,7 +50,7 @@ func admitProfile(profile admission.Profile, host admission.Host) (*admittedConf
 	if err := admission.Verify(cfg, prepared); err != nil {
 		return nil, err
 	}
-	admitted := &admittedConfig{cfg: cfg, doc: prepared.Document, networks: prepared.Networks}
+	admitted := &admittedConfig{cfg: cfg, geoBefore: before, doc: prepared.Document, networks: prepared.Networks}
 	if composed := prepared.Composed; composed != nil {
 		admitted.report = composed.Report
 		admitted.entries = newRuleEntries(composed, prepared.Document, cfg)

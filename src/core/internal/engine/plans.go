@@ -194,7 +194,7 @@ func (e *Engine) MatchRule(request MatchRequest) (*controlpb.MatchRuleResponse, 
 // address a resolving rule looked up.
 func matchRules(rules []C.Rule, proxies map[string]C.Proxy, metadata *C.Metadata, out *controlpb.MatchRuleResponse) (int, C.Rule) {
 	resolved := false
-	if node, ok := resolver.DefaultHosts.Search(metadata.Host, false); ok {
+	if node, ok := resolver.DefaultHosts.Load().Search(metadata.Host, false); ok {
 		metadata.DstIP, _ = node.RandIP()
 		resolved = true
 	}

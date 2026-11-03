@@ -145,7 +145,7 @@ func dialTCP(ctx context.Context, node C.Proxy) uint32 {
 	if err != nil {
 		return 0
 	}
-	if _, err := resolver.LookupIPWithResolver(ctx, host, resolver.ProxyServerHostResolver); err != nil {
+	if _, err := resolver.LookupIPWithResolver(ctx, host, resolver.ProxyServerHostResolver.Load()); err != nil {
 		return 0
 	}
 	info := node.ProxyInfo()

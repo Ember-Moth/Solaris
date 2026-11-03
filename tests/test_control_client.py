@@ -27,6 +27,41 @@ from solaris.protocol.frame import KIND_REQUEST, KIND_RESPONSE, encode, read_fra
 type Answer = Callable[[control_pb2.Request], Awaitable[control_pb2.Response | None]]
 
 
+def test_geo_messages_and_background_updates_never_claim_an_owner() -> None:
+    async def scenario() -> None:
+        methods = []
+
+        async def answer(request: control_pb2.Request) -> control_pb2.Response:
+            methods.append(request.WhichOneof("method"))
+            assert request.ByteSize() < 64 * 1024
+            return control_pb2.Response(
+                error=control_pb2.Error(code="not_claimed", message="not yours")
+            )
+
+        server, opener = await serve(answer)
+        host = ServiceHost(opener)
+        try:
+            assert not (await host.get_geo_update()).generation
+            with pytest.raises(HostError) as raised:
+                await host.upload_geo(
+                    "generation",
+                    "a" * 32,
+                    "GeoSite.dat",
+                    48 * 1024,
+                    "b" * 64,
+                    0,
+                    b"x" * (48 * 1024),
+                )
+            assert raised.value.code == "not_claimed"
+            assert methods == ["get_geo_update", "upload_geo"]
+        finally:
+            await host.close()
+            server.close()
+            await server.wait_closed()
+
+    asyncio.run(scenario())
+
+
 class BlockedWriter:
     def __init__(self) -> None:
         self.frames: list[bytes] = []

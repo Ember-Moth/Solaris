@@ -155,7 +155,7 @@ EXPORT_FORMAT_SHARE: ExportFormat
 EXPORT_FORMAT_GENERATED: ExportFormat
 
 class Request(_message.Message):
-    __slots__ = ("protocol_version", "id", "timeout_ms", "deadline_unix_ms", "get_info", "claim", "validate", "start", "reload", "stop", "set_system_proxy", "get_status", "set_mode", "list_groups", "get_group", "select_proxy", "health_check", "test_delay", "list_providers", "update_provider", "list_rules", "close_connection", "close_all_connections", "flush_fake_ip", "flush_dns_cache", "subscribe_logs", "subscribe_traffic", "subscribe_connections", "poll_events", "unsubscribe", "inspect_source", "list_geo_categories", "preview_group", "match_rule", "convert_to_plan", "export_plan", "register_warp", "list_vpn_gate", "get_mesh_status", "login_mesh")
+    __slots__ = ("protocol_version", "id", "timeout_ms", "deadline_unix_ms", "get_info", "claim", "validate", "start", "reload", "stop", "set_system_proxy", "get_status", "set_mode", "list_groups", "get_group", "select_proxy", "health_check", "test_delay", "list_providers", "update_provider", "list_rules", "close_connection", "close_all_connections", "flush_fake_ip", "flush_dns_cache", "subscribe_logs", "subscribe_traffic", "subscribe_connections", "poll_events", "unsubscribe", "inspect_source", "list_geo_categories", "preview_group", "match_rule", "convert_to_plan", "export_plan", "register_warp", "list_vpn_gate", "get_mesh_status", "login_mesh", "get_geo_update", "upload_geo")
     PROTOCOL_VERSION_FIELD_NUMBER: _ClassVar[int]
     ID_FIELD_NUMBER: _ClassVar[int]
     TIMEOUT_MS_FIELD_NUMBER: _ClassVar[int]
@@ -196,6 +196,8 @@ class Request(_message.Message):
     LIST_VPN_GATE_FIELD_NUMBER: _ClassVar[int]
     GET_MESH_STATUS_FIELD_NUMBER: _ClassVar[int]
     LOGIN_MESH_FIELD_NUMBER: _ClassVar[int]
+    GET_GEO_UPDATE_FIELD_NUMBER: _ClassVar[int]
+    UPLOAD_GEO_FIELD_NUMBER: _ClassVar[int]
     protocol_version: int
     id: int
     timeout_ms: int
@@ -236,10 +238,12 @@ class Request(_message.Message):
     list_vpn_gate: ListVpnGateRequest
     get_mesh_status: GetMeshStatusRequest
     login_mesh: LoginMeshRequest
-    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., timeout_ms: _Optional[int] = ..., deadline_unix_ms: _Optional[int] = ..., get_info: _Optional[_Union[GetInfoRequest, _Mapping]] = ..., claim: _Optional[_Union[ClaimRequest, _Mapping]] = ..., validate: _Optional[_Union[ValidateRequest, _Mapping]] = ..., start: _Optional[_Union[StartRequest, _Mapping]] = ..., reload: _Optional[_Union[ReloadRequest, _Mapping]] = ..., stop: _Optional[_Union[StopRequest, _Mapping]] = ..., set_system_proxy: _Optional[_Union[SetSystemProxyRequest, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusRequest, _Mapping]] = ..., set_mode: _Optional[_Union[SetModeRequest, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsRequest, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupRequest, _Mapping]] = ..., select_proxy: _Optional[_Union[SelectProxyRequest, _Mapping]] = ..., health_check: _Optional[_Union[HealthCheckRequest, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayRequest, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersRequest, _Mapping]] = ..., update_provider: _Optional[_Union[UpdateProviderRequest, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesRequest, _Mapping]] = ..., close_connection: _Optional[_Union[CloseConnectionRequest, _Mapping]] = ..., close_all_connections: _Optional[_Union[CloseAllConnectionsRequest, _Mapping]] = ..., flush_fake_ip: _Optional[_Union[FlushFakeIPRequest, _Mapping]] = ..., flush_dns_cache: _Optional[_Union[FlushDNSCacheRequest, _Mapping]] = ..., subscribe_logs: _Optional[_Union[SubscribeLogsRequest, _Mapping]] = ..., subscribe_traffic: _Optional[_Union[SubscribeTrafficRequest, _Mapping]] = ..., subscribe_connections: _Optional[_Union[SubscribeConnectionsRequest, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsRequest, _Mapping]] = ..., unsubscribe: _Optional[_Union[UnsubscribeRequest, _Mapping]] = ..., inspect_source: _Optional[_Union[InspectSourceRequest, _Mapping]] = ..., list_geo_categories: _Optional[_Union[ListGeoCategoriesRequest, _Mapping]] = ..., preview_group: _Optional[_Union[PreviewGroupRequest, _Mapping]] = ..., match_rule: _Optional[_Union[MatchRuleRequest, _Mapping]] = ..., convert_to_plan: _Optional[_Union[ConvertToPlanRequest, _Mapping]] = ..., export_plan: _Optional[_Union[ExportPlanRequest, _Mapping]] = ..., register_warp: _Optional[_Union[RegisterWarpRequest, _Mapping]] = ..., list_vpn_gate: _Optional[_Union[ListVpnGateRequest, _Mapping]] = ..., get_mesh_status: _Optional[_Union[GetMeshStatusRequest, _Mapping]] = ..., login_mesh: _Optional[_Union[LoginMeshRequest, _Mapping]] = ...) -> None: ...
+    get_geo_update: GetGeoUpdateRequest
+    upload_geo: UploadGeoRequest
+    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., timeout_ms: _Optional[int] = ..., deadline_unix_ms: _Optional[int] = ..., get_info: _Optional[_Union[GetInfoRequest, _Mapping]] = ..., claim: _Optional[_Union[ClaimRequest, _Mapping]] = ..., validate: _Optional[_Union[ValidateRequest, _Mapping]] = ..., start: _Optional[_Union[StartRequest, _Mapping]] = ..., reload: _Optional[_Union[ReloadRequest, _Mapping]] = ..., stop: _Optional[_Union[StopRequest, _Mapping]] = ..., set_system_proxy: _Optional[_Union[SetSystemProxyRequest, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusRequest, _Mapping]] = ..., set_mode: _Optional[_Union[SetModeRequest, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsRequest, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupRequest, _Mapping]] = ..., select_proxy: _Optional[_Union[SelectProxyRequest, _Mapping]] = ..., health_check: _Optional[_Union[HealthCheckRequest, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayRequest, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersRequest, _Mapping]] = ..., update_provider: _Optional[_Union[UpdateProviderRequest, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesRequest, _Mapping]] = ..., close_connection: _Optional[_Union[CloseConnectionRequest, _Mapping]] = ..., close_all_connections: _Optional[_Union[CloseAllConnectionsRequest, _Mapping]] = ..., flush_fake_ip: _Optional[_Union[FlushFakeIPRequest, _Mapping]] = ..., flush_dns_cache: _Optional[_Union[FlushDNSCacheRequest, _Mapping]] = ..., subscribe_logs: _Optional[_Union[SubscribeLogsRequest, _Mapping]] = ..., subscribe_traffic: _Optional[_Union[SubscribeTrafficRequest, _Mapping]] = ..., subscribe_connections: _Optional[_Union[SubscribeConnectionsRequest, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsRequest, _Mapping]] = ..., unsubscribe: _Optional[_Union[UnsubscribeRequest, _Mapping]] = ..., inspect_source: _Optional[_Union[InspectSourceRequest, _Mapping]] = ..., list_geo_categories: _Optional[_Union[ListGeoCategoriesRequest, _Mapping]] = ..., preview_group: _Optional[_Union[PreviewGroupRequest, _Mapping]] = ..., match_rule: _Optional[_Union[MatchRuleRequest, _Mapping]] = ..., convert_to_plan: _Optional[_Union[ConvertToPlanRequest, _Mapping]] = ..., export_plan: _Optional[_Union[ExportPlanRequest, _Mapping]] = ..., register_warp: _Optional[_Union[RegisterWarpRequest, _Mapping]] = ..., list_vpn_gate: _Optional[_Union[ListVpnGateRequest, _Mapping]] = ..., get_mesh_status: _Optional[_Union[GetMeshStatusRequest, _Mapping]] = ..., login_mesh: _Optional[_Union[LoginMeshRequest, _Mapping]] = ..., get_geo_update: _Optional[_Union[GetGeoUpdateRequest, _Mapping]] = ..., upload_geo: _Optional[_Union[UploadGeoRequest, _Mapping]] = ...) -> None: ...
 
 class Response(_message.Message):
-    __slots__ = ("protocol_version", "id", "error", "empty", "get_info", "composition", "get_status", "list_groups", "get_group", "test_delay", "list_providers", "list_rules", "subscribe", "poll_events", "inspect_source", "list_geo_categories", "preview_group", "match_rule", "convert_to_plan", "export_plan", "register_warp", "list_vpn_gate", "get_mesh_status", "login_mesh")
+    __slots__ = ("protocol_version", "id", "error", "empty", "get_info", "composition", "get_status", "list_groups", "get_group", "test_delay", "list_providers", "list_rules", "subscribe", "poll_events", "inspect_source", "list_geo_categories", "preview_group", "match_rule", "convert_to_plan", "export_plan", "register_warp", "list_vpn_gate", "get_mesh_status", "login_mesh", "get_geo_update")
     PROTOCOL_VERSION_FIELD_NUMBER: _ClassVar[int]
     ID_FIELD_NUMBER: _ClassVar[int]
     ERROR_FIELD_NUMBER: _ClassVar[int]
@@ -264,6 +268,7 @@ class Response(_message.Message):
     LIST_VPN_GATE_FIELD_NUMBER: _ClassVar[int]
     GET_MESH_STATUS_FIELD_NUMBER: _ClassVar[int]
     LOGIN_MESH_FIELD_NUMBER: _ClassVar[int]
+    GET_GEO_UPDATE_FIELD_NUMBER: _ClassVar[int]
     protocol_version: int
     id: int
     error: Error
@@ -288,11 +293,58 @@ class Response(_message.Message):
     list_vpn_gate: ListVpnGateResponse
     get_mesh_status: GetMeshStatusResponse
     login_mesh: LoginMeshResponse
-    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., error: _Optional[_Union[Error, _Mapping]] = ..., empty: _Optional[_Union[Empty, _Mapping]] = ..., get_info: _Optional[_Union[GetInfoResponse, _Mapping]] = ..., composition: _Optional[_Union[CompositionReport, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusResponse, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsResponse, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupResponse, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayResponse, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersResponse, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesResponse, _Mapping]] = ..., subscribe: _Optional[_Union[SubscribeResponse, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsResponse, _Mapping]] = ..., inspect_source: _Optional[_Union[InspectSourceResponse, _Mapping]] = ..., list_geo_categories: _Optional[_Union[ListGeoCategoriesResponse, _Mapping]] = ..., preview_group: _Optional[_Union[PreviewGroupResponse, _Mapping]] = ..., match_rule: _Optional[_Union[MatchRuleResponse, _Mapping]] = ..., convert_to_plan: _Optional[_Union[ConvertToPlanResponse, _Mapping]] = ..., export_plan: _Optional[_Union[ExportPlanResponse, _Mapping]] = ..., register_warp: _Optional[_Union[RegisterWarpResponse, _Mapping]] = ..., list_vpn_gate: _Optional[_Union[ListVpnGateResponse, _Mapping]] = ..., get_mesh_status: _Optional[_Union[GetMeshStatusResponse, _Mapping]] = ..., login_mesh: _Optional[_Union[LoginMeshResponse, _Mapping]] = ...) -> None: ...
+    get_geo_update: GetGeoUpdateResponse
+    def __init__(self, protocol_version: _Optional[int] = ..., id: _Optional[int] = ..., error: _Optional[_Union[Error, _Mapping]] = ..., empty: _Optional[_Union[Empty, _Mapping]] = ..., get_info: _Optional[_Union[GetInfoResponse, _Mapping]] = ..., composition: _Optional[_Union[CompositionReport, _Mapping]] = ..., get_status: _Optional[_Union[GetStatusResponse, _Mapping]] = ..., list_groups: _Optional[_Union[ListGroupsResponse, _Mapping]] = ..., get_group: _Optional[_Union[GetGroupResponse, _Mapping]] = ..., test_delay: _Optional[_Union[TestDelayResponse, _Mapping]] = ..., list_providers: _Optional[_Union[ListProvidersResponse, _Mapping]] = ..., list_rules: _Optional[_Union[ListRulesResponse, _Mapping]] = ..., subscribe: _Optional[_Union[SubscribeResponse, _Mapping]] = ..., poll_events: _Optional[_Union[PollEventsResponse, _Mapping]] = ..., inspect_source: _Optional[_Union[InspectSourceResponse, _Mapping]] = ..., list_geo_categories: _Optional[_Union[ListGeoCategoriesResponse, _Mapping]] = ..., preview_group: _Optional[_Union[PreviewGroupResponse, _Mapping]] = ..., match_rule: _Optional[_Union[MatchRuleResponse, _Mapping]] = ..., convert_to_plan: _Optional[_Union[ConvertToPlanResponse, _Mapping]] = ..., export_plan: _Optional[_Union[ExportPlanResponse, _Mapping]] = ..., register_warp: _Optional[_Union[RegisterWarpResponse, _Mapping]] = ..., list_vpn_gate: _Optional[_Union[ListVpnGateResponse, _Mapping]] = ..., get_mesh_status: _Optional[_Union[GetMeshStatusResponse, _Mapping]] = ..., login_mesh: _Optional[_Union[LoginMeshResponse, _Mapping]] = ..., get_geo_update: _Optional[_Union[GetGeoUpdateResponse, _Mapping]] = ...) -> None: ...
 
 class Empty(_message.Message):
     __slots__ = ()
     def __init__(self) -> None: ...
+
+class GetGeoUpdateRequest(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
+class GeoUpdateFile(_message.Message):
+    __slots__ = ("name", "url", "updated_at_unix_ms")
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    URL_FIELD_NUMBER: _ClassVar[int]
+    UPDATED_AT_UNIX_MS_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    url: str
+    updated_at_unix_ms: int
+    def __init__(self, name: _Optional[str] = ..., url: _Optional[str] = ..., updated_at_unix_ms: _Optional[int] = ...) -> None: ...
+
+class GetGeoUpdateResponse(_message.Message):
+    __slots__ = ("generation", "interval_hours", "files")
+    GENERATION_FIELD_NUMBER: _ClassVar[int]
+    INTERVAL_HOURS_FIELD_NUMBER: _ClassVar[int]
+    FILES_FIELD_NUMBER: _ClassVar[int]
+    generation: str
+    interval_hours: int
+    files: _containers.RepeatedCompositeFieldContainer[GeoUpdateFile]
+    def __init__(self, generation: _Optional[str] = ..., interval_hours: _Optional[int] = ..., files: _Optional[_Iterable[_Union[GeoUpdateFile, _Mapping]]] = ...) -> None: ...
+
+class UploadGeoRequest(_message.Message):
+    __slots__ = ("generation", "transfer_id", "name", "size", "sha256", "offset", "data", "complete", "abort")
+    GENERATION_FIELD_NUMBER: _ClassVar[int]
+    TRANSFER_ID_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    SIZE_FIELD_NUMBER: _ClassVar[int]
+    SHA256_FIELD_NUMBER: _ClassVar[int]
+    OFFSET_FIELD_NUMBER: _ClassVar[int]
+    DATA_FIELD_NUMBER: _ClassVar[int]
+    COMPLETE_FIELD_NUMBER: _ClassVar[int]
+    ABORT_FIELD_NUMBER: _ClassVar[int]
+    generation: str
+    transfer_id: str
+    name: str
+    size: int
+    sha256: str
+    offset: int
+    data: bytes
+    complete: bool
+    abort: bool
+    def __init__(self, generation: _Optional[str] = ..., transfer_id: _Optional[str] = ..., name: _Optional[str] = ..., size: _Optional[int] = ..., sha256: _Optional[str] = ..., offset: _Optional[int] = ..., data: _Optional[bytes] = ..., complete: _Optional[bool] = ..., abort: _Optional[bool] = ...) -> None: ...
 
 class Error(_message.Message):
     __slots__ = ("code", "message", "retryable")

@@ -43,18 +43,14 @@ func proxiedGet(t *testing.T, mixedPort int, target string) string {
 	return string(body)
 }
 
-// listening says whether port takes connections. It waits for mihomo to close the one it
-// made, so that the inbound is done with it before the test goes on: the inbound reads
-// settings the next configuration rewrites (docs/maintenance.md §3).
+// listening says whether port takes connections, without waiting for the inbound
+// goroutine to finish before a later profile can be applied.
 func listening(port int) bool {
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), time.Second)
 	if err != nil {
 		return false
 	}
-	defer conn.Close()
-	_ = conn.(*net.TCPConn).CloseWrite()
-	_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-	_, _ = io.Copy(io.Discard, conn)
+	_ = conn.Close()
 	return true
 }
 

@@ -60,9 +60,7 @@ rules:
 	return admission.Profile{Config: []byte(source)}
 }
 
-// startTCPProfile starts tcpProfile and waits for the first URL test of its groups that
-// test on their own: mihomo reads a delay without its lock, so reading one while that
-// test records it is a race (docs/maintenance.md §3).
+// startTCPProfile starts tcpProfile while its groups' background URL tests are running.
 func startTCPProfile(t *testing.T, engine *Engine) (profile admission.Profile, testURL string) {
 	t.Helper()
 	testURL = target(t).URL + "/generate_204"
@@ -71,23 +69,7 @@ func startTCPProfile(t *testing.T, engine *Engine) (profile admission.Profile, t
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = engine.Stop() })
-	urlTested(t, testURL)
 	return profile, testURL
-}
-
-// urlTested waits until the members of spread and backup have a URL test of testURL.
-func urlTested(t *testing.T, testURL string) {
-	t.Helper()
-	deadline := time.Now().Add(10 * time.Second)
-	for _, name := range []string{"live", "dead", "direct-a", "direct-b"} {
-		proxy, ok := findProxy(name)
-		for ok && len(proxy.ExtraDelayHistories()[testURL].History) == 0 {
-			if time.Now().After(deadline) {
-				t.Fatalf("%s has no URL test of %s", name, testURL)
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
-	}
 }
 
 // tcpDelays reads each member's TCP delay as "group/member"; nil when untested.
@@ -103,7 +85,7 @@ func tcpDelays(engine *Engine) map[string]*uint32 {
 
 func TestTCPHealthCheckMeasuresNodesWithATCPServer(t *testing.T) {
 	engine := openEngine(t, admission.TunNone)
-	profile, testURL := startTCPProfile(t, engine)
+	profile, _ := startTCPProfile(t, engine)
 	for name, delay := range tcpDelays(engine) {
 		if delay != nil {
 			t.Errorf("%s has a TCP delay before any test: %d", name, *delay)
@@ -147,7 +129,6 @@ func TestTCPHealthCheckMeasuresNodesWithATCPServer(t *testing.T) {
 	if _, err := engine.Reload(profile); err != nil {
 		t.Fatal(err)
 	}
-	urlTested(t, testURL)
 	if delay := tcpDelays(engine)["PROXY/live"]; delay != nil {
 		t.Errorf("live keeps its TCP delay over a reload: %d", *delay)
 	}

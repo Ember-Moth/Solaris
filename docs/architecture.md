@@ -146,10 +146,10 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
   GEO 数据）。拼装只是流水线的起点：覆写、平台补丁和安全项照常在它之后，有测试守住这一顺序。`Validate`、
   `Start`、`Reload` 返回拼装报告（警告、生成的组和规则、节点池）；应用后 engine 保存"规则 → 规则条目"的对照表，
   `ListRules` 和连接快照用它带上条目 id，改用 YAML 时清空。
-- **GEO 数据**（D17）：拼装的配置用 home 里的 `GeoSite.dat`、`GeoIP.dat`。mihomo 只在它自己的 `main` 里启动 GEO
-  更新器，所以配置开启 `geo-auto-update` 时 engine 自己运行一个（每小时检查，数据过期就调用
-  `updater.UpdateGeoDatabases`），停止内核时一同停止；新数据在下一次应用时生效。home 里缺数据时 mihomo 会在解析
-  时同步下载，所以安装包附带一份（`scripts/fetch_geodata.py`）；engine 的单元测试写入一份很小的数据，内核从不下载。
+- **GEO 数据**（D17）：安装包附带四份数据，由宿主在打开 engine 前补齐。运行时下载、缓存、重试和调度归 Python
+  `models/geodata.py`；GUI 完全退出后暂停，下次打开补查。Go 只提供已应用配置的更新计划、接收分块、校验与原子安装。
+  MMDB/ASN 通过 fork 的不可变内存 reader 安全切换，旧查询保留自己的 reader；DAT 清除加载缓存后在下次应用配置时
+  生效。内嵌模式关闭 mihomo 的隐式 GEO 下载，缺少或损坏的数据直接报错，不让配置解析等待网络。详见 routing.md §8.4。
 - **覆写**（决策 D4：只做 Merge，不做 Script）：
   - 来源是一份全局覆写加上每份订阅各一份。请求里的 `overrides` 是一组 YAML 映射原文，按顺序应用：
     先全局覆写，再正在使用的订阅的覆写，后面的覆盖前面的。空串或只有注释的覆写不做任何事。
@@ -254,7 +254,7 @@ mihomo 提供的可选标签有 `with_gvisor`、`with_low_memory`、`no_tailscal
 
 Solaris 使用 mihomo 增强版，保留 `github.com/metacubex/mihomo` 的导入路径和 v1.19.33 require，通过 go.mod replace 固定到
 [`Ember-Moth/mihomo` 的 Meta 分支](https://github.com/Ember-Moth/mihomo/tree/Meta)提交
-`f499052f05502a9a27ff4e4e2382feaca978e55b`（`v1.19.33-0.20261103143402-f499052f0550`，D38）。
+`c2de0f865c7e7723220df3b9033d208afa4e2388`（`v1.19.33-0.20261103155416-c2de0f865c7e`，D38）。
 用户侧的配置方式、参数及完整示例见 [mihomo 增强版配置指南](mihomo-fork.md)。
 它基于上游 `3f27ef3`，增加 Naive、AnyTLS+REALITY，以及与 Xray 26.10.29 对齐的 REALITY 握手版本和
 默认 X25519MLKEM768 行为；显式 `support-x25519mlkem768: false` 仍保留。状态和许可证清单使用实际替换版本。
@@ -381,6 +381,8 @@ Windows 上 UI 断线后按退避间隔重连，并重新建立订阅。
 | `Unsubscribe` | 结束订阅 |
 | `InspectSource` | 按拼装的方式读一份订阅：节点及其地区、有没有规则、策略组和规则的数量 |
 | `ListGeoCategories` | home 里 GEO 数据的 GEOSITE / GEOIP 分类名，以及文件的 sha256 和修改时间 |
+| `GetGeoUpdate` | 已应用配置的更新代次、周期、实际使用的数据集及安装时间；停止或关闭自动更新时为空 |
+| `UploadGeo` | 按代次、文件名和偏移接收最多 48 KiB 的块；完整文件最多 256 MiB，校验 SHA-256 和格式后原子安装 |
 | `PreviewGroup` | 按方案草稿和节点池算出一个策略组的成员，供策略组编辑器预览 |
 | `MatchRule` | 用运行中的配置或另行构建的草稿匹配一个域名或 IP，返回命中的规则、条目 id 和出站链路 |
 | `ConvertToPlan` | 把一份订阅或 mihomo 配置的策略组和规则转成方案，附摘要和没能转换的规则 |

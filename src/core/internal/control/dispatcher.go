@@ -525,6 +525,10 @@ func (d *Dispatcher) systemProxyServed() *controlpb.Response {
 
 func (d *Dispatcher) coreMethod(ctx context.Context, caller peer.Identity, request *controlpb.Request) *controlpb.Response {
 	switch method := request.Method.(type) {
+	case *controlpb.Request_GetGeoUpdate:
+		return d.getGeoUpdate()
+	case *controlpb.Request_UploadGeo:
+		return d.uploadGeo(ctx, method.UploadGeo)
 	case *controlpb.Request_GetStatus:
 		status := d.engine.Status()
 		if d.host != nil {

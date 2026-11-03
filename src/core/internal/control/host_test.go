@@ -134,7 +134,14 @@ func TestHostAdmitsTheOwner(t *testing.T) {
 	if got := callAs(t, dispatcher, ctx, owner, request(2, getInfo)).GetGetInfo().GetOwnership(); got != controlpb.Ownership_OWNERSHIP_CALLER {
 		t.Fatalf("owner's ownership = %v", got)
 	}
-	for id, method := range []func(*controlpb.Request){getStatus, stopRequest, systemProxyRequest(false)} {
+	for id, method := range []func(*controlpb.Request){getStatus, stopRequest, systemProxyRequest(false),
+		func(r *controlpb.Request) {
+			r.Method = &controlpb.Request_GetGeoUpdate{GetGeoUpdate: &controlpb.GetGeoUpdateRequest{}}
+		},
+		func(r *controlpb.Request) {
+			r.Method = &controlpb.Request_UploadGeo{UploadGeo: &controlpb.UploadGeoRequest{}}
+		},
+	} {
 		expectError(t, callAs(t, dispatcher, ctx, other, request(uint64(10+id), method)), uint64(10+id), CodeOwnedByOtherUser)
 		expectError(t, callAs(t, dispatcher, ctx, idle, request(uint64(20+id), method)), uint64(20+id), CodeNotClaimed)
 	}
