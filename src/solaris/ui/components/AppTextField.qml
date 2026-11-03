@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls.Basic
+import Solaris
 
 // input: a white field with the border-control outline and body-sm text; `error` turns the
 // outline danger, and the caller writes the error under the field.
@@ -22,6 +23,11 @@ TextField {
     font.pixelSize: Theme.type.bodySm.fontSize
     font.weight: Theme.type.bodySm.fontWeight
     opacity: enabled ? 1 : Theme.disabledOpacity
+
+    Keys.onPressed: event => {
+        TextEditing.prepareDeletion(control, event.key, event.modifiers)
+        event.accepted = false
+    }
 
     background: Rectangle {
         implicitWidth: 160

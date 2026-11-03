@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls.Basic
+import Solaris
 
 // code-editor: a multi-line monospace text box with the input outline. Long lines scroll
 // instead of wrapping; `error` turns the outline danger. Enter starts a new line and
@@ -43,6 +44,11 @@ ScrollView {
         selectByMouse: true
         Accessible.name: editor.Accessible.name
         background: null
+
+        Keys.onPressed: event => {
+            TextEditing.prepareDeletion(area, event.key, event.modifiers)
+            event.accepted = false
+        }
 
         Keys.onReturnPressed: event => editor.submitOrType(event)
         Keys.onEnterPressed: event => editor.submitOrType(event)

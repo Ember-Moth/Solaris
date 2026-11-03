@@ -203,7 +203,13 @@ def test_the_bundled_fonts_are_used(loaded: Loaded) -> None:
     assert isinstance(font, QFont)
     assert font.family() == "Inter"
     fonts = MAIN_QML.parent / "fonts"
-    for family in ("inter", "jetbrains-mono"):
+    for family in (
+        "inter",
+        "jetbrains-mono",
+        "noto-sans-sc",
+        "noto-sans-symbols-2",
+        "noto-color-emoji",
+    ):
         assert (fonts / family / "OFL.txt").is_file()  # the license travels with the fonts
 
 

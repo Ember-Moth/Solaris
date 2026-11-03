@@ -2088,6 +2088,36 @@
       "notices": [
         157
       ]
+    },
+    {
+      "name": "Noto Color Emoji",
+      "version": "2.057",
+      "license": "OFL-1.1",
+      "kind": "font",
+      "url": "https://github.com/googlefonts/noto-emoji",
+      "notices": [
+        158
+      ]
+    },
+    {
+      "name": "Noto Sans SC",
+      "version": "2.004-H2",
+      "license": "OFL-1.1",
+      "kind": "font",
+      "url": "https://github.com/notofonts/noto-cjk",
+      "notices": [
+        159
+      ]
+    },
+    {
+      "name": "Noto Sans Symbols 2",
+      "version": "2.008",
+      "license": "OFL-1.1",
+      "kind": "font",
+      "url": "https://github.com/notofonts/symbols",
+      "notices": [
+        160
+      ]
     }
   ]
 }

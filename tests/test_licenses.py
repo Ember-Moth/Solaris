@@ -20,6 +20,7 @@ from scripts.gen_licenses import (
     qt_license,
 )
 from solaris import licenses
+from solaris.fonts import BUNDLED
 
 ROOT = Path(__file__).resolve().parents[1]
 GO_MOD = ROOT / "src" / "core" / "go.mod"
@@ -124,9 +125,9 @@ def test_qt_components_have_their_texts() -> None:
 def test_fonts_match_the_bundled_files() -> None:
     fonts = {c.name: c for c in licenses.load() if c.kind == "font"}
     directory = ROOT / "src" / "solaris" / "ui" / "fonts"
-    assert fonts["Inter"].version == font_version(directory / "inter" / "Inter-Regular.ttf")
-    mono = directory / "jetbrains-mono" / "JetBrainsMono-Regular.ttf"
-    assert fonts["JetBrains Mono"].version == font_version(mono)
+    assert set(fonts) == {family for _, family in BUNDLED}
+    for relative, family in BUNDLED:
+        assert fonts[family].version == font_version(directory / relative)
     assert {c.license for c in fonts.values()} == {"OFL-1.1"}
 
 

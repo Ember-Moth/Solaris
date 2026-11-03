@@ -272,13 +272,28 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   | `link`、`linkVisited` | `link` |
   | `shadow` | `scrim` |
 
-- **字体**：Inter（400、500、600）和 JetBrains Mono（400）放在 `ui/fonts/`，各带 `OFL.txt`，由 `Fonts.qml` 的
-  `FontLoader` 加载；Nuitka 打包时 `package/entry.py` 把整个目录复制到 `solaris/ui/fonts/`。中日韩文字
-  由 Qt 从系统字体回退。SIL OFL 1.1 允许字体与任何软件捆绑分发，只要求随附版权声明和许可证、不单独出售
-  字体、修改版不用保留字体名；字体不受 GPL 约束，也不改变本项目的 GPL-3.0 许可。
+- **字体**：Windows 和 macOS 的 Qt 界面共用 Inter（400、500、600）、JetBrains Mono（400）、
+  Noto Sans SC（可变字体，使用 400、500、600）、Noto Sans Symbols 2 和 Noto Color Emoji（COLRv1，含旗帜）。
+  `fonts.py` 在加载 QML 前注册资源，设置字体族回退与独立的 Emoji 回退；`Fonts.qml` 只解析已注册的字体。
+  PySide 未暴露 Qt 的文字体系回退接口，使用 `QFont.insertSubstitutions` 为 Inter 与 JetBrains Mono
+  指定 Noto Sans SC、Noto Sans Symbols 2 的有序补充字体；Emoji 使用 `setApplicationEmojiFontFamilies`。
+  来源、文件大小和 SHA-256 固定在 `ui/fonts/sources.json`，离线随包分发，各带 `OFL.txt`；
+  `package/entry.py` 将整个目录复制到两端的 `solaris/ui/fonts/`。注册失败记入诊断日志，系统字体仅用于缺字或资源异常兜底。
+  SIL OFL 1.1 字体与本项目的 GPL-3.0 代码分别遵循各自许可。
+- **Unicode**：完整规则见 DESIGN.md「Unicode 与文本编码」。配置读入严格使用 `utf-8-sig`，文本导出使用
+  UTF-8 无 BOM 与 LF；原文、名称引用、凭据不做 Unicode 规范化。Qt 的省略与编辑使用字素边界，不能用
+  Python 码点下标解释 Qt 的 UTF-16 光标位置。`TextEditing.prepareDeletion` 在普通退格/Delete 前选中完整字素，
+  再让 Qt 执行删除，保留编辑信号与撤销栈；只读、输入法组合和带修饰键的操作交给原生控件。
+  `text.utf8_prefix` 仅用于受字节数限制的云端摘要，保留完整字素；
+  备份正文仍保存完整原文。新字体或 Qt 升级必须运行 `tests/test_fonts.py` 与 `tests/test_text.py`。
 - **测试**：`tests/test_theme.py` 检查 Theme.qml 与 DESIGN.md 一致、两组颜色角色相同，并按 DESIGN.md 的用法
   核对两种外观的对比度；`tests/test_appearance.py` 用 `tests/support/appearance.py` 模拟系统切换外观；
   `tests/test_app.py` 在浅色和深色下加载界面，并检查系统切换后窗口立即重绘。
+  字体与编码专项可运行 `uv run pytest -q tests/test_fonts.py tests/test_text.py tests/test_logs.py tests/test_licenses.py`：
+  检查实际字形所属字体、中文 400/500/600、Emoji 连字与彩色绘制、完整字素省略和删除、撤销/重做、只读/输入法组合、
+  复制粘贴、严格解码、数据库/备份与日志原文往返。设置 `QT_SCALE_FACTOR=1.25`、`1.5`、`2` 分别重跑字体测试；
+  CI 的 macOS、Windows x64/ARM64 Python 测试均包含这些用例。自动化中的输入法预编辑事件不能替代真实候选窗验证；
+  Windows 显示效果及原生输入法仍须在对应系统上验收。
 
 ## 7. 连接与日志
 

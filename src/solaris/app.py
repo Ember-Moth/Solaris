@@ -18,6 +18,7 @@ from solaris.desktop.instance import SingleInstance, ask_to_quit
 from solaris.desktop.links import LinkReceiver, from_arguments
 from solaris.desktop.login import BACKGROUND_ARG, LoginItem, default_login_item
 from solaris.desktop.tray import tray_supported
+from solaris.fonts import register_fonts
 from solaris.host.base import TAKEOVER_NONE, TAKEOVER_SETTINGS, HostError, TunnelHost
 from solaris.host.service import ServiceHost
 from solaris.host.transport import Opener, Streams
@@ -32,6 +33,9 @@ from solaris.product import DISPLAY_NAME, PIPE_NAME
 from solaris.update.updater import Updater
 from solaris.viewmodels.appearance import Appearance, resolve_mode
 from solaris.viewmodels.composition import ViewModels, compose
+
+# Import registers the presentation helper for QML, including standalone component tests.
+from solaris.viewmodels.text_editing import TextEditing as TextEditing
 
 MAIN_QML = Path(__file__).resolve().parent / "ui" / "Main.qml"
 DEV_SOCKET_ENV = "SOLARIS_DEV_SOCKET"
@@ -97,6 +101,7 @@ def default_take_over(host: TunnelHost) -> Callable[[], Coroutine[Any, Any, None
 
 
 def load_ui(engine: QQmlApplicationEngine, view_models: ViewModels) -> bool:
+    register_fonts()
     engine.setInitialProperties(view_models.initial_properties())
     engine.load(QUrl.fromLocalFile(str(MAIN_QML)))
     return bool(engine.rootObjects())

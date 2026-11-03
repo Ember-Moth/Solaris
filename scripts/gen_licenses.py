@@ -576,6 +576,9 @@ def font_version(path: Path) -> str:
 FONT_HOMES = {
     "inter": ("Inter", "https://github.com/rsms/inter"),
     "jetbrains-mono": ("JetBrains Mono", "https://github.com/JetBrains/JetBrainsMono"),
+    "noto-sans-sc": ("Noto Sans SC", "https://github.com/notofonts/noto-cjk"),
+    "noto-sans-symbols-2": ("Noto Sans Symbols 2", "https://github.com/notofonts/symbols"),
+    "noto-color-emoji": ("Noto Color Emoji", "https://github.com/googlefonts/noto-emoji"),
 }
 
 

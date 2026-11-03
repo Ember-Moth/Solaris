@@ -206,6 +206,21 @@ def test_export_writes_the_lines_shown(
     assert prop(logs, "statusTone") == "danger"
 
 
+def test_export_preserves_unicode_sequences(
+    qtbot: QtBot, scripted: tuple[ScriptedHost, LogsViewModel], tmp_path: Path
+) -> None:
+    host, logs = scripted
+    message = "繁體 \U00020bb7 e\u0301 🇯🇵 👩🏽‍💻 👨‍👩‍👧‍👦 ✈︎ ✈️"
+    host.queued = [entry("info", message)]
+    logs.start()
+    qtbot.waitUntil(lambda: prop(logs, "count") == 1)
+    target = tmp_path / "unicode.log"
+    logs.exportTo(QUrl.fromLocalFile(str(target)).toString())
+    assert target.read_bytes() == ("2026-10-29 12:04:01.123 INFO  " + message + "\n").encode(
+        "utf-8"
+    )
+
+
 def test_logs_in_english(
     qtbot: QtBot, scripted: tuple[ScriptedHost, LogsViewModel], english: None
 ) -> None:

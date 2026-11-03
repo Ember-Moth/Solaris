@@ -571,7 +571,13 @@ def test_lists_the_licenses(qtbot: QtBot, built: ViewModels, tmp_path: Path) -> 
     about.setComponentQuery("MIHOMO")
     assert [row.name for row in model.rows] == ["github.com/Ember-Moth/mihomo"]
     about.setComponentQuery("ofl-1.1")
-    assert {row.name for row in model.rows} == {"Inter", "JetBrains Mono"}
+    assert {row.name for row in model.rows} == {
+        "Inter",
+        "JetBrains Mono",
+        "Noto Sans SC",
+        "Noto Sans Symbols 2",
+        "Noto Color Emoji",
+    }
     about.setComponentQuery("nothing like this")
     assert prop(about, "componentsEmpty")
 

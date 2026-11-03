@@ -50,6 +50,7 @@ from solaris.models.backup import MAX_SNAPSHOT_BYTES, BackupError, Counts, Snaps
 from solaris.models.backup_providers import BackupEntry
 from solaris.models.credentials import CredentialError, CredentialStore
 from solaris.product import PRODUCT_ID
+from solaris.text import utf8_prefix
 
 GOOGLE_DRIVE = "google_drive"
 DISPLAY_NAME = "Google Drive"
@@ -218,7 +219,7 @@ def _drive_error(response: _Response) -> BackupError:
 def _fit(key: str, value: str) -> str:
     """``value`` cut to what Drive keeps of an app property beside ``key``."""
     room = _PROPERTY_BYTES - len(key.encode())
-    return value.encode()[:room].decode(errors="ignore")
+    return utf8_prefix(value, room)
 
 
 def _properties(info: SnapshotInfo) -> dict[str, str]:
