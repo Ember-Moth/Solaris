@@ -11,11 +11,13 @@
 
 ### 1.1 CI 覆盖
 
-`.github/workflows/ci.yml` 在每个 PR 和 main 上运行：
+`.github/workflows/ci.yml` 在每个 PR 和 main 推送时判断改动范围，运行受影响的任务。main 使用成功的祖先 CI 作为基线，
+避免前一次未验证的代码被后续文档提交掩盖；无法确定范围时运行全部任务。手动触发或完整重跑始终跑全量。
 
 | job | 平台 | 内容 |
 | --- | --- | --- |
-| `python` | macOS、Windows x64 / ARM64 | ruff、pyright、pytest（离屏）；macOS 上还核对生成的协议、主题和翻译是最新的 |
+| `changes` | Linux | 从完整 Git 差异选择任务；依赖锁、CI 配置和未知输入触发全量 |
+| `python` | macOS、Windows x64 / ARM64 | ruff 只在 macOS 运行一次；各平台保留 pyright、pytest（含主题与翻译一致性）。协议输入变化时额外核对生成绑定 |
 | `e2e` | macOS | 界面连真实的开发服务（`tests/e2e`）：导入、连接、各页数据、分流与方案、重载不断开连接；节点是本机起的代理，只走回环地址 |
 | `go` | macOS、Windows x64 / ARM64、Linux | `go vet`、`go test`，再在支持的架构以 `-race` 跑一遍（Go 1.27 不支持 Windows ARM64 race）；Linux 上以 `with_gvisor` 带 `-race` 再跑安全项和组网测试，交叉编译 Windows 服务；macOS 上编扩展用的 C archive |
 | `apple` | macOS | 管理库和系统扩展的不签名构建，再用检查用的 app 做一次发布用的磁盘映像（`scripts/build_dmg.py`） |
@@ -23,6 +25,7 @@
 | `installer-ui` | Windows x64 / ARM64 | 检查自定义路径的 ACL、所有者及链接拒绝；编译真实 Win32 界面，在只读宿主中验证 GPL 全文与同意项、路径输入、中英文、浅深色、键盘默认动作、数据选项、进度、成功/失败和 DPI 布局；保存窗口截图 artifact |
 | `windows-arm64-upgrade` | Windows ARM64 | 安装 x64 版后原位升级 ARM64，检查服务、GUI、同架构文件、数据保留及卸载 |
 | `tun` | Linux | 在网络命名空间里建真实的 TUN：自管模式和 fd 模式，四种栈，fd 模式另测 `includeAllNetworks` |
+| `result` | Linux | 汇总为 `CI result`；被选中的任务失败、取消或意外跳过都不能通过 |
 
 Windows 上的客户端校验（命名管道、文件 ID、锁住映像、服务的可执行文件只在有管理员权限时通过）、管理员权限的判断、
 home 目录的 ACL 和 WinINet 代理设置的读写在 `go` job 的 Windows runner 上测；界面以 `runas` 启动程序、取回退出码在

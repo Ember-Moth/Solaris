@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -13,7 +14,29 @@ env:
   UV_HTTP_RETRIES: "5"
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      jobs: ${{ steps.select.outputs.jobs }}
+      protocol: ${{ steps.select.outputs.protocol }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select checks from the complete change range
+        id: select
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/ci_changes.py
+
   python:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.jobs), 'python')
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
@@ -44,17 +67,16 @@ jobs:
       - name: Install (locked)
         run: uv sync --frozen
       - name: Lint and format
+        if: runner.os == 'macOS'
         run: |
           uv run ruff check .
           uv run ruff format --check .
       - name: Types
         run: uv run pyright
-      - name: Generated files are current
-        if: runner.os == 'macOS'
-        run: |
-          uv run python scripts/gen_protocol.py --check
-          uv run python scripts/gen_theme.py --check
-          uv run python scripts/gen_i18n.py --check
+      # Theme and translation freshness are covered by pytest, once per platform.
+      - name: Protocol bindings are current
+        if: runner.os == 'macOS' && needs.changes.outputs.protocol == 'true'
+        run: uv run python scripts/gen_protocol.py --check
       - name: Tests
         env:
           QT_QPA_PLATFORM: offscreen
@@ -63,6 +85,8 @@ jobs:
   # The UI against the real development service (docs/architecture.md §11): no TUN, only
   # loopback traffic to local servers through the mixed port.
   e2e:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.jobs), 'e2e')
     runs-on: macos-26
     timeout-minutes: 20
     steps:
@@ -93,6 +117,8 @@ jobs:
         run: uv run pytest -q tests/e2e
 
   go:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.jobs), 'go')
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
@@ -117,8 +143,6 @@ jobs:
         run: |
           go vet ./...
           go test ./...
-      # Race builds also wait for mihomo's finalizers before each configuration applies
-      # (internal/engine/race.go), so the plain run above stays.
       - name: Race detector
         # Go 1.27's race runtime supports Windows amd64, not Windows arm64.
         if: runner.os != 'Windows' || runner.arch != 'ARM64'
@@ -157,6 +181,8 @@ jobs:
   # Xcode project keeps compiling; signing and notarization belong to the release workflow.
   # Match the app's minimum supported macOS version (D28), as the release job does.
   apple:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.jobs), 'apple')
     runs-on: macos-26
     timeout-minutes: 30
     steps:
@@ -188,6 +214,8 @@ jobs:
             build/apple/check/Solaris.app "$RUNNER_TEMP/Solaris.dmg"
 
   installer-ui:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.jobs), 'installer-ui')
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
@@ -233,6 +261,8 @@ jobs:
   # uninstalled on the runner by package/windows/smoke-test.ps1: the service starts and listens
   # on its pipe, the UI opens its window. No TUN, no connection.
   windows-installer:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.jobs), 'windows-installer')
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     strategy:
@@ -288,7 +318,8 @@ jobs:
           retention-days: 1
 
   windows-arm64-upgrade:
-    needs: windows-installer
+    needs: [changes, windows-installer]
+    if: contains(fromJSON(needs.changes.outputs.jobs), 'windows-arm64-upgrade')
     runs-on: windows-11-arm
     timeout-minutes: 20
     steps:
@@ -311,6 +342,8 @@ jobs:
   # server listens on 10.201.0.1, off md-tun's link: auto-route leaves on-link
   # destinations to the main table, so a server on 10.200.0.0/24 would bypass the TUN.
   tun:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.jobs), 'tun')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -359,6 +392,8 @@ jobs:
           resolvectl domain >> "$RUNNER_TEMP/dns-before"
           mkdir -p "$RUNNER_TEMP/www"
           echo through-tun > "$RUNNER_TEMP/www/index.html"
+          # Keep the log runner-owned; only the server needs the namespace's privileges.
+          # shellcheck disable=SC2024
           sudo ip netns exec md-srv python3 -m http.server 8080 --bind 10.201.0.1 \
             --directory "$RUNNER_TEMP/www" > "$RUNNER_TEMP/http.log" 2>&1 &
           for _ in $(seq 50); do
@@ -388,3 +423,34 @@ jobs:
           resolvectl dns > "$RUNNER_TEMP/dns-after"
           resolvectl domain >> "$RUNNER_TEMP/dns-after"
           diff "$RUNNER_TEMP/dns-before" "$RUNNER_TEMP/dns-after"
+
+  result:
+    name: CI result
+    if: always()
+    needs: [changes, python, e2e, go, apple, installer-ui, windows-installer, windows-arm64-upgrade, tun]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every selected check to succeed
+        env:
+          CHECK_RESULTS: ${{ toJSON(needs) }}
+          SELECTED_JOBS: ${{ needs.changes.outputs.jobs }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+
+          results = json.loads(os.environ['CHECK_RESULTS'])
+          if results['changes']['result'] != 'success':
+              raise SystemExit('CI selection failed or was cancelled')
+          selected = json.loads(os.environ['SELECTED_JOBS'])
+          available = set(results) - {'changes'}
+          if not isinstance(selected, list) or any(not isinstance(job, str) or job not in available for job in selected):
+              raise SystemExit('Invalid CI selection output')
+          failed = {job: info['result'] for job, info in results.items()
+                    if info['result'] not in {'success', 'skipped'}
+                    or (job in selected and info['result'] != 'success')}
+          if failed:
+              raise SystemExit(f'CI checks did not succeed: {failed}')
+          print('Selected CI checks passed' if selected else 'Documentation-only or empty change: no code checks required')
+          PY

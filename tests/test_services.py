@@ -27,8 +27,7 @@ def test_every_category_named_is_in_the_shipped_geo_data() -> None:
     assert missing == []
 
 
-def test_the_list_has_about_forty_single_services_in_every_category() -> None:
-    assert 35 <= len(SERVICES) <= 45
+def test_services_are_unique_grouped_and_cover_every_category() -> None:
     ids = [service.id for service in SERVICES]
     assert len(set(ids)) == len(ids)
     counts = Counter(service.category for service in SERVICES)

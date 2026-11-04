@@ -82,6 +82,11 @@ SOLARIS_E2E=1 uv run pytest tests/e2e
 
 CI 还运行 `uv run ruff check .`、`uv run ruff format --check .`、`uv run pyright` 和 `go test -race ./...`。
 
+CI 按改动范围选择任务，规则集中在 `scripts/ci_changes.py`。main 推送与最近成功的祖先 CI 提交比较，PR 与 merge-base
+比较；未知路径、缺少历史或无法查询成功基线时跑全量。纯说明文档只运行变更判断和 `CI result`，`DESIGN.md`、配置示例
+及随包资源仍按构建输入检查。Python 改动保留三平台测试、E2E 和 Windows 打包；Go 改动保留对应的内核与宿主验证。
+需要完整复测时，在 Actions 中手动运行 CI 或重新运行全部 jobs；配置必需检查时使用始终返回结果的 `CI result`。
+
 **开发服务**：Windows 服务的二进制在 macOS 和 Linux 上可以作为前台进程运行，以普通用户身份监听一个本地 socket，
 不创建 TUN，不改系统代理、路由和 DNS（[architecture.md](architecture.md) §11）。`scripts/dev.py` 一步构建并启动它，
 再打开界面；配置和设置放在临时目录（`--data` 可指定目录，保留到下次），不读写用户数据目录，退出界面时停止服务。
@@ -113,7 +118,8 @@ uv run python scripts/preview.py
 ## 生成的文件
 
 修改 `proto/` 后重新生成 Go 与 Python 的协议绑定，修改 [DESIGN.md](../DESIGN.md) 的 token 后重新生成 `Theme.qml`，
-改动界面文案后更新翻译目录（源文是中文，英文在 `src/solaris/translations/en.ts`）。CI 用 `--check` 核对它们是最新的：
+改动界面文案后更新翻译目录（源文是中文，英文在 `src/solaris/translations/en.ts`）。用以下命令重新生成；本地可加 `--check`
+检查是否一致。CI 的主题与翻译一致性由 pytest 检查，协议绑定在相关输入变化时单独检查：
 
 ```bash
 uv run python scripts/gen_protocol.py
