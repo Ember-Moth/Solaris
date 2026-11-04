@@ -33,7 +33,7 @@ from tests.support.releases import FakeGitHub, FakeVerifier, fake_github, offlin
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
 
 NOW = datetime(2026, 10, 30, 9).timestamp()
-DMG = "Solaris-1.1.0-macos-arm64.dmg"
+DMG = "Solaris-1.1.0-macos-universal.dmg"
 EXE = "Solaris-1.1.0-windows-x64-setup.exe"
 SECRET_OVERRIDE = "prepend-rules:\n  - DOMAIN,override-secret.example.net,DIRECT\n"
 SECRET_RULE = "plan-secret.example.net"
@@ -335,7 +335,7 @@ def test_cancel_a_download(
 def test_start_clears_old_downloads(qtbot: QtBot, built: ViewModels, tmp_path: Path) -> None:
     update = offline_updater(tmp_path / "data")
     update.directory.mkdir(parents=True)
-    (update.directory / "Solaris-1.0.0-macos-arm64.dmg").write_bytes(b"old")
+    (update.directory / "Solaris-1.0.0-macos-universal.dmg").write_bytes(b"old")
     built.settings_store.update(update_check=False)
     about = about_for(built, update)
     about.start()

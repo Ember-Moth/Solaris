@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts import build_app, build_apple, build_dmg
+from scripts import build_app, build_apple, build_dmg, macos
 
 MANAGER = build_apple.APPLE / "Manager"
 NATIVE_MACOS = pytest.mark.skipif(
@@ -41,12 +41,122 @@ def test_app_minimum_keeps_product_floor_and_stricter_dependencies(
 
     def output(command: list[str | Path]) -> str:
         if command[0] == "lipo":
-            return "arm64"
+            return "x86_64 arm64"
         assert command[0] == "otool"
         return f"Load command 0\n cmd LC_BUILD_VERSION\n minos {library_minimum}\n"
 
     monkeypatch.setattr(build_app, "_output", output)
     assert build_app.check_ui(bundle) == expected
+
+
+def test_universal_ui_checks_the_minimum_and_dependencies_in_both_slices(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bundle = tmp_path / "Solaris.app"
+    binary = bundle / "Contents" / "MacOS" / "SolarisUI"
+    monkeypatch.setattr(build_app, "_machos", lambda _: iter([binary]))
+    loads = (
+        "Load command 0\n cmd LC_BUILD_VERSION\n minos 26.0\n"
+        "Load command 0\n cmd LC_VERSION_MIN_MACOSX\n version 27.0\n"
+    )
+
+    def output(command: list[str | Path]) -> str:
+        if command[0] == "lipo":
+            return "arm64 x86_64"
+        assert command[:4] == ["otool", "-arch", "all", "-l"]
+        return loads
+
+    monkeypatch.setattr(build_app, "_output", output)
+    assert build_app.check_ui(bundle) == "27.0"
+    loads += "Load command 1\n cmd LC_LOAD_DYLIB\n name /opt/local/lib/foreign.dylib (offset 24)\n"
+    with pytest.raises(build_apple.BuildError, match=r"foreign\.dylib"):
+        build_app.check_ui(bundle)
+    monkeypatch.setattr(build_app, "_output", lambda _: "arm64")
+    with pytest.raises(build_apple.BuildError, match="x86_64"):
+        build_app.check_ui(bundle)
+
+
+@pytest.mark.parametrize("difference", ["missing", "resource", "symlink"])
+def test_universal_merge_refuses_incomplete_or_different_resources(
+    tmp_path: Path, difference: str
+) -> None:
+    inputs = {arch: tmp_path / arch for arch in macos.ARCHITECTURES}
+    for root in inputs.values():
+        root.mkdir()
+        (root / "data").write_bytes(b"shared")
+    intel = inputs["x86_64"] / "data"
+    if difference == "missing":
+        intel.unlink()
+    elif difference == "resource":
+        intel.write_bytes(b"different")
+    else:
+        for root in inputs.values():
+            (root / "outside").symlink_to(tmp_path)
+    with pytest.raises(macos.BuildError):
+        macos.merge_bundle(inputs, tmp_path / "universal")
+
+
+@NATIVE_MACOS
+def test_universal_merge_preserves_each_executable_slice_and_shared_resources(
+    tmp_path: Path,
+) -> None:
+    inputs = {arch: tmp_path / arch for arch in macos.ARCHITECTURES}
+    source = tmp_path / "probe.c"
+    source.write_text("int main(void) { return sizeof(void *); }\n")
+    for arch, root in inputs.items():
+        root.mkdir()
+        (root / "data").write_bytes(b"one shared resource")
+        (root / "current").symlink_to("probe")
+        signature = root / "_CodeSignature"
+        signature.mkdir()
+        (signature / "CodeResources").write_text(arch)
+        subprocess.run(
+            ["xcrun", "clang", "-arch", arch, str(source), "-o", str(root / "probe")],
+            check=True,
+            capture_output=True,
+            timeout=60,
+        )
+    output = tmp_path / "universal"
+    subprocess.run(
+        ["xattr", "-w", "com.solaris.merge-test", "preserved", str(inputs["arm64"] / "data")],
+        check=True,
+    )
+    macos.merge_bundle(inputs, output)
+    assert macos.architectures(output / "probe") == set(macos.ARCHITECTURES)
+    assert (output / "data").read_bytes() == b"one shared resource"
+    assert (output / "current").readlink() == Path("probe")
+    assert not (output / "_CodeSignature").exists()
+    assert (
+        subprocess.check_output(
+            ["xattr", "-p", "com.solaris.merge-test", str(output / "data")], text=True
+        ).strip()
+        == "preserved"
+    )
+    for arch, root in inputs.items():
+        thin = tmp_path / f"extracted-{arch}"
+        subprocess.run(
+            ["lipo", str(output / "probe"), "-thin", arch, "-output", str(thin)], check=True
+        )
+        assert thin.read_bytes() == (root / "probe").read_bytes()
+    with pytest.raises(macos.BuildError, match="no x86_64 slice"):
+        macos.merge_binary(
+            dict.fromkeys(macos.ARCHITECTURES, inputs["arm64"] / "probe"), tmp_path / "bad"
+        )
+
+
+def test_debug_relocation_maps_are_kept_for_each_architecture(tmp_path: Path) -> None:
+    inputs = {arch: tmp_path / arch for arch in macos.ARCHITECTURES}
+    resources = {arch: (Path("Relocations") / arch,) for arch in inputs}
+    for arch, root in inputs.items():
+        directory = root / resources[arch][0]
+        directory.mkdir(parents=True)
+        (directory / "map.yml").write_text(arch)
+        (root / "Info.plist").write_bytes(b"shared metadata")
+    output = tmp_path / "universal.dSYM"
+    macos.merge_bundle(inputs, output, architecture_resources=resources)
+    for arch in inputs:
+        assert (output / resources[arch][0] / "map.yml").read_text() == arch
+    assert (output / "Info.plist").read_bytes() == b"shared metadata"
 
 
 def _png_size(path: Path) -> tuple[int, int]:

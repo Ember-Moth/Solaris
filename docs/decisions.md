@@ -12,7 +12,7 @@
 | # | 决定 | 详见 |
 | --- | --- | --- |
 | D1 | 产品名与应用名都是 Solaris。GitHub 仓库为 `Ember-Moth/Solaris`，macOS bundle id 前缀 `dev.tschen.solaris`；产品标识集中在 `src/core/internal/product/product.go` 与 `src/solaris/product.py` | [architecture.md](architecture.md) |
-| D2 | macOS 提供 arm64；Windows 提供 x64，并按 D40 扩展到 ARM64 | [architecture.md](architecture.md) §6.1、[release.md](release.md) §1 |
+| D2 | macOS 提供 arm64 + x86_64 通用 DMG，UI、Python/Qt、管理库和扩展均含两个架构；Windows 提供 x64，并按 D40 扩展到 ARM64 | [architecture.md](architecture.md) §6.1、[release.md](release.md) §1 |
 | D3 | Windows 服务带 `with_gvisor` 构建，四种 TUN 栈都提供，由用户在设置里选择；macOS 系统扩展同样带 `with_gvisor`，fd 模式默认 gVisor 栈 | [architecture.md](architecture.md) §3.4 |
 | D4 | 覆写只做 Merge，不做 Script；一份全局覆写，加上每份订阅各一份 | [ui.md](ui.md) §4、[architecture.md](architecture.md) §3.2 |
 | D5 | 属主注销时停止隧道，下次登录后恢复 | [architecture.md](architecture.md) §5.4 |

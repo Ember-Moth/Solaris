@@ -25,13 +25,13 @@ Windows 安装器采用自定义 Win32 界面（D39），由 MSVC 编译为 NSIS
 | --- | --- |
 | 标签 | `v<版本>`，版本即 `pyproject.toml` 的 `version`，形如 `1.0.0`（三段数字）。预发布和草稿不提供给更新 |
 | 标题与说明 | `Solaris <版本>`；说明取自 `.github/release-notes.md`，`{{version}}` 换成版本，"更新内容"在草稿里手写 |
-| macOS 安装包 | `Solaris-<版本>-macos-arm64.dmg`：由 `scripts/build_dmg.py` 制作，挂载后是一个固定的窗口，左边 `Solaris.app`、右边“应用程序”的快捷方式（apple/README.md 的“磁盘映像”）；磁盘映像用 Developer ID（Team `GY9ZKZMAZA`）签名、公证并 staple |
+| macOS 安装包 | `Solaris-<版本>-macos-universal.dmg`：由 `scripts/build_dmg.py` 制作，挂载后是一个固定的窗口，左边 `Solaris.app`、右边“应用程序”的快捷方式（apple/README.md 的“磁盘映像”）；磁盘映像用 Developer ID（Team `GY9ZKZMAZA`）签名、公证并 staple |
 | Windows 安装包 | `Solaris-<版本>-windows-x64-setup.exe`：NSIS 安装器（architecture.md 第 9 节）。目前不签名（D29），更新时只核对校验和（第 3 节第 4 步）；加入签名后用 Authenticode 签名 |
 | Windows ARM64 安装包 | `Solaris-<版本>-windows-arm64-setup.exe`：Windows 11 ARM64 原生应用、服务及匹配的 Cronet/Wintun；NSIS 引导仍为 x86，安装逻辑与 x64 版相同 |
 | 校验和 | `SHA256SUMS`：`sha256sum` 的输出格式，每行 `<64 位小写十六进制>  <文件名>`，覆盖本次发布的其他每个文件 |
 | 源代码 | `Solaris-<版本>-source.tar.gz`：本仓库在这个标签的代码，加上 `go mod vendor` 得到的全部 Go 依赖（第 5 节） |
 
-Release 上有三个安装包、SHA256SUMS 和源代码包，共五个文件。支持 Windows x64、Windows 11 ARM64 和 macOS arm64（D2、D40）。其他平台的界面不提供
+Release 上有三个安装包、SHA256SUMS 和源代码包，共五个文件。支持 Windows x64、Windows 11 ARM64 和 macOS arm64 / x64（通用包，D2、D40）。其他平台的界面不提供
 下载，「检查更新」照常显示有没有新版本。
 
 ### 1.1 发布工作流
@@ -39,7 +39,7 @@ Release 上有三个安装包、SHA256SUMS 和源代码包，共五个文件。�
 `.github/workflows/release.yml` 在推送 `v*` 标签时运行（也可以手动运行，但只有标签才创建 Release）。每个 job 都在
 `release` Environment 里，由它的审批人批准后才开始：先批准 macOS 和两个 Windows 架构的构建 job，它们成功后再批准创建 Release 的 job。
 
-1. **macOS arm64** 和 **Windows x64 / ARM64** 三个构建任务分别构建、签名（Windows 目前不签名）、公证安装包，Windows 的安装包还在 runner 上装一遍、
+1. **macOS universal** 和 **Windows x64 / ARM64** 三个构建任务分别构建、签名（Windows 目前不签名）、公证安装包，Windows 的安装包还在 runner 上装一遍、
    升级、卸载（architecture.md 第 10 节）。产物连同各自的 `.sha256` 存为 workflow artifact。各构建任务都把 Environment
    的机密 `SOLARIS_GOOGLE_CLIENT_ID`、`SOLARIS_GOOGLE_CLIENT_SECRET` 交给构建脚本，打包进 Google Drive 备份用的 OAuth
    客户端（storage.md 第 4 节）；没有这两个机密时给出警告，照常构建，安装包里没有 Google Drive 备份。客户端在 Google

@@ -150,7 +150,7 @@ def sample_github(*, newer: bool) -> Iterator[FakeGitHub]:
     with fake_github() as github:
         version = "9.0.0" if newer else __version__
         github.tag = f"v{version}"
-        name = installer_name(version) or f"Solaris-{version}-macos-arm64.dmg"
+        name = installer_name(version) or f"Solaris-{version}-macos-universal.dmg"
         github.add(name, b"sample installer " * 200_000)
         github.add_checksums(name)
         yield github

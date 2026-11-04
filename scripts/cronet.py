@@ -21,7 +21,12 @@ class NativeLibrary:
 
 
 def library(system: str, arch: str) -> NativeLibrary:
-    if (system, arch) not in (("darwin", "arm64"), ("windows", "amd64"), ("windows", "arm64")):
+    if (system, arch) not in (
+        ("darwin", "arm64"),
+        ("darwin", "amd64"),
+        ("windows", "amd64"),
+        ("windows", "arm64"),
+    ):
         raise ValueError(f"unsupported Solaris native target: {system}/{arch}")
     module = MODULE + f"{system}_{arch}"
 
@@ -50,7 +55,7 @@ def library(system: str, arch: str) -> NativeLibrary:
     return NativeLibrary(module, selected["Version"], root, binary)
 
 
-# These are the pinned darwin_arm64 package's #cgo LDFLAGS, also required by the
+# These are the pinned darwin_arm64/darwin_amd64 packages' #cgo LDFLAGS, also required by the
 # final Swift link: a Go c-archive does not absorb its external native libraries.
 APPLE_LIBRARIES = ("bsm", "pmenergy", "pmsample", "resolv")
 APPLE_FRAMEWORKS = (

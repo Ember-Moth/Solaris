@@ -5,7 +5,7 @@
 
 ## 1. 支持范围与验证要求
 
-支持 macOS 26 及以上的 Apple Silicon、Windows 10/11 x64 和 Windows 11 ARM64。
+支持 macOS 26 及以上的 Apple Silicon / Intel x64、Windows 10/11 x64 和 Windows 11 ARM64。
 依赖版本以 `uv.lock`、`src/core/go.mod` 和 `src/core/go.sum` 为准；功能限制见 1.4 节。
 每个发布候选版本按第 2 节验收，结果随对应的 CI 运行、Issue 或 Release 记录。
 
@@ -17,10 +17,10 @@
 | job | 平台 | 内容 |
 | --- | --- | --- |
 | `changes` | Linux | 从完整 Git 差异选择任务；依赖锁、CI 配置和未知输入触发全量 |
-| `python` | macOS、Windows x64 / ARM64 | ruff 只在 macOS 运行一次；各平台保留 pyright、pytest（含主题与翻译一致性）。协议输入变化时额外核对生成绑定 |
-| `e2e` | macOS | 界面连真实的开发服务（`tests/e2e`）：导入、连接、各页数据、分流与方案、重载不断开连接；节点是本机起的代理，只走回环地址 |
-| `go` | macOS、Windows x64 / ARM64、Linux | `go vet`、`go test`，再在支持的架构以 `-race` 跑一遍（Go 1.27 不支持 Windows ARM64 race）；Linux 上以 `with_gvisor` 带 `-race` 再跑安全项和组网测试，交叉编译 Windows 服务；macOS 上编扩展用的 C archive |
-| `apple` | macOS | 管理库和系统扩展的不签名构建，再用检查用的 app 做一次发布用的磁盘映像（`scripts/build_dmg.py`） |
+| `python` | macOS arm64 / x64、Windows x64 / ARM64 | ruff 只在 macOS 运行一次；各平台保留 pyright、pytest（含主题与翻译一致性）。协议输入变化时额外核对生成绑定 |
+| `e2e` | macOS arm64 / x64 | 界面连真实的开发服务（`tests/e2e`）：导入、连接、各页数据、分流与方案、重载不断开连接；节点是本机起的代理，只走回环地址 |
+| `go` | macOS arm64 / x64、Windows x64 / ARM64、Linux | `go vet`、`go test`，再在支持的架构以 `-race` 跑一遍（Go 1.27 不支持 Windows ARM64 race）；Linux 上以 `with_gvisor` 带 `-race` 再跑安全项和组网测试，交叉编译 Windows 服务；macOS 上编扩展用的 C archive |
+| `apple` | macOS | 两份匹配架构的 Python/Nuitka UI、双架构管理库和扩展，合并后检查全部 Mach-O，ad hoc 签名并制作真实通用 DMG；不启动 app 或扩展 |
 | `windows-installer` | Windows x64 / ARM64 | 构建不签名的安装包，在 runner 上安装、打开界面、升级、卸载（`package/windows/smoke-test.ps1`） |
 | `installer-ui` | Windows x64 / ARM64 | 检查自定义路径的 ACL、所有者及链接拒绝；编译真实 Win32 界面，在只读宿主中验证 GPL 全文与同意项、路径输入、中英文、浅深色、键盘默认动作、数据选项、进度、成功/失败和 DPI 布局；保存窗口截图 artifact |
 | `windows-arm64-upgrade` | Windows ARM64 | 安装 x64 版后原位升级 ARM64，检查服务、GUI、同架构文件、数据保留及卸载 |
@@ -81,7 +81,7 @@ CI 覆盖构建、安装器界面、文件清理和架构迁移。发布验收�
 | 环境 | 用于 |
 | --- | --- |
 | 全新的 Windows 10 / 11 x64 和 Windows 11 ARM64 测试机 | 2.1、2.4 |
-| 一台单独的 Apple Silicon 测试 Mac 或 macOS 虚拟机，装 macOS 26 | 2.2、2.3、2.4 |
+| 单独的 Apple Silicon 与 Intel x64 测试 Mac（或匹配架构的虚拟机），装 macOS 26 | 2.2、2.3、2.4 |
 | 一个测试用的 Apple 账户 | 2.3 |
 | 一个测试用的 Google 账户，以及 Google Cloud 里的项目和 OAuth 客户端 | 2.8 |
 | 一个只有 TCP 的真实节点（另有一个支持 UDP 的更好） | 2.5、2.6 |

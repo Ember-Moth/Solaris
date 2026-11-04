@@ -1,4 +1,4 @@
-"""Architecture names used for native Windows installation and updates."""
+"""Architecture names used for installation and updates."""
 
 from __future__ import annotations
 

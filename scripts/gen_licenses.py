@@ -64,6 +64,11 @@ GO_TARGETS = (
         "./apple",
         "with_gvisor,with_naive",
     ),
+    (
+        {"GOOS": "darwin", "GOARCH": "amd64", "CGO_ENABLED": "1"},
+        "./apple",
+        "with_gvisor,with_naive",
+    ),
 )
 # sing-tun embeds Wintun's prebuilt DLL, which comes under its own license, kept in
 # WINTUN_LICENSE from wintun-0.14.1.zip. Another DLL means checking that license again.

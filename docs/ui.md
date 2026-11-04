@@ -296,7 +296,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   字体与编码专项可运行 `uv run pytest -q tests/test_fonts.py tests/test_text.py tests/test_logs.py tests/test_licenses.py`：
   检查实际字形所属字体、中文 400/500/600、Emoji 连字与彩色绘制、完整字素省略和删除、撤销/重做、只读/输入法组合、
   复制粘贴、严格解码、数据库/备份与日志原文往返。设置 `QT_SCALE_FACTOR=1.25`、`1.5`、`2` 分别重跑字体测试；
-  CI 的 macOS、Windows x64/ARM64 Python 测试均包含这些用例。自动化中的输入法预编辑事件不能替代真实候选窗验证；
+  CI 的 macOS arm64/x64、Windows x64/ARM64 Python 测试均包含这些用例。自动化中的输入法预编辑事件不能替代真实候选窗验证；
   Windows 显示效果及原生输入法仍须在对应系统上验收。
 
 ## 7. 连接与日志

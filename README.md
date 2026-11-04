@@ -65,7 +65,7 @@ EasyTier** 网络，通过分流规则访问网络中的设备。
 
 | 支持的平台 | 安装包 |
 | --- | --- |
-| macOS 26 及以上，Apple Silicon | `Solaris-<版本>-macos-arm64.dmg` |
+| macOS 26 及以上，Apple Silicon / Intel x64 | `Solaris-<版本>-macos-universal.dmg` |
 | Windows 10 / 11，x64 | `Solaris-<版本>-windows-x64-setup.exe` |
 | Windows 11，ARM64 | `Solaris-<版本>-windows-arm64-setup.exe` |
 

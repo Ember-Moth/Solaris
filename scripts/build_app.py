@@ -25,6 +25,7 @@ import datetime as dt
 import importlib.metadata
 import json
 import os
+import platform
 import plistlib
 import re
 import shutil
@@ -38,7 +39,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Run as a script, Python puts scripts/ on the path rather than the root.
 sys.path.insert(0, str(ROOT))
 
-from scripts import build_apple, symbols  # noqa: E402
+from scripts import build_apple, macos, symbols  # noqa: E402
 from scripts.build_apple import BuildError, Profile  # noqa: E402
 from solaris.models.backup_google import (  # noqa: E402
     CLIENT_FILE_NAME,
@@ -172,7 +173,7 @@ EXCLUDED = (
     "libssl*.dylib",
     "libcrypto*.dylib",
 )
-MACHO_MAGIC = (b"\xcf\xfa\xed\xfe", b"\xca\xfe\xba\xbe", b"\xbe\xba\xfe\xca")
+MACHO_MAGIC = macos.MACHO_MAGIC
 
 
 def _run(command: list[str | Path], **options: Any) -> None:
@@ -213,9 +214,11 @@ def google_client(directory: Path) -> list[str]:
     return [f"--include-data-files={path}=solaris/{CLIENT_FILE_NAME}"]
 
 
-def build_ui(version: str) -> Path:
-    """The Nuitka app bundle of package/entry.py; its own options are in that file."""
-    output = BUILD / "nuitka"
+def build_ui_slice(version: str, arch: str) -> Path:
+    """Compile one UI with a matching Python; never cross-compile Python extension modules."""
+    if platform.machine().lower() != arch:
+        raise BuildError(f"{arch} UI build needs {arch} Python, got {platform.machine()}")
+    output = BUILD / "ui" / arch / "nuitka"
     if output.exists():
         shutil.rmtree(output)
     clang = Path(_output(["xcrun", "--find", "clang"]).strip())
@@ -223,7 +226,7 @@ def build_ui(version: str) -> Path:
         # Apple's clang, ahead of any other on PATH.
         "CC": str(clang),
         "PATH": f"{clang.parent}{os.pathsep}{os.environ['PATH']}",
-        "SDKROOT": _output(["xcrun", "--show-sdk-path"]).strip(),
+        "SDKROOT": _output(["xcrun", "--sdk", "macosx", "--show-sdk-path"]).strip(),
         "MACOSX_DEPLOYMENT_TARGET": MINIMUM_MACOS,
     }
     command: list[str | Path] = [
@@ -231,6 +234,7 @@ def build_ui(version: str) -> Path:
         "-m",
         "nuitka",
         "--mode=app",
+        f"--macos-target-arch={arch}",
         "--unstripped",
         "--enable-plugins=pyside6",
         "--include-qt-plugins=qml",
@@ -255,13 +259,66 @@ def build_ui(version: str) -> Path:
     _run(command, env=environment)
     ui = output / f"{ENTRY.stem}.app"
     binary = ui / "Contents" / "MacOS" / EXECUTABLE
-    symbol_dir = BUILD / "symbols"
+    symbol_dir = BUILD / "ui" / arch / "symbols"
     build_apple._remove(symbol_dir)
     symbol_dir.mkdir(parents=True)
     dsym = symbol_dir / f"{EXECUTABLE}.dSYM"
     _run(["xcrun", "dsymutil", binary, "-o", dsym])
     symbols.apple(binary, dsym, symbol_dir)
     return ui
+
+
+def build_ui(version: str) -> Path:
+    """Build isolated, locked Python environments and merge their UI and crash symbols."""
+    build_apple._remove(BUILD / "ui")
+    inputs: dict[str, Path] = {}
+    python_version = platform.python_version()
+    for arch in macos.ARCHITECTURES:
+        environment = os.environ | {
+            "UV_PROJECT_ENVIRONMENT": str(BUILD / "python" / arch),
+            "UV_PYTHON_ARCH": arch,
+        }
+        _run(
+            [
+                "uv",
+                "run",
+                "--project",
+                ROOT,
+                "--frozen",
+                "--python",
+                f"cpython-{python_version}-macos-{arch}-none",
+                "--with",
+                f"nuitka=={NUITKA_VERSION}",
+                "python",
+                ROOT / "scripts" / "build_app.py",
+                "--ui-arch",
+                arch,
+            ],
+            env=environment,
+        )
+        inputs[arch] = BUILD / "ui" / arch / "nuitka" / f"{ENTRY.stem}.app"
+        check_ui(inputs[arch], (arch,))
+    return merge_ui(inputs)
+
+
+def merge_ui(inputs: dict[str, Path]) -> Path:
+    """Merge the validated UI bundles and their matching per-architecture dSYMs."""
+    merged = BUILD / "ui" / "universal" / f"{ENTRY.stem}.app"
+    build_apple._remove(merged.parent)
+    macos.merge_bundle(inputs, merged)
+    symbol_dir = BUILD / "symbols"
+    build_apple._remove(symbol_dir)
+    dsym = symbol_dir / f"{EXECUTABLE}.dSYM"
+    macos.merge_bundle(
+        {arch: BUILD / "ui" / arch / "symbols" / dsym.name for arch in macos.ARCHITECTURES},
+        dsym,
+        architecture_resources={
+            "arm64": (Path("Contents/Resources/Relocations/aarch64"),),
+            "x86_64": (Path("Contents/Resources/Relocations/x86_64"),),
+        },
+    )
+    symbols.apple(merged / "Contents" / "MacOS" / EXECUTABLE, dsym, symbol_dir)
+    return merged
 
 
 def assemble(ui: Path, dylib: Path, extension: Path, version: str, core: str, minimum: str) -> Path:
@@ -299,11 +356,7 @@ def assemble(ui: Path, dylib: Path, extension: Path, version: str, core: str, mi
 
 
 def _machos(directory: Path) -> Iterator[Path]:
-    for path in sorted(directory.rglob("*")):
-        if path.is_file() and not path.is_symlink():
-            with path.open("rb") as file:
-                if file.read(4) in MACHO_MAGIC:
-                    yield path
+    yield from macos.machos(directory)
 
 
 def _version_key(version: str) -> tuple[int, ...]:
@@ -315,8 +368,8 @@ def _outside(path: str) -> bool:
     return path.startswith("/") and not path.startswith(("/usr/lib/", "/System/"))
 
 
-def check_ui(ui: Path) -> str:
-    """Every Mach-O is arm64 alone and loads nothing outside the bundle and the system.
+def check_ui(ui: Path, expected: tuple[str, ...] = macos.ARCHITECTURES) -> str:
+    """Every Mach-O has the expected slices and loads only bundled/system dependencies.
     Install names and rpaths that still point into the build machine become @rpath names or
     go. Returns the oldest supported macOS: the product floor, unless a
     dependency was built for a newer one (PySide6's wheels tag an older macOS than their
@@ -326,29 +379,35 @@ def check_ui(ui: Path) -> str:
     count = 0
     for path in _machos(ui / "Contents"):
         count += 1
-        name = str(path.relative_to(ui / "Contents" / "MacOS"))
+        name = str(path.relative_to(ui / "Contents"))
         architectures = _output(["lipo", "-archs", path]).split()
-        if architectures != [build_apple.ARCH]:
-            raise BuildError(f"{name} is built for {architectures}, not {build_apple.ARCH}")
+        if set(architectures) != set(expected):
+            raise BuildError(f"{name} is built for {architectures}, not {list(expected)}")
         relocation: list[str | Path] = []
-        for block in _output(["otool", "-l", path]).split("Load command ")[1:]:
+        for block in _output(["otool", "-arch", "all", "-l", path]).split("Load command ")[1:]:
             command = re.search(r"^\s*cmd (\w+)$", block, re.MULTILINE)
             value = re.search(r"^\s*(?:name|path) (\S+) \(offset", block, re.MULTILINE)
             version = re.search(r"^\s*minos (\S+)$", block, re.MULTILINE)
+            if command and command[1] == "LC_VERSION_MIN_MACOSX":
+                version = re.search(r"^\s*version (\S+)$", block, re.MULTILINE)
             if version and _version_key(version[1]) > _version_key(MINIMUM_MACOS):
                 newer.setdefault(version[1], []).append(name)
                 minimum = max(minimum, version[1], key=_version_key)
             if command is None or value is None or not _outside(value[1]):
                 continue
             if command[1] == "LC_ID_DYLIB":
-                relocation += ["-id", f"@rpath/{path.name}"]
+                if "-id" not in relocation:
+                    relocation += ["-id", f"@rpath/{path.name}"]
             elif command[1] == "LC_RPATH":
-                relocation += ["-delete_rpath", value[1]]
+                if value[1] not in relocation:
+                    relocation += ["-delete_rpath", value[1]]
             else:
                 raise BuildError(f"{name} loads {value[1]}")
         if relocation:
             _run(["install_name_tool", *relocation, path], stderr=subprocess.DEVNULL)
-    print(f"{count} Mach-O files in the UI: {build_apple.ARCH}, no outside libraries")
+    if not count:
+        raise BuildError("the UI bundle contains no Mach-O files")
+    print(f"{count} Mach-O files in the UI: {', '.join(expected)}, no outside libraries")
     for version, names in sorted(newer.items(), key=lambda item: _version_key(item[0])):
         shown = ", ".join(names[:3]) + (f" and {len(names) - 3} more" if len(names) > 3 else "")
         print(f"warning: macOS {version} needed by {shown}")
@@ -386,26 +445,38 @@ def sign(app: Path, identity: str, profile: Profile) -> None:
 def sign_ad_hoc(app: Path) -> None:
     """For a machine without the certificate: enough to inspect the bundle, not to activate
     the extension."""
+    extension = (
+        app
+        / "Contents"
+        / "Library"
+        / "SystemExtensions"
+        / f"{build_apple.TUNNEL_ID}.systemextension"
+    )
+    # SystemExtensions is sealed as data by the outer app, so --deep does not sign it.
+    _run(["codesign", "--force", "--deep", "--sign", "-", extension])
     _run(["codesign", "--force", "--deep", "--sign", "-", app])
+    for code in (extension, app):
+        _run(["codesign", "--verify", "--all-architectures", "--deep", "--strict", code])
 
 
 def verify(app: Path, identity: str, app_profile: Profile, tunnel_profile: Profile) -> None:
     build_apple.verify(app, identity, app_profile, tunnel_profile)
     contents = app / "Contents"
     for path in _machos(contents / "MacOS"):
-        details = subprocess.run(
-            ["codesign", "--display", "--verbose=4", str(path)],
-            check=True,
-            capture_output=True,
-            text=True,
-        ).stderr
-        name = path.relative_to(app)
-        if f"TeamIdentifier={build_apple.TEAM}" not in details.splitlines():
-            raise BuildError(f"{name} is not signed by team {build_apple.TEAM}")
-        if not re.search(r"flags=0x[0-9a-f]+\([^)]*runtime", details):
-            raise BuildError(f"{name} is signed without the hardened runtime")
-        if "Timestamp=" not in details:
-            raise BuildError(f"{name} has no secure timestamp")
+        for arch in macos.ARCHITECTURES:
+            details = subprocess.run(
+                ["codesign", "--display", "--architecture", arch, "--verbose=4", str(path)],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stderr
+            name = path.relative_to(app)
+            if f"TeamIdentifier={build_apple.TEAM}" not in details.splitlines():
+                raise BuildError(f"{name} is not signed by team {build_apple.TEAM}")
+            if not re.search(r"flags=0x[0-9a-f]+\([^)]*runtime", details):
+                raise BuildError(f"{name} is signed without the hardened runtime")
+            if "Timestamp=" not in details:
+                raise BuildError(f"{name} has no secure timestamp")
 
 
 def main() -> None:
@@ -420,6 +491,7 @@ def main() -> None:
         default=dt.datetime.now(dt.UTC).strftime("%Y%m%d.%H%M%S"),
         help="CFBundleVersion of the app and the extension (default: the UTC time)",
     )
+    parser.add_argument("--ui-arch", choices=macos.ARCHITECTURES, help=argparse.SUPPRESS)
     arguments = parser.parse_args()
     if sys.platform != "darwin":
         sys.exit("build_app: Solaris.app is built on macOS")
@@ -433,6 +505,9 @@ def main() -> None:
         sys.exit("build_app: XcodeGen is missing (brew install xcodegen)")
     version = build_apple._version()
     try:
+        if arguments.ui_arch:
+            build_ui_slice(version, arguments.ui_arch)
+            return
         identity = None
         profiles: tuple[Profile, Profile] | None = None
         if not arguments.unsigned:

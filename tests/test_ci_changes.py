@@ -23,16 +23,30 @@ WORKFLOW = ci.ROOT / ".github/workflows/ci.yml"
         (["README.md", "PRIVACY.md", "docs/usage.md", "apple/README.md"], set()),
         (
             ["DESIGN.md"],
-            {"python", "e2e", "installer-ui", "windows-installer", "windows-arm64-upgrade"},
+            {
+                "python",
+                "e2e",
+                "apple",
+                "installer-ui",
+                "windows-installer",
+                "windows-arm64-upgrade",
+            },
         ),
         (["docs/examples/mihomo-fork/naive-http2.yaml"], {"go"}),
         (
             ["src/solaris/models/library/core.py"],
-            {"python", "e2e", "windows-installer", "windows-arm64-upgrade"},
+            {"python", "e2e", "apple", "windows-installer", "windows-arm64-upgrade"},
         ),
         (
             ["src/solaris/ui/fonts/inter/Inter-Regular.ttf"],
-            {"python", "e2e", "installer-ui", "windows-installer", "windows-arm64-upgrade"},
+            {
+                "python",
+                "e2e",
+                "apple",
+                "installer-ui",
+                "windows-installer",
+                "windows-arm64-upgrade",
+            },
         ),
         (
             ["src/core/internal/engine/engine.go"],

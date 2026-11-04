@@ -24,7 +24,7 @@ env:
 
 jobs:
   macos:
-    name: macOS arm64 (signed and notarized)
+    name: macOS universal (signed and notarized)
     # The app needs macOS 26 (D28), so the release is built and checked on that system.
     runs-on: macos-26
     environment: release
@@ -58,7 +58,7 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "dmg=Solaris-$version-macos-arm64.dmg" >> "$GITHUB_OUTPUT"
+          echo "dmg=Solaris-$version-macos-universal.dmg" >> "$GITHUB_OUTPUT"
 
       # A keychain of its own holds the certificate; the two profiles go where Xcode and
       # scripts/build_apple.py look for them by name. The build checks the rest: the identity
@@ -137,6 +137,12 @@ jobs:
             echo "::warning::No Google OAuth client in the release environment; this app has no Google Drive backup."
           fi
 
+      - name: Rosetta for the x64 Python compiler
+        run: |
+          if ! arch -x86_64 /usr/bin/true; then
+            sudo softwareupdate --install-rosetta --agree-to-license
+          fi
+
       - name: Build and sign Solaris.app
         env:
           SOLARIS_GOOGLE_CLIENT_ID: ${{ secrets.SOLARIS_GOOGLE_CLIENT_ID }}
@@ -193,7 +199,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: solaris-${{ steps.version.outputs.version }}-macos-arm64
+          name: solaris-${{ steps.version.outputs.version }}-macos-universal
           path: build/release/
           if-no-files-found: error
           compression-level: 0
@@ -392,7 +398,7 @@ jobs:
           fi
           {
             echo "version=$version"
-            echo "dmg=Solaris-$version-macos-arm64.dmg"
+            echo "dmg=Solaris-$version-macos-universal.dmg"
             echo "installer=Solaris-$version-windows-x64-setup.exe"
             echo "installer_arm64=Solaris-$version-windows-arm64-setup.exe"
             echo "source=Solaris-$version-source"
@@ -400,7 +406,7 @@ jobs:
 
       - uses: actions/download-artifact@v8
         with:
-          name: solaris-${{ steps.version.outputs.version }}-macos-arm64
+          name: solaris-${{ steps.version.outputs.version }}-macos-universal
           path: build/artifacts
       - uses: actions/download-artifact@v8
         with:

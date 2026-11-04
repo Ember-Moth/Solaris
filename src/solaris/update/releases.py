@@ -71,8 +71,8 @@ def installer_name(
 ) -> str | None:
     """The asset this machine installs, or None where no installer is built (D2)."""
     machine = native_machine(system) if machine is None else normalize_machine(machine)
-    if system == "darwin" and machine == "arm64":
-        return f"{DISPLAY_NAME}-{version}-macos-arm64.dmg"
+    if system == "darwin" and machine in ("arm64", "x64"):
+        return f"{DISPLAY_NAME}-{version}-macos-universal.dmg"
     if system == "win32" and machine in ("x64", "arm64"):
         return f"{DISPLAY_NAME}-{version}-windows-{machine}-setup.exe"
     return None

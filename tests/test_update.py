@@ -37,7 +37,7 @@ from solaris.update.signature import (
 from solaris.update.updater import Updater
 from tests.support.releases import FakeGitHub, FakeVerifier, fake_github
 
-MAC_DMG = "Solaris-1.1.0-macos-arm64.dmg"
+MAC_DMG = "Solaris-1.1.0-macos-universal.dmg"
 SIGNER = "Ember Moth"  # a Windows signer, for the signed path
 WINDOWS_EXE = "Solaris-1.1.0-windows-x64-setup.exe"
 WINDOWS_ARM64_EXE = "Solaris-1.1.0-windows-arm64-setup.exe"
@@ -101,7 +101,7 @@ def test_versions_compare_as_numbers() -> None:
     [
         ("darwin", "arm64", MAC_DMG),
         ("win32", "AMD64", WINDOWS_EXE),
-        ("darwin", "x86_64", None),
+        ("darwin", "x86_64", MAC_DMG),
         ("win32", "ARM64", WINDOWS_ARM64_EXE),
         ("win32", "aarch64", WINDOWS_ARM64_EXE),
         ("win32", "x64", WINDOWS_EXE),
@@ -309,7 +309,7 @@ def test_with_a_windows_signer_an_unsigned_installer_is_refused(
 def test_download_clears_earlier_ones(github: FakeGitHub, tmp_path: Path) -> None:
     update = updater(github, tmp_path)
     update.directory.mkdir(parents=True)
-    (update.directory / "Solaris-0.1.5-macos-arm64.dmg").write_bytes(b"old")
+    (update.directory / "Solaris-0.1.5-macos-universal.dmg").write_bytes(b"old")
     (update.directory / "stale.part").write_bytes(b"half")
     update.download(update.check())
     assert sorted(p.name for p in update.directory.iterdir()) == [MAC_DMG]
@@ -390,13 +390,13 @@ def test_ready_checks_the_file_again(github: FakeGitHub, tmp_path: Path) -> None
 
 def test_parse_checksums() -> None:
     text = (
-        f"{'A' * 64}  Solaris-0.2.0-macos-arm64.dmg\n"
+        f"{'A' * 64}  Solaris-0.2.0-macos-universal.dmg\n"
         f"{'b' * 64} *Solaris-0.2.0-windows-x64-setup.exe\r\n"
         "not a line\n"
         f"{'c' * 63}  short\n"
     )
     assert download.parse_checksums(text) == {
-        "Solaris-0.2.0-macos-arm64.dmg": "a" * 64,
+        "Solaris-0.2.0-macos-universal.dmg": "a" * 64,
         "Solaris-0.2.0-windows-x64-setup.exe": "b" * 64,
     }
 

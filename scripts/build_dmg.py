@@ -1,7 +1,7 @@
 """Make the macOS disk image (docs/release.md §1, apple/README.md) from a built Solaris.app.
 
     uv run --no-project --with dmgbuild==1.6.7 python scripts/build_dmg.py \\
-        build/app/Solaris.app build/release/Solaris-<version>-macos-arm64.dmg
+        build/app/Solaris.app build/release/Solaris-<version>-macos-universal.dmg
 
 The mounted volume opens as one fixed Finder window without toolbar or sidebar: Solaris.app on
 the left and a shortcut to /Applications on the right, large icons on a plain background with
@@ -28,6 +28,10 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from scripts import macos  # noqa: E402
+
 DMGBUILD_VERSION = "1.6.7"
 
 VOLUME_NAME = "Solaris"
@@ -119,7 +123,15 @@ def check(image: Path) -> None:
             app = mount / APP_NAME
             if not app.is_dir():
                 raise DiskImageError(f"{image.name} holds no {APP_NAME}")
-            _run(["codesign", "--verify", "--deep", "--strict", app])
+            binaries = list(macos.machos(app / "Contents"))
+            if not binaries:
+                raise DiskImageError("the disk image app contains no Mach-O files")
+            for binary in binaries:
+                macos.require_architectures(binary)
+            _run(["codesign", "--verify", "--deep", "--strict", "--all-architectures", app])
+            # The app's resource seal does not verify the extension's own code signature.
+            for extension in (app / "Contents/Library/SystemExtensions").glob("*.systemextension"):
+                _run(["codesign", "--verify", "--strict", "--all-architectures", extension])
             link = mount / APPLICATIONS
             if not link.is_symlink() or link.readlink() != Path("/Applications"):
                 raise DiskImageError(f"{image.name} has no shortcut to /Applications")
@@ -154,10 +166,10 @@ def main() -> None:
     if app.name != APP_NAME or not app.is_dir():
         sys.exit(f"build_dmg: {app} is not a built {APP_NAME}")
     try:
-        _run(["codesign", "--verify", "--deep", "--strict", app])
+        _run(["codesign", "--verify", "--all-architectures", "--deep", "--strict", app])
         build(app, image)
         check(image)
-    except (DiskImageError, subprocess.CalledProcessError) as error:
+    except (DiskImageError, macos.BuildError, subprocess.CalledProcessError) as error:
         sys.exit(f"build_dmg: {error}")
     print(f"build_dmg: {image}, {image.stat().st_size / 2**20:.1f} MiB ({FORMAT})")
 

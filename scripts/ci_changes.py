@@ -32,7 +32,7 @@ JOBS = frozenset(
     }
 )
 CORE = frozenset({"go", "e2e", "apple", "windows-installer", "tun"})
-UI = frozenset({"python", "e2e", "windows-installer"})
+UI = frozenset({"python", "e2e", "apple", "windows-installer"})
 WINDOWS = frozenset({"python", "installer-ui", "windows-installer"})
 BUILD = frozenset({"python", "apple", "windows-installer", "installer-ui"})
 GLOBAL_FILES = frozenset(
@@ -60,6 +60,7 @@ SHARED_BUILD = frozenset(
     {
         "scripts/build_app.py",
         "scripts/build_apple.py",
+        "scripts/macos.py",
         "scripts/cronet.py",
         "scripts/symbols.py",
         "scripts/fetch_geodata.py",

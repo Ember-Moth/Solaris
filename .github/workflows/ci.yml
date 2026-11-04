@@ -45,6 +45,8 @@ jobs:
         include:
           - os: macos-26
             python_arch: aarch64
+          - os: macos-26-intel
+            python_arch: x86_64
           - os: windows-latest
             python_arch: x86_64
           - os: windows-11-arm
@@ -67,7 +69,7 @@ jobs:
       - name: Install (locked)
         run: uv sync --frozen
       - name: Lint and format
-        if: runner.os == 'macOS'
+        if: matrix.os == 'macos-26'
         run: |
           uv run ruff check .
           uv run ruff format --check .
@@ -75,7 +77,7 @@ jobs:
         run: uv run pyright
       # Theme and translation freshness are covered by pytest, once per platform.
       - name: Protocol bindings are current
-        if: runner.os == 'macOS' && needs.changes.outputs.protocol == 'true'
+        if: matrix.os == 'macos-26' && needs.changes.outputs.protocol == 'true'
         run: uv run python scripts/gen_protocol.py --check
       - name: Tests
         env:
@@ -87,8 +89,12 @@ jobs:
   e2e:
     needs: changes
     if: contains(fromJSON(needs.changes.outputs.jobs), 'e2e')
-    runs-on: macos-26
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-26, macos-26-intel]
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
@@ -124,7 +130,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-26, windows-latest, windows-11-arm, ubuntu-latest]
+        os: [macos-26, macos-26-intel, windows-latest, windows-11-arm, ubuntu-latest]
     env:
       CGO_ENABLED: ${{ matrix.os == 'windows-11-arm' && '0' || '1' }}
     defaults:
@@ -177,14 +183,14 @@ jobs:
         if: runner.os == 'macOS'
         run: go build -buildmode=c-archive -o "$RUNNER_TEMP/libsolaris.a" ./apple
 
-  # The macOS manager library and system extension (apple/README.md), built unsigned so that the
-  # Xcode project keeps compiling; signing and notarization belong to the release workflow.
+  # The universal macOS app and system extension (apple/README.md), signed ad hoc;
+  # Developer ID signing and notarization belong to the release workflow.
   # Match the app's minimum supported macOS version (D28), as the release job does.
   apple:
     needs: changes
     if: contains(fromJSON(needs.changes.outputs.jobs), 'apple')
     runs-on: macos-26
-    timeout-minutes: 30
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
@@ -201,17 +207,31 @@ jobs:
         with:
           path: build/geodata
           key: geodata-${{ hashFiles('scripts/fetch_geodata.py') }}
-      # The script needs only the standard library, so skip installing the project. It builds
-      # Build the actual release tags, including the statically linked Naive runtime.
-      - name: Build (unsigned)
-        run: uv run --no-project python scripts/build_apple.py
-      # The release's disk image around the check app, signed ad hoc so that the image's own
-      # checks pass: dmgbuild, the window and the background work on the release's runner.
+      - name: Rosetta for the x64 Python compiler
+        run: |
+          if ! arch -x86_64 /usr/bin/true; then
+            sudo softwareupdate --install-rosetta --agree-to-license
+          fi
+      - name: Install (locked)
+        run: uv sync --frozen
+      # Compile and merge the real UI, Python/Qt libraries, manager and Go/Cronet extension.
+      # The builder checks every Mach-O for both slices before ad hoc signing.
+      - name: Build universal app (unsigned)
+        run: uv run --frozen --with nuitka==4.2.2 python scripts/build_app.py --unsigned
+      # The release's actual universal app in a disk image; no app or extension is launched.
       - name: Disk image
         run: |
-          codesign --force --deep --sign - build/apple/check/Solaris.app
           uv run --no-project --with dmgbuild==1.6.7 python scripts/build_dmg.py \
-            build/apple/check/Solaris.app "$RUNNER_TEMP/Solaris.dmg"
+            build/app/Solaris.app "$RUNNER_TEMP/Solaris-universal.dmg"
+
+      - name: Retain universal disk image
+        uses: actions/upload-artifact@v7
+        with:
+          name: macos-universal-${{ github.sha }}
+          path: ${{ runner.temp }}/Solaris-universal.dmg
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
 
   installer-ui:
     needs: changes

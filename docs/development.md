@@ -10,7 +10,7 @@
 
 需要 Python 3.14、[uv](https://docs.astral.sh/uv/) 和 Go 1.26 以上。安装包在对应的系统上构建：
 
-- **macOS**：另需 Xcode 和 XcodeGen（`brew install xcodegen`）。产物是 `build/app/Solaris.app`：
+- **macOS**：在 Apple Silicon 构建机上安装 Xcode、XcodeGen（`brew install xcodegen`）和 Rosetta 2。脚本分别用 arm64/x86_64 Python 编译，再合并；产物是双架构的 `build/app/Solaris.app`：
 
   ```bash
   uv run --with nuitka==4.2.2 python scripts/build_app.py --unsigned
@@ -84,7 +84,7 @@ CI 还运行 `uv run ruff check .`、`uv run ruff format --check .`、`uv run py
 
 CI 按改动范围选择任务，规则集中在 `scripts/ci_changes.py`。main 推送与最近成功的祖先 CI 提交比较，PR 与 merge-base
 比较；未知路径、缺少历史或无法查询成功基线时跑全量。纯说明文档只运行变更判断和 `CI result`，`DESIGN.md`、配置示例
-及随包资源仍按构建输入检查。Python 改动保留三平台测试、E2E 和 Windows 打包；Go 改动保留对应的内核与宿主验证。
+及随包资源仍按构建输入检查。Python 改动保留 macOS arm64/x64、Windows x64/ARM64 测试、E2E，以及 macOS 和 Windows 打包；Go 改动保留对应的内核与宿主验证。
 需要完整复测时，在 Actions 中手动运行 CI 或重新运行全部 jobs；配置必需检查时使用始终返回结果的 `CI result`。
 
 **开发服务**：Windows 服务的二进制在 macOS 和 Linux 上可以作为前台进程运行，以普通用户身份监听一个本地 socket，

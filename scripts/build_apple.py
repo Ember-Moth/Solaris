@@ -39,6 +39,10 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+
+from scripts import macos  # noqa: E402
+from scripts.macos import BuildError  # noqa: E402
+
 APPLE = ROOT / "apple"
 CORE = ROOT / "src" / "core"
 BUILD = ROOT / "build" / "apple"
@@ -53,7 +57,7 @@ APP_ID = "dev.tschen.solaris"
 TUNNEL_ID = "dev.tschen.solaris.tunnel"
 APP_PROFILE = "Solaris Developer ID"
 TUNNEL_PROFILE = "Solaris Tunnel Developer ID"
-ARCH = "arm64"  # D2
+ARCHITECTURES = macos.ARCHITECTURES  # D2: every macOS binary is universal
 DEPLOYMENT_TARGET = "15.0"  # as in apple/project.yml
 GOPROXY = "https://goproxy.cn,direct"
 GO_VERSION_VARIABLE = "github.com/Ember-Moth/Solaris/src/core/internal/product.Version"
@@ -80,10 +84,6 @@ module SolarisCore {
   export *
 }
 """
-
-
-class BuildError(Exception):
-    pass
 
 
 @dataclass(frozen=True)
@@ -127,44 +127,56 @@ def fetch_geodata() -> None:
 
 
 def build_go(tags: str, version: str) -> None:
-    """The Go dispatcher (src/core/apple) as an arm64 C archive in SolarisCore.xcframework,
-    which the extension target links. GetInfo reports ``version`` as the service version."""
+    """Build each Go/Cronet archive, then one universal macOS XCFramework library."""
     go = BUILD / "go"
     include = go / "include"
     _remove(go)
     include.mkdir(parents=True)
     minimum = f"-mmacosx-version-min={DEPLOYMENT_TARGET}"
-    environment = os.environ | {
-        "GOPROXY": GOPROXY,
-        "CGO_ENABLED": "1",
-        "GOOS": "darwin",
-        "GOARCH": ARCH,
-        "MACOSX_DEPLOYMENT_TARGET": DEPLOYMENT_TARGET,
-        "CGO_CFLAGS": minimum,
-        "CGO_LDFLAGS": minimum,
-    }
-    command: list[str | Path] = [
-        "go",
-        "-C",
-        CORE,
-        "build",
-        "-trimpath",
-        "-buildmode=c-archive",
-        f"-ldflags=-X {GO_VERSION_VARIABLE}={version}",
-    ]
-    if tags:
-        command += ["-tags", tags]
-    _run([*command, "-o", go / "libsolaris.a", "./apple"], env=environment)
-    (go / "libsolaris.h").rename(include / "libsolaris.h")
+    inputs: dict[str, Path] = {}
+    for arch in ARCHITECTURES:
+        directory = go / arch
+        directory.mkdir()
+        environment = os.environ | {
+            "GOPROXY": GOPROXY,
+            "CGO_ENABLED": "1",
+            "GOOS": "darwin",
+            "GOARCH": macos.GO_ARCHITECTURES[arch],
+            "MACOSX_DEPLOYMENT_TARGET": DEPLOYMENT_TARGET,
+            "CGO_CFLAGS": f"-arch {arch} {minimum}",
+            "CGO_LDFLAGS": f"-arch {arch} {minimum}",
+        }
+        command: list[str | Path] = [
+            "go",
+            "-C",
+            CORE,
+            "build",
+            "-trimpath",
+            "-buildmode=c-archive",
+            f"-ldflags=-X {GO_VERSION_VARIABLE}={version}",
+        ]
+        if tags:
+            command += ["-tags", tags]
+        archive = directory / "libsolaris.a"
+        _run([*command, "-o", archive, "./apple"], env=environment)
+        header = directory / "libsolaris.h"
+        if arch == ARCHITECTURES[0]:
+            shutil.copyfile(header, include / header.name)
+        elif not filecmp.cmp(header, include / header.name, shallow=False):
+            raise BuildError("Go C headers differ across macOS architectures")
+        if "with_naive" in re.split(r"[,\s]+", tags):
+            from scripts import cronet
+
+            native = cronet.library("darwin", macos.GO_ARCHITECTURES[arch])
+            combined = directory / "libsolaris-with-cronet.a"
+            _run(["xcrun", "libtool", "-static", "-o", combined, archive, native.binary])
+            combined.replace(archive)
+        inputs[arch] = archive
+    macos.merge_binary(inputs, go / "libsolaris.a")
     module_map = MODULE_MAP
     if "with_naive" in re.split(r"[,\s]+", tags):
         from scripts import cronet
 
-        native = cronet.library("darwin", ARCH)
-        archive = go / "libsolaris.a"
-        combined = go / "libsolaris-with-cronet.a"
-        _run(["xcrun", "libtool", "-static", "-o", combined, archive, native.binary])
-        combined.replace(archive)
         links = [
             *(f'  link "{name}"' for name in cronet.APPLE_LIBRARIES),
             *(f'  link framework "{name}"' for name in cronet.APPLE_FRAMEWORKS),
@@ -251,19 +263,19 @@ def _declared_functions() -> list[str]:
 
 def check_products(dylib: Path, extension: Path) -> None:
     for binary in (dylib, extension / "Contents" / "MacOS" / TUNNEL_ID):
-        architectures = _output(["lipo", "-archs", binary]).split()
-        if architectures != [ARCH]:
-            raise BuildError(f"{binary.name} is built for {architectures}, not {ARCH} alone")
-    exported = {
-        line.split()[-1].removeprefix("_")
-        for line in _output(["nm", "-gU", dylib]).splitlines()
-        if "_solaris_manager_" in line
-    }
+        macos.require_architectures(binary)
     declared = set(_declared_functions())
-    if exported != declared:
-        raise BuildError(
-            f"SolarisManager.dylib exports {sorted(exported)}; the header has {sorted(declared)}"
-        )
+    for arch in ARCHITECTURES:
+        exported = {
+            line.split()[-1].removeprefix("_")
+            for line in _output(["nm", "-arch", arch, "-gU", dylib]).splitlines()
+            if "_solaris_manager_" in line
+        }
+        if exported != declared:
+            raise BuildError(
+                f"SolarisManager.dylib ({arch}) exports {sorted(exported)}; "
+                f"the header has {sorted(declared)}"
+            )
     resources = extension / "Contents" / "Resources"
     for name in GEO_FILES:
         if not filecmp.cmp(resources / name, GEODATA / name, shallow=False):
@@ -333,8 +345,7 @@ def assemble_check_app(dylib: Path, extension: Path, version: str, build_number:
         [
             "xcrun",
             "clang",
-            "-arch",
-            ARCH,
+            *(flag for arch in ARCHITECTURES for flag in ("-arch", arch)),
             f"-mmacosx-version-min={DEPLOYMENT_TARGET}",
             "-I",
             HEADER.parent,
@@ -413,9 +424,9 @@ def _allows(allowed: Any, value: Any) -> bool:
     return allowed == value
 
 
-def _check_signature(code: Path, identity: str) -> None:
+def _check_signature(code: Path, identity: str, arch: str) -> None:
     details = subprocess.run(
-        ["codesign", "--display", "--verbose=4", str(code)],
+        ["codesign", "--display", "--architecture", arch, "--verbose=4", str(code)],
         check=True,
         capture_output=True,
         text=True,
@@ -430,7 +441,14 @@ def _check_signature(code: Path, identity: str) -> None:
     with tempfile.TemporaryDirectory() as directory:
         prefix = Path(directory) / "certificate"
         subprocess.run(
-            ["codesign", "--display", f"--extract-certificates={prefix}", str(code)],
+            [
+                "codesign",
+                "--display",
+                "--architecture",
+                arch,
+                f"--extract-certificates={prefix}",
+                str(code),
+            ],
             check=True,
             capture_output=True,
         )
@@ -439,8 +457,12 @@ def _check_signature(code: Path, identity: str) -> None:
         raise BuildError(f"{code.name} is signed by certificate {leaf}, not {identity}")
 
 
-def _check_entitlements(bundle: Path, expected_file: Path, profile: Profile) -> dict[str, Any]:
-    signed = _plist(["codesign", "--display", "--entitlements", "-", "--xml", bundle])
+def _check_entitlements(
+    bundle: Path, expected_file: Path, profile: Profile, arch: str
+) -> dict[str, Any]:
+    signed = _plist(
+        ["codesign", "--display", "--architecture", arch, "--entitlements", "-", "--xml", bundle]
+    )
     expected = plistlib.loads(expected_file.read_bytes())
     if signed != expected:
         raise BuildError(
@@ -460,20 +482,22 @@ def _check_entitlements(bundle: Path, expected_file: Path, profile: Profile) -> 
 
 
 def verify(app: Path, identity: str, app_profile: Profile, tunnel_profile: Profile) -> None:
-    _run(["codesign", "--verify", "--deep", "--strict", "--verbose=2", app])
+    _run(["codesign", "--verify", "--all-architectures", "--deep", "--strict", "--verbose=2", app])
     contents = app / "Contents"
     extension = contents / "Library" / "SystemExtensions" / f"{TUNNEL_ID}.systemextension"
     # The app seals Contents/Library/SystemExtensions as resources rather than nested code, so
     # --deep checks the extension's files but not its own signature; verify that separately.
-    _run(["codesign", "--verify", "--strict", "--verbose=2", extension])
+    _run(["codesign", "--verify", "--all-architectures", "--strict", "--verbose=2", extension])
     for code in (contents / "Frameworks" / "SolarisManager.dylib", extension, app):
-        _check_signature(code, identity)
+        for arch in ARCHITECTURES:
+            _check_signature(code, identity, arch)
     for bundle, entitlements, profile in (
         (extension, TUNNEL_ENTITLEMENTS, tunnel_profile),
         (app, APP_ENTITLEMENTS, app_profile),
     ):
-        signed = _check_entitlements(bundle, entitlements, profile)
-        print(f"{bundle.name}: {profile.name} ({profile.uuid}), entitlements {sorted(signed)}")
+        for arch in ARCHITECTURES:
+            signed = _check_entitlements(bundle, entitlements, profile, arch)
+            print(f"{bundle.name} ({arch}): {profile.name}, entitlements {sorted(signed)}")
 
 
 def _version() -> str:

@@ -9,7 +9,7 @@ Xcode 工程由 XcodeGen 从 `project.yml` 生成，包含两个 target（docs/a
 | SolarisManager | `SolarisManager.dylib`，C ABI | 激活、替换与停用系统扩展、配置及移除 `NETunnelProviderManager`、启停隧道、查询状态、用 `sendProviderMessage` 收发控制消息；iCloud 备份（CloudKit） |
 | SolarisTunnel | `dev.tschen.solaris.tunnel.systemextension` | `NEPacketTunnelProvider`：设置隧道网络和 DNS、取得 utun fd、运行内核；`handleAppMessage` 把消息交给 Go 分发器 |
 
-只构建 arm64（D2），扩展和管理库的最低系统版本是 macOS 15.0（主应用实际要求的版本见“组装 Solaris.app”）。决策
+构建 arm64 + x86_64 通用二进制（D2），扩展和管理库的最低系统版本是 macOS 15.0（主应用实际要求的版本见“组装 Solaris.app”）。决策
 编号见 docs/decisions.md，测试 Mac 上的验收见 docs/maintenance.md 2.2、2.3 节。
 
 扩展用途说明位于 `Tunnel/en.lproj/InfoPlist.strings` 与 `Tunnel/zh-Hans.lproj/InfoPlist.strings`，
@@ -65,12 +65,12 @@ Developer ID 证书签名并校验。脚本依次：
 
 1. 用 `scripts/fetch_geodata.py` 取得钉住的 `GeoSite.dat`、`GeoIP.dat`、`geoip.metadb`、`ASN.mmdb`（缓存在 `build/geodata/`），
    `project.yml` 把它们放进扩展的 `Contents/Resources`（见“GEO 数据”）；
-2. 把 `src/core/apple` 编成 arm64 的 C archive（`GOPROXY=https://goproxy.cn,direct`），`-ldflags -X` 把版本号写进
+2. 把 `src/core/apple` 分别编成 arm64 和 amd64 的 C archive，各链接同架构 Cronet，再合并为通用 archive（`GOPROXY=https://goproxy.cn,direct`），`-ldflags -X` 把版本号写进
    `product.Version`（`GetInfo` 的服务版本），连同 cgo 生成的 `libsolaris.h` 和一份 module map 包成
    `SolarisCore.xcframework`。module map 把模块命名为 `SolarisCore`，并自动链接 Go 的 `net` 包要用的 `libresolv`；
 3. 用 XcodeGen 生成工程，`xcodebuild` 构建 Release。扩展的可执行文件在签名前由 Xcode 做 `strip -x`
    （`STRIP_STYLE: non-global`），73.3 MiB 减到 61.3 MiB；
-4. 检查产物：只含 arm64，dylib 导出的函数与头文件一致，扩展的 Info.plist 正确，扩展带的 GEO 数据就是钉住的那份；
+4. 检查产物：同时含 arm64 和 x86_64，每个切片的 dylib 导出函数均与头文件一致，扩展的 Info.plist 正确，扩展带的 GEO 数据就是钉住的那份；
 5. 组装一个检查用的 `Solaris.app`（见“签名”），`--sign` 时签名并校验。
 
 产物都在 `build/apple/`（已被 git 忽略）：
@@ -133,12 +133,13 @@ uv run --with nuitka==4.2.2 python scripts/build_app.py --unsigned
 
 脚本先按 `build_apple.py` 的步骤构建原生部分（带签名，或 `--unsigned` 时不签名），再：
 
-1. 用 Nuitka 4.2.2 把 `package/entry.py` 编成 app（`--mode=app`），带上 `src/solaris/ui`（QML、托盘图标、
+1. 在 `build/app/python/arm64` 和 `x86_64` 建立隔离且锁定依赖的 Python 环境，分别用 Nuitka 4.2.2 把 `package/entry.py` 编成 app（`--mode=app`），带上 `src/solaris/ui`（QML、托盘图标、
    字体）和编译好的翻译。`--include-qt-plugins=qml` 会带进全部 QML 模块，脚本按清单排除界面用不到的
-   （3D、图表、多媒体、WebEngine、其他控件样式等），app 从 428 MiB 减到 201 MiB；Qt 的 TLS 只留 Secure Transport。
+   （3D、图表、多媒体、WebEngine、其他控件样式等）；Qt 的 TLS 只留 Secure Transport。
    编译用 Xcode 的 clang，不用 ccache（ccache 要求 PATH 里同名的 clang 就是所用的那个）；
-2. 检查 UI 的每个 Mach-O：只含 arm64，只加载 bundle 内和系统的库；install name 和 rpath 里残留的构建机
-   路径（uv 的 Python 的 `libpython`）改成 `@rpath` 或删掉；
+2. 检查各 UI 的 Mach-O 架构与依赖；install name 和 rpath 里残留的构建机路径（uv 的 Python 的 `libpython`）改成 `@rpath` 或删掉。
+   `scripts/macos.py` 将对应的可执行文件合并为 arm64 + x86_64；共享资源必须逐字节相同，缺文件、不同资源或越界符号链接会中止构建。
+   两份 UI 的 dSYM 也合并，并核对最终二进制的两个 UUID；最终 UI 的每个 Mach-O 必须同时包含两个架构；
 3. 组装 `build/app/Solaris.app`：Nuitka 产物在 `Contents/MacOS`，管理库在 `Contents/Frameworks`，扩展在
    `Contents/Library/SystemExtensions`。Info.plist：bundle id `dev.tschen.solaris`，版本与扩展相同，注册
    URL scheme `solaris` 和 `clash`（D6，链接由界面处理），`SolarisCoreVersion` 是 mihomo 的版本（隧道未连接时
@@ -155,16 +156,17 @@ uv run --with nuitka==4.2.2 python scripts/build_app.py --unsigned
   `ditto` 保留；hypervpn 同样的布局能通过公证。
 - **最低系统版本**：主应用固定以 macOS 26.0 为最低支持版本（D28），Nuitka、编译环境与 app 的
   `LSMinimumSystemVersion` 都遵循这一底线；bundle 中的 Mach-O 若要求更新版本，检查会提高 app 的最低版本并报警。
-  单个依赖要求更低的系统版本不会降低产品底线。CI 和发布构建都使用 `macos-26`，扩展和管理库自身的部署目标仍是 15.0。
+  单个依赖要求更低的系统版本不会降低产品底线。通用包在 `macos-26` 构建；Python、Go 和 E2E 另在 `macos-26-intel` 原生测试，扩展和管理库自身的部署目标仍是 15.0。
 - **JIT**：主应用的 entitlement 带 `com.apple.security.cs.allow-jit`，Qt Quick 的 JavaScript 引擎在 hardened
   runtime 下要用（hypervpn 同样需要）；它不需要描述文件授权。
+- Apple Silicon 构建机需要 Rosetta 2，以运行 x86_64 Python 编译器；脚本使用同一 Python 补丁版本和 `uv.lock`，不会复用另一架构的虚拟环境。
 - 脚本不运行、不安装 app，也不公证。
 
 ## 磁盘映像
 
 ```bash
 uv run --no-project --with dmgbuild==1.6.7 python scripts/build_dmg.py \
-  build/app/Solaris.app build/release/Solaris-<版本>-macos-arm64.dmg
+  build/app/Solaris.app build/release/Solaris-<版本>-macos-universal.dmg
 ```
 
 `scripts/build_dmg.py` 用 dmgbuild 1.6.7 把构建好的 `Solaris.app`（签名的或 `--unsigned` 的都行）做成磁盘映像：
@@ -195,9 +197,9 @@ Environment，Ember-Moth 批准后才拿到机密。标签必须是 `v<pyproject
    装进 `~/Library/Developer/Xcode/UserData/Provisioning Profiles`，Xcode 和 `build_apple.py` 按名称找；
 2. `scripts/build_app.py` 构建、签名、校验；
 3. 用 `notarytool`（App Store Connect API Key）公证 app 并 staple，`spctl` 评估；
-4. `scripts/build_dmg.py` 做 `Solaris-<版本>-macos-arm64.dmg`（见“磁盘映像”），签名、公证、staple，生成
-   `Solaris-<版本>-macos-arm64.dmg.sha256`；
-5. 两个文件作为 workflow artifact `solaris-<版本>-macos-arm64` 上传，保留 30 天；
+4. `scripts/build_dmg.py` 做 `Solaris-<版本>-macos-universal.dmg`（见“磁盘映像”），签名、公证、staple，生成
+   `Solaris-<版本>-macos-universal.dmg.sha256`；
+5. 两个文件作为 workflow artifact `solaris-<版本>-macos-universal` 上传，保留 30 天；
 6. 无论成败都删除钥匙串、描述文件和 API Key。
 
 公证由 `scripts/notarize.py` 完成，它只在 GitHub Actions 里运行。对 `v*` 标签，工作流最后的 release job 把两个平台的
@@ -359,7 +361,7 @@ com.apple.developer.icloud-container-identifiers"，在开发者网站编辑 App
 
 ### 测试机与调试签名
 
-系统扩展会创建 utun，只在单独的 Apple Silicon 测试 Mac 或 macOS 虚拟机上运行，不在开发机上运行。调试时可以登记
+系统扩展会创建 utun，只在单独的 Apple Silicon / Intel x64 测试 Mac 或匹配架构的 macOS 虚拟机上运行，不在开发机上运行。调试时可以登记
 测试 Mac 的 Provisioning UDID，用 Apple Development 证书建两份 macOS App Development 描述文件，就不必每次公证。
 
 ### entitlement

@@ -8,7 +8,7 @@ Solaris 管理你提供的代理订阅和 mihomo 配置，不提供代理账户�
 
 | 系统 | 安装包 |
 | --- | --- |
-| macOS 26 及以上，Apple Silicon | `Solaris-<版本>-macos-arm64.dmg` |
+| macOS 26 及以上，Apple Silicon / Intel x64 | `Solaris-<版本>-macos-universal.dmg` |
 | Windows 10 / 11，x64 | `Solaris-<版本>-windows-x64-setup.exe` |
 | Windows 11，ARM64 | `Solaris-<版本>-windows-arm64-setup.exe` |
 

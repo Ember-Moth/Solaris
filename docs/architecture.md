@@ -640,7 +640,7 @@ Solaris.app/Contents/
 ```
 
 - 源码、构建与签名见 [apple/README.md](../apple/README.md)：XcodeGen 工程 `apple/project.yml`，原生部分的构建
-  脚本 `scripts/build_apple.py`，整个 app 的组装与签名 `scripts/build_app.py`。只构建 arm64（D2）；扩展和管理库的
+  脚本 `scripts/build_apple.py`，整个 app 的组装与签名 `scripts/build_app.py`。构建 arm64 + x86_64 通用二进制（D2）；扩展和管理库的
   最低系统版本是 macOS 15.0；主应用以 macOS 26.0 为底线，并取 bundle 中更高的库版本要求（见 apple/README.md）。
   CI 和发布环境均为 macOS 26（决策 D28）。
 - 需要 Developer ID 签名、公证，以及 `packet-tunnel-provider-systemextension` entitlement。可执行文件叫
@@ -820,7 +820,7 @@ Windows 安装器为两个 Solaris 可执行文件设置独立的 WER mini dump 
   `--installer-only` 只从已有的安装目录编译安装包，有了签名后，签名步骤插在两者之间。
 - 需要的证书：Apple Developer ID。Windows 安装包目前不签名（D29），还不需要 Authenticode 证书。
 - **发布工作流** `.github/workflows/release.yml`：`v*` 标签或手动触发，在 `release` Environment 里经审批后运行；
-  macOS 上建临时钥匙串、签名、`notarytool` 公证、staple，产出 `Solaris-<版本>-macos-arm64.dmg` 和它的 `.sha256`；
+  macOS 上建临时钥匙串、签名、`notarytool` 公证、staple，产出 `Solaris-<版本>-macos-universal.dmg` 和它的 `.sha256`；
   Windows 上构建安装目录、签名、编译安装包，用 `smoke-test.ps1` 在 runner 上装一遍、升级、卸载，产出
   两种 Windows 架构的安装包和各自的 `.sha256`。Windows 目前不签名（D29），签名这一步只打一条警告；有了
   签名后，先给安装目录里的 exe、dll、pyd 签名并在链接服务时打开 `SignedRelease`（服务要求界面与它同一签名者，5.3 节），
