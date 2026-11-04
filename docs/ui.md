@@ -275,7 +275,9 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   | `shadow` | `scrim` |
 
 - **字体**：Windows 和 macOS 的 Qt 界面共用 Inter（400、500、600）、JetBrains Mono（400）、
-  Noto Sans SC（可变字体，使用 400、500、600）、Noto Sans Symbols 2 和 Noto Color Emoji（COLRv1，含旗帜）。
+  Noto Sans SC（可变字体，使用 400、500、600）、Noto Sans Symbols 2 和 Noto Color Emoji（COLRv1 + SVG，含旗帜）。
+  Emoji 使用 Google Fonts 的混合字体，保留 SVG 彩色字形供 macOS 26 的 CoreText 绘制；不能换成仅含 COLRv1 的版本，
+  否则字体注册与连字检查可能通过，实际绘制却没有颜色。固定来源和许可证见 `sources.json`。
   `fonts.py` 在加载 QML 前注册资源，设置字体族回退与独立的 Emoji 回退；`Fonts.qml` 只解析已注册的字体。
   PySide 未暴露 Qt 的文字体系回退接口，使用 `QFont.insertSubstitutions` 为 Inter 与 JetBrains Mono
   指定 Noto Sans SC、Noto Sans Symbols 2 的有序补充字体；Emoji 使用 `setApplicationEmojiFontFamilies`。

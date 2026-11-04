@@ -653,6 +653,48 @@ def test_service_host_gives_up_on_a_restart_that_does_not_end(
     assert raised.value.code == "timeout"
 
 
+@pytest.mark.parametrize(
+    "code",
+    ["service_restarting", "connection_closed", "service_unavailable", "owned_by_other_user"],
+)
+def test_claim_error_at_deadline_keeps_timeout_and_ownership_distinct(
+    monkeypatch: pytest.MonkeyPatch, code: str
+) -> None:
+    """A reply can be handled after the deadline but before asyncio's timer callback."""
+
+    async def scenario() -> None:
+        loop = asyncio.get_running_loop()
+        now = loop.time()
+
+        async def reply(
+            self: ControlClient, request: control_pb2.Request, *, timeout: float | None = None
+        ) -> control_pb2.Response:
+            nonlocal now
+            assert timeout is not None
+            now += timeout
+            raise HostError(code, "claim refused")
+
+        server, opener = await serve(lambda _: asyncio.sleep(0))
+        host = ServiceHost(opener)
+        try:
+            await host._connected()
+            # Advance only the clock; the timeout callback has not had a chance to run.
+            with monkeypatch.context() as patch:
+                patch.setattr(loop, "time", lambda: now)
+                patch.setattr(ControlClient, "call", reply)
+                with pytest.raises(HostError) as raised:
+                    await host.claim()
+            assert raised.value.code == (code if code == "owned_by_other_user" else "timeout")
+            if code != "owned_by_other_user":
+                assert raised.value.retryable
+        finally:
+            await host.close()
+            server.close()
+            await server.wait_closed()
+
+    asyncio.run(scenario())
+
+
 def test_service_host_sends_mesh_networks_and_reads_their_status() -> None:
     pb = control_pb2
     received: list[control_pb2.Request] = []

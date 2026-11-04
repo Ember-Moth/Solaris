@@ -425,8 +425,12 @@ class ServiceHost:
                         )
                         return
                     except HostError as error:
-                        if error.code not in _RESTARTING or loop.time() >= deadline:
+                        if error.code not in _RESTARTING:
                             raise
+                        if loop.time() >= deadline:
+                            # The reply may beat asyncio's timeout callback even though
+                            # the budget has elapsed. Report the same timeout either way.
+                            raise TimeoutError("the claim budget was exhausted") from error
                     await self.close()
                     await asyncio.sleep(CLAIM_RETRY_S)
         except TimeoutError as error:

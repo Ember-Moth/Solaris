@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import struct
 import subprocess
 import sys
 from collections.abc import Iterator
@@ -54,6 +55,15 @@ def test_bundled_assets_match_their_pinned_sources() -> None:
         data = (DIRECTORY / item["file"]).read_bytes()
         assert len(data) == item["size"], item["file"]
         assert hashlib.sha256(data).hexdigest() == item["sha256"], item["file"]
+
+
+def test_emoji_font_has_color_data_for_both_platform_engines() -> None:
+    """Loading and shaping COLRv1 alone can pass while macOS 26 paints no color."""
+    relative = next(path for path, family in BUNDLED if family == "Noto Color Emoji")
+    data = (DIRECTORY / relative).read_bytes()
+    count = struct.unpack_from(">H", data, 4)[0]
+    tables = {data[12 + 16 * i : 16 + 16 * i] for i in range(count)}
+    assert {b"COLR", b"CPAL", b"SVG "} <= tables
 
 
 def shaped(text: str, family: str = "Inter", weight: int = 400) -> QTextLayout:
@@ -108,7 +118,8 @@ def test_text_presentation_is_not_forced_to_emoji() -> None:
     assert all(0 not in run.glyphIndexes() for run in runs)
 
 
-def test_emoji_renders_in_color() -> None:
+@pytest.mark.parametrize("text", ["🌈", "🇯🇵", "👩🏽‍💻", "✈️", "1️⃣"])
+def test_emoji_renders_in_color(text: str) -> None:
     image = QImage(100, 100, QImage.Format.Format_ARGB32_Premultiplied)
     image.fill(Qt.GlobalColor.transparent)
     painter = QPainter(image)
@@ -116,7 +127,7 @@ def test_emoji_renders_in_color() -> None:
         font = QFont("Inter")
         font.setPixelSize(48)
         painter.setFont(font)
-        painter.drawText(10, 65, "🌈")
+        painter.drawText(10, 65, text)
     finally:
         painter.end()
     colors = {

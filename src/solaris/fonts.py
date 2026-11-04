@@ -19,7 +19,10 @@ BUNDLED = (
     ("jetbrains-mono/JetBrainsMono-Regular.ttf", "JetBrains Mono"),
     ("noto-sans-sc/NotoSansSC-VF.ttf", "Noto Sans SC"),
     ("noto-sans-symbols-2/NotoSansSymbols2-Regular.ttf", "Noto Sans Symbols 2"),
-    ("noto-color-emoji/Noto-COLRv1.ttf", "Noto Color Emoji"),
+    # Keep the upstream hybrid font: macOS 26 needs its SVG color glyphs while
+    # Windows and newer CoreText can use COLRv1. A COLRv1-only font can load and
+    # shape correctly on older CoreText yet paint every emoji in monochrome.
+    ("noto-color-emoji/NotoColorEmoji-Regular.ttf", "Noto Color Emoji"),
 )
 _REGISTERED = "_solaris_fonts_registered"
 _log = logging.getLogger(__name__)

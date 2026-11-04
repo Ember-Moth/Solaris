@@ -37,16 +37,16 @@
       "size": 4399
     },
     {
-      "file": "noto-color-emoji/Noto-COLRv1.ttf",
-      "url": "https://raw.githubusercontent.com/googlefonts/noto-emoji/99701e07d3d1fe1bdbcdb14964547f0fd592966f/2D/fonts/Noto-COLRv1.ttf",
-      "sha256": "b8e25ea68db82f9e4d0aee921f4420be2be39887bd5c893a2ad98710531f9d0c",
-      "size": 5038236
+      "file": "noto-color-emoji/NotoColorEmoji-Regular.ttf",
+      "url": "https://raw.githubusercontent.com/google/fonts/2fe1e8c6b137fb13041a7cfca6fdcd8a910ea4dc/ofl/notocoloremoji/NotoColorEmoji-Regular.ttf",
+      "sha256": "4d82a18d8d95f60ba883ce242bbadbf84a576e987745dd7ba38d71c67cff2d73",
+      "size": 25332736
     },
     {
       "file": "noto-color-emoji/OFL.txt",
-      "url": "https://raw.githubusercontent.com/googlefonts/noto-emoji/99701e07d3d1fe1bdbcdb14964547f0fd592966f/2D/fonts/LICENSE",
-      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2",
-      "size": 4301
+      "url": "https://raw.githubusercontent.com/google/fonts/2fe1e8c6b137fb13041a7cfca6fdcd8a910ea4dc/ofl/notocoloremoji/OFL.txt",
+      "sha256": "ac564676d10054a8445923dfc2dfb13c042d97888bd27c1b6ec6dfe89a9d8d62",
+      "size": 4386
     },
     {
       "file": "noto-sans-sc/NotoSansSC-VF.ttf",
