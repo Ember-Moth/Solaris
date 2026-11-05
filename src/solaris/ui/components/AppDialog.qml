@@ -88,11 +88,12 @@ Dialog {
         Keys.onReturnPressed: dialog.activate(Window.activeFocusItem)
         Keys.onEnterPressed: dialog.activate(Window.activeFocusItem)
 
+        // A long name loses its middle, so the question or action around it stays.
         UiText {
             Layout.fillWidth: true
             text: dialog.title
             role: Theme.type.bodyMdStrong
-            elide: Text.ElideRight
+            elide: Text.ElideMiddle
             Accessible.role: Accessible.Heading
             Accessible.name: text
         }

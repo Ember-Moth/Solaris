@@ -46,7 +46,7 @@ from tests.support.window import Loaded, accessible, find_all, kind
 TITLEBAR_HEIGHT = 48
 TITLEBAR_PAGE_TOP = 6
 CAPTION_BUTTON_WIDTH = 46
-SIDEBAR_TOP = {MAC: 52, WINDOWS: 9}
+SIDEBAR_TOP = {MAC: 52, WINDOWS: 16}
 HWND = 0x1234
 HTLEFT = 10
 ALT = 1 << 29
@@ -291,6 +291,10 @@ def test_the_band_lays_out_as_designed(qtbot: QtBot, style: str, loaded: Loaded)
     brand = mark.parentItem().parentItem()  # the mark's tile, the app's name and what is in use
     assert scene_rect(brand).top() == SIDEBAR_TOP[style]
     assert scene_rect(sidebar).top() == 0
+    if style == WINDOWS:
+        # The app's name is level with the page title, clear of the window's top edge.
+        name = brand.childItems()[1].childItems()[0]
+        assert scene_rect(name).center().y() == pytest.approx(TITLEBAR_HEIGHT / 2, abs=1)
 
     buttons = caption_buttons(loaded)
     if style == MAC:

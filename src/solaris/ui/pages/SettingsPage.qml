@@ -689,7 +689,9 @@ ScrollView {
 
                                 AccessibleText {
                                     Layout.fillWidth: true
-                                    text: qsTr("隧道继续运行")
+                                    text: page.settings.closeAction === "quit"
+                                        ? qsTr("先断开连接，再退出")
+                                        : qsTr("隧道继续运行")
                                     role: Theme.type.caption
                                     color: Theme.textMuted
                                 }

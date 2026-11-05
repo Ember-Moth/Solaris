@@ -13,6 +13,10 @@
 # 4. Uninstall over the running UI, which quits likewise: no service, task, registration,
 #    shortcut or file left; the user data stays.
 # 5. Install again and uninstall with /PURGE: the user data goes too.
+#
+# Each start of the UI writes its output to $env:RUNNER_TEMP\solaris-ui, with Qt's messages,
+# which a GUI program otherwise loses; a UI that exits while starting also leaves a copy of its
+# crash directory there, before step 5 purges it. CI uploads that directory when this fails.
 [CmdletBinding()]
 param([Parameter(Mandatory = $true)][string] $Installer)
 $ErrorActionPreference = 'Stop'
@@ -45,6 +49,8 @@ $UiLock = Join-Path $UserData 'ui.lock'  # src/solaris/desktop/instance.py
 $Task = "Solaris ($($env:USERDOMAIN)_$($env:USERNAME))"
 $OtherTask = 'Solaris (OTHER_someone)'
 $ErrorLog = Join-Path $env:TEMP 'Solaris-setup-error.log'
+$UiOutput = Join-Path $env:RUNNER_TEMP 'solaris-ui'
+$UiStarts = 0
 
 # A check that fails is reported and the test goes on, so one run shows every problem; the
 # test fails at the end. What the later steps cannot do without still stops it at once.
@@ -230,9 +236,35 @@ function Assert-Removed {
     Remove-Item -LiteralPath $Root -Recurse -Force
 }
 
-# Starts the installed UI as the user and waits for its window; the process is $ui.
+# The UI exited while starting: copy its crash directory (faulthandler's ui-fatal-*.log, and
+# Windows Error Reporting's dumps in native\) beside its output, and show the logs here.
+function Save-UICrash([string] $Output) {
+    $crashes = Join-Path $UserData 'crashes'
+    $logs = @(Get-Item -LiteralPath "$Output.out", "$Output.err" -ErrorAction SilentlyContinue)
+    if (Test-Path -LiteralPath $crashes) {
+        try {
+            Copy-Item -LiteralPath $crashes -Destination "$Output-crashes" -Recurse
+            $logs += @(Get-ChildItem -LiteralPath "$Output-crashes" -Filter 'ui-*.log')
+        } catch {
+            Write-Output "::warning::Could not copy ${crashes}: $_"
+        }
+    } else {
+        Write-Output "The UI made no $crashes"
+    }
+    foreach ($log in $logs | Where-Object Length -gt 0) {
+        Write-Output "::group::$($log.Name)"
+        Get-Content -LiteralPath $log.FullName | Write-Output
+        Write-Output '::endgroup::'
+    }
+}
+
+# Starts the installed UI as the user and waits for its window; the process is $ui. Its
+# output goes to start-<n>.out and .err in $UiOutput.
 function Start-UI {
-    $script:ui = Start-Process -FilePath $Client -PassThru
+    $script:UiStarts++
+    $output = Join-Path $UiOutput "start-$UiStarts"
+    $script:ui = Start-Process -FilePath $Client -PassThru `
+        -RedirectStandardOutput "$output.out" -RedirectStandardError "$output.err"
     $null = $ui.Handle  # keeps the exit code readable after the process exits
     $deadline = [DateTime]::UtcNow.AddSeconds(60)
     do {
@@ -241,6 +273,7 @@ function Start-UI {
     } while (-not $ui.HasExited -and $ui.MainWindowHandle -eq 0 -and [DateTime]::UtcNow -lt $deadline)
     if ($ui.HasExited) {
         Expect $false "Solaris.exe exited with $($ui.ExitCode) while starting"
+        Save-UICrash $output
     } else {
         Expect ($ui.MainWindowHandle -ne 0) 'Solaris.exe opened no window in 60 seconds'
         Write-Output "Solaris.exe ($($ui.Id)) is running; its window: '$($ui.MainWindowTitle)'"
@@ -270,6 +303,9 @@ if ((Test-Path $Root) -or (Test-Path $UninstallKey) -or (Get-SolarisService) -or
     (Test-Path $ServiceData) -or (Test-Path $UserData)) {
     throw 'Solaris is already on this machine; the test needs a fresh one.'
 }
+New-Item -ItemType Directory -Force -Path $UiOutput | Out-Null
+# Qt writes its messages, the reason for a qFatal among them, to stderr only when told to.
+$env:QT_FORCE_STDERR_LOGGING = '1'
 $ui = $null
 try {
     Write-Output '1. Install'

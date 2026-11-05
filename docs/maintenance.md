@@ -12,16 +12,16 @@
 ### 1.1 CI 覆盖
 
 `.github/workflows/ci.yml` 在每个 PR 和 main 推送时判断改动范围，运行受影响的任务。main 使用成功的祖先 CI 作为基线，
-避免前一次未验证的代码被后续文档提交掩盖；无法确定范围时运行全部任务。手动触发或完整重跑始终跑全量。
+避免前一次未验证的代码被后续文档提交掩盖；无法确定范围时运行全部任务。手动触发或完整重跑始终跑全量。选择脚本 `scripts/ci_changes.py` 自己改了（与 PR 的 base、推送的成功基线或上一个 head 不同）时，工作流不采用它的选择，直接跑全量。
 
 | job | 平台 | 内容 |
 | --- | --- | --- |
-| `changes` | Linux | 从完整 Git 差异选择任务；依赖锁、CI 配置和未知输入触发全量 |
+| `changes` | Linux | 从完整 Git 差异选择任务；依赖锁、CI 配置、选择脚本自身和未知输入触发全量 |
 | `python` | macOS arm64 / x64、Windows x64 / ARM64 | ruff 只在 macOS 运行一次；各平台保留 pyright、pytest（含主题与翻译一致性）。协议输入变化时额外核对生成绑定 |
 | `e2e` | macOS arm64 / x64 | 界面连真实的开发服务（`tests/e2e`）：导入、连接、各页数据、分流与方案、重载不断开连接；节点是本机起的代理，只走回环地址 |
 | `go` | macOS arm64 / x64、Windows x64 / ARM64、Linux | `go vet`、`go test`，再在支持的架构以 `-race` 跑一遍（Go 1.27 不支持 Windows ARM64 race）；Linux 上以 `with_gvisor` 带 `-race` 再跑安全项和组网测试，交叉编译 Windows 服务；macOS 上编扩展用的 C archive |
-| `apple` | macOS | 两份匹配架构的 Python/Nuitka UI、双架构管理库和扩展，合并后检查全部 Mach-O，ad hoc 签名并制作真实通用 DMG；不启动 app 或扩展 |
-| `windows-installer` | Windows x64 / ARM64 | 构建不签名的安装包，在 runner 上安装、打开界面、升级、卸载（`package/windows/smoke-test.ps1`） |
+| `apple` | macOS | 两份匹配架构的 Python/Nuitka UI、双架构管理库和扩展，合并后检查全部 Mach-O，ad hoc 签名并制作真实通用 DMG；再分别以 arm64 和 Rosetta 下的 x86_64 启动界面，等到它的窗口出现，用 `--quit` 让它退出（退出码 0，没有崩溃记录）。不连接，不激活扩展；失败时上传界面输出和崩溃记录（artifact `macos-ui-<提交>`） |
+| `windows-installer` | Windows x64 / ARM64 | 构建不签名的安装包，在 runner 上安装、打开界面、升级、卸载（`package/windows/smoke-test.ps1`）；失败时上传界面每次启动的输出，界面启动即退出时还有它的崩溃目录（artifact `windows-ui-<架构>-<提交>`） |
 | `installer-ui` | Windows x64 / ARM64 | 检查自定义路径的 ACL、所有者及链接拒绝；编译真实 Win32 界面，在只读宿主（`package/windows/ui/preview.nsi`）中走完安装、更新、卸载：GPL 全文、同意项与协议链接、路径输入、Tab/Enter/Esc、中英文、浅深色、150% 布局、每一步、详细信息、完成与失败、数据选项；每个状态存一张截图，在 artifact `installer-ui-<架构>-<提交>` 的 `screenshots/` 里 |
 | `windows-arm64-upgrade` | Windows ARM64 | 安装 x64 版后原位升级 ARM64，检查服务、GUI、同架构文件、数据保留及卸载 |
 | `tun` | Linux | 在网络命名空间里建真实的 TUN：自管模式和 fd 模式，四种栈，fd 模式另测 `includeAllNetworks` |
@@ -314,8 +314,8 @@ exits.md 第 9 节的待实测项。
    git tag v1.0.0 && git push origin v1.0.0
    ```
 
-   标签触发同一个工作流：先批准 macOS 和两个 Windows 架构的构建任务，它们成功后再批准 release job。release job 核对安装包，打出源代码包，
-   写 `SHA256SUMS`，把这五个文件放进一个**草稿** Release。同一个标签已有 Release 时这一步失败，要先删掉旧的草稿
+   标签触发同一个工作流：先批准 macOS 和两个 Windows 架构的构建任务，它们成功后再批准 release job。release job 核对安装包，把 macOS 安装包以 1.0.0 的旧名再放一份（release.md 第 1 节），
+   打出源代码包，写 `SHA256SUMS`，把这六个文件放进一个**草稿** Release。同一个标签已有 Release 时这一步失败，要先删掉旧的草稿
    再重新运行。
 4. **草稿**：从草稿下载三个安装包，在测试机上再装一遍；在"更新内容"下写这个版本的变化，删掉模板里的注释行。
 5. **发布**，二选一：
@@ -376,4 +376,6 @@ SHA-256。界面从不静默安装，用户确认后才打开安装包。
 - **GEO 数据**的版本和 SHA-256 钉在 `scripts/fetch_geodata.py` 里；改了之后用 `--categories` 重新生成附带的分类名
   清单（`src/solaris/host/geo_categories.py`），CI 用 `--check` 核对。
 - **macOS** 的产品最低版本固定为 26（D28）；构建器同时检查 PySide6 等依赖的实际 Mach-O 版本要求，只能提高该底线。**Nuitka** 的版本是 `scripts/build_app.py` 的 `NUITKA_VERSION`，CI 和
-  发布工作流里的 `--with nuitka==` 要一起改。
+  发布工作流里的 `--with nuitka==` 要一起改。4.3.4 构建的 Windows 界面在冒烟测试里启动即退出（退出码 3，即
+  `abort()`），原因未查明，所以仍用 4.2.2；再试新版本时，失败的 `windows-installer` 任务会上传界面的输出和崩溃目录
+  （`windows-ui-<架构>-<提交>`），从那里看原因。

@@ -40,6 +40,8 @@ func (s *Service) resumeAllowedLocked() bool {
 
 // resume records an automatic attempt before entering the core. If the process dies
 // there, a replacement service stays up but leaves the tunnel down for an explicit retry.
+// The guard goes once the attempt is over: Applied clears it, and so does any error but a
+// missed deadline here, since ResumeContext returns only after a Start it began ended.
 func (s *Service) resume(ctx context.Context, profile *controlpb.StartRequest) error {
 	s.mu.Lock()
 	if !s.resumeAllowedLocked() {

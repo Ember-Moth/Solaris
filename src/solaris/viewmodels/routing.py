@@ -84,7 +84,7 @@ class RoutingViewModel(QObject):
         self._list: ProfileList = library.snapshot()
         self._draft: Plan | None = None  # shown, not stored yet
         self._error = ""
-        self._busy = False
+        self._acting = 0  # library actions under way, each until the page read what it changed
         self._undo: tuple[str, str, Plan] | None = None  # status text, button name, plan
         self._plan_error = ""
         self._info_error = ""
@@ -125,6 +125,10 @@ class RoutingViewModel(QObject):
     def refresh(self) -> None:
         """Read what the page shows from the core: which profiles bring rules, the plan
         composed with the pool, and the rules of a profile that runs."""
+        self._read()
+
+    def _read(self, settled: Callable[[], None] | None = None) -> None:
+        """Refresh; ``settled`` runs once the page has what it read, or the reading failed."""
         library = self._library
 
         async def read() -> tuple[Routing, ProfileList, ProfileRules | None, str]:
@@ -145,9 +149,16 @@ class RoutingViewModel(QObject):
             self._list = profiles
             self._profile_routes.set_rules(rules)
             self._error = error
+            if settled is not None:
+                settled()
             self._loaded(routing)
 
-        self._runner.submit(read(), done, self._failed)
+        def failed(error: BaseException) -> None:
+            if settled is not None:
+                settled()
+            self._failed(error)
+
+        self._runner.submit(read(), done, failed)
 
     @Slot()
     def reload(self) -> None:
@@ -167,7 +178,6 @@ class RoutingViewModel(QObject):
         self.changed.emit()
 
     def _failed(self, error: BaseException) -> None:
-        self._busy = False
         self._error = failure_text(error)
         self.changed.emit()
 
@@ -178,23 +188,26 @@ class RoutingViewModel(QObject):
         failed: Callable[[str], None] | None = None,
     ) -> None:
         """Run a library action that changes the routing; its failure goes to ``failed``, or
-        to the header."""
+        to the header. The page is busy until it has read what the change brought, such as
+        the rules of the profile that runs now."""
         self._error = ""
-        self._busy = True
+        self._acting += 1
         self.changed.emit()
 
+        def settled() -> None:
+            self._acting -= 1
+
         def succeeded(routing: Routing) -> None:
-            self._busy = False
             self._loaded(routing)
             self.routingChanged.emit()
             self.applied.emit()
             self._plan_rules.retest()
             if done is not None:
                 done()
-            self.refresh()
+            self._read(settled)
 
         def refused(error: BaseException) -> None:
-            self._busy = False
+            settled()
             if failed is not None:
                 failed(failure_text(error))
                 self.changed.emit()
@@ -222,12 +235,14 @@ class RoutingViewModel(QObject):
 
     @Property(bool, notify=changed)
     def busy(self) -> bool:
-        return self._busy
+        return self._acting > 0
 
     @Property(str, notify=changed)
     def summary(self) -> str:
         if self._error:
             return self._error
+        if self._acting:
+            return self.tr("正在应用…")
         if self._routing.mode == MODE_PROFILE:
             active = self._list.active_profile()
             if active is None:

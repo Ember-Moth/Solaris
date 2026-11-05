@@ -23,6 +23,25 @@ ColumnLayout {
     }
 
     spacing: Theme.space5
+    onVisibleChanged: ruleRows.place()
+    Component.onCompleted: ruleRows.place()
+
+    // The page scrolled, or what is above the rule table changed its height.
+    Connections {
+        target: section.view.contentItem as Flickable
+
+        function onContentYChanged() {
+            ruleRows.place()
+        }
+
+        function onHeightChanged() {
+            ruleRows.place()
+        }
+
+        function onContentHeightChanged() {
+            ruleRows.place()
+        }
+    }
 
     RowLayout {
         Layout.fillWidth: true
@@ -35,8 +54,13 @@ ColumnLayout {
             color: Theme.textSecondary
         }
 
+        // Narrows to the select's least width before the row runs past the page, as it
+        // would in English at the narrowest window.
         AppSelect {
+            Layout.fillWidth: true
             Layout.preferredWidth: 220
+            Layout.maximumWidth: 220
+            Layout.minimumWidth: 120
             options: section.profile.options
             current: section.profile.profileId
             accessibleName: qsTr("使用的订阅")
@@ -293,45 +317,81 @@ ColumnLayout {
                         }
                     }
 
-                    Repeater {
-                        model: section.profile.rules
+                    // As tall as all the rows, and the list in it makes only the rows the
+                    // page shows, with a screen of them on either side: a profile can bring
+                    // ten thousand rules, and a row each would hold up the window for seconds.
+                    Item {
+                        id: ruleRows
 
-                        Item {
-                            id: sourceRule
+                        readonly property int rowHeight: 36
+                        readonly property ProfileRoutes profile: section.profile
 
-                            required property string match
-                            required property string target
+                        // Move the list over the part of the rows in sight.
+                        function place() {
+                            const flickable = section.view.contentItem as Flickable
+                            const top = mapToItem(flickable.contentItem, 0, 0).y
+                            const total = ruleList.count * rowHeight
+                            const first = Math.floor(Math.max(0, flickable.contentY - top - flickable.height) / rowHeight)
+                            const from = Math.min(first * rowHeight, total)
+                            const to = Math.max(from, Math.min(total, flickable.contentY - top + 2 * flickable.height))
+                            ruleList.y = from
+                            ruleList.height = to - from
+                            ruleList.contentY = ruleList.originY + from
+                        }
 
-                            Layout.fillWidth: true
-                            implicitHeight: 36
-                            Accessible.role: Accessible.Row
-                            Accessible.name: qsTr("%1，%2").arg(match).arg(target)
+                        Layout.fillWidth: true
+                        implicitHeight: ruleList.count * rowHeight
+                        onHeightChanged: place()
 
-                            Rectangle {
-                                width: parent.width
-                                height: 1
-                                color: Theme.divider
-                            }
+                        ListView {
+                            id: ruleList
 
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: Theme.space4
-                                anchors.rightMargin: Theme.space4
-                                spacing: Theme.space3
+                            width: parent.width
+                            interactive: false
+                            currentIndex: -1
+                            keyNavigationEnabled: false
+                            highlightFollowsCurrentItem: false
+                            reuseItems: true
+                            model: ruleRows.profile.rules
+                            onOriginYChanged: ruleRows.place()
 
-                                UiText {
-                                    Layout.fillWidth: true
-                                    text: sourceRule.match
-                                    role: Theme.type.dataSm
-                                    color: Theme.textSecondary
-                                    elide: Text.ElideRight
+                            delegate: Item {
+                                id: sourceRule
+
+                                required property string match
+                                required property string target
+
+                                width: ruleList.width
+                                height: ruleRows.rowHeight
+                                Accessible.role: Accessible.Row
+                                Accessible.name: qsTr("%1，%2").arg(match).arg(target)
+
+                                Rectangle {
+                                    width: parent.width
+                                    height: 1
+                                    color: Theme.divider
                                 }
 
-                                UiText {
-                                    Layout.preferredWidth: 140
-                                    text: sourceRule.target
-                                    role: Theme.type.bodySm
-                                    elide: Text.ElideRight
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: Theme.space4
+                                    anchors.rightMargin: Theme.space4
+                                    spacing: Theme.space3
+
+                                    UiText {
+                                        Layout.fillWidth: true
+                                        text: sourceRule.match
+                                        role: Theme.type.dataSm
+                                        color: Theme.textSecondary
+                                        elide: Text.ElideRight
+                                    }
+
+                                    UiText {
+                                        Layout.preferredWidth: 140
+                                        text: sourceRule.target
+                                        role: Theme.type.bodySm
+                                        elide: Text.ElideRight
+                                    }
                                 }
                             }
                         }

@@ -750,6 +750,9 @@ class ServiceHost:
                 raise
 
     async def close(self) -> None:
-        if self._client is not None:
-            await self._client.close()
-            self._client = None
+        # Forget the client first: a close cut short, as when the claim's deadline cancels
+        # it, leaves a stream whose close waiter is cancelled, and awaiting that again
+        # raises CancelledError.
+        client, self._client = self._client, None
+        if client is not None:
+            await client.close()

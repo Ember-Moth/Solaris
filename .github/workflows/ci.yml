@@ -29,10 +29,66 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Select checks from the complete change range
-        id: select
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/ci_changes.py
+        run: |
+          python3 scripts/ci_changes.py > "$RUNNER_TEMP/selection.json"
+          cat "$RUNNER_TEMP/selection.json"
+      # The script cannot vouch for a change to itself. Unless the one that ran is the one at
+      # the start of the range (the pull request's base; a push's successful baseline and
+      # previous head), every check runs, whatever it selected. Read with the runner's Python.
+      - name: Every check when the selection script changed
+        id: select
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+          SELECTION: ${{ runner.temp }}/selection.json
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+
+          # Every job below that the selection names; tests/test_ci_changes.py keeps it whole.
+          EVERY = ['apple', 'e2e', 'go', 'installer-ui', 'python', 'tun', 'windows-arm64-upgrade', 'windows-installer']
+          SCRIPT = 'scripts/ci_changes.py'
+
+          def commit(value):
+              return value if re.fullmatch(r'[0-9a-f]{40}', value or '') and value != '0' * 40 else None
+
+          def same_script(base):
+              # git diff exits 1 for a difference and 128 for a commit it does not have.
+              return base is not None and subprocess.run(
+                  ['git', 'diff', '--quiet', '--no-renames', base, 'HEAD', '--', SCRIPT]
+              ).returncode == 0
+
+          try:
+              with open(os.environ['SELECTION'], encoding='utf-8') as stream:
+                  selection = json.load(stream)
+              jobs, protocol, base = selection['jobs'], selection['protocol'] is True, selection['base']
+          except (OSError, ValueError, KeyError, TypeError):
+              selection = None
+          event = os.environ['EVENT']
+          if selection is None:
+              trusted = False
+          elif event == 'pull_request':
+              trusted = same_script(commit(os.environ['PR_BASE']))
+          elif event == 'push':
+              before = commit(os.environ['BEFORE'])
+              trusted = same_script(commit(base)) and (before is None or same_script(before))
+          else:
+              trusted = False
+          if not trusted:
+              jobs, protocol = EVERY, True
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+              output.write(f"jobs={json.dumps(sorted(jobs), separators=(',', ':'))}\nprotocol={str(protocol).lower()}\n")
+          if not trusted:
+              print(f'{SCRIPT} changed in this range, or its selection is unreadable: every check runs')
+              with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as summary:
+                  summary.write(f'\nEvery check runs: `{SCRIPT}` is not the one at the start of the range.\n')
+          PY
 
   python:
     needs: changes
@@ -217,8 +273,8 @@ jobs:
       # Compile and merge the real UI, Python/Qt libraries, manager and Go/Cronet extension.
       # The builder checks every Mach-O for both slices before ad hoc signing.
       - name: Build universal app (unsigned)
-        run: uv run --frozen --with nuitka==4.3.4 python scripts/build_app.py --unsigned
-      # The release's actual universal app in a disk image; no app or extension is launched.
+        run: uv run --frozen --with nuitka==4.2.2 python scripts/build_app.py --unsigned
+      # The release's actual universal app in a disk image.
       - name: Disk image
         run: |
           uv run --no-project --with dmgbuild==1.6.7 python scripts/build_dmg.py \
@@ -232,6 +288,93 @@ jobs:
           compression-level: 0
           if-no-files-found: error
           retention-days: 7
+
+      # The packaged UI starts natively and under Rosetta, opens its window and quits when a
+      # second start asks it to, recording no crash. Nothing connects, so the extension is
+      # never activated; ad hoc signed, the app could not activate it anyway. The window is
+      # looked up by process in CGWindowListCopyWindowInfo, which needs no permission.
+      - name: Start the UI on both architectures
+        env:
+          QT_FORCE_STDERR_LOGGING: "1"  # Qt's messages, a qFatal's reason among them
+        run: |
+          ui=build/app/Solaris.app/Contents/MacOS/SolarisUI
+          data="$HOME/Library/Application Support/Solaris"
+          output="$RUNNER_TEMP/solaris-ui"
+          mkdir -p "$output"
+          cat > "$RUNNER_TEMP/has-window.swift" <<'SWIFT'
+          import CoreGraphics
+          import Foundation
+
+          // Exits 0 when the process has an ordinary window (layer 0) on screen.
+          let pid = Int(CommandLine.arguments[1])!
+          let windows = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] ?? []
+          exit(windows.contains {
+            $0[kCGWindowOwnerPID as String] as? Int == pid && $0[kCGWindowLayer as String] as? Int == 0
+          } ? 0 : 1)
+          SWIFT
+          xcrun swiftc -O -o "$RUNNER_TEMP/has-window" "$RUNNER_TEMP/has-window.swift"
+
+          # A child that has exited stays a zombie until waited for.
+          alive() { [[ "$(ps -o stat= -p "$1" 2> /dev/null)" =~ ^[^Z] ]]; }
+          fail() {
+            echo "::error::$1"
+            [[ -d "$data/crashes" ]] && cp -R "$data/crashes" "$output/"
+            find "$HOME/Library/Logs/DiagnosticReports" -name 'SolarisUI*' -exec cp {} "$output/" \; 2> /dev/null || true
+            for log in "$output"/*.err "$output"/crashes/ui-*.log; do
+              [[ -s "$log" ]] || continue
+              echo "::group::$log"
+              cat "$log"
+              echo "::endgroup::"
+            done
+            exit 1
+          }
+          for arch in arm64 x86_64; do
+            arch "-$arch" "$ui" > "$output/$arch.out" 2> "$output/$arch.err" &
+            pid=$!
+            for _ in $(seq 180); do
+              alive "$pid" || break
+              "$RUNNER_TEMP/has-window" "$pid" && break
+              sleep 1
+            done
+            if ! alive "$pid"; then
+              status=0
+              wait "$pid" || status=$?
+              fail "The $arch UI exited with $status while starting"
+            fi
+            if ! "$RUNNER_TEMP/has-window" "$pid"; then
+              kill "$pid" 2> /dev/null || true
+              fail "The $arch UI opened no window in 180 seconds"
+            fi
+            echo "The $arch UI ($pid) opened its window"
+            if ! "$ui" --quit; then
+              kill "$pid" 2> /dev/null || true
+              fail "SolarisUI --quit did not reach the $arch UI"
+            fi
+            for _ in $(seq 30); do
+              alive "$pid" || break
+              sleep 1
+            done
+            if alive "$pid"; then
+              kill "$pid" 2> /dev/null || true
+              fail "The $arch UI did not quit within 30 seconds of --quit"
+            fi
+            status=0
+            wait "$pid" || status=$?
+            [[ "$status" -eq 0 ]] || fail "The $arch UI exited with $status after --quit"
+            # faulthandler's log of a clean exit is empty and removed; any other is a crash.
+            if compgen -G "$data/crashes/ui-*.log" > /dev/null; then
+              fail "The $arch UI recorded a crash or an unhandled exception"
+            fi
+          done
+
+      - name: Keep the UI's output and crash logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: macos-ui-${{ github.sha }}
+          path: ${{ runner.temp }}/solaris-ui/
+          if-no-files-found: ignore
+          retention-days: 14
 
   installer-ui:
     needs: changes
@@ -325,10 +468,19 @@ jobs:
           path: build/nuitka-cache-${{ matrix.arch }}
           key: nuitka-windows-${{ matrix.arch }}-${{ hashFiles('uv.lock', 'scripts/build_windows.py') }}
       - name: Build (unsigned)
-        run: uv run --frozen --with nuitka==4.3.4 python scripts/build_windows.py --arch ${{ matrix.arch }}
+        run: uv run --frozen --with nuitka==4.2.2 python scripts/build_windows.py --arch ${{ matrix.arch }}
       - name: Install, upgrade and uninstall
         shell: powershell
         run: ./package/windows/smoke-test.ps1 -Installer (Get-Item ${{ matrix.build }}/Solaris-*-windows-${{ matrix.arch }}-setup.exe).FullName
+      # The UI's output from each start, and the crash directory of one that died starting.
+      - name: Keep the UI's output and crash logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-ui-${{ matrix.arch }}-${{ github.sha }}
+          path: ${{ runner.temp }}/solaris-ui/
+          if-no-files-found: ignore
+          retention-days: 14
       - uses: actions/upload-artifact@v7
         with:
           name: windows-installer-${{ matrix.arch }}-${{ github.sha }}

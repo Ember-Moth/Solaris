@@ -92,14 +92,13 @@ ApplicationWindow {
         height = Theme.windowDefaultHeight
     }
 
-    // Closing the window never stops the tunnel: it either stays in the tray or the UI quits.
+    // Closing the window leaves the UI in the tray, the tunnel running, or quits Solaris,
+    // which disconnects first (D41) and shows the window again if that fails.
     onClosing: close => {
-        if (desktopViewModel.hideOnClose) {
-            close.accepted = false
-            hide()
-        } else {
+        close.accepted = false
+        hide()
+        if (!desktopViewModel.hideOnClose)
             desktopViewModel.quit()
-        }
     }
 
     Connections {
@@ -113,6 +112,13 @@ ApplicationWindow {
             if (!window.visible)
                 window.present()
         }
+
+        function onQuitFailed() {
+            window.present()
+            // A retry may fail again while the dialog still fades out; it opens again.
+            if (!quitDialog.holdsFocus)
+                quitDialog.show(window.activeFocusItem)
+        }
     }
 
     Loader {
@@ -123,6 +129,12 @@ ApplicationWindow {
             overview: window.overviewViewModel
             onShowWindow: window.present()
         }
+    }
+
+    QuitDialog {
+        id: quitDialog
+
+        desktop: window.desktopViewModel
     }
 
     ExtensionSetupDialog {

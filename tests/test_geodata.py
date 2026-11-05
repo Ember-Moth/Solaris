@@ -9,8 +9,12 @@ import httpx
 import pytest
 
 from solaris.host.base import GeoUpdateFile, GeoUpdatePlan, HostError
+from solaris.host.service import ServiceHost
+from solaris.host.transport import Streams
 from solaris.models.geodata import CHUNK_BYTES, GeoDownloader, GeoUpdates, due
+from solaris.protocol import control_pb2
 from tests.support.simulated import SimulatedHost
+from tests.test_control_client import info_response, serve
 
 
 class Body(httpx.AsyncByteStream):
@@ -99,6 +103,7 @@ class UploadHost(SimulatedHost):
     def __init__(self, plan: GeoUpdatePlan) -> None:
         super().__init__()
         self.plan = plan
+        self.generation = plan.generation  # the transfer's, even after the plan changes
         self.chunks: list[tuple[int, bytes]] = []
         self.commits = 0
         self.aborts = 0
@@ -119,7 +124,7 @@ class UploadHost(SimulatedHost):
         complete: bool = False,
         abort: bool = False,
     ) -> None:
-        assert generation == self.plan.generation
+        assert generation == self.generation
         assert len(transfer_id) == 32
         if abort:
             self.aborts += 1
@@ -182,14 +187,171 @@ def test_gui_exit_and_profile_change_cancel_a_stalled_http_stream(tmp_path: Path
     asyncio.run(run(True))
 
 
+class Watched(GeoUpdates):
+    """Keeps the event that stops the update, so that a test can wait until it is set."""
+
+    stale: asyncio.Event | None = None
+
+    async def update(self, plan: GeoUpdatePlan, stale: asyncio.Event | None = None) -> None:
+        self.stale = stale
+        await super().update(plan, stale)
+
+
+class HeldHost(UploadHost):
+    """Holds the first chunk until released and notes whether that call was cancelled."""
+
+    def __init__(self, plan: GeoUpdatePlan) -> None:
+        super().__init__(plan)
+        self.sending = asyncio.Event()
+        self.release = asyncio.Event()
+        self.cancelled = False
+
+    async def upload_geo(
+        self,
+        generation: str,
+        transfer_id: str,
+        name: str,
+        size: int,
+        sha256: str,
+        offset: int,
+        data: bytes = b"",
+        *,
+        complete: bool = False,
+        abort: bool = False,
+    ) -> None:
+        if not (complete or abort or self.chunks):
+            self.sending.set()
+            try:
+                await self.release.wait()
+            except asyncio.CancelledError:
+                self.cancelled = True
+                raise
+        await super().upload_geo(
+            generation,
+            transfer_id,
+            name,
+            size,
+            sha256,
+            offset,
+            data,
+            complete=complete,
+            abort=abort,
+        )
+
+
+@pytest.mark.parametrize("exit_gui", [False, True])
+def test_profile_change_stops_an_upload_between_chunks(tmp_path: Path, exit_gui: bool) -> None:
+    """A cancelled host call can close the control connection that every request shares. A
+    new configuration lets the chunk in flight finish, then aborts the transfer; only the GUI
+    exiting cancels the call, and leaves the transfer to the core's own cleanup."""
+
+    async def run() -> None:
+        plan = GeoUpdatePlan("generation", 24, (file(),))
+        host = HeldHost(plan)
+        data = b"a" * (CHUNK_BYTES * 2 + 19)
+        updater = Watched(
+            host, GeoDownloader(tmp_path, transport=response(data)), generation_check_s=0.01
+        )
+        task = asyncio.create_task(updater._while_current(plan))
+        await host.sending.wait()
+        if exit_gui:
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+            assert host.cancelled
+            assert host.aborts == 0
+            return
+        host.plan = GeoUpdatePlan("next", 24, (file(),))
+        assert updater.stale is not None
+        await updater.stale.wait()
+        host.release.set()
+        await task
+        assert not host.cancelled
+        assert len(host.chunks) == 1
+        assert (host.commits, host.aborts) == (0, 1)
+
+    asyncio.run(run())
+
+
+def test_profile_change_during_an_upload_keeps_the_service_connection(tmp_path: Path) -> None:
+    """Over the control client: the core queues UploadGeo behind other serialized work, so
+    its answers can be slow. Status polls and the user's own requests share the connection,
+    which stays open while the transfer stops."""
+    pb = control_pb2
+
+    async def run() -> None:
+        generation = "first"
+        sending = asyncio.Event()
+        release = asyncio.Event()
+        uploads: list[control_pb2.UploadGeoRequest] = []
+
+        async def answer(request: control_pb2.Request) -> control_pb2.Response:
+            match request.WhichOneof("method"):
+                case "get_geo_update":
+                    files = [pb.GeoUpdateFile(name="GeoSite.dat", url="https://geo.example/data")]
+                    plan = pb.GetGeoUpdateResponse(
+                        generation=generation, interval_hours=24, files=files
+                    )
+                    return pb.Response(get_geo_update=plan)
+                case "upload_geo":
+                    uploads.append(request.upload_geo)
+                    if request.upload_geo.abort:
+                        await asyncio.sleep(0.6)  # longer than the cleanup's former bound
+                    else:
+                        sending.set()
+                        await release.wait()
+                    return pb.Response(empty=pb.Empty())
+                case "get_status":
+                    await release.wait()
+                    return pb.Response(get_status=pb.GetStatusResponse(state=pb.RUN_STATE_RUNNING))
+            return info_response()
+
+        server, opener = await serve(answer)
+        opened = 0
+
+        async def counted() -> Streams:
+            nonlocal opened
+            opened += 1
+            return await opener()
+
+        data = b"a" * (CHUNK_BYTES + 1)
+        async with server:
+            host = ServiceHost(counted)
+            updater = Watched(
+                host, GeoDownloader(tmp_path, transport=response(data)), generation_check_s=0.01
+            )
+            try:
+                plan = await host.get_geo_update()
+                task = asyncio.create_task(updater._while_current(plan))
+                await sending.wait()
+                status = asyncio.create_task(host.get_status())
+                generation = "second"
+                assert updater.stale is not None
+                await updater.stale.wait()
+                release.set()
+                await task
+                assert (await status).state == "running"
+                assert [upload.abort for upload in uploads] == [False, True]
+                assert opened == 1
+                assert host._client is not None
+                assert not host._client.closed
+            finally:
+                await host.close()
+
+    asyncio.run(run())
+
+
 def test_opening_gui_checks_overdue_data_immediately(tmp_path: Path) -> None:
     async def run() -> None:
         plan = GeoUpdatePlan("generation", 24, (file(),))
         host = UploadHost(plan)
-        updater = GeoUpdates(host, GeoDownloader(tmp_path, transport=response(b"data")))
+        updater = GeoUpdates(
+            host, GeoDownloader(tmp_path, transport=response(b"data")), poll_s=3600
+        )
         task = asyncio.create_task(updater.run())
         try:
-            async with asyncio.timeout(1):
+            # A minute, however busy the machine, against the hour of the first poll.
+            async with asyncio.timeout(updater.poll_s / 60):
                 while host.commits == 0:
                     await asyncio.sleep(0.001)
         finally:

@@ -73,9 +73,12 @@ class ControlClient:
             message = f"request did not finish within {timeout:g}s"
             raise HostError("timeout", message, retryable=True) from error
         except asyncio.CancelledError:
-            # Closing the control connection cancels work still queued at the host.
-            # An admitted transaction remains bounded by the deadline in its request.
-            self._abort("request cancelled")
+            # Every request and subscription shares this connection, so a sent request
+            # leaves it open: the host bounds the work by the deadline in the request, and
+            # the late answer is dropped. One still waiting to be written may be behind a
+            # stalled writer, as when a send times out; the next request reconnects.
+            if not sent:
+                self._abort("request cancelled")
             raise
         except OSError as error:
             raise HostError("connection_closed", str(error), retryable=True) from error

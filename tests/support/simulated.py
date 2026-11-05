@@ -11,6 +11,7 @@ mesh outbounds) is made-up sample data, which tests set to the state they need.
 from __future__ import annotations
 
 import asyncio
+import json
 import random
 import re
 import time
@@ -40,6 +41,7 @@ from solaris.host.base import (
     HostInfo,
     HostStatus,
     LogEntry,
+    MeshNetwork,
     MeshOutbound,
     MeshStatus,
     OpenVpnOptions,
@@ -50,6 +52,7 @@ from solaris.host.base import (
     RuleMatch,
     RunOptions,
     SourceInspection,
+    TailscaleSettings,
     TrafficSample,
     TunnelConfig,
     VpnGateServer,
@@ -57,6 +60,8 @@ from solaris.host.base import (
     bundled_geo_categories,
     taken_over,
 )
+from solaris.models.mesh import MeshStore
+from solaris.models.plans import WARP, default_plan
 from solaris.models.profiles import (
     KIND_FILE,
     KIND_SUBSCRIPTION,
@@ -65,7 +70,14 @@ from solaris.models.profiles import (
     ProfileList,
     Usage,
 )
-from solaris.models.routing import DEFAULT_INFO_PATTERN, MODE_PROFILE, RoutingStore
+from solaris.models.routing import (
+    DEFAULT_INFO_PATTERN,
+    MODE_PROFILE,
+    Plan,
+    PlanGroup,
+    PlanRule,
+    RoutingStore,
+)
 from solaris.models.store import ProfileStore
 from solaris.models.subscription import Download
 from tests.support.simulated_core import (
@@ -141,6 +153,55 @@ SAMPLE_CONFIG = (
     + "proxy-groups:\n  - name: 节点选择\n    type: select\n    proxies:\n"
     + "".join(f"      - {name}\n" for name in NODES)
     + "rules:\n  - MATCH,节点选择\n"
+)
+# Names as long as people give them, in Chinese, in English and with emoji, to try the layout
+# at the narrowest window (scripts/preview.py --long-names). Chinese text takes fullwidth
+# punctuation.
+LONG_NODES: dict[str, tuple[str, int]] = {
+    "🇭🇰 香港 IPLC 专线 01 丨 家宽原生 IP 丨 解锁 Netflix、Disney+ 与 ChatGPT 丨 0.5 倍率": (
+        "VLESS",
+        72,
+    ),
+    "🇺🇸 United States · Los Angeles Premium Residential 02 · Streaming Optimized · x1.5": (
+        "Trojan",
+        188,
+    ),
+    "🇯🇵 日本东京 Softbank 高速线路 03 👨‍👩‍👧‍👦 Family Share 🏳️‍🌈 Unlimited Traffic": (
+        "Hysteria2",
+        95,
+    ),
+}
+LONG_GROUP = "🎬 国外流媒体与视频服务 · International Streaming & Video Services for the Family"
+LONG_PROFILES = (
+    "超长名称示例订阅：全球加速高级服务 · 2026 年度家庭共享套餐（主账号）",  # noqa: RUF001
+    "Premium Global Acceleration Subscription for the Whole Family — Annual 2026 Plan",
+    "🇯🇵🇭🇰🇺🇸 本地配置 Local Configuration 👨‍👩‍👧‍👦🎬📺🎮 with Many Emoji 🏳️‍🌈",
+)
+LONG_PLAN = "超长方案名称：工作日办公与家庭娱乐混合分流 · Weekday Office & Home Entertainment"  # noqa: RUF001
+LONG_PLAN_GROUP = "💼 Work & Developer Tools 工作与开发工具（GitHub、Docker Hub、npm 与 PyPI）"  # noqa: RUF001
+LONG_MESH = "🏠 Home Lab Tailscale Network 家庭实验室组网 · NAS、软路由与树莓派集群"
+LONG_HOST = "a-very-long-subdomain-for-layout-testing.edge-cache.static-content.example.com"
+LONG_PROCESS = "Microsoft Edge WebView2 Helper (Renderer) 超长进程名称测试 🧪"
+
+
+def _quoted(name: str) -> str:
+    return json.dumps(name, ensure_ascii=False)  # JSON's strings are YAML's too
+
+
+LONG_CONFIG = (
+    "mixed-port: 7890\nmode: rule\nproxies:\n"
+    + "".join(
+        f"  - {{name: {_quoted(name)}, {_CORE_TYPES[kind]}, "
+        f"server: node{i}.example.net, port: 443}}\n"
+        for i, (name, (kind, _)) in enumerate((NODES | LONG_NODES).items())
+    )
+    + "proxy-groups:\n  - name: 节点选择\n    type: select\n    proxies:\n"
+    + "".join(f"      - {_quoted(name)}\n" for name in NODES | LONG_NODES)
+    + f"  - name: {_quoted(LONG_GROUP)}\n    type: select\n    proxies:\n"
+    + "".join(f"      - {_quoted(name)}\n" for name in [*LONG_NODES, "节点选择"])
+    + "rules:\n"
+    + f"  - {_quoted(f'DOMAIN-SUFFIX,{LONG_HOST.split(".", 1)[1]},{LONG_GROUP}')}\n"
+    + "  - MATCH,节点选择\n"
 )
 SAMPLE_USAGE = Usage(
     upload=int(1.2 * GB),
@@ -237,6 +298,20 @@ LASTING = (
         65,
     ),
     ("", "223.5.5.5", 53, "udp", "IP-CIDR,223.5.5.5/32", "DIRECT", "mDNSResponder", 0.00001, 9),
+)
+# The same with long names, besides the others (long_names).
+LONG_LASTING = (
+    (
+        LONG_HOST,
+        "198.18.0.90",
+        443,
+        "tcp",
+        f"DOMAIN-SUFFIX,{LONG_HOST.split('.', 1)[1]}",
+        LONG_GROUP,
+        LONG_PROCESS,
+        0.05,
+        320,
+    ),
 )
 # Short visits that open now and then: the same fields, then how long they stay (seconds).
 VISITS = (
@@ -444,8 +519,10 @@ class SimulatedHost:
         development: bool = False,
         core_needs_tunnel: bool = False,
         takeover: str = TAKEOVER_SETTINGS,
+        long_names: bool = False,
     ) -> None:
         """``crowd`` adds that many quiet connections, to try the UI with a busy core.
+        ``long_names`` adds nodes, a group and a connection with long names (LONG_NODES).
         ``development`` refuses TUN and the system proxy as the development service
         does (docs/architecture.md §11). ``core_needs_tunnel``: like the macOS extension, no
         core answers while the tunnel is down; prepare_start brings it up. ``takeover`` is
@@ -499,7 +576,9 @@ class SimulatedHost:
         self._tun = running.tun_enabled
         self._system_proxy = running.system_proxy_enabled
         self._started_at = clock() - 8076
-        self._delays = {name: delay for name, (_, delay) in NODES.items()}
+        self._nodes = NODES | LONG_NODES if long_names else dict(NODES)
+        self._sample = LONG_CONFIG if long_names else SAMPLE_CONFIG
+        self._delays = {name: delay for name, (_, delay) in self._nodes.items()}
         self._tcp_delays: dict[str, int] = {}  # the nodes a TCP test measured
         self._groups = {
             "节点选择": _Group("Selector", ["自动选择", *NODES], "香港 01"),
@@ -510,6 +589,12 @@ class SimulatedHost:
             ),
             "全球直连": _Group("Selector", ["DIRECT", "节点选择"], "DIRECT"),
         }
+        lasting = LASTING
+        if long_names:
+            first = next(iter(LONG_NODES))
+            self._groups["节点选择"] = _Group("Selector", ["自动选择", *self._nodes], first)
+            self._groups[LONG_GROUP] = _Group("Selector", [*LONG_NODES, "节点选择"], first)
+            lasting += LONG_LASTING
         self._down = 6_000_000.0
         self._up = 900_000.0
         self._down_total = int(4.8 * GB)
@@ -518,7 +603,7 @@ class SimulatedHost:
         self._last_advance = clock()
         self._visit_debt = 0.0
         self._connections: list[_Connection] = []
-        for host, address, port, network, rule, target, process, share, ago in LASTING:
+        for host, address, port, network, rule, target, process, share, ago in lasting:
             connection = self._open(
                 host, address, port, network, rule, target, process, share, clock() - ago, None
             )
@@ -762,7 +847,7 @@ class SimulatedHost:
         if self.report is not None:
             return list(self.report.rules)
         # Running before any start, the sample's own rules are in use.
-        effective = self.effective if self.effective is not None else yaml.safe_load(SAMPLE_CONFIG)
+        effective = self.effective if self.effective is not None else yaml.safe_load(self._sample)
         rules = []
         for line in effective.get("rules") or []:
             parts = [part.strip() for part in str(line).split(",")]
@@ -793,14 +878,14 @@ class SimulatedHost:
             # through the node they use now; nothing lets a group choose again (D32).
             for member in self._groups[group].members:
                 name = self._final(member)
-                if name in NODES and NODES[name][0] in TCP_TYPES:
-                    base = NODES[name][1]
+                if name in self._nodes and self._nodes[name][0] in TCP_TYPES:
+                    base = self._nodes[name][1]
                     delay = max(5, base // 3 + self._random.randint(-8, 8)) if base else 0
                     self._tcp_delays[name] = delay
             return
         for name in self._groups[group].members:
-            if name in NODES and self._delays[name]:
-                base = NODES[name][1]
+            if name in self._nodes and self._delays[name]:
+                base = self._nodes[name][1]
                 self._delays[name] = max(20, base + self._random.randint(-25, 25))
         alive = [n for n in self._groups["自动选择"].members if self._delays[n]]
         self._groups["自动选择"].now = min(alive, key=lambda n: self._delays[n])
@@ -1021,7 +1106,8 @@ class SimulatedHost:
             return Proxy(name, kind, self._delays.get(final), self._tcp_delays.get(final))
         if name in self._openvpn:
             return Proxy(name, "OpenVPN", self._openvpn_delays.get(name))
-        return Proxy(name, NODES[name][0], self._delays[name], self._tcp_delays.get(name))
+        kind = self._nodes[name][0]
+        return Proxy(name, kind, self._delays[name], self._tcp_delays.get(name))
 
     def _final(self, name: str) -> str:
         while name in self._groups:
@@ -1053,17 +1139,20 @@ class SimulatedFetcher:
         return Download(self.body, self.usage, self.filename)
 
 
-def seed_profiles(store: ProfileStore, now: float) -> ProfileList:
+def seed_profiles(store: ProfileStore, now: float, *, long_names: bool = False) -> ProfileList:
     """Three sample profiles, with "示例订阅 A" in use: its own rules route, as the
-    first import of a profile with rules decides (docs/routing.md §5.1)."""
+    first import of a profile with rules decides (docs/routing.md §5.1). ``long_names``
+    names them LONG_PROFILES, with LONG_CONFIG's nodes and group."""
+    config = LONG_CONFIG if long_names else SAMPLE_CONFIG
+    names = LONG_PROFILES if long_names else ("示例订阅 A", "示例订阅 B", "本地配置")
     local = store.directory / "config.yaml"
     local.parent.mkdir(parents=True, exist_ok=True)
-    local.write_text(SAMPLE_CONFIG, encoding="utf-8")
-    count = inspect(SAMPLE_CONFIG, DEFAULT_INFO_PATTERN).node_count
+    local.write_text(config, encoding="utf-8")
+    count = inspect(config, DEFAULT_INFO_PATTERN).node_count
     profiles = (
         Profile(
             id="sample-a",
-            name="示例订阅 A",
+            name=names[0],
             kind=KIND_SUBSCRIPTION,
             url="https://sub.example.com/api/v1/client/subscribe?token=sample",
             auto_update_hours=12,
@@ -1073,7 +1162,7 @@ def seed_profiles(store: ProfileStore, now: float) -> ProfileList:
         ),
         Profile(
             id="sample-b",
-            name="示例订阅 B",
+            name=names[1],
             kind=KIND_SUBSCRIPTION,
             url="https://nodes.example.org/clash.yaml",
             auto_update_hours=0,  # updated by hand
@@ -1083,7 +1172,7 @@ def seed_profiles(store: ProfileStore, now: float) -> ProfileList:
         ),
         Profile(
             id="sample-c",
-            name="本地配置",
+            name=names[2],
             kind=KIND_FILE,
             path=str(local),
             updated_at=now - 9 * 86400,
@@ -1091,8 +1180,34 @@ def seed_profiles(store: ProfileStore, now: float) -> ProfileList:
         ),
     )
     for profile in profiles:
-        store.write_config(profile.id, SAMPLE_CONFIG)
+        store.write_config(profile.id, config)
     seeded = ProfileList(profiles, "sample-a")
     store.save(seeded)
     RoutingStore(store.database).update_state(mode=MODE_PROFILE)
     return seeded
+
+
+def seed_long_plan(store: ProfileStore) -> Plan:
+    """A plan with a long name in each place the routing page shows one: its own, a custom
+    group (LONG_PLAN_GROUP), the rules to it, a mesh network (LONG_MESH) and the WARP exit
+    through the group. The plan is stored, not chosen."""
+    network = MeshNetwork("long-mesh", LONG_MESH, TailscaleSettings(hostname="solaris"), "g-long")
+    MeshStore(store.database).put(network)
+    plan = default_plan(name=LONG_PLAN)
+    group = PlanGroup("g-long", "custom", "select", LONG_PLAN_GROUP, {"sources": ["sample-b"]})
+    domains = {"items": ["github.com", "docker.io", "npmjs.org", "pypi.org", LONG_HOST]}
+    rules = (
+        PlanRule("r-long", "domain", domains, group.id),
+        PlanRule(
+            "r-mesh", "ip", {"items": ["100.64.0.0/10"], "no_resolve": True}, "mesh:long-mesh"
+        ),
+        PlanRule("r-warp", "service", {"service": "openai"}, WARP),
+    )
+    plan = replace(
+        plan,
+        groups=(*plan.groups, group),
+        rules=rules + plan.rules,
+        egress={"warp": {"enabled": True, "via": group.id}},
+    )
+    RoutingStore(store.database).put_plan(plan)
+    return plan

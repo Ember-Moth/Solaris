@@ -279,6 +279,93 @@ def test_dropped_connection_fails_pending_calls() -> None:
     assert asyncio.run(scenario())
 
 
+def test_cancelling_a_sent_request_keeps_the_connection() -> None:
+    pb = control_pb2
+
+    async def scenario() -> None:
+        received = asyncio.Event()
+        release = asyncio.Event()
+
+        async def answer(request: control_pb2.Request) -> control_pb2.Response:
+            if request.WhichOneof("method") == "test_delay":
+                received.set()
+                await release.wait()
+            return info_response()
+
+        server, opener = await serve(answer)
+        async with server:
+            client = await ControlClient.connect(opener)
+            try:
+                call = asyncio.create_task(
+                    client.call(pb.Request(test_delay=pb.TestDelayRequest()))
+                )
+                await received.wait()
+                call.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await call
+                assert not client.closed
+                release.set()  # the late answer is dropped
+                response = await client.call(pb.Request(get_info=pb.GetInfoRequest()))
+                assert response.get_info.service_version == "dev"
+                assert not client.closed
+                assert not client._pending
+            finally:
+                await client.close()
+
+    asyncio.run(scenario())
+
+
+def test_an_unanswered_request_keeps_the_shared_connection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A request the service leaves unanswered (core_unresponsive, a delay test at its limit)
+    times out alone: requests in flight beside it on the shared connection still finish."""
+    monkeypatch.setattr("solaris.host.service.CLAIM_TIMEOUT_S", 0.2)
+    pb = control_pb2
+
+    async def scenario() -> None:
+        answer_status = asyncio.Event()
+
+        async def answer(request: control_pb2.Request) -> control_pb2.Response:
+            match request.WhichOneof("method"):
+                case "test_delay" | "claim":
+                    await asyncio.Event().wait()
+                case "get_status":
+                    await answer_status.wait()
+                    return pb.Response(get_status=pb.GetStatusResponse(state=pb.RUN_STATE_RUNNING))
+            return info_response()
+
+        server, opener = await serve(answer)
+        opened = 0
+
+        async def counted() -> Streams:
+            nonlocal opened
+            opened += 1
+            return await opener()
+
+        async with server:
+            host = ServiceHost(counted)
+            try:
+                client = await host._connected()
+                for unanswered in (
+                    lambda: host._call(pb.Request(test_delay=pb.TestDelayRequest()), timeout=0.2),
+                    host.claim,
+                ):
+                    answer_status.clear()
+                    status = asyncio.create_task(host.get_status())
+                    with pytest.raises(HostError) as raised:
+                        await unanswered()
+                    assert raised.value.code == "timeout"
+                    answer_status.set()
+                    assert (await status).state == "running"
+                    assert not client.closed
+                assert opened == 1
+            finally:
+                await host.close()
+
+    asyncio.run(scenario())
+
+
 def test_service_host_maps_status_groups_and_traffic() -> None:
     pb = control_pb2
     subscribed: list[int] = []
@@ -651,6 +738,31 @@ def test_service_host_gives_up_on_a_restart_that_does_not_end(
     with pytest.raises(HostError) as raised:
         asyncio.run(scenario())
     assert raised.value.code == "timeout"
+
+
+def test_service_host_forgets_a_client_whose_close_was_cut_short() -> None:
+    """The claim's deadline can cancel the close between retries; closing again must not
+    await that client's cancelled close waiter."""
+    closes = 0
+
+    class CutShort:
+        async def close(self) -> None:
+            nonlocal closes
+            closes += 1
+            raise asyncio.CancelledError
+
+    async def never() -> Streams:
+        raise AssertionError("no connection is opened")
+
+    async def scenario() -> None:
+        host = ServiceHost(never)
+        host._client = cast(ControlClient, CutShort())
+        with pytest.raises(asyncio.CancelledError):
+            await host.close()
+        await host.close()
+
+    asyncio.run(scenario())
+    assert closes == 1
 
 
 @pytest.mark.parametrize(

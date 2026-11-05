@@ -1,6 +1,6 @@
 # 决策
 
-本文记录 Solaris 的设计决策。代码注释和其他文档按编号引用它们（如"D19"），所以编号不变、不重用；新的决策从 D36
+本文记录 Solaris 的设计决策。代码注释和其他文档按编号引用它们（如"D19"），所以编号不变、不重用；新的决策从 D42
 接着编号。每条只写结论，理由和细节在"详见"一栏的文档里。
 
 ## 待决策
@@ -34,7 +34,7 @@
 | D20 | fd 模式的 `dns.fake-ip-range` 固定为 `198.18.0.1/16`，TUN 地址由它得出；用户关掉 `ipv6` 时，进入隧道的 IPv6 流量被丢弃 | [architecture.md](architecture.md) §3.1 |
 | D21 | 链式出口只在"我的方案"下提供；出口不可用时，指向它的规则拒绝连接，不改走普通代理 | [exits.md](exits.md) §1 |
 | D22 | WARP 出口放在内核：mihomo 的 MASQUE 或 WireGuard 出站，`dialer-proxy` 经用户的节点，默认 MASQUE over HTTP/2；内核经节点注册账户，账户存系统凭据库、不进备份 | [exits.md](exits.md) §3 |
-| D23 | Tor 出口用 arti-client，经 pyo3 运行在界面进程，作为实验功能；退出界面后 Tor 不可用，连接被拒绝（未实现） | [exits.md](exits.md) §4 |
+| D23 | Tor 出口用 arti-client，经 pyo3 运行在界面进程，作为实验功能；界面进程不在时（如崩溃）Tor 不可用，连接被拒绝（未实现） | [exits.md](exits.md) §4 |
 | D24 | 保留 Tailscale、ZeroTier、EasyTier 出站；它们不进节点池和任何策略组，作为"组网"出站单独列出、供规则引用；只用作出站，安全项关闭 EasyTier 对外提供出口和子网的选项 | [mesh.md](mesh.md) |
 | D25 | VPN Gate 作为第三种链式出口：经节点拉列表，只用 TCP 的 OpenVPN 服务器，按国家和评分挑选；默认负载均衡组按网站分配服务器并跳过失效的，也可选只用一台；定位是换 IP 和住宅 IP，不宣传隐私 | [exits.md](exits.md) §5 |
 | D26 | 界面上只有一个连接开关（概览页出站分组第一行）；连接时怎样接管流量由设置页"接管方式"决定，TUN 和系统代理默认都开；macOS 上 TUN 是必选的 | [DESIGN.md](../DESIGN.md)"连接开关"、[ui.md](ui.md) §8 |
@@ -52,3 +52,4 @@
 | D38 | mihomo 增强版通过 replace 固定到 Ember-Moth/mihomo 的明确提交，版本以 src/core/go.mod 为准，保留上游导入路径；发布构建启用 Naive，Windows 携带并限定加载同版 Cronet DLL，macOS 静态合并同版 Cronet。AnyTLS+REALITY、REALITY 握手版本及 Snell v4–v6 行为采用该增强版；升级时同步原生模块、版本标识与许可证清单并运行协议回归 | [architecture.md](architecture.md) §3.4 |
 | D39 | Windows 安装器使用自定义 Win32 UI，沿用 Solaris 设计规范；NSIS 保留为安装事务引擎。首次安装可选经权限检查的本地目录，升级沿用已有位置；交互安装/升级需主动同意随包 GPLv3 原文。保留 `/S`、`/PURGE`、`/UPGRADE` 和普通权限启动应用的行为。卸载默认取消且默认保留数据，执行事务期间禁止中途关闭 | [architecture.md](architecture.md) §9、[DESIGN.md](../DESIGN.md) |
 | D40 | Windows 11 ARM64 使用原生 ARM64 GUI、Go 服务、Cronet 与 Wintun；NSIS 引导程序及其 UI 插件仍是 x86。构建按架构隔离并检查 PE，更新按原生 OS 架构选择安装包，x64 到 ARM64 原位升级保留数据；CI 在原生 ARM runner 检查安装与迁移 | [architecture.md](architecture.md) §10、[release.md](release.md) §1 |
+| D41 | 退出 Solaris 就是完全退出：托盘或菜单栏的「退出 Solaris」、macOS 的 ⌘Q 和 Dock 的「退出」、关闭动作为「退出 Solaris」时关闭主窗口，都先像「断开」一样断开本用户的隧道，再退出界面进程；服务记为未运行，睡眠唤醒（D34）和服务重启后都不再恢复。断开最多等 10 秒，失败或超时时询问重试还是仍然退出，并说明隧道可能仍在运行。关闭动作为「留在托盘 / 菜单栏」时关闭窗口只隐藏窗口。别的用户的隧道（D5b）、没有服务应答时不断开；安装器的 `--quit` 和系统注销、关机时直接退出，隧道交给服务（D5、升级保留 `was_running`）；界面崩溃或被结束时隧道仍由服务或扩展维持。取代"退出界面后隧道继续运行"：用户把退出理解为退出整个应用，退出后流量仍经隧道却没有界面，不易察觉 | [ui.md](ui.md) §8、[architecture.md](architecture.md) §1 |

@@ -103,7 +103,7 @@ func (c *fakeCore) stop() error {
 func (c *fakeCore) Resume(start *controlpb.StartRequest) error {
 	c.running = true
 	c.resumed = append(c.resumed, start)
-	return c.host.Applied(start)
+	return c.host.Applied(start, current)
 }
 
 func (c *fakeCore) Suspend() error {
@@ -166,6 +166,12 @@ func geoData(t *testing.T, home string) map[string]string {
 	}
 	return found
 }
+
+// current and supersede stand in for the dispatcher's stop generation, which the tests
+// here leave alone: every start is current, and a Stop supersedes nothing.
+func current() bool { return true }
+
+func supersede() {}
 
 func as(sid string, session uint32) peer.Identity {
 	return peer.Identity{UserID: sid, SessionID: session}
@@ -327,7 +333,7 @@ func TestTunnelComesBackForItsOwner(t *testing.T) {
 	}
 	service, core, home := start(t, root, m)
 	core.running = true
-	if err := service.Applied(profile(false)); err != nil {
+	if err := service.Applied(profile(false), current); err != nil {
 		t.Fatal(err)
 	}
 	if !(kept{home}).wasRunning() {
@@ -394,16 +400,16 @@ func TestStopIntentIsKeptBeforeTheCoreCanStop(t *testing.T) {
 	}
 	service, core, home := start(t, root, m)
 	core.running = true
-	if err := service.Applied(profile(false)); err != nil {
+	if err := service.Applied(profile(false), current); err != nil {
 		t.Fatal(err)
 	}
-	if err := service.StopRequested(as(bob, 2)); !errors.Is(err, control.ErrOwnedByOtherUser) {
+	if err := service.StopRequested(as(bob, 2), supersede); !errors.Is(err, control.ErrOwnedByOtherUser) {
 		t.Fatalf("other user stopped the owner: %v", err)
 	}
 	if !service.ResumeAllowed() {
 		t.Fatal("the other user's refusal changed the owner's intent")
 	}
-	if err := service.StopRequested(as(alice, 1)); err != nil {
+	if err := service.StopRequested(as(alice, 1), supersede); err != nil {
 		t.Fatal(err)
 	}
 	if !core.running || (kept{home}).wasRunning() || service.ResumeAllowed() {
@@ -430,7 +436,7 @@ func TestSystemProxyIsTheOwners(t *testing.T) {
 		t.Fatalf("set while stopped: %v", err)
 	}
 	core.running = true
-	if err := service.Applied(profile(true)); err != nil {
+	if err := service.Applied(profile(true), current); err != nil {
 		t.Fatal(err)
 	}
 	if m.proxies[alice] != sysproxy.Core(7890) || !service.SystemProxyEnabled() {
@@ -494,7 +500,7 @@ func TestFormerOwnerGetsTheirProxyBack(t *testing.T) {
 	m.sessions[1], m.proxies[alice] = alice, theirs
 	service, core, _ := start(t, root, m)
 	core.running = true
-	if err := service.Applied(profile(true)); err != nil {
+	if err := service.Applied(profile(true), current); err != nil {
 		t.Fatal(err)
 	}
 	delete(m.sessions, 1)
@@ -527,7 +533,7 @@ func TestAdministratorTakesOver(t *testing.T) {
 	m.sessions[2] = bob
 	service, core, home := start(t, root, m)
 	core.running = true
-	if err := service.Applied(profile(true)); err != nil {
+	if err := service.Applied(profile(true), current); err != nil {
 		t.Fatal(err)
 	}
 
@@ -603,7 +609,7 @@ func TestTakeOverKeepsTheProxyForTheNextSignIn(t *testing.T) {
 	m.sessions[1], m.proxies[alice] = alice, theirs
 	service, core, home := start(t, root, m)
 	core.running = true
-	if err := service.Applied(profile(true)); err != nil {
+	if err := service.Applied(profile(true), current); err != nil {
 		t.Fatal(err)
 	}
 	// Her session went away without a sign-out the service heard of.

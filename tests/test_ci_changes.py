@@ -52,13 +52,16 @@ WORKFLOW = ci.ROOT / ".github/workflows/ci.yml"
             ["src/core/internal/engine/engine.go"],
             {"go", "e2e", "apple", "windows-installer", "windows-arm64-upgrade", "tun"},
         ),
-        (["src/core/internal/engine/engine_test.go"], {"go"}),
+        (["src/core/internal/engine/engine_test.go"], {"go", "tun"}),
+        (["src/core/internal/engine/main_test.go"], {"go", "tun"}),
         (["src/core/internal/engine/tun_fd_linux_test.go"], {"go", "tun"}),
+        (["src/core/internal/peer/peer_windows_test.go"], {"go"}),
         (
             ["src/core/internal/owner/platform_windows.go"],
             {"go", "windows-installer", "windows-arm64-upgrade"},
         ),
         (["src/core/internal/engine/tunfd_darwin.go"], {"go", "apple"}),
+        (["src/core/internal/peer/credentials_darwin.go"], {"go", "apple", "e2e"}),
         (["apple/Manager/Deadline.swift"], {"python", "apple"}),
         (
             ["package/windows/installer.nsi"],
@@ -67,6 +70,17 @@ WORKFLOW = ci.ROOT / ".github/workflows/ci.yml"
         (
             ["package/licenses/NOTICE.md"],
             {"python", "apple", "installer-ui", "windows-installer", "windows-arm64-upgrade"},
+        ),
+        (
+            ["scripts/fetch_geodata.py"],
+            {
+                "python",
+                "e2e",
+                "apple",
+                "installer-ui",
+                "windows-installer",
+                "windows-arm64-upgrade",
+            },
         ),
         (["scripts/gen_i18n.py"], {"python"}),
         (["tests/support/simulated.py"], {"python", "e2e"}),
@@ -189,6 +203,10 @@ def test_workflow_wires_every_job_and_preserves_a_full_run_entry() -> None:
     jobs = config["jobs"]
     assert "workflow_dispatch" in config["on"]
     assert set(jobs) == ci.JOBS | {"changes", "result"}
+    assert jobs["changes"]["outputs"] == {
+        "jobs": "${{ steps.select.outputs.jobs }}",
+        "protocol": "${{ steps.select.outputs.protocol }}",
+    }
     assert set(jobs["result"]["needs"]) == ci.JOBS | {"changes"}
     assert jobs["result"]["if"] == "always()"
     for name in ci.JOBS:
@@ -408,3 +426,91 @@ def test_manual_rerun_is_full_without_reusing_a_baseline(tmp_path: Path) -> None
     plan = json.loads(result.stdout)
     assert set(plan["jobs"]) == ci.JOBS
     assert plan["reason"] == "manual rerun"
+
+
+def guard(root: Path, scratch: Path, event: str, selection: object, **env: str) -> list[str]:
+    """Runs the workflow's own check on the script's selection; the jobs it lets through."""
+    run = next(
+        step for step in workflow()["jobs"]["changes"]["steps"] if step.get("id") == "select"
+    )
+    code = run["run"].splitlines()
+    assert code[0] == "python3 - <<'PY'"
+    assert code[-1] == "PY"
+    path = scratch / "selection.json"
+    path.write_text(selection if isinstance(selection, str) else json.dumps(selection))
+    output = scratch / "output"
+    output.write_text("")
+    subprocess.run(
+        [sys.executable, "-c", "\n".join(code[1:-1])],
+        cwd=root,
+        env={
+            **os.environ,
+            "EVENT": event,
+            "PR_BASE": "",
+            "BEFORE": "",
+            "SELECTION": str(path),
+            "GITHUB_OUTPUT": str(output),
+            "GITHUB_STEP_SUMMARY": str(scratch / "summary"),
+            **env,
+        },
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    values = dict(line.split("=", 1) for line in output.read_text().splitlines())
+    jobs = json.loads(values["jobs"])
+    assert values["protocol"] == ("true" if set(jobs) == ci.JOBS else "false")
+    return jobs
+
+
+def selected(jobs: list[str], base: str | None = None) -> dict[str, object]:
+    return {"jobs": jobs, "protocol": False, "reason": "changed inputs", "base": base}
+
+
+def test_a_changed_selection_script_runs_everything_whatever_it_selects(
+    repository: Path, tmp_path_factory: pytest.TempPathFactory
+) -> None:
+    scratch = tmp_path_factory.mktemp("guard")
+    base = git(repository, "rev-parse", "HEAD")
+    git(repository, "checkout", "-qb", "feature")
+    commit(repository, "docs/usage.md")
+    assert guard(repository, scratch, "pull_request", selected([]), PR_BASE=base) == []
+    commit(repository, "scripts/ci_changes.py", "JOBS = frozenset()")
+    jobs = guard(repository, scratch, "pull_request", selected([]), PR_BASE=base)
+    assert set(jobs) == ci.JOBS
+    assert "Every check runs" in (scratch / "summary").read_text()
+
+
+def test_a_push_trusts_the_script_only_if_it_matches_its_baseline_and_previous_head(
+    repository: Path, tmp_path_factory: pytest.TempPathFactory
+) -> None:
+    scratch = tmp_path_factory.mktemp("guard")
+    successful = git(repository, "rev-parse", "HEAD")
+    before = commit(repository, "src/core/internal/engine/engine.go")
+    commit(repository, "docs/usage.md")
+    assert guard(repository, scratch, "push", selected(["go"], successful), BEFORE=before) == ["go"]
+    # A failed push changed the script; the next one, docs only, still runs everything.
+    failed = commit(repository, "scripts/ci_changes.py", "JOBS = frozenset()")
+    commit(repository, "docs/usage.md", "more")
+    assert set(guard(repository, scratch, "push", selected([], successful), BEFORE=failed)) == (
+        ci.JOBS
+    )
+    head = git(repository, "rev-parse", "HEAD")
+    # A push selection always has its baseline; one without runs everything.
+    assert set(guard(repository, scratch, "push", selected([]), BEFORE=head)) == ci.JOBS
+
+
+@pytest.mark.parametrize(
+    ("event", "selection"),
+    [
+        ("workflow_dispatch", selected([])),
+        ("pull_request", "not json"),
+        ("pull_request", {"jobs": []}),
+    ],
+)
+def test_other_events_and_unreadable_selections_run_everything(
+    repository: Path, tmp_path_factory: pytest.TempPathFactory, event: str, selection: object
+) -> None:
+    base = git(repository, "rev-parse", "HEAD")
+    scratch = tmp_path_factory.mktemp("guard")
+    assert set(guard(repository, scratch, event, selection, PR_BASE=base)) == ci.JOBS

@@ -63,11 +63,12 @@ SHARED_BUILD = frozenset(
         "scripts/macos.py",
         "scripts/cronet.py",
         "scripts/symbols.py",
-        "scripts/fetch_geodata.py",
         "scripts/gen_icons.py",
         "scripts/gen_licenses.py",
     }
 )
+ENGINE = "src/core/internal/engine/"
+ENGINE_TUN = f"{ENGINE}tun"
 
 
 @dataclass(frozen=True)
@@ -105,12 +106,18 @@ def select(paths: Iterable[str]) -> Plan:
         elif path.startswith("src/core/"):
             if path.endswith("_test.go"):
                 jobs.add("go")
-                if path.startswith("src/core/internal/engine/tun"):
+                # Only the tun job builds the engine's tests with -tags tuntest, and every
+                # test file of the package goes into that binary: TestMain and its helpers too.
+                if path.startswith(ENGINE) and "/" not in path.removeprefix(ENGINE):
                     jobs.add("tun")
             elif path.endswith("_windows.go"):
                 jobs.update({"go", "windows-installer"})
             elif path.endswith("_darwin.go"):
                 jobs.update({"go", "apple"})
+                # e2e drives the development service on macOS, which runs every darwin file
+                # but the TUN's (it has none): the peer check of its control connection too.
+                if not path.startswith(ENGINE_TUN):
+                    jobs.add("e2e")
             else:
                 jobs.update(CORE)
         elif path.startswith("apple/"):
@@ -133,6 +140,10 @@ def select(paths: Iterable[str]) -> Plan:
             jobs.update({"python", "e2e"})
         elif path in SHARED_BUILD:
             jobs.update(BUILD)
+        elif path == "scripts/fetch_geodata.py":
+            # Only e2e checks the category list against the pinned data (--check) and runs
+            # "my plan" on that data.
+            jobs.update(BUILD | {"e2e"})
         elif path in {
             "scripts/build_windows.py",
             "scripts/build_installer_ui.py",
