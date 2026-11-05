@@ -314,8 +314,8 @@ exits.md 第 9 节的待实测项。
    git tag v1.0.0 && git push origin v1.0.0
    ```
 
-   标签触发同一个工作流：先批准 macOS 和两个 Windows 架构的构建任务，它们成功后再批准 release job。release job 核对安装包，打出源代码包，
-   写 `SHA256SUMS`，把这五个文件放进一个**草稿** Release。同一个标签已有 Release 时这一步失败，要先删掉旧的草稿
+   标签触发同一个工作流：先批准 macOS 和两个 Windows 架构的构建任务，它们成功后再批准 release job。release job 核对安装包，把 macOS 安装包以 1.0.0 的旧名再放一份（release.md 第 1 节），
+   打出源代码包，写 `SHA256SUMS`，把这六个文件放进一个**草稿** Release。同一个标签已有 Release 时这一步失败，要先删掉旧的草稿
    再重新运行。
 4. **草稿**：从草稿下载三个安装包，在测试机上再装一遍；在"更新内容"下写这个版本的变化，删掉模板里的注释行。
 5. **发布**，二选一：

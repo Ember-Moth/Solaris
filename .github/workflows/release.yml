@@ -5,8 +5,8 @@ name: Release
 # from scripts/build_windows.py with its SHA-256, unsigned (D29). Runs for v* tags and
 # by hand, in the release environment: its reviewers approve each run before the jobs get the
 # signing secrets and the Google OAuth client. For a tag, a last job puts all three installers,
-# SHA256SUMS and the source archive into a draft GitHub Release (docs/release.md §1), which a
-# person publishes.
+# the disk image again under its 1.0.0 name, SHA256SUMS and the source archive into a draft
+# GitHub Release (docs/release.md §1), which a person publishes.
 on:
   workflow_dispatch:
   push:
@@ -408,6 +408,10 @@ jobs:
           {
             echo "version=$version"
             echo "dmg=Solaris-$version-macos-universal.dmg"
+            # The same disk image under the name 1.0.0's updater looks for, from before the
+            # universal build (docs/release.md §1). Never drop it: every 1.0.0 Mac updates
+            # through it.
+            echo "dmg_legacy=Solaris-$version-macos-arm64.dmg"
             echo "installer=Solaris-$version-windows-x64-setup.exe"
             echo "installer_arm64=Solaris-$version-windows-arm64-setup.exe"
             echo "source=Solaris-$version-source"
@@ -430,6 +434,7 @@ jobs:
       - name: Installers
         env:
           DMG: ${{ steps.version.outputs.dmg }}
+          DMG_LEGACY: ${{ steps.version.outputs.dmg_legacy }}
           INSTALLER: ${{ steps.version.outputs.installer }}
           INSTALLER_ARM64: ${{ steps.version.outputs.installer_arm64 }}
         run: |
@@ -437,6 +442,7 @@ jobs:
           sha256sum --check --strict "$DMG.sha256" "$INSTALLER.sha256" "$INSTALLER_ARM64.sha256"
           mkdir -p ../release
           mv "$DMG" "$INSTALLER" "$INSTALLER_ARM64" ../release/
+          cp ../release/"$DMG" ../release/"$DMG_LEGACY"
 
       # The tagged tree and every Go module the service and the extension link, so that
       # the archive builds without the network (GPL-3.0's corresponding source). Ordered,
@@ -461,12 +467,13 @@ jobs:
       - name: SHA256SUMS
         env:
           DMG: ${{ steps.version.outputs.dmg }}
+          DMG_LEGACY: ${{ steps.version.outputs.dmg_legacy }}
           INSTALLER: ${{ steps.version.outputs.installer }}
           INSTALLER_ARM64: ${{ steps.version.outputs.installer_arm64 }}
           SOURCE: ${{ steps.version.outputs.source }}
         run: |
           cd build/release
-          sha256sum "$DMG" "$INSTALLER" "$INSTALLER_ARM64" "$SOURCE.tar.gz" > SHA256SUMS
+          sha256sum "$DMG" "$DMG_LEGACY" "$INSTALLER" "$INSTALLER_ARM64" "$SOURCE.tar.gz" > SHA256SUMS
           cat SHA256SUMS
           ls -l
 
@@ -477,6 +484,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
           VERSION: ${{ steps.version.outputs.version }}
           DMG: ${{ steps.version.outputs.dmg }}
+          DMG_LEGACY: ${{ steps.version.outputs.dmg_legacy }}
           INSTALLER: ${{ steps.version.outputs.installer }}
           INSTALLER_ARM64: ${{ steps.version.outputs.installer_arm64 }}
           SOURCE: ${{ steps.version.outputs.source }}
@@ -488,5 +496,6 @@ jobs:
           fi
           gh release create "$GITHUB_REF_NAME" --draft --verify-tag \
             --title "Solaris $VERSION" --notes-file "$RUNNER_TEMP/notes.md" \
-            "build/release/$DMG" "build/release/$INSTALLER" "build/release/$INSTALLER_ARM64" \
+            "build/release/$DMG" "build/release/$DMG_LEGACY" \
+            "build/release/$INSTALLER" "build/release/$INSTALLER_ARM64" \
             build/release/SHA256SUMS "build/release/$SOURCE.tar.gz"
