@@ -96,5 +96,5 @@ func writeFile(path string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	return os.Rename(temporary.Name(), path)
+	return replaceFile(temporary.Name(), path)
 }
