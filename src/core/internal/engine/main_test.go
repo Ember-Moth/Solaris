@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	C "github.com/metacubex/mihomo/constant"
 
@@ -72,6 +73,19 @@ func openEngine(t *testing.T, mode admission.TunMode) *Engine {
 	}
 	t.Cleanup(func() { engine.Close() })
 	return engine
+}
+
+// eventually says whether condition holds within five seconds, for state mihomo settles
+// after the call that changed it has returned.
+func eventually(condition func() bool) bool {
+	deadline := time.Now().Add(5 * time.Second)
+	for !condition() {
+		if time.Now().After(deadline) {
+			return false
+		}
+		time.Sleep(time.Millisecond)
+	}
+	return true
 }
 
 // target is a loopback HTTP server, so no test needs the internet.

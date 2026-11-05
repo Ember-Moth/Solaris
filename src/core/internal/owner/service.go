@@ -38,7 +38,9 @@ type Platform interface {
 	NetworkReady() bool
 }
 
-// Core is the dispatcher's side of the tunnel.
+// Core is the dispatcher's side of the tunnel. ResumeContext and SuspendContext give up on
+// their context only while they wait for their turn: once in the core, they return how
+// they ended.
 type Core interface {
 	Running() bool
 	ResumeContext(context.Context, *controlpb.StartRequest) error
@@ -53,6 +55,14 @@ type Service struct {
 	core     Core
 	ctx      context.Context
 	cancel   context.CancelFunc
+
+	// proxyMu orders changes to the owner's system proxy, which go through the OS as the
+	// owner and can take a while, and guards proxy.json. keepMu orders the writes of what
+	// the next sign-in needs. Either comes before mu, which only guards the state below:
+	// it is never held across the OS proxy or the core, so admission and a Stop's intent
+	// wait for nothing slower than a small write.
+	proxyMu sync.Mutex
+	keepMu  sync.Mutex
 
 	mu                   sync.Mutex
 	closed               bool
@@ -74,6 +84,7 @@ type Service struct {
 	profile     *controlpb.StartRequest
 	wantRunning bool
 	// proxyPort is the mixed port the owner's system proxy points at; 0 while it is theirs.
+	// It changes under both proxyMu and mu.
 	proxyPort uint16
 }
 
@@ -189,15 +200,17 @@ func (s *Service) admitLocked(caller peer.Identity) error {
 	return nil
 }
 
-func (s *Service) StopRequested(caller peer.Identity) error {
+func (s *Service) StopRequested(caller peer.Identity, supersede func()) error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if err := s.admitLocked(caller); err != nil {
+		s.mu.Unlock()
 		return err
 	}
+	supersede()
 	s.wantRunning = false
 	s.cancelPowerLocked()
-	return s.home.setWasRunning(false)
+	s.mu.Unlock()
+	return s.keepRunning()
 }
 
 func (s *Service) ResumeAllowed() bool {
@@ -228,21 +241,29 @@ func (s *Service) TakeOver(caller peer.Identity, stop func() error) error {
 		return fmt.Errorf("caller %q has no SID", caller.UserID)
 	}
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	err := s.claimLocked(caller)
+	former := ""
+	if s.owner != nil {
+		former = s.owner.SID
+	}
+	s.mu.Unlock()
 	if !errors.Is(err, control.ErrOwnedByOtherUser) {
 		return err
 	}
 	if !caller.Administrator {
 		return fmt.Errorf("taking over needs an administrator's rights: %w", err)
 	}
+	// The core stops, and the former owner's proxy settings come back, outside mu. The
+	// dispatcher's operation lock keeps any other claim or start out meanwhile.
 	if err := stop(); err != nil {
 		return fmt.Errorf("stop the other user's tunnel: %w", err)
 	}
-	if err := s.stoppedLocked(); err != nil {
+	if err := s.Stopped(); err != nil {
 		s.log.Warn("restore the former owner's proxy settings", "error", err)
 	}
-	s.log.Info("an administrator took over the tunnel", "from", s.owner.SID, "sid", caller.UserID)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.log.Info("an administrator took over the tunnel", "from", former, "sid", caller.UserID)
 	return s.claimLocked(caller)
 }
 
@@ -271,24 +292,27 @@ func (s *Service) claimLocked(caller peer.Identity) error {
 	return control.ErrRestarting
 }
 
-func (s *Service) Applied(start *controlpb.StartRequest) error {
+func (s *Service) Applied(start *controlpb.StartRequest, current func() bool) error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.closed || s.ctx.Err() != nil {
+	if s.closed || s.ctx.Err() != nil || !current() {
+		s.mu.Unlock()
 		return context.Canceled
 	}
 	s.profile = start
 	s.wantRunning = true
-	s.keepLocked(true)
+	s.mu.Unlock()
+	s.keep()
 	var applied error
 	if options := start.GetOptions(); options.GetSystemProxyEnabled() {
-		applied = s.proxyOnLocked(uint16(options.GetMixedPort()))
+		applied = s.proxyOn(uint16(options.GetMixedPort()))
 	} else {
-		applied = s.proxyOffLocked()
+		applied = s.proxyOff()
 	}
 	if applied != nil {
 		return applied
 	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	// Keep the crash-loop guard until persistence and the OS proxy operation have
 	// both returned. Either can stall after the core itself has already started.
 	s.resumeBlocked = false
@@ -302,27 +326,21 @@ func (s *Service) Applied(start *controlpb.StartRequest) error {
 	return nil
 }
 
+// Stopped follows the tunnel going down until someone starts it again: it does not come
+// back at the owner's next sign-in.
 func (s *Service) Stopped() error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.stoppedLocked()
-}
-
-// stoppedLocked follows the tunnel going down until someone starts it again: it does not
-// come back at the owner's next sign-in.
-func (s *Service) stoppedLocked() error {
 	s.wantRunning = false
 	s.cancelPowerLocked()
-	if err := s.home.setWasRunning(false); err != nil {
+	s.mu.Unlock()
+	if err := s.keepRunning(); err != nil {
 		s.log.Error("keep was_running", "error", err)
 	}
-	return s.proxyOffLocked()
+	return s.proxyOff()
 }
 
 func (s *Service) Suspended() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.proxyOffLocked()
+	return s.proxyOff()
 }
 
 // Suspending captures a live mode change in the service's runtime copy, not in the
@@ -335,8 +353,8 @@ func (s *Service) Suspending(mode controlpb.Mode) {
 		return
 	}
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if s.closed || !s.wantRunning || s.profile == nil {
+		s.mu.Unlock()
 		return
 	}
 	const prefix = "# Solaris automatic recovery mode\nmode: "
@@ -346,7 +364,8 @@ func (s *Service) Suspending(mode controlpb.Mode) {
 	})
 	profile.Overrides = append(profile.Overrides, prefix+name+"\n")
 	s.profile = profile
-	if err := s.home.saveProfile(profile); err != nil {
+	s.mu.Unlock()
+	if err := s.keepProfile(); err != nil {
 		s.log.Warn("keep mode for automatic recovery", "error", err)
 	}
 }
@@ -354,28 +373,37 @@ func (s *Service) Suspending(mode controlpb.Mode) {
 // SetSystemProxy turns the owner's system proxy on or off while the core runs; the choice
 // is kept with the profile for the next sign-in.
 func (s *Service) SetSystemProxy(enabled bool) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	if !enabled {
-		if err := s.proxyOffLocked(); err != nil {
+		if err := s.proxyOff(); err != nil {
 			return err
 		}
 	} else {
-		if !s.running() || s.profile == nil {
+		s.mu.Lock()
+		profile := s.profile
+		s.mu.Unlock()
+		if !s.running() || profile == nil {
 			return engine.ErrNotRunning
 		}
-		if err := s.proxyOnLocked(uint16(s.profile.GetOptions().GetMixedPort())); err != nil {
+		if err := s.proxyOn(uint16(profile.GetOptions().GetMixedPort())); err != nil {
 			return err
 		}
 	}
-	if s.profile != nil && s.profile.GetOptions().GetSystemProxyEnabled() != enabled {
+	s.mu.Lock()
+	changed := s.profile != nil && s.profile.GetOptions().GetSystemProxyEnabled() != enabled
+	if changed {
 		profile := proto.CloneOf(s.profile)
 		if profile.Options == nil {
 			profile.Options = &controlpb.RunOptions{}
 		}
 		profile.Options.SystemProxyEnabled = enabled
 		s.profile = profile
-		s.keepLocked(s.running())
+	}
+	s.mu.Unlock()
+	// Only the profile changes: whether the tunnel comes back stays the owner's intent.
+	if changed {
+		if err := s.keepProfile(); err != nil {
+			s.log.Error("keep the profile", "error", err)
+		}
 	}
 	return nil
 }
@@ -391,13 +419,14 @@ func (s *Service) SystemProxyEnabled() bool {
 func (s *Service) Close() {
 	s.cancel()
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.closed = true
 	s.cancelPowerLocked()
-	if !s.bound {
+	bound := s.bound
+	s.mu.Unlock()
+	if !bound {
 		return
 	}
-	if err := s.proxyOffLocked(); err != nil {
+	if err := s.proxyOff(); err != nil {
 		s.log.Warn("restore the owner's proxy settings", "error", err)
 	}
 }
@@ -437,13 +466,11 @@ func (s *Service) signedIn(ctx context.Context, session uint32, sequence uint64)
 	s.signedOut = false
 	profile := s.profile
 	resume := profile != nil && s.resumeAllowedLocked() && !s.running()
-	if !resume && s.proxyPort == 0 {
-		if err := s.proxyOffLocked(); err != nil {
-			s.log.Warn("restore the owner's proxy settings", "error", err)
-		}
-	}
 	s.mu.Unlock()
 	if !resume {
+		if err := s.restoreLeftProxy(); err != nil {
+			s.log.Warn("restore the owner's proxy settings", "error", err)
+		}
 		return
 	}
 	if err := s.resume(ctx, profile); err != nil {
@@ -474,17 +501,41 @@ func (s *Service) signedOutOf(ctx context.Context, session uint32, ours bool) {
 	s.log.Info("stopped the tunnel at the owner's sign-out", "session", session)
 }
 
-// keepLocked writes what the next sign-in needs. A failure only costs that, so it is
-// logged rather than failing the request that already took effect.
-func (s *Service) keepLocked(running bool) {
-	if s.profile != nil {
-		if err := s.home.saveProfile(s.profile); err != nil {
-			s.log.Error("keep the profile", "error", err)
-		}
+// keep writes what the next sign-in needs. A failure only costs that, so it is logged
+// rather than failing the request that already took effect.
+func (s *Service) keep() {
+	if err := s.keepProfile(); err != nil {
+		s.log.Error("keep the profile", "error", err)
 	}
-	if err := s.home.setWasRunning(running); err != nil {
+	if err := s.keepRunning(); err != nil {
 		s.log.Error("keep was_running", "error", err)
 	}
+}
+
+// keepProfile writes the profile the core runs. Like keepRunning, it writes the service's
+// state as it is once its turn comes, not as its caller saw it, so writes that finish in
+// any order leave the latest.
+func (s *Service) keepProfile() error {
+	s.keepMu.Lock()
+	defer s.keepMu.Unlock()
+	s.mu.Lock()
+	profile := s.profile
+	s.mu.Unlock()
+	if profile == nil {
+		return nil
+	}
+	return s.home.saveProfile(profile)
+}
+
+// keepRunning writes was_running, the owner's intent: a Stop's write is never overtaken by
+// that of the Start it superseded.
+func (s *Service) keepRunning() error {
+	s.keepMu.Lock()
+	defer s.keepMu.Unlock()
+	s.mu.Lock()
+	running := s.wantRunning
+	s.mu.Unlock()
+	return s.home.setWasRunning(running)
 }
 
 func (s *Service) saveRecordLocked() {
@@ -508,16 +559,25 @@ func (s *Service) sessionLocked() (uint32, error) {
 	return sessions[0], nil
 }
 
-// proxyOnLocked points the owner's system proxy at the mixed port, first keeping their own
-// settings to restore.
-func (s *Service) proxyOnLocked(port uint16) error {
+// proxyOn points the owner's system proxy at the mixed port, first keeping their own
+// settings to restore. A closed service has given them back and sets nothing more.
+func (s *Service) proxyOn(port uint16) error {
 	if port == 0 {
 		return errors.New("the system proxy needs a mixed port")
 	}
+	s.proxyMu.Lock()
+	defer s.proxyMu.Unlock()
+	s.mu.Lock()
+	if s.closed {
+		s.mu.Unlock()
+		return context.Canceled
+	}
 	if s.proxyPort == port {
+		s.mu.Unlock()
 		return nil
 	}
 	session, err := s.sessionLocked()
+	s.mu.Unlock()
 	if err != nil {
 		return err
 	}
@@ -535,19 +595,46 @@ func (s *Service) proxyOnLocked(port uint16) error {
 	if err := s.platform.WriteProxy(session, sysproxy.Core(port)); err != nil {
 		return fmt.Errorf("set the owner's system proxy: %w", err)
 	}
+	s.mu.Lock()
 	s.proxyPort = port
+	s.mu.Unlock()
 	return nil
 }
 
-// proxyOffLocked gives the owner their own settings back. When they are not signed in, the
+// proxyOff gives the owner their own settings back. When they are not signed in, the
 // settings wait in their home for the next sign-in.
+func (s *Service) proxyOff() error {
+	s.proxyMu.Lock()
+	defer s.proxyMu.Unlock()
+	return s.proxyOffLocked()
+}
+
+// restoreLeftProxy gives the owner back settings the service left behind, by a crash say,
+// unless the service's own are in place.
+func (s *Service) restoreLeftProxy() error {
+	s.proxyMu.Lock()
+	defer s.proxyMu.Unlock()
+	s.mu.Lock()
+	inPlace := s.proxyPort != 0
+	s.mu.Unlock()
+	if inPlace {
+		return nil
+	}
+	return s.proxyOffLocked()
+}
+
+// proxyOffLocked is proxyOff under proxyMu.
 func (s *Service) proxyOffLocked() error {
+	s.mu.Lock()
 	s.proxyPort = 0
+	s.mu.Unlock()
 	previous, saved, err := s.home.previousProxy()
 	if err != nil || !saved {
 		return err
 	}
+	s.mu.Lock()
 	session, err := s.sessionLocked()
+	s.mu.Unlock()
 	if err != nil {
 		return err
 	}

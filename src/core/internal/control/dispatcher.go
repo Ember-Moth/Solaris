@@ -105,11 +105,16 @@ type Host interface {
 	// too (decision D5b): stop brings it down first. Anyone else gets what Claim gives them.
 	TakeOver(caller peer.Identity, stop func() error) error
 	// Applied follows Start, Reload and Resume once the core took start: the service keeps
-	// it for the next sign-in and sets the owner's system proxy as its options say.
-	Applied(start *controlpb.StartRequest) error
+	// it for the next sign-in and sets the owner's system proxy as its options say. It
+	// keeps nothing, and returns context.Canceled, unless current still holds under the
+	// lock StopRequested takes to supersede earlier starts.
+	Applied(start *controlpb.StartRequest, current func() bool) error
 	// StopRequested authorizes caller again and keeps the stop intent before waiting
-	// for a busy core. ResumeAllowed rechecks it when an automatic resume executes.
-	StopRequested(caller peer.Identity) error
+	// for a busy core. Once caller is admitted it runs supersede, which ends every
+	// earlier Start, Reload and Resume. Neither it nor Applied waits for the OS or the
+	// core under that lock, so a Stop never waits behind them. ResumeAllowed rechecks the
+	// intent when an automatic resume executes.
+	StopRequested(caller peer.Identity, supersede func()) error
 	ResumeAllowed() bool
 	RecoveryStatus() (controlpb.RecoveryState, string)
 	// Stopped follows Stop, after which the tunnel stays down; Suspended follows Suspend,
@@ -149,7 +154,6 @@ type Dispatcher struct {
 	operations     *operation.Executor
 	reads          *operation.Executor
 	intents        *operation.Executor
-	intentMu       sync.Mutex
 	stopGeneration atomic.Uint64
 	lifetime       context.Context
 	closeLifetime  context.CancelFunc
