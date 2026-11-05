@@ -217,7 +217,7 @@ jobs:
       # Compile and merge the real UI, Python/Qt libraries, manager and Go/Cronet extension.
       # The builder checks every Mach-O for both slices before ad hoc signing.
       - name: Build universal app (unsigned)
-        run: uv run --frozen --with nuitka==4.3.4 python scripts/build_app.py --unsigned
+        run: uv run --frozen --with nuitka==4.2.2 python scripts/build_app.py --unsigned
       # The release's actual universal app in a disk image; no app or extension is launched.
       - name: Disk image
         run: |
@@ -325,7 +325,7 @@ jobs:
           path: build/nuitka-cache-${{ matrix.arch }}
           key: nuitka-windows-${{ matrix.arch }}-${{ hashFiles('uv.lock', 'scripts/build_windows.py') }}
       - name: Build (unsigned)
-        run: uv run --frozen --with nuitka==4.3.4 python scripts/build_windows.py --arch ${{ matrix.arch }}
+        run: uv run --frozen --with nuitka==4.2.2 python scripts/build_windows.py --arch ${{ matrix.arch }}
       - name: Install, upgrade and uninstall
         shell: powershell
         run: ./package/windows/smoke-test.ps1 -Installer (Get-Item ${{ matrix.build }}/Solaris-*-windows-${{ matrix.arch }}-setup.exe).FullName

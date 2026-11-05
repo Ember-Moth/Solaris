@@ -376,4 +376,6 @@ SHA-256。界面从不静默安装，用户确认后才打开安装包。
 - **GEO 数据**的版本和 SHA-256 钉在 `scripts/fetch_geodata.py` 里；改了之后用 `--categories` 重新生成附带的分类名
   清单（`src/solaris/host/geo_categories.py`），CI 用 `--check` 核对。
 - **macOS** 的产品最低版本固定为 26（D28）；构建器同时检查 PySide6 等依赖的实际 Mach-O 版本要求，只能提高该底线。**Nuitka** 的版本是 `scripts/build_app.py` 的 `NUITKA_VERSION`，CI 和
-  发布工作流里的 `--with nuitka==` 要一起改。
+  发布工作流里的 `--with nuitka==` 要一起改。4.3.4 构建的 Windows 界面在冒烟测试里启动即退出（退出码 3，即
+  `abort()`），原因未查明，所以仍用 4.2.2；再试新版本时，失败的 `windows-installer` 任务会上传界面的输出和崩溃目录
+  （`windows-ui-<架构>-<提交>`），从那里看原因。
