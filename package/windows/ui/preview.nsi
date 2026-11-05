@@ -81,7 +81,7 @@ Section
     !insertmacro UiLog "Preview mode: no application, service or user data was changed."
   ${EndIf}
   ${If} $Mode == "uninstall"
-    StrCpy $Failure "$(RemovalFailed) $INSTDIR\solaris-service.exe"
+    StrCpy $Failure "$(UninstallRemovalFailed) $INSTDIR\solaris-service.exe"
     !insertmacro PreviewStep 0 "$(ClosingUI)"
     !insertmacro PreviewStep 1 "$(RemovingService)"
     !insertmacro PreviewStep 2 "$(RemovingFiles)"

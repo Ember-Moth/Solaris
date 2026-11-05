@@ -25,3 +25,5 @@ LangString CopyFailed ${LANG_ENGLISH} "The application files could not be replac
 LangString CopyFailed ${LANG_SIMPCHINESE} "无法替换应用文件。请关闭正在使用 Solaris 文件的程序，然后重新运行安装程序。"
 LangString RemovalFailed ${LANG_ENGLISH} "An installed file could not be removed. Close programs using Solaris files and run the installer again:"
 LangString RemovalFailed ${LANG_SIMPCHINESE} "无法移除已安装的文件。请关闭正在使用 Solaris 文件的程序，然后重新运行安装程序："
+LangString UninstallRemovalFailed ${LANG_ENGLISH} "An installed file could not be removed. Close programs using Solaris files and run the uninstaller again:"
+LangString UninstallRemovalFailed ${LANG_SIMPCHINESE} "无法移除已安装的文件。请关闭正在使用 Solaris 文件的程序，然后重新运行卸载程序："

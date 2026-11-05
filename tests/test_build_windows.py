@@ -181,13 +181,15 @@ SilentInstall silent
 SilentUnInstall silent
 !include LogicLib.nsh
 LoadLanguageFile "${NSISDIR}\Contrib\Language files\English.nlf"
-LangString RemovalFailed ${LANG_ENGLISH} "Could not remove installed file:"
 !macro Fail MESSAGE CODE
   FileOpen $9 "$INSTDIR\cleanup-error.txt" w
   FileWriteUTF16LE /BOM $9 "${MESSAGE}$\r$\n"
   FileClose $9
   SetErrorLevel ${CODE}
   Abort
+!macroend
+!macro RemovalFailed PATH
+  !insertmacro Fail "Could not remove installed file: ${PATH}" 1603
 !macroend
 !include "@INCLUDE@"
 Name "Solaris cleanup test"

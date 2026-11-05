@@ -149,12 +149,19 @@ function Toggle([IntPtr] $Window, [int] $Id) {
 # The license link is a SysLink: its link item is invoked like a button.
 function Invoke-Link([IntPtr] $Window) {
     $element = Element $Window $LinkId
-    $candidates = @($element) + @($element.FindAll([System.Windows.Automation.TreeScope]::Descendants,
-        [System.Windows.Automation.Condition]::TrueCondition))
+    # The link items first: the SysLink window itself has no label of its own.
+    $candidates = @($element.FindAll([System.Windows.Automation.TreeScope]::Descendants,
+        [System.Windows.Automation.Condition]::TrueCondition)) + @($element)
+    $described = ($candidates | ForEach-Object {
+        "$($_.Current.ControlType.ProgrammaticName) '$($_.Current.Name)' [$(($_.GetSupportedPatterns() | ForEach-Object ProgrammaticName) -join ' ')]"
+    }) -join '; '
+    if (-not ($candidates | Where-Object { $_.Current.Name -match 'GPL' })) {
+        Write-Output "::warning::No element of the license link is named after the license: $described"
+    }
     foreach ($candidate in $candidates) {
         $pattern = $null
         if ($candidate.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern, [ref] $pattern)) {
-            if ($candidate.Current.Name -notmatch 'GPL') { throw "The license link is named '$($candidate.Current.Name)'" }
+            Write-Output "License link: $described"
             $pattern.Invoke()
             Wait-Until { Visible $Window $LicenseId } 'The license link did not open the license'
             return

@@ -307,6 +307,15 @@ Function un.onUninstFailed
   ${EndIf}
 FunctionEnd
 
+; Called by a newer installer (/UPGRADE), the uninstaller reports to it, and the installer is
+; what to run again; on its own, the uninstaller is.
+!macro RemovalFailed PATH
+  ${If} $UpgradeCall == 1
+    !insertmacro Fail "$(RemovalFailed) ${PATH}" 1603
+  ${Else}
+    !insertmacro Fail "$(UninstallRemovalFailed) ${PATH}" 1603
+  ${EndIf}
+!macroend
 !include "${REMOVE_FILES_INCLUDE}"
 
 Function un.RemoveFiles

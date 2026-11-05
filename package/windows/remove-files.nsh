@@ -1,6 +1,7 @@
 ; Delete only files named by the installed payload's manifest. A locked or read-only
 ; old extension module must not be silently retained during an architecture upgrade.
-; The including script supplies LogicLib, the Fail macro and the RemovalFailed string.
+; The including script supplies LogicLib, the Fail macro and a RemovalFailed macro, which
+; fails with a message naming PATH.
 !ifndef SOLARIS_REMOVE_FILES_INCLUDED
 !define SOLARIS_REMOVE_FILES_INCLUDED
 
@@ -26,7 +27,7 @@ Function un.RemoveInstalledFile
       Sleep 500
       Goto retry
     ${EndIf}
-    !insertmacro Fail "$(RemovalFailed) $R0" 1603
+    !insertmacro RemovalFailed "$R0"
   done:
     Pop $R1
     Pop $R0
