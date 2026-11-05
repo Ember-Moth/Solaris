@@ -3035,6 +3035,10 @@ prepend-rules:
         <translation>My plan</translation>
     </message>
     <message>
+        <source>正在应用…</source>
+        <translation>Applying…</translation>
+    </message>
+    <message>
         <source>订阅里没有规则</source>
         <translation>No subscription has rules</translation>
     </message>

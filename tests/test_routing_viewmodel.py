@@ -9,6 +9,7 @@ import pytest
 from PySide6.QtCore import QObject
 from pytestqt.qtbot import QtBot
 
+from solaris.host.base import CompositionReport, HostError, TunnelConfig
 from solaris.models.store import ProfileStore
 from solaris.viewmodels.composition import ViewModels, compose
 from solaris.viewmodels.routing import RoutingViewModel
@@ -354,6 +355,60 @@ def test_switching_back_uses_the_profiles_rules(qtbot: QtBot, planned: ViewModel
     qtbot.waitUntil(lambda: rows(planned.profiles, "model")[0].note == "规则使用中")
     assert not prop(planned.proxies, "showSource")
     assert planned.connections._entries == {}
+
+
+def test_a_switch_applies_in_the_background_until_its_rules_are_read(
+    qtbot: QtBot, planned: ViewModels
+) -> None:
+    """The core reloads off the window's thread; the page says the change applies until it
+    has read the rules the core runs now, and never asks to connect meanwhile."""
+    routing = planned.routing
+    profile_routes = routing._profile_routes
+    seen: list[tuple[str, bool, bool, str]] = []  # mode, busy, the rules listed, counts shown
+
+    def record() -> None:
+        running = prop(profile_routes, "running")
+        counts = "" if running else prop(profile_routes, "counts")
+        seen.append((prop(routing, "mode"), prop(routing, "busy"), running, counts))
+
+    routing.changed.connect(record)
+    routing.setMode("profile")
+    # Nothing ran on this thread yet: the mode changes once the core has the profile.
+    assert (prop(routing, "mode"), prop(routing, "busy")) == ("plan", True)
+    assert prop(routing, "summary") == "正在应用…"
+    qtbot.waitUntil(lambda: not prop(routing, "busy"))
+    assert prop(routing, "summary") == "使用「示例订阅 A」自带的规则"
+    assert prop(profile_routes, "running")
+    assert ("profile", True, False, "") in seen  # applied, the rules not read yet
+    assert [s for s in seen if not s[1]] == [("profile", False, True, "")]
+
+    # Another subscription's rules: the same, and its rules replace the others'.
+    seen.clear()
+    profile_routes.use("sample-b")
+    assert prop(routing, "busy")
+    qtbot.waitUntil(lambda: not prop(routing, "busy"))
+    assert prop(routing, "summary") == "使用「示例订阅 B」自带的规则"
+    assert [s for s in seen if not s[1]] == [("profile", False, True, "")]
+
+
+def test_a_switch_the_core_refuses_keeps_the_routing_and_says_why(
+    qtbot: QtBot, planned: ViewModels, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    routing, host = planned.routing, planned.host
+    assert isinstance(host, SimulatedHost)
+
+    async def refuse(config: TunnelConfig) -> CompositionReport | None:
+        raise HostError("apply_failed", "listen tcp 127.0.0.1:7890: bind: address already in use")
+
+    monkeypatch.setattr(host, "reload", refuse)
+    routing.setMode("profile")
+    qtbot.waitUntil(lambda: not prop(routing, "busy"))
+    assert prop(routing, "mode") == "plan"
+    assert prop(routing, "hasError")
+    assert prop(routing, "summary") == (
+        "配置未能生效：listen tcp 127.0.0.1:7890: bind: address already in use"  # noqa: RUF001
+    )
+    assert routing.snapshot().mode == "plan"
 
 
 def test_without_a_core_the_page_leaves_out_what_needs_one(
