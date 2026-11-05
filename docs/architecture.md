@@ -791,7 +791,9 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   - 验证：CI 的 `windows-installer` job 在 `windows-latest` 上构建不签名的安装包，由 `package/windows/smoke-test.ps1`
     首次安装通过 UI Automation 操作真实安装窗口，之后打开界面、静默升级、静默卸载（保留数据）、再安装、以 `/PURGE` 卸载，核对文件、服务的
     路径、启动方式、账户、恢复策略与管道监听、注册表、快捷方式、计划任务，升级和卸载时界面自己退出（退出码 0，
-    没有留下 `ui.lock`），以及卸载后什么都没留下。不建 TUN，不连接。真机上的 UAC、开机恢复和隧道见
+    没有留下 `ui.lock`），以及卸载后什么都没留下。不建 TUN，不连接。界面每次启动的输出（设了 `QT_FORCE_STDERR_LOGGING`，
+    Qt 的消息也在里面）写到 `%RUNNER_TEMP%\solaris-ui`；界面启动即退出时，脚本当场把它的崩溃目录复制过去，再把日志
+    打印出来，因为后面的 `/PURGE` 会删掉用户数据。测试失败时工作流把这个目录作为 artifact 上传。真机上的 UAC、开机恢复和隧道见
     [maintenance.md](maintenance.md) 2.1 节。
 - **macOS**：拖入"应用程序"文件夹完成安装，首次连接时激活系统扩展。设置页「系统扩展」提供停用入口（D35）：
   确认后断开所有 Solaris 隧道、调用 `deactivationRequest`，系统确认完成后删除本应用的 VPN 配置，保留订阅、设置和凭据。
@@ -823,7 +825,7 @@ Windows 安装器为两个 Solaris 可执行文件设置独立的 WER mini dump 
 | macOS 包 | `scripts/build_app.py` 组装并签名 `Solaris.app`；发布工作流公证后做成 `.dmg` |
 | 崩溃符号 | Nuitka `--unstripped`；macOS dSYM 校验 UUID；Windows PDB 与精确 Go 服务二进制独立存档，发布 artifact 保留 90 天 |
 
-- **Windows 构建**（`scripts/build_windows.py`，在 Windows 上运行，`uv run --with nuitka==4.3.4`）：拉取 GEO 数据
+- **Windows 构建**（`scripts/build_windows.py`，在 Windows 上运行，`uv run --with nuitka==4.2.2`）：拉取 GEO 数据
   （`scripts/fetch_geodata.py`）、构建服务、Nuitka 构建界面（不带界面用不到的 Qt 模块、QML 目录和图片格式插件，与
   macOS 相同；Qt 的 OpenSSL 后端也不带，TLS 用 Schannel，CPython 自带的 libssl 和 libcrypto 留着给 `ssl` 模块），
   x64 组装到 `build/windows/Solaris/`，ARM64 组装到 `build/windows-arm64/Solaris/`；检查必需文件、链接及每个 PE 的目标架构，
@@ -836,7 +838,7 @@ Windows 安装器为两个 Solaris 可执行文件设置独立的 WER mini dump 
   两种 Windows 架构的安装包和各自的 `.sha256`。Windows 目前不签名（D29），签名这一步只打一条警告；有了
   签名后，先给安装目录里的 exe、dll、pyd 签名并在链接服务时打开 `SignedRelease`（服务要求界面与它同一签名者，5.3 节），
   再经 makensis 的 `!finalize`、`!uninstfinalize` 给安装器和卸载器签名。三个安装包存为 workflow artifact；对标签，最后一个
-  job 再经一次审批，核对三个安装包，打出含 vendor 依赖的源代码包，写 `SHA256SUMS`，把这五个文件放进一个**草稿**
+  job 再经一次审批，核对三个安装包，把 macOS 安装包以 1.0.0 的旧名再放一份，打出含 vendor 依赖的源代码包，写 `SHA256SUMS`，把这六个文件放进一个**草稿**
   GitHub Release，由人试过安装包、写好说明后发布（release.md 第 1.1 节）。
 - 许可：本项目以 GPL-3.0-only 发布（[LICENSE](../LICENSE)）；服务和扩展链接的 mihomo 同为 GPL-3.0。
   发布二进制时须同时提供对应的源代码；新增依赖须与 GPL-3.0 兼容。
