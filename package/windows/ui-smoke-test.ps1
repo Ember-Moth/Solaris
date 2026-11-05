@@ -223,14 +223,14 @@ function Consent($Case) {
     if (-not (Enabled $Case.Window $ActionId)) { throw 'License consent did not enable the action' }
 }
 
-# Starts the operation and captures each step as the preview reports it. The preview fails
-# at the second step with -Outcome failure; the steps after it stay waiting.
-function Run-Steps($Case, [int] $Count, [string] $Outcome, [switch] $DetailsWhileWorking) {
+# Starts the operation and captures each step as the preview reports it. With -Outcome failure
+# the preview fails at step FailAt (copying or removing files); the steps after it stay waiting.
+function Run-Steps($Case, [int] $Count, [string] $Outcome, [int] $FailAt = 1, [switch] $DetailsWhileWorking) {
     Invoke-Button $Case.Window $ActionId
     Wait-Until { -not (Visible $Case.Window $CancelId) } 'Progress was not shown'
     $null = [SetupUI]::SendMessage($Case.Window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
     if (-not [SetupUI]::IsWindow($Case.Window)) { throw 'The busy window closed mid-operation' }
-    $last = if ($Outcome -eq 'failure') { 1 } else { $Count - 1 }
+    $last = if ($Outcome -eq 'failure') { $FailAt } else { $Count - 1 }
     for ($index = 0; $index -le $last; $index++) {
         Wait-Step $Case $index
         for ($before = 0; $before -lt $index; $before++) {
@@ -247,8 +247,8 @@ function Run-Steps($Case, [int] $Count, [string] $Outcome, [switch] $DetailsWhil
     }
     Wait-Until { Visible $Case.Window $CancelId } 'No completion state' 30
     if ($Outcome -eq 'failure') {
-        if ((Step-State $Case.Window 1) -ne 'failed') { throw 'The failing step is not marked failed' }
-        for ($index = 2; $index -lt $Count; $index++) {
+        if ((Step-State $Case.Window $FailAt) -ne 'failed') { throw 'The failing step is not marked failed' }
+        for ($index = $FailAt + 1; $index -lt $Count; $index++) {
             if ((Step-State $Case.Window $index) -ne 'waiting') { throw "Step $index ran after the failure" }
         }
         if (Visible $Case.Window $ActionId) { throw 'A failure offers more than Close' }
@@ -307,7 +307,7 @@ foreach ($sample in @(
     @{ Mode='upgrade'; Lang='en'; Theme='dark'; Outcome='success'; Steps=4; Finish=$ActionId; Code=10 },
     @{ Mode='install'; Lang='en'; Theme='dark'; Outcome='failure'; Steps=4; Finish=$CancelId; Code=0 },
     @{ Mode='uninstall'; Lang='zh'; Theme='dark'; Outcome='success'; Steps=4; Purge=$true; Finish=$CancelId; Code=20 },
-    @{ Mode='uninstall'; Lang='en'; Theme='light'; Outcome='failure'; Steps=3; Finish=$CancelId; Code=0 },
+    @{ Mode='uninstall'; Lang='en'; Theme='light'; Outcome='failure'; Steps=3; FailAt=2; Finish=$CancelId; Code=0 },
     @{ Mode='install'; Lang='en'; Theme='light'; Outcome='success'; Steps=4; Dpi=144; License=$true; Finish=$CancelId; Code=0 },
     @{ Mode='upgrade'; Lang='zh'; Theme='dark'; Outcome='failure'; Steps=4; Dpi=144; License=$true; Finish=$CancelId; Code=0 }
 )) {
@@ -333,7 +333,8 @@ foreach ($sample in @(
             }
             Consent $case
         }
-        Run-Steps $case $sample.Steps $sample.Outcome
+        $failAt = if ($sample.FailAt) { $sample.FailAt } else { 1 }
+        Run-Steps $case $sample.Steps $sample.Outcome $failAt
         if ($sample.Mode -eq 'uninstall' -and (Visible $case.Window $ActionId)) { throw 'Uninstall offers to open Solaris' }
         Invoke-Button $case.Window $sample.Finish
         Assert-Exit $case $sample.Code

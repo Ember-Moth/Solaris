@@ -1,8 +1,8 @@
 ; A read-only harness for the real installer surface. No files are installed, no service
 ; or registry key is touched, and no application is launched. Only temporary UI assets.
 ; It reports the same steps and text as installer.nsi, a few seconds per step, so a test can
-; capture each one: /MODE=install|upgrade|uninstall /OUTCOME=success|failure (at the second
-; step, with the message that step fails with) /LANG=en|zh /THEME=auto|light|dark.
+; capture each one: /MODE=install|upgrade|uninstall /OUTCOME=success|failure (where the files
+; are copied or removed, with that step's message) /LANG=en|zh /THEME=auto|light|dark.
 Unicode true
 ManifestDPIAware true
 RequestExecutionLevel user
@@ -26,6 +26,7 @@ Var Outcome
 Var Decision
 Var Failure
 Var Failed
+Var FailAt
 
 Function .onInit
   ${GetParameters} $0
@@ -58,14 +59,14 @@ Function .onInit
   SetSilent silent
 FunctionEnd
 
-; installer.nsi reports these steps; the second one fails when asked.
+; installer.nsi reports these steps; step $FailAt fails when asked.
 !macro PreviewStep INDEX TEXT
   ${If} $Failed == 0
     !insertmacro UiStep ${INDEX}
     !insertmacro UiStatus "${TEXT}"
     Sleep 2500
     ${If} $Outcome == "failure"
-    ${AndIf} ${INDEX} == 1
+    ${AndIf} ${INDEX} == $FailAt
       SolarisSetupUI::Finish "failure" "$Failure"
       Pop $0
       StrCpy $Failed 1
@@ -81,7 +82,8 @@ Section
     !insertmacro UiLog "Preview mode: no application, service or user data was changed."
   ${EndIf}
   ${If} $Mode == "uninstall"
-    StrCpy $Failure "$(UninstallRemovalFailed) $INSTDIR\solaris-service.exe"
+    StrCpy $Failure "$(UninstallRemovalFailed) $INSTDIR\Solaris.exe"
+    StrCpy $FailAt 2
     !insertmacro PreviewStep 0 "$(ClosingUI)"
     !insertmacro PreviewStep 1 "$(RemovingService)"
     !insertmacro PreviewStep 2 "$(RemovingFiles)"
@@ -90,6 +92,7 @@ Section
     ${EndIf}
   ${Else}
     StrCpy $Failure "$(CopyFailed)"
+    StrCpy $FailAt 1
     ${If} $Mode == "upgrade"
       !insertmacro PreviewStep 0 "$(StoppingService)"
       !insertmacro PreviewStep 1 "$(RemovingOld)"
