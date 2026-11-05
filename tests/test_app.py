@@ -1,3 +1,4 @@
+import asyncio
 import subprocess
 import sys
 from functools import partial
@@ -13,11 +14,12 @@ from pytestqt.qtbot import QtBot
 
 from solaris.app import MAIN_QML, switch_language
 from solaris.desktop.instance import LOCK_NAME
-from solaris.host.base import TAKEOVER_NONE, TAKEOVER_SETTINGS, TAKEOVER_TUN
+from solaris.host.base import TAKEOVER_NONE, TAKEOVER_SETTINGS, TAKEOVER_TUN, HostError
 from solaris.i18n import Translations
 from solaris.viewmodels import settings as settings_view_model
 from solaris.viewmodels.composition import ViewModels
 from tests.support.appearance import SystemColorScheme
+from tests.support.simulated import SimulatedHost
 from tests.support.window import Loaded, find, find_all, texts
 
 TRAY_QML = MAIN_QML.parent / "components" / "TrayIcon.qml"
@@ -88,6 +90,21 @@ engine.loadData(
 QTimer.singleShot(0, app.quit)
 QTimer.singleShot(10_000, lambda: app.exit(3))
 sys.exit(app.exec())
+"""
+
+# A Quit event, as Qt sends for ⌘Q, the Dock's Quit and the system's quit at logout: the
+# user's goes to user_quit (exit code 4 here), the system's leaves at once (0).
+QUIT_EVENT = """
+import sys
+from PySide6.QtCore import QTimer
+from solaris import app
+ending = sys.argv[1] == "system"
+app.session_ending = lambda: ending
+application = app.Application(sys.argv)
+application.user_quit = lambda: application.exit(4)
+QTimer.singleShot(0, application.quit)
+QTimer.singleShot(10_000, lambda: application.exit(3))
+sys.exit(application.exec())
 """
 
 
@@ -451,11 +468,84 @@ def test_language_switches_while_running(qtbot: QtBot, loaded: Loaded) -> None:
     assert loaded.warnings == []
 
 
+def simulated(loaded: Loaded) -> SimulatedHost:
+    host = loaded.view_models.host
+    assert isinstance(host, SimulatedHost)
+    return host
+
+
+def running(host: SimulatedHost) -> bool:
+    return asyncio.run(host.get_status()).state == "running"
+
+
 def test_closing_the_window_quits_without_a_tray(qtbot: QtBot, loaded: Loaded) -> None:
-    desktop = loaded.view_models.desktop
+    """Quitting disconnects first (D41)."""
+    desktop, overview = loaded.view_models.desktop, loaded.view_models.overview
     assert not desktop.property("trayAvailable")  # the offscreen platform has none
+    qtbot.waitUntil(lambda: overview.property("connected"))
     with qtbot.waitSignal(desktop.quitRequested):
         loaded.window.close()
+        assert not loaded.window.isVisible()
+    assert not running(simulated(loaded))
+
+
+def test_closing_the_window_into_the_tray_keeps_the_tunnel(qtbot: QtBot, loaded: Loaded) -> None:
+    desktop, overview = loaded.view_models.desktop, loaded.view_models.overview
+    qtbot.waitUntil(lambda: overview.property("connected"))
+    # The offscreen platform has no tray to show; the window behaves as with one.
+    desktop._tray = True
+    desktop.closeActionChanged.emit()
+    assert loaded.view_models.settings_store.current.close_action == "tray"
+    assert desktop.property("hideOnClose")
+    with qtbot.assertNotEmitted(desktop.quitRequested, wait=500):
+        loaded.window.close()
+    assert not loaded.window.isVisible()
+    assert running(simulated(loaded))
+    assert not overview.property("busy")
+    loaded.view_models.desktop.showWindow()
+    qtbot.waitUntil(loaded.window.isVisible)
+
+
+@pytest.mark.parametrize("loaded", ["zh", "en"], indirect=True)
+def test_a_failed_disconnect_asks_before_quitting(
+    qtbot: QtBot, loaded: Loaded, monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest
+) -> None:
+    desktop, overview = loaded.view_models.desktop, loaded.view_models.overview
+    host = simulated(loaded)
+    qtbot.waitUntil(lambda: overview.property("connected"))
+    english = request.node.callspec.params["loaded"] == "en"
+    title = "Couldn’t disconnect" if english else "未能断开连接"  # noqa: RUF001 - the UI's copy
+
+    async def unresponsive() -> None:
+        raise HostError("core_unresponsive", "the core did not answer")
+
+    monkeypatch.setattr(host, "stop", unresponsive)
+
+    def ask() -> None:
+        with qtbot.waitSignal(desktop.quitFailed):
+            loaded.window.close()
+        qtbot.waitUntil(loaded.window.isVisible)  # back, to ask
+        qtbot.waitUntil(lambda: loaded.focused_text() == ("Retry" if english else "重试"))
+        assert loaded.overlay_items(lambda item: item.property("text") == title)
+
+    # Esc keeps Solaris running, the tunnel as it was.
+    ask()
+    with qtbot.assertNotEmitted(desktop.quitRequested, wait=300):
+        loaded.key(qtbot, Qt.Key.Key_Escape)
+    assert desktop.property("quitMessage") == ""
+    assert running(host)
+
+    # Retry tries again; then quitting anyway leaves, the tunnel perhaps still running.
+    ask()
+    with qtbot.waitSignal(desktop.quitFailed):
+        loaded.key(qtbot, Qt.Key.Key_Return)
+    qtbot.waitUntil(lambda: loaded.focused_text() == ("Retry" if english else "重试"))
+    loaded.key(qtbot, Qt.Key.Key_Tab)
+    assert loaded.focused_text() == ("Quit anyway" if english else "仍然退出")
+    with qtbot.waitSignal(desktop.quitRequested):
+        loaded.key(qtbot, Qt.Key.Key_Return)
+    assert running(host)
+    assert loaded.warnings == []
 
 
 def test_a_second_launch_shows_the_window(qtbot: QtBot, loaded: Loaded) -> None:
@@ -483,7 +573,8 @@ def test_quit_command_closes_the_running_ui(tmp_path: Path) -> None:
     finally:
         ui.kill()
         ui.wait()
-    # It let go of the host and left the tunnel as it was.
+    # It let go of the host and left the tunnel as it was: the installer's --quit is no
+    # quitting by the user (D41).
     assert said == ["closed"]
     # It closed the database, then let go of the lock: no write-ahead log, no lock file.
     assert not (tmp_path / "solaris.db-wal").exists()
@@ -493,9 +584,17 @@ def test_quit_command_closes_the_running_ui(tmp_path: Path) -> None:
 
 
 def test_quitting_leaves_even_when_the_window_hides_instead() -> None:
-    """Qt closes the windows before it quits and gives up when one refuses; the tray's
-    quit, ``--quit`` and ⌘Q leave anyway."""
+    """Qt closes the windows before it quits and gives up when one refuses; the system's
+    quit leaves anyway."""
     assert subprocess.run([sys.executable, "-c", HIDING_WINDOW], timeout=60).returncode == 0
+
+
+@pytest.mark.parametrize(("source", "code"), [("user", 4), ("system", 0)])
+def test_the_users_quit_event_disconnects_first(source: str, code: int) -> None:
+    """⌘Q and the Dock's Quit go to DesktopViewModel.quit, which disconnects first (D41); the
+    system's quit at the end of the session leaves at once (session.session_ending)."""
+    quit_event = [sys.executable, "-c", QUIT_EVENT, source]
+    assert subprocess.run(quit_event, cwd=ROOT, timeout=60).returncode == code
 
 
 def test_tray_icon_compiles(qtbot: QtBot) -> None:

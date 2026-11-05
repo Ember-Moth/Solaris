@@ -94,6 +94,7 @@ class OverviewViewModel(QObject):
         self._extension_settings_opening = False
         self._extension_settings_failed = False
         self._refresh_error = ""  # the last refresh's failure, until one succeeds
+        self._refresh_code = ""  # its HostError code
         # Another user's tunnel runs (docs/architecture.md §5.4): only they can disconnect it,
         # unless this user is an administrator and takes it over.
         self._other_user = False
@@ -146,7 +147,7 @@ class OverviewViewModel(QObject):
 
     def _applied(self, snapshot: TunnelSnapshot, settles: int) -> None:
         self._refreshing = False
-        self._refresh_error = ""
+        self._refresh_error = self._refresh_code = ""
         self._other_user = False
         self._snapshot = snapshot
         if snapshot.status.state == "running":
@@ -159,7 +160,8 @@ class OverviewViewModel(QObject):
         self._refreshing = False
         self._snapshot = None
         self._refresh_error = failure_text(error)
-        self._other_user = isinstance(error, HostError) and error.code == "owned_by_other_user"
+        self._refresh_code = error.code if isinstance(error, HostError) else ""
+        self._other_user = self._refresh_code == "owned_by_other_user"
         self._refreshed(settles)
 
     def _refreshed(self, settles: int) -> None:
@@ -178,10 +180,12 @@ class OverviewViewModel(QObject):
         *,
         switch: bool = False,
         pending: str = "",
+        on_failed: Callable[[BaseException], None] | None = None,
     ) -> None:
-        """Run ``action``; ``done`` runs on the Qt thread once it succeeded. A failed
-        ``switch`` also shows beside the switches on the settings page. ``pending`` is the
-        connection switch's "start" or "stop": its failure shows in the switch's row."""
+        """Run ``action``; ``done`` runs on the Qt thread once it succeeded, ``on_failed``
+        once it failed. A failed ``switch`` also shows beside the switches on the settings
+        page. ``pending`` is the connection switch's "start" or "stop": its failure shows in
+        the switch's row."""
         self._busy = True
         self._settling = False
         self._pending = pending
@@ -215,6 +219,8 @@ class OverviewViewModel(QObject):
             self.changed.emit()
             if pending and self._extension_setup:
                 self.extensionSetupRequested.emit()
+            if on_failed is not None:
+                on_failed(error)
 
         self._runner.submit(action, acted, failed)
 
@@ -241,6 +247,44 @@ class OverviewViewModel(QObject):
     def toggleConnection(self) -> None:
         """The tray's 连接 / 断开."""
         self.setConnected(not (self._connected() or self._recovering()))
+
+    def disconnect_to_quit(
+        self,
+        timeout: float,
+        done: Callable[[], None],
+        failed: Callable[[BaseException], None],
+    ) -> bool:
+        """Disconnect before Solaris quits (D41), as the switch does, so the service keeps
+        the tunnel down and brings it back neither after sleep nor after a restart. Unlike
+        the switch it does not wait for an action on its way. ``done`` runs once the tunnel
+        is down, ``failed`` when it is not within ``timeout`` seconds. False, with neither
+        run, when there is no tunnel of this user's to disconnect."""
+        if not self._tunnel_ours():
+            return False
+
+        async def stopping() -> None:
+            try:
+                async with asyncio.timeout(timeout):
+                    await self._host.stop()
+            except TimeoutError as error:
+                raise HostError(
+                    "timeout", "the disconnect did not finish in time", retryable=True
+                ) from error
+
+        self._act(stopping(), done, pending="stop", on_failed=failed)
+        return True
+
+    def _tunnel_ours(self) -> bool:
+        """Whether this user's tunnel may be up, on its way or coming back. Another user's
+        is not theirs to stop (D5b); while no service answers, none runs in it."""
+        if self._other_user:
+            return False
+        if self._pending == "start":
+            return True
+        if self._snapshot is None:
+            return self._refresh_code != "service_unavailable"
+        status = self._snapshot.status
+        return status.state != "stopped" or status.recovery_state != "none"
 
     @Property(str, notify=changed)
     def extensionSetup(self) -> str:

@@ -1,13 +1,15 @@
-"""Desktop ViewModel: the tray icon, the window's title bar, what closing the window does, and
-requests to show it.
+"""Desktop ViewModel: the tray icon, the window's title bar, what closing the window does,
+requests to show it, and quitting.
 
-Closing the window or quitting the UI never touches the tunnel; the service or the system
-extension keeps it running (docs/architecture.md §1, docs/ui.md §8).
+Closing the window into the tray leaves the tunnel running in the service or the system
+extension. Quitting Solaris disconnects first (D41); only the installer's ``--quit`` and the
+system's quit at the end of the session leave the tunnel as it is (docs/ui.md §8).
 """
 
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable
 
 from PySide6.QtCore import Property, QObject, Qt, QTimer, QUrl, Signal, Slot
 from PySide6.QtGui import QGuiApplication
@@ -16,6 +18,7 @@ from PySide6.QtQml import QmlElement, QmlUncreatable
 from solaris.desktop.titlebar import titlebar_style
 from solaris.desktop.tray import taskbar_is_light, tray_icon
 from solaris.models.settings import Settings, SettingsStore
+from solaris.viewmodels.feedback import failure_text
 from solaris.viewmodels.titlebar import TitleBar
 
 QML_IMPORT_NAME = "Solaris"
@@ -23,6 +26,11 @@ QML_IMPORT_MAJOR_VERSION = 1
 
 # Windows reports no event when only the taskbar's theme changes.
 TASKBAR_POLL_MS = 10_000
+# How long quitting waits for the tunnel to go down before it asks what to do (D41).
+QUIT_DISCONNECT_TIMEOUT_S = 10.0
+
+# OverviewViewModel.disconnect_to_quit: (timeout, done, failed) -> whether it disconnects.
+Disconnect = Callable[[float, Callable[[], None], Callable[[BaseException], None]], bool]
 
 
 def _url(path: object) -> str:
@@ -36,7 +44,9 @@ class DesktopViewModel(QObject):
     closeActionChanged = Signal()
     showWindowRequested = Signal()  # another UI started, or the tray asked for the window
     reopened = Signal()  # macOS: the Dock icon was clicked; show the window if it is hidden
-    quitRequested = Signal()  # leave the UI; the tunnel keeps running
+    quitRequested = Signal()  # leave the event loop now
+    quitChanged = Signal()
+    quitFailed = Signal()  # the disconnect before quitting failed; ask what to do
 
     def __init__(
         self,
@@ -45,12 +55,18 @@ class DesktopViewModel(QObject):
         tray_available: bool,
         start_hidden: bool = False,
         platform: str = sys.platform,
+        disconnect: Disconnect | None = None,
         parent: QObject | None = None,
     ) -> None:
         """``tray_available``: the Qt platform has a native tray. ``start_hidden``: the UI
-        was opened at login and starts in the tray."""
+        was opened at login and starts in the tray. ``disconnect`` takes this user's tunnel
+        down before Solaris quits; without it quitting leaves at once."""
         super().__init__(parent)
         self._settings = settings
+        self._disconnect = disconnect
+        self._quitting = False  # disconnecting before quitting
+        self._quit_failure: BaseException | None = None  # while the prompt asks
+        self._left = False
         settings.subscribe(self._settings_changed)
         self._tray = tray_available
         self._start_hidden = start_hidden and tray_available
@@ -123,7 +139,8 @@ class DesktopViewModel(QObject):
 
     @Property(bool, notify=closeActionChanged)
     def hideOnClose(self) -> bool:
-        """Closing the window leaves the UI in the tray; without a tray it quits the UI."""
+        """Closing the window leaves the UI in the tray, the tunnel running; otherwise, and
+        without a tray, it quits Solaris."""
         return self._tray and self._settings.current.close_action == "tray"
 
     def _settings_changed(self, before: Settings, after: Settings) -> None:
@@ -134,6 +151,66 @@ class DesktopViewModel(QObject):
     def showWindow(self) -> None:
         self.showWindowRequested.emit()
 
+    # -- quitting ----------------------------------------------------------------------------
+    @Property(bool, notify=quitChanged)
+    def quitting(self) -> bool:
+        return self._quitting
+
+    @Property(str, notify=quitChanged)
+    def quitMessage(self) -> str:
+        if self._quit_failure is None:
+            return ""
+        reason = failure_text(self._quit_failure)
+        return self.tr("{reason}。仍然退出时，隧道可能仍在运行。").format(reason=reason)
+
     @Slot()
     def quit(self) -> None:
+        """Quit Solaris (D41): the tray's 退出 Solaris, ⌘Q and the Dock's Quit, and closing
+        the window when that quits. This user's tunnel goes down first, as with 断开, and the
+        UI leaves once it is down; when it does not go down in time, the window asks whether
+        to try again or to quit anyway."""
+        if self._quitting or self._left:
+            return
+        if self._quit_failure is not None:
+            self.showWindowRequested.emit()  # the prompt is still asking
+            return
+        disconnect = self._disconnect
+        if disconnect is None or not disconnect(
+            QUIT_DISCONNECT_TIMEOUT_S, self.leave, self._quit_failed
+        ):
+            self.leave()
+            return
+        self._quitting = True
+        self.quitChanged.emit()
+
+    @Slot()
+    def retryQuit(self) -> None:
+        self.cancelQuit()
+        self.quit()
+
+    @Slot()
+    def cancelQuit(self) -> None:
+        """The prompt was dismissed: Solaris keeps running."""
+        if self._quit_failure is not None:
+            self._quit_failure = None
+            self.quitChanged.emit()
+
+    @Slot()
+    def leave(self) -> None:
+        """Leave the event loop now and the tunnel as it is: once quitting disconnected it,
+        when the user quits anyway, and for the installer's ``--quit``."""
+        if self._left:
+            return
+        self._left = True
+        self._quitting = False
+        self._quit_failure = None
+        self.quitChanged.emit()
         self.quitRequested.emit()
+
+    def _quit_failed(self, error: BaseException) -> None:
+        if self._left:
+            return
+        self._quitting = False
+        self._quit_failure = error
+        self.quitChanged.emit()
+        self.quitFailed.emit()

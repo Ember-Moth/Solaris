@@ -1,16 +1,21 @@
 """Desktop integration with doubles only: nothing here registers a login item or a task."""
 
+import asyncio
+import ctypes
 import subprocess
 import sys
+import threading
 import time
 import xml.etree.ElementTree as ET
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
 from PySide6.QtCore import QCoreApplication
 from pytestqt.qtbot import QtBot
 
+from solaris.desktop import session
 from solaris.desktop.instance import (
     CONNECT_TIMEOUT_MS,
     LOCK_NAME,
@@ -33,10 +38,19 @@ from solaris.desktop.login import (
     task_enabled,
     task_xml,
 )
+from solaris.desktop.titlebar import ObjC
 from solaris.desktop.tray import TRAY_DIR, tray_icon, tray_supported
+from solaris.host.base import HostError, HostStatus
+from solaris.host.service import ServiceHost
+from solaris.host.transport import Opener
 from solaris.models.settings import DatabaseSettingsStore
-from solaris.models.store import open_database
+from solaris.models.store import ProfileStore, open_database
+from solaris.protocol import control_pb2 as pb
+from solaris.viewmodels import desktop as desktop_view_model
+from solaris.viewmodels.composition import ViewModels, compose
 from solaris.viewmodels.desktop import DesktopViewModel
+from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
+from tests.test_control_client import Answer, serve
 
 EXE = Path(r"C:\Program Files\Solaris\Solaris.exe")
 
@@ -310,3 +324,264 @@ def test_closing_the_window(
     assert mac.property("trayIconMask")
     assert not mac.property("showOnTrayClick")
     assert mac.property("trayIconOff").endswith("tray-template-off.svg")
+
+
+# -- quitting Solaris (D41) ---------------------------------------------------------------------
+class StoppingHost(SimulatedHost):
+    """Counts the disconnects, and fails or holds them when told to."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.stops = 0
+        self.stop_error: HostError | None = None
+        self.stop_delay_s = 0.0
+
+    async def stop(self) -> None:
+        self.stops += 1
+        await asyncio.sleep(self.stop_delay_s)
+        if self.stop_error is not None:
+            raise self.stop_error
+        await super().stop()
+
+    def running(self) -> bool:
+        return asyncio.run(self.get_status()).state == "running"
+
+
+@pytest.fixture
+def composed(qtbot: QtBot, tmp_path: Path) -> Iterator[ViewModels]:
+    store = ProfileStore(tmp_path)
+    seed_profiles(store, time.time())
+    built = compose(StoppingHost(), store, SimulatedFetcher())
+    built.start()
+    qtbot.waitUntil(lambda: built.overview.property("connected"))
+    yield built
+    built.shutdown()
+
+
+def stopping_host(view_models: ViewModels) -> StoppingHost:
+    host = view_models.host
+    assert isinstance(host, StoppingHost)
+    return host
+
+
+def test_quitting_disconnects_then_leaves(qtbot: QtBot, composed: ViewModels) -> None:
+    desktop, overview, host = composed.desktop, composed.overview, stopping_host(composed)
+    stops_when_left: list[int] = []
+    desktop.quitRequested.connect(lambda: stops_when_left.append(host.stops))
+    with qtbot.waitSignal(desktop.quitRequested):
+        desktop.quit()
+        assert desktop.property("quitting")
+        # The switch shows it going down, as after 断开.
+        assert overview.property("connectionChanging")
+        assert not overview.property("connectionOn")
+        desktop.quit()  # once is enough
+    assert stops_when_left == [1]
+    assert not host.running()
+    assert not desktop.property("quitting")
+    desktop.quit()  # it has left already
+    assert stops_when_left == [1]
+
+
+def test_the_installers_quit_leaves_the_tunnel_running(qtbot: QtBot, composed: ViewModels) -> None:
+    """``--quit`` closes the UI for the installer, which hands the tunnel over the upgrade
+    through the service (docs/architecture.md §9)."""
+    desktop, host = composed.desktop, stopping_host(composed)
+    with qtbot.waitSignal(desktop.quitRequested, timeout=0):
+        desktop.leave()
+    assert host.stops == 0
+    assert host.running()
+
+
+@pytest.mark.parametrize("why", ["stopped", "owned_by_other_user", "service_unavailable"])
+def test_quitting_without_a_tunnel_of_ones_own_leaves_at_once(
+    qtbot: QtBot, composed: ViewModels, monkeypatch: pytest.MonkeyPatch, why: str
+) -> None:
+    """Another user's tunnel (D5b) is not this user's to stop; with no service answering,
+    no tunnel runs in it."""
+    desktop, overview, host = composed.desktop, composed.overview, stopping_host(composed)
+    if why == "stopped":
+        overview.setConnected(False)
+        qtbot.waitUntil(lambda: not overview.property("connectionOn"))
+        qtbot.waitUntil(lambda: not overview.property("busy"))
+    else:
+
+        async def refused() -> HostStatus:
+            raise HostError(why, why)
+
+        monkeypatch.setattr(host, "get_status", refused)
+        qtbot.waitUntil(lambda: not overview.property("connected"))
+    stops = host.stops
+    with qtbot.waitSignal(desktop.quitRequested, timeout=0):
+        desktop.quit()
+    assert host.stops == stops
+
+
+@pytest.mark.parametrize("answer", ["retry", "anyway", "dismiss"])
+def test_a_failed_disconnect_asks_before_quitting(
+    qtbot: QtBot, composed: ViewModels, answer: str
+) -> None:
+    desktop, overview, host = composed.desktop, composed.overview, stopping_host(composed)
+    host.stop_error = HostError("core_unresponsive", "the core did not answer")
+    with qtbot.waitSignal(desktop.quitFailed):  # the window shows itself and asks
+        desktop.quit()
+    assert not desktop.property("quitting")
+    message = "内核没有响应，请稍后重试。仍然退出时，隧道可能仍在运行。"  # noqa: RUF001 - the UI's copy
+    assert desktop.property("quitMessage") == message
+    assert overview.property("connectionFailed")
+    assert host.running()
+    # Asking again shows the window and the question again; nothing is tried yet.
+    with qtbot.waitSignal(desktop.showWindowRequested, timeout=0):
+        desktop.quit()
+    assert host.stops == 1
+
+    host.stop_error = None
+    if answer == "retry":
+        with qtbot.waitSignal(desktop.quitRequested):
+            desktop.retryQuit()
+        assert host.stops == 2
+        assert not host.running()
+    elif answer == "anyway":
+        with qtbot.waitSignal(desktop.quitRequested, timeout=0):
+            desktop.leave()
+        assert host.stops == 1
+        assert host.running()
+    else:
+        with qtbot.assertNotEmitted(desktop.quitRequested, wait=300):
+            desktop.cancelQuit()
+        assert desktop.property("quitMessage") == ""
+        assert host.running()
+        # The next quit tries again.
+        with qtbot.waitSignal(desktop.quitRequested):
+            desktop.quit()
+        assert host.stops == 2
+
+
+def test_a_disconnect_that_does_not_end_is_given_up(
+    qtbot: QtBot, composed: ViewModels, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(desktop_view_model, "QUIT_DISCONNECT_TIMEOUT_S", 0.2)
+    desktop, host = composed.desktop, stopping_host(composed)
+    host.stop_delay_s = 30.0
+    started = time.monotonic()
+    with qtbot.waitSignal(desktop.quitFailed):
+        desktop.quit()
+    assert time.monotonic() - started < 5
+    assert desktop.property("quitMessage").startswith("服务没有响应。")
+    assert host.running()
+
+
+def test_quitting_cancels_wake_recovery(qtbot: QtBot, composed: ViewModels) -> None:
+    """The tunnel is down while the service waits to bring it back after sleep (D34);
+    quitting disconnects all the same, so it does not come back."""
+    desktop, overview, host = composed.desktop, composed.overview, stopping_host(composed)
+    host._running = False
+    host.recovery_state = "sleeping"
+    overview.refresh()
+    qtbot.waitUntil(lambda: overview.property("recovering"))
+    with qtbot.waitSignal(desktop.quitRequested):
+        desktop.quit()
+    assert host.stops == 1
+    assert host.recovery_state == "none"
+
+
+@contextmanager
+def fake_service(answer: Answer) -> Iterator[Opener]:
+    """``serve`` on a loop of its own, for a ServiceHost on the app's runner."""
+    loop = asyncio.new_event_loop()
+    thread = threading.Thread(target=loop.run_forever, daemon=True)
+    thread.start()
+    server, opener = asyncio.run_coroutine_threadsafe(serve(answer), loop).result(10)
+    try:
+        yield opener
+    finally:
+        loop.call_soon_threadsafe(server.close)
+        loop.call_soon_threadsafe(server.close_clients)
+        loop.call_soon_threadsafe(loop.stop)
+        thread.join(10)
+        loop.close()
+
+
+def test_quitting_sends_the_service_the_stop_that_disconnect_sends(
+    qtbot: QtBot, tmp_path: Path
+) -> None:
+    """Stop is what makes the Windows service keep the tunnel down: it clears was_running and
+    cancels wake recovery (owner/service_test.go TestStopIntentIsKeptBeforeTheCoreCanStop,
+    owner/power_test.go TestUserDisconnectCancelsPendingWakeRecovery)."""
+    methods: list[str] = []
+    recovery = pb.RECOVERY_STATE_SLEEPING
+
+    async def answer(request: pb.Request) -> pb.Response:
+        nonlocal recovery
+        method = request.WhichOneof("method") or ""
+        methods.append(method)
+        if method == "get_status":
+            status = pb.GetStatusResponse(state=pb.RUN_STATE_STOPPED, recovery_state=recovery)
+            return pb.Response(get_status=status)
+        if method == "stop":
+            recovery = pb.RECOVERY_STATE_NONE
+        return pb.Response(empty=pb.Empty())
+
+    with fake_service(answer) as opener:
+        built = compose(ServiceHost(opener), ProfileStore(tmp_path), SimulatedFetcher())
+        built.start()
+        try:
+            qtbot.waitUntil(lambda: built.overview.property("recovering"))
+            assert "stop" not in methods
+            with qtbot.waitSignal(built.desktop.quitRequested):
+                built.desktop.quit()
+            assert methods.count("stop") == 1
+        finally:
+            built.shutdown()
+
+
+def test_only_the_users_quit_disconnects() -> None:
+    """Qt's Quit events are the system's at the end of the session, except on macOS, where
+    only the system's quit Apple Event gives a reason; outside one there is none."""
+    assert session.session_ending("win32")
+    assert session.session_ending("linux")
+    assert session.KEY_QUIT_REASON == 0x7768793F  # 'why?'
+    if sys.platform == "darwin":
+        assert session.mac_quit_reason() is None
+        assert not session.session_ending()
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="reads Apple Events")
+def test_the_reason_a_quit_apple_event_gives() -> None:
+    def code(text: bytes) -> int:
+        return int.from_bytes(text)
+
+    objc = ObjC()
+    with objc.pool():
+        descriptor = objc.cls(b"NSAppleEventDescriptor")
+        event = objc.send(
+            ctypes.c_void_p,
+            descriptor,
+            b"appleEventWithEventClass:eventID:targetDescriptor:returnID:transactionID:",
+            code(b"aevt"),
+            code(b"quit"),
+            None,
+            -1,  # kAutoGenerateReturnID
+            0,  # kAnyTransactionID
+            argtypes=(
+                ctypes.c_uint32,
+                ctypes.c_uint32,
+                ctypes.c_void_p,
+                ctypes.c_int16,
+                ctypes.c_int32,
+            ),
+        )
+        assert event
+        assert session.quit_reason(objc, event) is None  # ⌘Q and the Dock's Quit
+        for make in (b"descriptorWithEnumCode:", b"descriptorWithTypeCode:"):
+            why = objc.send(
+                ctypes.c_void_p, descriptor, make, code(b"rlgo"), argtypes=(ctypes.c_uint32,)
+            )
+            objc.send(
+                None,
+                event,
+                b"setAttributeDescriptor:forKeyword:",
+                why,
+                session.KEY_QUIT_REASON,
+                argtypes=(ctypes.c_void_p, ctypes.c_uint32),
+            )
+            assert session.quit_reason(objc, event) == code(b"rlgo")  # kAEReallyLogOut

@@ -66,9 +66,9 @@ function Wait-Exit([System.Diagnostics.Process[]] $Processes, [string] $What) {
     }
 }
 
-# Solaris.exe --quit reaches the UI of the user running the installer, which then quits as
-# from its tray menu; a UI of another user, or one that does not answer, is ended after the
-# grace period.
+# Solaris.exe --quit reaches the UI of the user running the installer, which then quits and
+# leaves the tunnel to the service (D41); a UI of another user, or one that does not answer,
+# is ended after the grace period.
 function Close-UI {
     $processes = Get-ProcessFrom $Client
     if ($processes.Count -eq 0) { return }

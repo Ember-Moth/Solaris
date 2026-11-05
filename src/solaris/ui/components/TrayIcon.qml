@@ -4,7 +4,7 @@ import Qt.labs.platform as Platform
 import Solaris
 
 // The tray icon and its menu: the tunnel's state, connect or disconnect, the outbound mode,
-// the window, and quitting the UI, which leaves the tunnel running. A native menu, so it
+// the window, and quitting Solaris, which disconnects first (D41). A native menu, so it
 // follows the platform's look rather than DESIGN.md's in-window menus.
 Platform.SystemTrayIcon {
     id: tray
@@ -80,7 +80,8 @@ Platform.SystemTrayIcon {
         Platform.MenuSeparator {}
 
         Platform.MenuItem {
-            text: qsTr("退出界面（隧道保持运行）")
+            text: qsTr("退出 Solaris")
+            enabled: !tray.desktop.quitting  // disconnecting first
             onTriggered: tray.desktop.quit()
         }
     }
