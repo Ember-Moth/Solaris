@@ -374,7 +374,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 | --- | --- | --- | --- | --- |
 | `language` | `system`、`zh`、`en` | `system` | 同步 | 界面语言（第 5 节） |
 | `appearance` | `system`、`light`、`dark` | `system` | 同步 | 外观；主题按它取色 |
-| `close_action` | `tray`、`quit` | `tray` | 本机 | 关闭主窗口时留在托盘，还是退出界面；隧道都不受影响 |
+| `close_action` | `tray`、`quit` | `tray` | 本机 | 关闭主窗口时留在托盘，隧道继续运行；还是退出 Solaris，先断开隧道（D41） |
 | `launch_at_login` | 布尔 | `false` | 本机 | 登录时打开界面。以系统里的登录项为准，界面每次读到系统的状态就写回这里 |
 | `tun` | 布尔 | `true` | 本机 | 设置页「接管方式」的 TUN 开关：连接时是否开启 TUN。macOS 上总是开启，不看这一项 |
 | `system_proxy` | 布尔 | `true` | 本机 | 设置页「接管方式」的系统代理开关：连接时是否设置系统代理。只有 Windows 服务设置系统代理 |
@@ -470,8 +470,8 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 - **托盘**用 `Qt.labs.platform` 的 `SystemTrayIcon`（`ui/components/TrayIcon.qml`）。它在 macOS 和 Windows 上
   有 Qt 平台插件的原生实现，`QGuiApplication` 就够，不必为 `QSystemTrayIcon` 引入 Qt Widgets 和
   `QApplication`。没有原生托盘的平台（Linux、测试用的 offscreen）上 Labs Platform 会要求 Qt Widgets，所以
-  只在 `cocoa` 和 `windows` 上创建托盘，其余平台关闭窗口即退出界面。
-  - 菜单：连接状态（不可点）、连接或断开、出站模式子菜单、打开主窗口、「退出界面（隧道保持运行）」。
+  只在 `cocoa` 和 `windows` 上创建托盘，其余平台关闭窗口即退出 Solaris。
+  - 菜单：连接状态（不可点）、连接或断开、出站模式子菜单、打开主窗口、「退出 Solaris」（退出前断开期间不可点）。
     这是系统原生菜单，外观跟随平台，不按 DESIGN.md 的窗口内菜单绘制。
   - 图标在 `ui/tray/`，是侧栏标记的线条图形，未连接时调成 45% 不透明度。macOS 用模板图（只看 alpha，由菜单栏
     着色）；Windows 按任务栏主题（注册表 `SystemUsesLightTheme`，Qt 报告的是应用主题，不是任务栏的）选深色或
@@ -502,11 +502,28 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
       `WM_SYSCOMMAND`（`SC_KEYMENU`），由系统弹出原生菜单。
   - 其他平台（如测试用的 offscreen）只有布局，不做平台调用。`tests/test_titlebar.py` 在两种样式下检查布局、
     读屏名称、Tab 顺序和双击，并用替身检查 Windows 的命中测试和消息处理；系统实际怎么响应只能在 Windows 上看。
-- **关闭窗口**：`tray`（默认）时隐藏窗口，界面留在托盘；Windows 上点托盘图标、macOS 上点 Dock 图标（Qt 把每次
-  点击报告为应用激活）恢复窗口。`quit` 时退出界面进程。两种情况下隧道都继续运行（architecture.md §1）。
-- **退出界面**：托盘菜单的「退出界面」、`--quit`、macOS 的 ⌘Q 和注销时系统的请求都直接离开事件循环
-  （`app.Application`）。Qt 6 退出前会先逐个关闭窗口，有窗口拒绝就放弃退出，而主窗口在 `tray` 时正是拒绝
-  关闭、改为隐藏，所以不能交给 Qt 的默认处理。
+- **关闭窗口**：`tray`（默认）时隐藏窗口，界面留在托盘，隧道继续运行；Windows 上点托盘图标、macOS 上点 Dock 图标
+  （Qt 把每次点击报告为应用激活）恢复窗口。`quit` 时先隐藏窗口，再像下面一样退出 Solaris。设置页这一行的说明随
+  选项变：「隧道继续运行」或「先断开连接，再退出」。
+- **退出 Solaris**（D41）：托盘菜单的「退出 Solaris」、macOS 的 ⌘Q 和 Dock 的「退出」、关闭动作为 `quit` 时关闭
+  窗口，都调用 `DesktopViewModel.quit`。它先经 `OverviewViewModel.disconnect_to_quit` 断开本用户的隧道：发的是与
+  「断开」相同的 `Stop`，服务据此清除 `was_running`、取消睡眠唤醒恢复（architecture.md §5.2），概览页的开关照常显示
+  正在断开；隧道断开后才离开事件循环。
+  - 不需要断开时直接退出：上一次刷新显示隧道已停止且没有在恢复，或隧道属于别的用户（D5b，不是本用户可以断开的），
+    或刷新得到 `service_unavailable`（服务没在运行，也就没有隧道）。还没刷新过、刷新因别的原因失败时照样发 `Stop`。
+  - 断开最多等 10 秒（`QUIT_DISCONNECT_TIMEOUT_S`）。失败或超时时显示窗口和「未能断开连接」对话框：原因，加上
+    「仍然退出时，隧道可能仍在运行」；「重试」（默认）再断开一次，「仍然退出」直接离开，Esc 取消退出、留在应用里。
+    断开期间再次要求退出不重复断开；对话框开着时再次要求退出只把窗口带到前面。
+  - Qt 把 ⌘Q、Dock 的「退出」和系统在注销、重启、关机时的请求都报告为 `Quit` 事件；Qt 6 处理它时会先逐个关闭窗口，
+    有窗口拒绝就放弃退出，而主窗口在 `tray` 时正是拒绝关闭、改为隐藏，所以 `app.Application` 自己处理这个事件：
+    用户的请求交给 `DesktopViewModel.quit`，系统的请求直接离开事件循环，不断开（Windows 由服务按 D5 在属主注销时
+    停止并在下次登录时恢复）。`desktop/session.py` 区分两者：macOS 上只有系统发来的退出 Apple Event 带
+    `kAEQuitReason`；其他平台上 `Quit` 事件只来自系统（Windows 的 `WM_ENDSESSION`），托盘的退出不经过它。
+    离开事件循环用 `exit`，不用 `quit`：macOS 上 `quit` 会经 `terminate:` 再变成一个 `Quit` 事件。
+  - 应用内更新的下载和校验在界面进程里，退出时随之取消，不拖住退出。Windows 安装器用 `--quit` 关闭界面，不断开，
+    升级后服务按 `was_running` 恢复隧道（architecture.md 第 9 节）；macOS 的磁盘映像由用户自己退出 Solaris（照常
+    断开），替换后手动连接。
+  - 界面崩溃或被结束时没有机会断开，隧道仍由服务或系统扩展维持（architecture.md §1）。
 - **单实例**：第一个界面在用户数据目录持有 `ui.lock`（`QLockFile`，进程不在了的锁视为过期），并以
   `solaris-<用户名和数据目录的哈希>` 为名监听 `QLocalServer`（只允许同一用户连接）。后来的界面拿不到
   锁，就连上这个名字发一行 `activate`，然后退出；第一个界面收到后显示并激活窗口。后来的界面是带着一键导入
@@ -515,7 +532,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   `AllowSetForegroundWindow`，让第一个界面能把窗口带到前台。由锁而不是由服务端名字来判断，是因为 macOS 上
   崩溃的界面会留下 socket 文件，而且两个同时启动的界面拿锁时只有一个能成功。
 - **`--quit`**：`Solaris.exe --quit`（macOS 上是 `Solaris.app/Contents/MacOS/Solaris --quit`）不启动界面，只请
-  正在运行的界面退出：拿不到锁时发一行 `quit`，第一个界面收到后像点了托盘的「退出界面」一样退出，隧道照常运行；
+  正在运行的界面退出：拿不到锁时发一行 `quit`，第一个界面收到后不断开隧道，直接离开事件循环（D41）；
   然后每 100 毫秒试一次锁，拿到（界面已关闭数据库并放开锁，或进程已经不在）就放开并以 0 退出，10 秒还拿不到
   以 1 退出。没有界面在运行时立即以 0 退出，不创建任何文件。它只能请到同一用户、同一数据目录的界面。Windows
   安装器和卸载器用它关闭界面（architecture.md 第 9 节）。

@@ -59,7 +59,7 @@ CLOSE_ACTION_LABELS = {
     "tray": QT_TRANSLATE_NOOP("SettingsViewModel", "留在菜单栏")
     if sys.platform == "darwin"
     else QT_TRANSLATE_NOOP("SettingsViewModel", "留在托盘"),
-    "quit": QT_TRANSLATE_NOOP("SettingsViewModel", "退出界面"),
+    "quit": QT_TRANSLATE_NOOP("SettingsViewModel", "退出 Solaris"),
 }
 TUN_STACK_LABELS = {
     "profile": QT_TRANSLATE_NOOP("SettingsViewModel", "跟随配置"),

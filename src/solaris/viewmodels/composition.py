@@ -185,7 +185,10 @@ def compose(
         settings_store, library, host, runner, login_item or UnavailableLoginItem()
     )
     desktop = DesktopViewModel(
-        settings_store, tray_available=tray_available, start_hidden=start_hidden
+        settings_store,
+        tray_available=tray_available,
+        start_hidden=start_hidden,
+        disconnect=overview.disconnect_to_quit,
     )
     about = AboutViewModel(
         updater or Updater(store.directory),

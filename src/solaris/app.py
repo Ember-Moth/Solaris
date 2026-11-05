@@ -17,6 +17,7 @@ from solaris import __version__
 from solaris.desktop.instance import SingleInstance, ask_to_quit
 from solaris.desktop.links import LinkReceiver, from_arguments
 from solaris.desktop.login import BACKGROUND_ARG, LoginItem, default_login_item
+from solaris.desktop.session import session_ending
 from solaris.desktop.tray import tray_supported
 from solaris.fonts import register_fonts
 from solaris.host.base import TAKEOVER_NONE, TAKEOVER_SETTINGS, HostError, TunnelHost
@@ -40,18 +41,27 @@ from solaris.viewmodels.text_editing import TextEditing as TextEditing
 MAIN_QML = Path(__file__).resolve().parent / "ui" / "Main.qml"
 DEV_SOCKET_ENV = "SOLARIS_DEV_SOCKET"
 # Ask the UI already running to quit and wait for it, as the Windows installer does before
-# it replaces the files (docs/ui.md §8); exits 0 once no UI runs.
+# it replaces the files (docs/ui.md §8); exits 0 once no UI runs. The tunnel stays as it is.
 QUIT_ARG = "--quit"
 
 
 class Application(QGuiApplication):
-    """Every request to quit leaves the event loop: the tray's, ``--quit``'s, ⌘Q and the
-    system's at logout. Qt would first close the windows and give up when one refuses, as
-    the main window does while it hides in the tray (Main.qml)."""
+    """Qt reports ⌘Q, the Dock's Quit and the system's quit at the end of the session as a
+    Quit event, and would first close the windows and give up when one refuses, as the main
+    window does while it hides in the tray (Main.qml). The user's quit goes to ``user_quit``
+    instead, which disconnects first (D41); the system's leaves the event loop at once and
+    leaves the tunnel to the service (D5)."""
+
+    def __init__(self, argv: list[str]) -> None:
+        super().__init__(argv)
+        self.user_quit: Callable[[], None] | None = None
 
     def event(self, event: QEvent) -> bool:
         if event.type() == QEvent.Type.Quit:
-            self.exit(0)
+            if self.user_quit is not None and not session_ending():
+                self.user_quit()
+            else:
+                self.exit(0)
             return True
         return super().event(event)
 
@@ -152,7 +162,7 @@ def main(
     app.setWindowIcon(
         QIcon(str(brand / ("app-icon-macos.svg" if sys.platform == "darwin" else "app-icon.svg")))
     )
-    # Closing the window hides it in the tray or quits explicitly (DesktopViewModel).
+    # Closing the window hides it in the tray or quits Solaris (DesktopViewModel).
     app.setQuitOnLastWindowClosed(False)
     # macOS sends install links as Apple Events, which can come before the window does.
     receiver = LinkReceiver(app)
@@ -187,9 +197,12 @@ def main(
     # Queued: the switch happens once the control that asked for it has handled its click.
     switch = partial(switch_language, translations, engine, view_models)
     view_models.settings.languageChanged.connect(switch, Qt.ConnectionType.QueuedConnection)
-    view_models.desktop.quitRequested.connect(app.quit)
+    # exit, not quit: on macOS quit goes through terminate: and comes back as a Quit event.
+    view_models.desktop.quitRequested.connect(partial(app.exit, 0))
+    app.user_quit = view_models.desktop.quit
     instance.activated.connect(view_models.desktop.showWindow)
-    instance.quit_requested.connect(view_models.desktop.quit)
+    # The installer's --quit: it replaces the files, and the service keeps the tunnel.
+    instance.quit_requested.connect(view_models.desktop.leave)
     instance.received.connect(receiver.deliver)
     receiver.received.connect(view_models.open_link)
     if link is not None:

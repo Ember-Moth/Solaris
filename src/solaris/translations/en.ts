@@ -658,6 +658,13 @@
     </message>
 </context>
 <context>
+    <name>DesktopViewModel</name>
+    <message>
+        <source>{reason}。仍然退出时，隧道可能仍在运行。</source>
+        <translation>{reason}. If you quit anyway, the tunnel may keep running.</translation>
+    </message>
+</context>
+<context>
     <name>Disclosure</name>
     <message>
         <source>已展开</source>
@@ -2808,6 +2815,21 @@ prepend-rules:
     </message>
 </context>
 <context>
+    <name>QuitDialog</name>
+    <message>
+        <source>未能断开连接</source>
+        <translation>Couldn’t disconnect</translation>
+    </message>
+    <message>
+        <source>仍然退出</source>
+        <translation>Quit anyway</translation>
+    </message>
+    <message>
+        <source>重试</source>
+        <translation>Retry</translation>
+    </message>
+</context>
+<context>
     <name>Regions</name>
     <message>
         <source>香港</source>
@@ -3641,6 +3663,10 @@ prepend-rules:
         <translation>Open at login</translation>
     </message>
     <message>
+        <source>先断开连接，再退出</source>
+        <translation>Disconnects, then quits</translation>
+    </message>
+    <message>
         <source>系统扩展</source>
         <translation>System extension</translation>
     </message>
@@ -3860,8 +3886,8 @@ Your subscriptions, settings, and credentials are kept; connecting again will re
         <translation>Keep in tray</translation>
     </message>
     <message>
-        <source>退出界面</source>
-        <translation>Quit the app</translation>
+        <source>退出 Solaris</source>
+        <translation>Quit Solaris</translation>
     </message>
     <message>
         <source>跟随配置</source>
@@ -4015,8 +4041,8 @@ Protocol v{protocol}</translation>
         <translation>Open main window</translation>
     </message>
     <message>
-        <source>退出界面（隧道保持运行）</source>
-        <translation>Quit (the tunnel keeps running)</translation>
+        <source>退出 Solaris</source>
+        <translation>Quit Solaris</translation>
     </message>
 </context>
 <context>
