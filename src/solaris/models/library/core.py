@@ -383,15 +383,19 @@ class LibraryCore:
     async def try_config(self, config: TunnelConfig) -> None:
         """Reload a running tunnel with ``config``, or have a stopped one's host validate it:
         either way the core accepted it before anything is stored."""
-        if await self.running() is None:
+        status = await self.running()
+        if status is None:
             await self.check(config)
         else:
-            await self.reload_config_if_running(config)
+            await self._reload(config, status)
 
     async def reload_config_if_running(self, config: TunnelConfig) -> None:
         status = await self.running()
         if status is not None:
-            options = live_options(status, self.settings())
-            report = await self.host.reload(replace(config, options=options))
-            if config.composition is not None:
-                self.report = report
+            await self._reload(config, status)
+
+    async def _reload(self, config: TunnelConfig, status: HostStatus) -> None:
+        options = live_options(status, self.settings())
+        report = await self.host.reload(replace(config, options=options))
+        if config.composition is not None:
+            self.report = report

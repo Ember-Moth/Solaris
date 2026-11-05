@@ -13,7 +13,7 @@ from pytestqt.qtbot import QtBot
 
 from solaris.app import MAIN_QML, switch_language
 from solaris.desktop.instance import LOCK_NAME
-from solaris.host.base import TAKEOVER_NONE, TAKEOVER_SETTINGS, TAKEOVER_TUN
+from solaris.host.base import TAKEOVER_NONE, TAKEOVER_SETTINGS, TAKEOVER_TUN, Rule
 from solaris.i18n import Translations
 from solaris.viewmodels import settings as settings_view_model
 from solaris.viewmodels.composition import ViewModels
@@ -532,6 +532,48 @@ def test_routing_page_loads_without_qml_warnings(qtbot: QtBot, loaded: Loaded) -
         routing.setMode("profile")
     view_models.shell.setPage("proxies")
     qtbot.waitUntil(lambda: view_models.proxies.property("currentGroup") != "")
+    assert loaded.warnings == []
+
+
+def test_a_profile_with_thousands_of_rules_makes_only_the_rows_in_sight(
+    qtbot: QtBot, loaded: Loaded, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Switching to a profile's own rules while connected lists them without holding up the
+    window: a row each for ten thousand rules took seconds (docs/routing.md §4.3)."""
+    view_models = loaded.view_models
+    routing = view_models.routing
+    rules = [Rule("DOMAIN-SUFFIX", f"site{n}.example.com", "节点选择", "") for n in range(5000)]
+    rules.append(Rule("MATCH", "", "DIRECT", ""))
+
+    async def list_rules() -> list[Rule]:
+        return rules
+
+    monkeypatch.setattr(view_models.host, "list_rules", list_rules)
+    qtbot.waitUntil(lambda: view_models.overview.property("connected"))
+    view_models.shell.setPage("routing")
+    with qtbot.waitSignal(routing.routingChanged):
+        routing.setMode("plan")
+    qtbot.waitUntil(lambda: not routing.property("busy"))
+    routing.setMode("profile")
+    qtbot.waitUntil(lambda: len(routing._profile_routes.property("rules").rows) == len(rules))
+    qtbot.wait(50)
+    page = loaded.item(lambda i: i.metaObject().className().startswith("RoutingPage"))
+
+    def made() -> dict[str, QQuickItem]:
+        found = find_all(page, lambda i: isinstance(i.property("match"), str))
+        return {i.property("match"): i for i in found}
+
+    shown = made()
+    assert 0 < len(shown) < 200
+    assert loaded.on_screen(shown["DOMAIN-SUFFIX,site0.example.com"])
+    # Scrolled to the end, the last rows are made in their place.
+    flickable = page.property("contentItem")
+    flickable.setProperty("contentY", flickable.property("contentHeight") - flickable.height())
+    qtbot.wait(50)
+    shown = made()
+    assert len(shown) < 200
+    assert loaded.on_screen(shown["MATCH"])
+    assert "DOMAIN-SUFFIX,site0.example.com" not in shown
     assert loaded.warnings == []
 
 

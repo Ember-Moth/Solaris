@@ -61,6 +61,9 @@ class ProfileRoutes(QObject):
         self._library = library
         self._rules: ProfileRules | None = None  # while the profile runs
         self._query = ""
+        # What the rule rows were made from: a profile can bring thousands of rules, and the
+        # routing changes more often than they do.
+        self._listed: tuple[ProfileRules | None, str] = (None, "")
         self._groups = KeyedListModel(_fields(SourceGroupRow), self)
         self._rule_rows = KeyedListModel(_fields(SourceRuleRow), self)
         self.changed.connect(self._sync)
@@ -126,7 +129,10 @@ class ProfileRoutes(QObject):
 
     @Property(str, notify=changed)
     def counts(self) -> str:
-        """The size of the profile in use, when the core does not run it."""
+        """The size of the profile in use, when the core does not run it; nothing while a
+        change applies, as the core may be about to run it."""
+        if self._routing.property("busy"):
+            return ""
         active = self._routing.profile_list().active
         inspection = self._routing.snapshot().inspections.get(active) if active else None
         if inspection is None:
@@ -177,6 +183,7 @@ class ProfileRoutes(QObject):
         if source is None:
             self._groups.sync([])
             self._rule_rows.sync([])
+            self._listed = (None, "")
             return
         self._groups.sync(
             [
@@ -188,6 +195,10 @@ class ProfileRoutes(QObject):
                 for g in source.groups
             ]
         )
+        listed, listed_query = self._listed
+        if listed is source and listed_query == self._query:
+            return
+        self._listed = (source, self._query)
         query = self._query.strip().lower()
         rows = []
         for n, rule in enumerate(source.rules):
