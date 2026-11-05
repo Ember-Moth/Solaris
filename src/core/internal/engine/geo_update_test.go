@@ -5,17 +5,23 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	geo "github.com/metacubex/mihomo/component/geodata"
 	"github.com/metacubex/mihomo/component/geodata/router"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/Ember-Moth/Solaris/src/core/internal/admission"
 	"github.com/Ember-Moth/Solaris/src/core/internal/controlpb"
+	"github.com/Ember-Moth/Solaris/src/core/internal/porttest"
 )
 
 func startGeo(t *testing.T) (*Engine, *controlpb.GetGeoUpdateResponse) {
@@ -154,5 +160,49 @@ func TestGeoPlanIgnoresValidationAndUnusedDatabases(t *testing.T) {
 	after, _ = e.GetGeoUpdate()
 	if len(after.Files) != 0 || after.Generation == plan.Generation {
 		t.Fatal("unused databases retained", after)
+	}
+}
+
+// The UI fetches GEO data and uploads it; the core never downloads any (the fork's
+// SetExternalDownloads, which New turns on). A GEOSITE rule whose data the home lacks fails
+// admission, though the profile's geox-url points at a server that would answer.
+func TestEngineNeverDownloadsGeoData(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+	geo.SetExternalDownloads(false) // as mihomo has it, until New turns it on
+	e := openEngine(t, admission.TunNone)
+	geox := fmt.Sprintf("geox-url: {geosite: %q, geoip: %q, mmdb: %q, asn: %q}\n",
+		server.URL+"/GeoSite.dat", server.URL+"/GeoIP.dat", server.URL+"/geoip.metadb", server.URL+"/ASN.mmdb")
+	// Applying a profile makes its geox-url mihomo's download source.
+	running := fmt.Sprintf("mixed-port: %d\n%srules: [\"MATCH,DIRECT\"]\n", porttest.Free(t), geox)
+	if _, err := e.Start(admission.Profile{Config: []byte(running)}); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(testHome, "GeoSite.dat")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.WriteFile(path, data, 0o644); err != nil {
+			t.Error(err)
+		}
+	})
+	_, err = e.Validate(admission.Profile{Config: []byte(geox + "rules: [\"GEOSITE,cn,DIRECT\"]\n")})
+	if err == nil {
+		t.Fatal("a GEOSITE rule was admitted without the GEO data")
+	}
+	if got := requests.Load(); got != 0 {
+		t.Fatalf("the core asked the geox-url server %d times", got)
+	}
+	if _, err := os.Stat(path); err == nil {
+		t.Fatal("GeoSite.dat came back without an upload")
 	}
 }

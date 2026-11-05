@@ -112,9 +112,11 @@ func TestStartProxiesTrafficAndStopClosesThePort(t *testing.T) {
 	if body := proxiedGet(t, port, server.URL); body != "hello through mihomo" {
 		t.Fatalf("body = %q", body)
 	}
-	after := engine.Traffic()
-	if after.GetDownTotalBytes() <= before.GetDownTotalBytes() {
-		t.Errorf("download total did not grow: %d -> %d", before.GetDownTotalBytes(), after.GetDownTotalBytes())
+	// sing's copy counts what it wrote only after the write, which the client may already
+	// have read in full.
+	grew := eventually(func() bool { return engine.Traffic().GetDownTotalBytes() > before.GetDownTotalBytes() })
+	if !grew {
+		t.Errorf("download total did not grow: %d -> %d", before.GetDownTotalBytes(), engine.Traffic().GetDownTotalBytes())
 	}
 	status := engine.Status()
 	if status.GetMode() != controlpb.Mode_MODE_RULE || status.GetStartedAtUnixMs() == 0 || status.GetTunEnabled() {
