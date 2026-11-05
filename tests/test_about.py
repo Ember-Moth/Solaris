@@ -448,6 +448,41 @@ def test_crash_summary_and_raw_export_are_separate(
     assert not report.exists()
 
 
+def test_crash_notices_give_way_to_the_report_count(
+    qtbot: QtBot, built: ViewModels, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from solaris import crashes
+
+    directory = tmp_path / "crashes"
+    directory.mkdir()
+    (directory / "ui-exception-1-1.log").write_text("first")
+    monkeypatch.setattr(crashes, "default_sources", lambda folder: [(folder, "ui")])
+    about = about_for(built, offline_updater(tmp_path), crash_directory=directory)
+    timer = about._crash_notice_timer
+    about.refreshCrashes()
+    qtbot.waitUntil(lambda: prop(about, "crashesStatus") == "1 份本地报告，不会自动上传")
+
+    about.exportCrashes(str(tmp_path / "missing" / "raw.zip"))
+    qtbot.waitUntil(lambda: not prop(about, "crashesBusy"))
+    assert prop(about, "crashesFailed")
+    assert prop(about, "crashesStatus").startswith("未能处理崩溃报告：")
+    # A report found while the notice shows is counted once the notice has had its time.
+    (directory / "ui-exception-2-1.log").write_text("second")
+    about.refreshCrashes()
+    qtbot.waitUntil(lambda: about._crash_count == 2)
+    assert timer.isActive()
+    timer.timeout.emit()
+    assert not prop(about, "crashesFailed")
+    assert prop(about, "crashesStatus") == "2 份本地报告，不会自动上传"
+
+    about.clearCrashes()
+    qtbot.waitUntil(lambda: not prop(about, "crashesBusy"))
+    assert prop(about, "crashesStatus") == "已清除界面的崩溃日志，系统报告保留"
+    assert timer.isActive()
+    timer.timeout.emit()
+    qtbot.waitUntil(lambda: prop(about, "crashesStatus") == "暂无可导出的崩溃报告")
+
+
 def test_export_diagnostics(qtbot: QtBot, tmp_path: Path) -> None:
     store = ProfileStore(tmp_path)
     seed_profiles(store, NOW)
