@@ -20,7 +20,7 @@
 | `python` | macOS arm64 / x64、Windows x64 / ARM64 | ruff 只在 macOS 运行一次；各平台保留 pyright、pytest（含主题与翻译一致性）。协议输入变化时额外核对生成绑定 |
 | `e2e` | macOS arm64 / x64 | 界面连真实的开发服务（`tests/e2e`）：导入、连接、各页数据、分流与方案、重载不断开连接；节点是本机起的代理，只走回环地址 |
 | `go` | macOS arm64 / x64、Windows x64 / ARM64、Linux | `go vet`、`go test`，再在支持的架构以 `-race` 跑一遍（Go 1.27 不支持 Windows ARM64 race）；Linux 上以 `with_gvisor` 带 `-race` 再跑安全项和组网测试，交叉编译 Windows 服务；macOS 上编扩展用的 C archive |
-| `apple` | macOS | 两份匹配架构的 Python/Nuitka UI、双架构管理库和扩展，合并后检查全部 Mach-O，ad hoc 签名并制作真实通用 DMG；不启动 app 或扩展 |
+| `apple` | macOS | 两份匹配架构的 Python/Nuitka UI、双架构管理库和扩展，合并后检查全部 Mach-O，ad hoc 签名并制作真实通用 DMG；再分别以 arm64 和 Rosetta 下的 x86_64 启动界面，等到它的窗口出现，用 `--quit` 让它退出（退出码 0，没有崩溃记录）。不连接，不激活扩展；失败时上传界面输出和崩溃记录（artifact `macos-ui-<提交>`） |
 | `windows-installer` | Windows x64 / ARM64 | 构建不签名的安装包，在 runner 上安装、打开界面、升级、卸载（`package/windows/smoke-test.ps1`）；失败时上传界面每次启动的输出，界面启动即退出时还有它的崩溃目录（artifact `windows-ui-<架构>-<提交>`） |
 | `installer-ui` | Windows x64 / ARM64 | 检查自定义路径的 ACL、所有者及链接拒绝；编译真实 Win32 界面，在只读宿主中验证 GPL 全文与同意项、路径输入、中英文、浅深色、键盘默认动作、数据选项、进度、成功/失败和 DPI 布局；保存窗口截图 artifact |
 | `windows-arm64-upgrade` | Windows ARM64 | 安装 x64 版后原位升级 ARM64，检查服务、GUI、同架构文件、数据保留及卸载 |
