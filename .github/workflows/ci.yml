@@ -29,10 +29,66 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Select checks from the complete change range
-        id: select
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/ci_changes.py
+        run: |
+          python3 scripts/ci_changes.py > "$RUNNER_TEMP/selection.json"
+          cat "$RUNNER_TEMP/selection.json"
+      # The script cannot vouch for a change to itself. Unless the one that ran is the one at
+      # the start of the range (the pull request's base; a push's successful baseline and
+      # previous head), every check runs, whatever it selected. Read with the runner's Python.
+      - name: Every check when the selection script changed
+        id: select
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+          SELECTION: ${{ runner.temp }}/selection.json
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+
+          # Every job below that the selection names; tests/test_ci_changes.py keeps it whole.
+          EVERY = ['apple', 'e2e', 'go', 'installer-ui', 'python', 'tun', 'windows-arm64-upgrade', 'windows-installer']
+          SCRIPT = 'scripts/ci_changes.py'
+
+          def commit(value):
+              return value if re.fullmatch(r'[0-9a-f]{40}', value or '') and value != '0' * 40 else None
+
+          def same_script(base):
+              # git diff exits 1 for a difference and 128 for a commit it does not have.
+              return base is not None and subprocess.run(
+                  ['git', 'diff', '--quiet', '--no-renames', base, 'HEAD', '--', SCRIPT]
+              ).returncode == 0
+
+          try:
+              with open(os.environ['SELECTION'], encoding='utf-8') as stream:
+                  selection = json.load(stream)
+              jobs, protocol, base = selection['jobs'], selection['protocol'] is True, selection['base']
+          except (OSError, ValueError, KeyError, TypeError):
+              selection = None
+          event = os.environ['EVENT']
+          if selection is None:
+              trusted = False
+          elif event == 'pull_request':
+              trusted = same_script(commit(os.environ['PR_BASE']))
+          elif event == 'push':
+              before = commit(os.environ['BEFORE'])
+              trusted = same_script(commit(base)) and (before is None or same_script(before))
+          else:
+              trusted = False
+          if not trusted:
+              jobs, protocol = EVERY, True
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+              output.write(f"jobs={json.dumps(sorted(jobs), separators=(',', ':'))}\nprotocol={str(protocol).lower()}\n")
+          if not trusted:
+              print(f'{SCRIPT} changed in this range, or its selection is unreadable: every check runs')
+              with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as summary:
+                  summary.write(f'\nEvery check runs: `{SCRIPT}` is not the one at the start of the range.\n')
+          PY
 
   python:
     needs: changes

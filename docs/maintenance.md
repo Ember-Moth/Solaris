@@ -12,11 +12,11 @@
 ### 1.1 CI 覆盖
 
 `.github/workflows/ci.yml` 在每个 PR 和 main 推送时判断改动范围，运行受影响的任务。main 使用成功的祖先 CI 作为基线，
-避免前一次未验证的代码被后续文档提交掩盖；无法确定范围时运行全部任务。手动触发或完整重跑始终跑全量。
+避免前一次未验证的代码被后续文档提交掩盖；无法确定范围时运行全部任务。手动触发或完整重跑始终跑全量。选择脚本 `scripts/ci_changes.py` 自己改了（与 PR 的 base、推送的成功基线或上一个 head 不同）时，工作流不采用它的选择，直接跑全量。
 
 | job | 平台 | 内容 |
 | --- | --- | --- |
-| `changes` | Linux | 从完整 Git 差异选择任务；依赖锁、CI 配置和未知输入触发全量 |
+| `changes` | Linux | 从完整 Git 差异选择任务；依赖锁、CI 配置、选择脚本自身和未知输入触发全量 |
 | `python` | macOS arm64 / x64、Windows x64 / ARM64 | ruff 只在 macOS 运行一次；各平台保留 pyright、pytest（含主题与翻译一致性）。协议输入变化时额外核对生成绑定 |
 | `e2e` | macOS arm64 / x64 | 界面连真实的开发服务（`tests/e2e`）：导入、连接、各页数据、分流与方案、重载不断开连接；节点是本机起的代理，只走回环地址 |
 | `go` | macOS arm64 / x64、Windows x64 / ARM64、Linux | `go vet`、`go test`，再在支持的架构以 `-race` 跑一遍（Go 1.27 不支持 Windows ARM64 race）；Linux 上以 `with_gvisor` 带 `-race` 再跑安全项和组网测试，交叉编译 Windows 服务；macOS 上编扩展用的 C archive |
