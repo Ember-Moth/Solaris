@@ -9,6 +9,7 @@
 | AnyTLS + REALITY | AnyTLS 节点可以使用 `reality-opts` | 同时支持 AnyTLS 协议和 REALITY 的端点 |
 | REALITY 握手 | 版本标识对齐 `26.10.29`，默认保留指纹中的 X25519MLKEM768 | 服务端的版本策略和密钥交换能力需要匹配 |
 | Snell v4–v6 | 支持 v4、v5、v6，包含 v6 模式和 `user-key` | 与客户端相同的版本、PSK、模式及用户密钥设置 |
+| VLESS 反向代理 | `type: vless-reverse` 虚拟入站，经 VLESS 节点回连公网端 | 公网端配置反向 VLESS 用户和同名 `vless-reverse` 出站 |
 
 使用完整的 Solaris 安装包，以获得配套的协议支持。
 
@@ -222,6 +223,54 @@ proxies:
 
 v4/v5 的 UDP 数据报受当前记录载荷窗口限制，过大的单个数据报会被拒绝；打开 `udp: true` 不会消除该限制。
 已有 v1–v3 节点不需要为了升级内核而改版本。仅在服务端也已升级时切换客户端的 `version`。
+
+## VLESS 反向代理
+
+反向代理让外部设备经你的公网 VLESS 服务端，访问这台电脑及其所在的内网。Solaris 作为内网端：
+`type: vless-reverse` 的虚拟入站通过指定的 VLESS 节点主动回连公网端，公网端再把发往内网的请求经这条通道送回来，
+本机按入站的 `rule` 决定这些请求能去哪里。它不在本机监听端口，也不需要 `listen`、`port`。
+
+内网端示例：
+
+```yaml
+proxies:
+  - name: home-link
+    type: vless
+    server: hub.example.com
+    port: 8443
+    uuid: CHANGE_ME_UUID
+    tls: true
+    servername: hub.example.com
+    flow: xtls-rprx-vision
+listeners:
+  - name: home-in
+    type: vless-reverse
+    outbound: home-link
+    connections: 1
+    rule: home-access
+sub-rules:
+  home-access:
+    - IP-CIDR,192.168.50.0/24,DIRECT,no-resolve
+    - MATCH,REJECT
+```
+
+| 参数 | 规则 |
+| --- | --- |
+| `outbound` | 一个具体的 VLESS 节点名，不能是策略组，也不要再套 smux |
+| `connections` | 保持的回连数，`1`–`8`，默认 `1` |
+| `rule` | 回连请求使用的子规则；也可以用 `proxy` 直接指定出站 |
+
+公网端运行 mihomo 增强版，或与之兼容的 Xray v26.10.31：VLESS 用户设置 `reverse.tag`，并有一个同名的
+`type: vless-reverse` 出站，规则把内网网段交给它。配置写法见 mihomo 增强版仓库的 `docs/config.yaml`。
+反向 UUID 只能建立反向通道，不能兼作普通代理用户。
+
+- 支持 TCP 和最大 8192 字节的 UDP 包；不转发原始 IP、ICMP 或二层广播。
+- 通道断开时，其中的连接随之结束，回连会自动重试。
+- 只在使用这份订阅自己的规则时生效；加入「我的方案」节点池时只取用节点，不带入站。
+
+**公网端能访问 `rule` 放行的所有地址**，包括本机 `127.0.0.1` 上的服务和局域网设备，且不受「允许局域网连接」
+设置限制。只连接你自己控制的公网端；`rule` 只放行需要的网段，最后一条用 `MATCH,REJECT`。使用他人提供的订阅前，
+确认其中没有 `type: vless-reverse` 的 `listeners`。
 
 ## 常见问题
 
