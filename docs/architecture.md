@@ -780,7 +780,9 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   - 验证：CI 的 `windows-installer` job 在 `windows-latest` 上构建不签名的安装包，由 `package/windows/smoke-test.ps1`
     首次安装通过 UI Automation 操作真实安装窗口，之后打开界面、静默升级、静默卸载（保留数据）、再安装、以 `/PURGE` 卸载，核对文件、服务的
     路径、启动方式、账户、恢复策略与管道监听、注册表、快捷方式、计划任务，升级和卸载时界面自己退出（退出码 0，
-    没有留下 `ui.lock`），以及卸载后什么都没留下。不建 TUN，不连接。真机上的 UAC、开机恢复和隧道见
+    没有留下 `ui.lock`），以及卸载后什么都没留下。不建 TUN，不连接。界面每次启动的输出（设了 `QT_FORCE_STDERR_LOGGING`，
+    Qt 的消息也在里面）写到 `%RUNNER_TEMP%\solaris-ui`；界面启动即退出时，脚本当场把它的崩溃目录复制过去，再把日志
+    打印出来，因为后面的 `/PURGE` 会删掉用户数据。测试失败时工作流把这个目录作为 artifact 上传。真机上的 UAC、开机恢复和隧道见
     [maintenance.md](maintenance.md) 2.1 节。
 - **macOS**：拖入"应用程序"文件夹完成安装，首次连接时激活系统扩展。设置页「系统扩展」提供停用入口（D35）：
   确认后断开所有 Solaris 隧道、调用 `deactivationRequest`，系统确认完成后删除本应用的 VPN 配置，保留订阅、设置和凭据。
