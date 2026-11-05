@@ -18,26 +18,25 @@ type requestIntent struct {
 }
 
 // prepareStop does not wait behind the core: otherwise a hung reload could restart the
-// service with was_running still true after its owner explicitly disconnected.
+// service with was_running still true after its owner explicitly disconnected. Nor does
+// it wait behind a slow Applied: the host supersedes earlier starts, and checks them,
+// under a lock it never holds across the OS or the core. Recording the intent waits for
+// small writes only, and its watchdog fires only if one of those hangs.
 func (d *Dispatcher) prepareStop(ctx context.Context, caller peer.Identity) (requestIntent, error) {
 	return operation.Run(d.intents, ctx, "record_stop", 5*time.Second, 0,
 		func(work context.Context) (requestIntent, error) {
-			d.intentMu.Lock()
-			defer d.intentMu.Unlock()
-			if err := operation.Check(work); err != nil {
-				return requestIntent{}, err
+			if tooLate(work) {
+				return requestIntent{}, context.DeadlineExceeded
 			}
-			var keepError error
-			if d.host != nil {
-				if err := d.host.Admit(caller); err != nil {
-					return requestIntent{}, err
-				}
-				keepError = d.host.StopRequested(caller)
-				if errors.Is(keepError, ErrNotClaimed) || errors.Is(keepError, ErrOwnedByOtherUser) || errors.Is(keepError, ErrRestarting) {
-					return requestIntent{}, keepError
-				}
+			if d.host == nil {
+				return requestIntent{generation: d.stopGeneration.Add(1)}, nil
 			}
-			return requestIntent{generation: d.stopGeneration.Add(1), stopError: keepError}, nil
+			var generation uint64
+			keepError := d.host.StopRequested(caller, func() { generation = d.stopGeneration.Add(1) })
+			if errors.Is(keepError, ErrNotClaimed) || errors.Is(keepError, ErrOwnedByOtherUser) || errors.Is(keepError, ErrRestarting) {
+				return requestIntent{}, keepError
+			}
+			return requestIntent{generation: generation, stopError: keepError}, nil
 		})
 }
 
@@ -53,30 +52,30 @@ func (d *Dispatcher) operationActive(ctx context.Context) error {
 	return operation.Check(ctx)
 }
 
-// commitApplied orders the running-state write against a user's Stop. If Stop won while
-// the library was applying a profile, finish stopping it here even if the queued Stop's
-// caller disconnected. A late Start/Reload must never turn auto-resume back on.
+// commitApplied orders the running-state write against a user's Stop: the host keeps the
+// start only if it is still current, which it checks under the lock StopRequested takes to
+// supersede starts. If Stop won while the library or the host was applying a profile,
+// finish stopping it here even if the queued Stop's caller disconnected. A late
+// Start/Reload must never turn auto-resume back on.
 func (d *Dispatcher) commitApplied(ctx context.Context, start *controlpb.StartRequest) error {
-	d.intentMu.Lock()
 	if err := d.operationActive(ctx); err != nil {
-		d.intentMu.Unlock()
 		return err
 	}
-	if !d.currentIntent(ctx) {
-		d.intentMu.Unlock()
-		if err := d.engine.Stop(); err != nil {
+	current := func() bool { return d.currentIntent(ctx) }
+	var err error
+	if d.host != nil && current() {
+		err = d.host.Applied(start, current)
+	}
+	if current() {
+		return err
+	}
+	if err := d.engine.Stop(); err != nil {
+		return err
+	}
+	if d.host != nil {
+		if err := d.host.Stopped(); err != nil {
 			return err
 		}
-		if d.host != nil {
-			if err := d.host.Stopped(); err != nil {
-				return err
-			}
-		}
-		return context.Canceled
 	}
-	defer d.intentMu.Unlock()
-	if d.host != nil {
-		return d.host.Applied(start)
-	}
-	return nil
+	return context.Canceled
 }

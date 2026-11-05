@@ -75,7 +75,7 @@ func (c *powerCore) ResumeContext(ctx context.Context, profile *controlpb.StartR
 	c.profiles = append(c.profiles, proto.Clone(profile).(*controlpb.StartRequest))
 	c.mu.Unlock()
 	c.running.Store(true)
-	return c.host.Applied(profile)
+	return c.host.Applied(profile, current)
 }
 
 func (c *powerCore) SuspendContext(ctx context.Context) error {
@@ -106,7 +106,7 @@ func powered(t *testing.T, connected bool) (*Service, *powerCore, *powerMachine,
 	s.powerDelays = []time.Duration{0, time.Millisecond, time.Millisecond}
 	if connected {
 		c.running.Store(true)
-		if err := s.Applied(profile(true)); err != nil {
+		if err := s.Applied(profile(true), current); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -192,7 +192,7 @@ func TestUserDisconnectCancelsPendingWakeRecovery(t *testing.T) {
 	s.powerDelays = []time.Duration{0, time.Hour}
 	s.PowerChanged(power.Event{Cycle: 1})
 	eventually(t, func() bool { return machine.checks.Load() == 1 })
-	if err := s.StopRequested(as(alice, 1)); err != nil {
+	if err := s.StopRequested(as(alice, 1), supersede); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Stopped(); err != nil {
@@ -208,7 +208,7 @@ func TestUserDisconnectCancelsPendingWakeRecovery(t *testing.T) {
 }
 
 func TestSignOutCancelsResumeBeforeTheCoreConnects(t *testing.T) {
-	s, core, _, _ := powered(t, true)
+	s, core, _, home := powered(t, true)
 	release := make(chan struct{})
 	core.block, core.entered = release, make(chan struct{}, 2)
 	s.PowerChanged(power.Event{Cycle: 1})
@@ -224,7 +224,8 @@ func TestSignOutCancelsResumeBeforeTheCoreConnects(t *testing.T) {
 		t.Fatal("resume survived sign-out")
 	}
 	s.SessionChanged(1, true)
-	eventually(t, func() bool { return core.Running() })
+	// The resume is over once Applied, after the core, has cleared its guard.
+	eventually(t, func() bool { return core.Running() && !(kept{home}).resumeInterrupted() })
 }
 
 func TestOwnerChangeCancelsTheFormerOwnersRecovery(t *testing.T) {
@@ -256,7 +257,7 @@ func TestInterruptedAutomaticResumeDoesNotCreateACrashLoop(t *testing.T) {
 		t.Fatal("interrupted resume was retried automatically")
 	}
 	core.running = true // a successful explicit connection is allowed
-	if err := restarted.Applied(profile(false)); err != nil {
+	if err := restarted.Applied(profile(false), current); err != nil {
 		t.Fatal(err)
 	}
 	if (kept{home}).resumeInterrupted() || !restarted.ResumeAllowed() {

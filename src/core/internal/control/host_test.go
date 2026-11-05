@@ -55,13 +55,22 @@ func (h *fakeHost) TakeOver(caller peer.Identity, stop func() error) error {
 	return h.claimErr
 }
 
-func (h *fakeHost) Applied(start *controlpb.StartRequest) error {
+func (h *fakeHost) Applied(start *controlpb.StartRequest, current func() bool) error {
+	if !current() {
+		return context.Canceled
+	}
 	h.applied = append(h.applied, start)
 	h.systemProxy = start.GetOptions().GetSystemProxyEnabled()
 	return h.proxyErr
 }
 
-func (h *fakeHost) StopRequested(caller peer.Identity) error { return h.Admit(caller) }
+func (h *fakeHost) StopRequested(caller peer.Identity, supersede func()) error {
+	if err := h.Admit(caller); err != nil {
+		return err
+	}
+	supersede()
+	return nil
+}
 
 func (h *fakeHost) ResumeAllowed() bool { return true }
 
