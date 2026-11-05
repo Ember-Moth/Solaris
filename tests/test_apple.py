@@ -289,6 +289,13 @@ final class Submitter {
     case "late":
       Thread.sleep(forTimeInterval: 0.03)
       request.delegate!.request(request, didFinishWithResult: .completed)
+    case "superseding":
+      // macOS fails the request this one replaced, then finishes this one.
+      let replaced = requests[requests.count - 2]
+      replaced.delegate!.request(replaced, didFailWithError: NSError(
+        domain: OSSystemExtensionErrorDomain,
+        code: OSSystemExtensionError.Code.requestSuperseded.rawValue))
+      request.delegate!.request(request, didFinishWithResult: .completed)
     default: break
     }
   }
@@ -304,10 +311,24 @@ let fake = Submitter()
 let controller = SystemExtensionRequests(submit: fake.submit)
 expect(SOLARIS_MANAGER_NEEDS_APPROVAL) { try controller.activate(timeout: 0.2) }
 expect(SOLARIS_MANAGER_NEEDS_APPROVAL) { try controller.activate(timeout: 0.2) }
-expect(SOLARIS_MANAGER_BUSY) { try controller.deactivate(timeout: 0.2) }
 precondition(fake.requests.count == 1)
+// Deactivation replaces an activation that waits for approval; the replaced request's late
+// callbacks finish nothing.
+fake.mode = "superseding"
+try controller.deactivate(timeout: 0.2)
+precondition(fake.requests.count == 2)
 let first = fake.requests[0]
 first.delegate!.request(first, didFinishWithResult: .completed)
+fake.mode = "complete"
+try controller.activate(timeout: 0.2)
+precondition(fake.requests.count == 3)
+
+// An activation the system is still working on keeps a deactivation out, and the other way round.
+fake.mode = "silent"
+expect(SOLARIS_MANAGER_TIMED_OUT) { try controller.activate(timeout: 0.02) }
+expect(SOLARIS_MANAGER_BUSY) { try controller.deactivate(timeout: 0.2) }
+let working = fake.requests.last!
+working.delegate!.request(working, didFinishWithResult: .completed)
 
 fake.mode = "absent"
 try controller.deactivate(timeout: 0.2)

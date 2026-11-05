@@ -149,6 +149,10 @@ class AboutViewModel(QObject):
         self._crash_busy = False
         self._crash_notice = ""
         self._crash_failed = False
+        self._crash_notice_timer = QTimer(self)
+        self._crash_notice_timer.setSingleShot(True)
+        self._crash_notice_timer.setInterval(NOTICE_MS)
+        self._crash_notice_timer.timeout.connect(self._clear_crash_notice)
         self._crash_timer = QTimer(self)
         self._crash_timer.setInterval(60_000)
         self._crash_timer.timeout.connect(self.refreshCrashes)
@@ -194,6 +198,7 @@ class AboutViewModel(QObject):
         self._startup.stop()
         self._periodic.stop()
         self._notice_timer.stop()
+        self._crash_notice_timer.stop()
 
     def retranslate(self) -> None:
         self.optionsChanged.emit()
@@ -568,21 +573,30 @@ class AboutViewModel(QObject):
 
         def done(_: object) -> None:
             self._crash_busy = False
-            self._crash_notice = success
-            self.changed.emit()
+            self._show_crash_notice(success)
             self.refreshCrashes()
 
         def failed(error: BaseException) -> None:
             self._crash_busy = False
-            self._crash_failed = True
-            self._crash_notice = self.tr("未能处理崩溃报告：{detail}").format(
+            text = self.tr("未能处理崩溃报告：{detail}").format(
                 detail=error.strerror or str(error)
                 if isinstance(error, OSError)
                 else failure_text(error)
             )
-            self.changed.emit()
+            self._show_crash_notice(text, failed=True)
 
         self._runner.submit(asyncio.to_thread(action), done, failed)
+
+    def _show_crash_notice(self, text: str, *, failed: bool = False) -> None:
+        self._crash_notice = text
+        self._crash_failed = failed
+        self._crash_notice_timer.start()
+        self.changed.emit()
+
+    def _clear_crash_notice(self) -> None:
+        self._crash_notice = ""
+        self._crash_failed = False
+        self.changed.emit()
 
     @Slot(str)
     def exportCrashes(self, url: str) -> None:

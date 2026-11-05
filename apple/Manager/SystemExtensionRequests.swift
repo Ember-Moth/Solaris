@@ -4,6 +4,8 @@ import SystemExtensions
 
 /// Owns the pending system request across UI retries. Activation and deactivation may
 /// not overlap; a timed-out or approval-pending request remains owned until its callback.
+/// Except that a deactivation replaces an activation still waiting for the user's approval,
+/// which macOS then fails as superseded: removing the extension must not need approving it.
 final class SystemExtensionRequests: NSObject, OSSystemExtensionRequestDelegate {
   static let shared = SystemExtensionRequests()
 
@@ -28,8 +30,9 @@ final class SystemExtensionRequests: NSObject, OSSystemExtensionRequestDelegate 
     let deadline = try Deadline(seconds: timeout)
     let (attempt, created): (Attempt, Bool) = try lock.withLock {
       if let pending {
-        guard pending.action == action else { throw ManagerError.busy }
-        return (pending, false)
+        if pending.action == action { return (pending, false) }
+        guard action == .deactivate, pending.needsApproval else { throw ManagerError.busy }
+        logger.info("deactivation supersedes an activation awaiting approval")
       }
       let request = action == .activate
         ? OSSystemExtensionRequest.activationRequest(forExtensionWithIdentifier: tunnelBundleIdentifier, queue: queue)

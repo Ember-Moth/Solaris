@@ -13,9 +13,10 @@ import json
 import logging
 import time
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlsplit
 from urllib.request import getproxies, proxy_bypass
 
@@ -47,6 +48,31 @@ def due(file: GeoUpdateFile, interval_hours: int, now: float) -> bool:
 def _hash(path: Path) -> str:
     with path.open("rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
+
+
+async def _set_within(event: asyncio.Event, seconds: float) -> bool:
+    with contextlib.suppress(TimeoutError):
+        async with asyncio.timeout(seconds):
+            await event.wait()
+    return event.is_set()
+
+
+async def _unless[T](stop: asyncio.Event, work: Coroutine[Any, Any, T]) -> T | None:
+    """``work``'s result, or None once ``stop`` is set, which cancels it."""
+    task = asyncio.create_task(work)
+    stopped = asyncio.create_task(stop.wait())
+    try:
+        await asyncio.wait((task, stopped), return_when=asyncio.FIRST_COMPLETED)
+    finally:
+        task.cancel()
+        stopped.cancel()
+        await asyncio.gather(task, stopped, return_exceptions=True)
+    return None if task.cancelled() else task.result()
+
+
+def _cancelling() -> bool:
+    task = asyncio.current_task()
+    return task is not None and task.cancelling() > 0
 
 
 class GeoDownloader:
@@ -177,39 +203,58 @@ class GeoUpdates:
                 retry_s = min(3600, retry_s * 2)
             await asyncio.sleep(delay)
 
-    async def _changed(self, generation: str) -> None:
-        while True:
-            await asyncio.sleep(self.generation_check_s)
+    async def _changed(self, generation: str, finished: asyncio.Event) -> None:
+        """Return once the applied configuration changes, or the update has finished."""
+        while not await _set_within(finished, self.generation_check_s):
             if not self.host.core_available:
                 return
             if (await self.host.get_geo_update()).generation != generation:
                 return
 
     async def _while_current(self, plan: GeoUpdatePlan) -> None:
-        work = asyncio.create_task(self.update(plan))
-        changed = asyncio.create_task(self._changed(plan.generation))
+        """The update and the check for a new configuration stop each other between host
+        calls, never during one: a cancelled call can close the control connection that
+        every other request shares. Only the GUI exiting cancels them."""
+        finished = asyncio.Event()
+        stale = asyncio.Event()
+        work = asyncio.create_task(self.update(plan, stale))
+        changed = asyncio.create_task(self._changed(plan.generation, finished))
         try:
             done, _ = await asyncio.wait((work, changed), return_when=asyncio.FIRST_COMPLETED)
             if work in done:
+                finished.set()
+                await asyncio.wait((changed,))
                 await work
             else:
+                # What the transfer for the old configuration ends with no longer matters.
+                stale.set()
+                await asyncio.wait((work,))
                 await changed
         finally:
             work.cancel()
             changed.cancel()
             await asyncio.gather(work, changed, return_exceptions=True)
 
-    async def update(self, plan: GeoUpdatePlan) -> None:
+    async def update(self, plan: GeoUpdatePlan, stale: asyncio.Event | None = None) -> None:
+        """``stale`` stops the update: a download at once, an upload between chunks."""
+        if stale is None:
+            stale = asyncio.Event()
         for file in plan.files:
+            if stale.is_set():
+                return
             if not due(file, plan.interval_hours, self.clock()):
                 continue
-            downloaded = await self.downloader.fetch(file, plan.interval_hours * 3600)
+            fetch = self.downloader.fetch(file, plan.interval_hours * 3600)
+            if (downloaded := await _unless(stale, fetch)) is None:
+                return
             transfer = uuid.uuid4().hex
             offset = 0
             committed = False
             try:
                 with downloaded.path.open("rb") as stream:
                     while chunk := stream.read(CHUNK_BYTES):
+                        if stale.is_set():
+                            return
                         await self.host.upload_geo(
                             plan.generation,
                             transfer,
@@ -220,6 +265,8 @@ class GeoUpdates:
                             chunk,
                         )
                         offset += len(chunk)
+                if stale.is_set():
+                    return
                 try:
                     await self.host.upload_geo(
                         plan.generation,
@@ -240,17 +287,18 @@ class GeoUpdates:
                 committed = True
                 _log.info("Updated GEO database %s", file.name)
             finally:
-                if not committed:
-                    # Bounded cleanup; a lost connection is also covered by the core's
-                    # expiry, next configuration apply, engine close and startup cleanup.
+                # Within the request's own budget, as the core may queue it behind other
+                # serialized work for a while. A GUI exit leaves the transfer to the core's
+                # expiry, the next configuration apply, engine close and startup cleanup,
+                # which also cover a lost connection.
+                if not committed and not _cancelling():
                     with contextlib.suppress(Exception):
-                        async with asyncio.timeout(0.5):
-                            await self.host.upload_geo(
-                                plan.generation,
-                                transfer,
-                                file.name,
-                                downloaded.size,
-                                downloaded.sha256,
-                                offset,
-                                abort=True,
-                            )
+                        await self.host.upload_geo(
+                            plan.generation,
+                            transfer,
+                            file.name,
+                            downloaded.size,
+                            downloaded.sha256,
+                            offset,
+                            abort=True,
+                        )
