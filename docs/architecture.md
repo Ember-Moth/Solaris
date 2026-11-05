@@ -758,13 +758,18 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
   服务的几步在 `package/windows/setup.ps1` 里，由安装器和卸载器以 64 位 Windows PowerShell 运行。流程参考 hypervpn 的
   `packaging/windows/`。
   - 自定义界面（D39）：`package/windows/ui/setup_ui.cpp` 是独立的 Win32 UI 线程，配色、字号及窗口尺寸从
-    DESIGN.md 生成，支持中英文、系统浅深色、高对比度和 DPI 变化。NSIS 的默认页面隐藏；普通运行先由 UI 收集
-    安装/卸载选择，再在静默引擎中执行原有事务，并把实际阶段和结果回传 UI。控件只返回选择，不执行安装命令。
-    `/S` 不创建界面；操作进行中不能关闭，完成或失败后可查看详情并关闭，安装完成还可打开 Solaris。
+    DESIGN.md 生成，支持中英文、系统浅深色、高对比度和 DPI 变化，外观见 DESIGN.md「Windows 安装器」。NSIS 的默认页面
+    隐藏；普通运行先由 UI 收集安装/卸载选择，再在静默引擎中执行原有事务。事务用 `SolarisSetupUI::Step <序号>`
+    报告做到第几步（界面的步骤清单），用 `Status` / `Log` 往详细信息里写一行，用 `Finish` 报告结果和错误信息；
+    步骤文字和错误文字放在 `package/windows/messages.nsh`，界面预览共用。更新时 `Begin` 还带上卸载信息里的
+    `DisplayVersion`，界面显示「旧版本 → 新版本」。控件只返回选择，不执行安装命令。`/S` 不创建界面；操作进行中
+    不能关闭，完成或失败后可查看详细信息并关闭，安装、更新完成还可打开 Solaris。
   - 安装：默认 `C:\Program Files\Solaris`，首次安装可输入路径或浏览选择，静默安装支持最后一个参数 `/D=<完整路径>`（不加引号）。
     交互安装与升级需主动勾选 GPLv3 同意项，可在同一窗口阅读仓库 LICENSE 全文；静默执行不显示确认页。
     写文件及执行已有程序前，`prepare-directory` 检查本地固定 NTFS/ReFS 卷、路径各级的所有者和 ACL、目录链接及已有内容。
     只新建缺失目录，并在创建时设置受保护的 ACL（SYSTEM / Administrators 完全控制，Users 读取执行），不修改现有父目录权限。
+    路径只接受 `\` 分隔、与 Windows 规范化结果一致的写法（静默安装的 `/D=` 不经界面，含 `/` 时直接拒绝），逐级检查；
+    安装目录及其中的文件夹上只对子项生效（inherit-only）的授权也计入，因为装进去的文件会继承（CREATOR OWNER 除外）。
     普通用户可修改/替换的目录、链接和不属于 Solaris 的非空目标会被拒绝；应用目录的标记支持失败后的重试。然后复制
     文件；用 `sc.exe` 注册 `SolarisService`（LocalSystem、自动启动，5.2 节的故障恢复，`failureflag 1` 让服务带错误
     退出时也重启）并启动；在 HKLM 下注册 `solaris:` 和 `clash:`，命令是 `"<安装目录>\Solaris.exe" "%1"`；所有用户的

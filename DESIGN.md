@@ -182,7 +182,7 @@ opacity:
   disabled: 0.4
 components:
   installer-window:
-    backgroundColor: "{colors.background}"
+    backgroundColor: "{colors.surface}"
     textColor: "{colors.text}"
     typography: "{typography.body-md}"
     width: "{spacing.installer-width}"
@@ -766,16 +766,36 @@ Windows 与 macOS 共用随包字体，字号、字重和回退顺序一致。�
 ## Components
 
 - **Windows 安装器**：使用独立的 Win32 界面，NSIS 负责安装事务，不显示默认向导页面。
-  客户区为 `installer-width` × `installer-height`（640 × 440），按 DPI 缩放；保留系统标题栏、窗口菜单和最小化。
-  沿用本文件的浅深色、圆角、字号与 24px 外边距，跟随系统外观与高对比度设置。顶部放日冕标识、Solaris、版本和目标架构（x64 / ARM64），
-  正文是一个标题、简短说明及白色分组摘要；安装进度按实际阶段显示，不编造百分比，详情可展开查看。
-  安装、升级、卸载、完成与失败都有独立文案。Windows 的动作按钮在左、取消/关闭在右；卸载确认默认取消，
-  删除数据选项默认不选。执行安装事务时禁止中途关闭；完成后由用户选择打开 Solaris 或关闭。
-  首次安装显示可编辑的安装路径与「浏览」按钮；升级只读显示已有位置。安装与升级页底部提供默认不选的 GPLv3 同意项，
-  未同意时禁用主按钮。「查看协议」在同一窗口展示仓库 LICENSE 原文，可返回或明确同意并返回，不添加额外用户条款。
-  控件保留 Win32 的键盘和辅助功能语义，Tab/Enter/Esc 可操作，键盘操作显示系统焦点框；禁用动画时活动指示条变为静态强调线，状态文字继续说明实际阶段。
-  英文用随包 Inter，中文优先 Microsoft YaHei UI / Microsoft YaHei；缺少中文补充字体时回退 Segoe UI 与系统字形回退。
-  安装器文本不展示内部 IPC 或服务账户名。
+  - 窗口：客户区为 `installer-width` × `installer-height`（640 × 440），按 DPI 缩放；保留系统标题栏、窗口菜单和最小化。
+    上部内容区用 `surface`，24px 外边距；下部是 80px 高的按钮带，用 `background`，上沿一条 `border` 分隔线。
+    Windows 11 上标题栏用 `DWMWA_CAPTION_COLOR` 设为内容区颜色，Windows 10 保留系统标题栏。标题栏写「Solaris 安装程序」，
+    卸载时写「Solaris 卸载程序」。
+  - 头部只有一个：48px 应用图标（深色外观下仍是石墨底），右边是 `title` 标题和一行 `caption`、`text-muted` 的副标题
+    「版本 1.0.0 · Windows x64」（ARM64 包写 ARM64）；更新时写「0.9.4 → 1.0.0 · Windows x64」，旧版本取自卸载信息的
+    `DisplayVersion`。下面是一段 `body-md`、`text-secondary` 的说明。
+  - 安装：「安装位置」（`section-label`）下面是 32px 高的输入框（界面字体，不用等宽字体）和 88px 宽的「浏览…」。内容区底部是
+    默认不选的「我已阅读并同意 GPLv3 开源许可协议」，协议名是 `link` 色的链接（SysLink），未同意时禁用「安装」。
+  - 协议页：标题「GPLv3 开源许可协议」和一行说明；仓库 LICENSE 原文放在带 `border` 边框的只读框里，用 `data-sm`，去掉行首空格，
+    不显示插入光标。按钮是「同意」（默认）和「返回」，不添加额外用户条款。
+  - 更新：用「安装位置」「当前版本」两行标签（`text-muted`）和值只读显示已有安装，底部是同样的同意项。
+  - 卸载：复选框「同时删除订阅、设置和日志」默认不选，下面缩进一行 `caption` 说明「包括此电脑上所有用户的 Solaris 数据，
+    删除后无法恢复。」。「卸载」是次要按钮，「取消」是默认按钮。
+  - 进行中、完成、失败共用一份步骤清单，跟随 NSIS 报告的实际步骤，不编造百分比：已完成是 `success` 实心勾，当前是 `primary`
+    转圈（禁用动画时是静态圆弧），等待是 `border-button` 空心圆，失败是 `danger` 实心叉；当前和失败的一步用
+    `body-md-strong`，等待的步骤用 `text-muted`。
+    - 安装：检查安装位置、复制应用文件、注册 Solaris、启动后台服务。
+    - 更新：停止 Solaris 和后台服务、替换应用文件、注册 Solaris、启动后台服务。
+    - 卸载：关闭 Solaris、移除后台服务、移除应用文件；选了删除数据时再加「删除订阅、设置和日志」。
+
+    完成和失败时，图标右下角加 20px 的 `success` / `danger` 状态角标，外圈 2px `surface`。失败时说明文字就是 NSIS 的错误信息
+    （第一行，全文在详细信息里），失败的一步标红，之后的步骤保持等待。
+  - 按钮带：左侧是「显示详细信息 / 隐藏详细信息」文字按钮（`link` 色，箭头展开时朝下），展开后日志框替换步骤清单，窗口大小不变。
+    右侧按钮 32px 高、至少 112px 宽，文字更长时加宽（"Open Solaris"）；动作按钮在左、取消或关闭在右，默认按钮用
+    `button-primary`，禁用时按 `opacity.disabled` 变淡。进行中右侧不放按钮，标题栏关闭键禁用。安装、更新完成是「打开 Solaris」
+    和「关闭」；卸载完成和失败只有「关闭」。
+  - 控件保留 Win32 的键盘和辅助功能语义：Tab/Enter/Esc 可操作，键盘操作显示系统焦点框，步骤的读屏名称带上状态。
+    高对比度时全部改用系统颜色。英文用随包 Inter，中文优先 Microsoft YaHei UI / Microsoft YaHei；缺少中文补充字体时回退
+    Segoe UI 与系统字形回退。安装器文本不展示内部 IPC 或服务账户名。
 
 - **侧栏导航**：
   - 页面依次是概览、代理、订阅、分流、连接、日志、设置（英文 "Overview"、"Proxies"、"Subscriptions"、"Routing"、"Connections"、"Logs"、"Settings"）。「订阅」只管来源，「分流」决定用哪套规则。

@@ -23,6 +23,7 @@ def theme_header() -> str:
         "background",
         "surface",
         "surface-subtle",
+        "surface-selected",
         "border",
         "border-button",
         "border-control",
@@ -33,6 +34,9 @@ def theme_header() -> str:
         "primary-hover",
         "primary-pressed",
         "on-primary",
+        "link",
+        "link-hover",
+        "success",
         "danger",
         "control-track",
     )
@@ -59,7 +63,7 @@ def theme_header() -> str:
         ("Width", "installer-width"),
         ("Height", "installer-height"),
         ("Margin", "6"),
-        ("ButtonHeight", "control-md"),
+        ("ButtonHeight", "control-sm"),
     ):
         value = str(
             design["spacing"].get(
@@ -67,12 +71,18 @@ def theme_header() -> str:
             )
         )
         lines.append(f"inline constexpr int k{key} = {int(value.removesuffix('px'))};")
+    for key, token in (("RadiusXs", "xs"), ("RadiusSm", "sm")):
+        value = str(design["rounded"][token])
+        lines.append(f"inline constexpr int k{key} = {int(value.removesuffix('px'))};")
+    disabled = float(design["opacity"]["disabled"])
+    lines.append(f"inline constexpr float kDisabledOpacity = {disabled}f;")
     for name, role in (
         ("Title", "title"),
         ("Body", "body-md"),
+        ("Strong", "body-md-strong"),
         ("Caption", "caption"),
+        ("Section", "section-label"),
         ("Label", "label-md"),
-        ("Compact", "label-sm"),
         ("Mono", "data-sm"),
     ):
         token = design["typography"][role]

@@ -217,8 +217,12 @@ function Remove-LoginTasks {
 # resistant to replacement by a non-administrator as Program Files. Never relax an
 # existing parent's ACL, take ownership of someone else's folder, or traverse links.
 function Prepare-InstallDirectory {
-    if ($InstallDirectory -notmatch '^[A-Za-z]:\\[^\\]' -or $InstallDirectory.Substring(2) -match '[<>:"|?*\x00-\x1f]') {
-        throw 'Choose an absolute folder on a local fixed drive, such as D:\Solaris.'
+    # Every level is checked as written below, so '/' (another separator to Windows, and
+    # what a silent /D= passes through unchanged) is refused with the other invalid
+    # characters, and Windows must read the path exactly as it is written.
+    $invalid = 'Choose an absolute folder on a local fixed drive, such as D:\Solaris.'
+    if ($InstallDirectory -notmatch '^[A-Za-z]:\\[^\\]' -or $InstallDirectory.Substring(2) -match '[<>:"/|?*\x00-\x1f]') {
+        throw $invalid
     }
     $parts = $InstallDirectory.Substring(3).TrimEnd('\').Split('\')
     foreach ($part in $parts) {
@@ -228,6 +232,7 @@ function Prepare-InstallDirectory {
         }
     }
     $full = [IO.Path]::GetFullPath($InstallDirectory).TrimEnd('\')
+    if ($full -cne $InstallDirectory.TrimEnd('\')) { throw $invalid }
     $drive = [IO.DriveInfo]::new([IO.Path]::GetPathRoot($full))
     if ($drive.DriveType -ne [IO.DriveType]::Fixed -or $drive.DriveFormat -notin @('NTFS', 'ReFS')) {
         throw 'The install folder needs a local fixed NTFS or ReFS drive with Windows permissions.'
@@ -247,7 +252,9 @@ function Prepare-InstallDirectory {
             [Security.AccessControl.AccessControlType]::Allow)
         $security.AddAccessRule($rule)
     }
-    function Assert-Protected([string] $Path, [bool] $VolumeRoot = $false) {
+    # Inside: the install folder or something in it, where what this installer writes
+    # inherits the folder's entries.
+    function Assert-Protected([string] $Path, [bool] $VolumeRoot = $false, [bool] $Inside = $false) {
         $item = Get-Item -LiteralPath $Path -Force
         if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "Linked folders or files are not allowed: $Path" }
         $acl = Get-Acl -LiteralPath $Path
@@ -260,9 +267,13 @@ function Prepare-InstallDirectory {
         # the volume root is harmless; deleting children or changing its ACL is not.
         $danger = if ($VolumeRoot) { [int64]0x100C0040 } else { [int64]0x500D0156 }
         foreach ($rule in $acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])) {
-            if ($rule.AccessControlType -ne 'Allow' -or
-                ($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly) -or
-                $rule.IdentityReference.Value -in $trusted) { continue }
+            if ($rule.AccessControlType -ne 'Allow' -or $rule.IdentityReference.Value -in $trusted) { continue }
+            # An inherit-only entry grants nothing on this folder, but the files and folders
+            # created in it inherit it. Above the install folder, every level is either
+            # checked itself or created with the protected ACL, which inherits nothing.
+            # CREATOR OWNER becomes the elevated installer's owner, Administrators.
+            if (($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly) -and
+                (-not $Inside -or $rule.IdentityReference.Value -eq 'S-1-3-0')) { continue }
             if (([int64]$rule.FileSystemRights -band $danger) -ne 0) {
                 throw "Other users can modify this location. Choose a protected folder, such as C:\Program Files\Solaris: $Path"
             }
@@ -270,15 +281,16 @@ function Prepare-InstallDirectory {
     }
     $current = $drive.RootDirectory.FullName
     Assert-Protected $current $true
-    foreach ($part in $parts) {
-        $current = Join-Path $current $part
+    for ($level = 0; $level -lt $parts.Count; $level++) {
+        $current = Join-Path $current $parts[$level]
         if (-not (Test-Path -LiteralPath $current)) {
             # Apply the protected ACL at creation, before any application file is written.
             $null = [IO.Directory]::CreateDirectory($current, $security)
         }
         if (-not [IO.Directory]::Exists($current)) { throw "Not a directory: $current" }
-        Assert-Protected $current
+        Assert-Protected $current $false ($level -eq $parts.Count - 1)
     }
+    if ($current -ne $full) { throw $invalid }
     $key = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Solaris'
     $installed = (Get-ItemProperty -LiteralPath $key -ErrorAction SilentlyContinue).InstallLocation
     $marker = Join-Path $full '.solaris-install-root'
@@ -297,7 +309,7 @@ function Prepare-InstallDirectory {
     $pending.Push($full)
     while ($pending.Count) {
         foreach ($item in Get-ChildItem -LiteralPath $pending.Pop() -Force) {
-            Assert-Protected $item.FullName
+            Assert-Protected $item.FullName $false $true
             if ($item.PSIsContainer) { $pending.Push($item.FullName) }
         }
     }

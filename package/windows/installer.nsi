@@ -63,20 +63,7 @@ LoadLanguageFile "${NSISDIR}\Contrib\Language files\SimpChinese.nlf"
 
 LangString InterfaceFailed ${LANG_ENGLISH} "The setup window could not be opened. Please run the installer again."
 LangString InterfaceFailed ${LANG_SIMPCHINESE} "无法打开安装界面，请重新运行安装程序。"
-LangString CopyingFiles ${LANG_ENGLISH} "Copying application files…"
-LangString CopyingFiles ${LANG_SIMPCHINESE} "正在复制应用文件…"
-LangString CopyFailed ${LANG_ENGLISH} "The application files could not be replaced. Close programs using Solaris files and run the installer again."
-LangString CopyFailed ${LANG_SIMPCHINESE} "无法替换应用文件。请关闭正在使用 Solaris 文件的程序，然后重新运行安装程序。"
-LangString CheckingDirectory ${LANG_ENGLISH} "Checking the install folder…"
-LangString CheckingDirectory ${LANG_SIMPCHINESE} "正在检查安装文件夹…"
-LangString RegisteringApp ${LANG_ENGLISH} "Registering Solaris…"
-LangString RegisteringApp ${LANG_SIMPCHINESE} "正在注册 Solaris…"
-LangString RemovingFiles ${LANG_ENGLISH} "Removing application files…"
-LangString RemovingFiles ${LANG_SIMPCHINESE} "正在移除应用文件…"
-LangString RemovalFailed ${LANG_ENGLISH} "An installed file could not be removed. Close programs using Solaris files and run the installer again:"
-LangString RemovalFailed ${LANG_SIMPCHINESE} "无法移除已安装的文件。请关闭正在使用 Solaris 文件的程序，然后重新运行安装程序："
-LangString ClearingData ${LANG_ENGLISH} "Clearing selected application data…"
-LangString ClearingData ${LANG_SIMPCHINESE} "正在清除所选应用数据…"
+!include /CHARSET=UTF8 "${__FILEDIR__}\messages.nsh"
 
 !if "${APP_ARCH}" == "arm64"
 LangString NeedsWindows ${LANG_ENGLISH} "This ${PRODUCT} package needs Windows 11 on ARM64."
@@ -91,16 +78,6 @@ LangString SetupFailed ${LANG_ENGLISH} "${PRODUCT} could not complete the operat
 LangString SetupFailed ${LANG_SIMPCHINESE} "${PRODUCT} 未能完成操作。"
 LangString UninstallerFailed ${LANG_ENGLISH} "The installed version of ${PRODUCT} could not be removed (result: $0). Uninstall it in Settings > Apps, then run this installer again."
 LangString UninstallerFailed ${LANG_SIMPCHINESE} "无法移除已安装的 ${PRODUCT}（结果：$0）。请先在“设置 > 应用”中卸载，再运行本安装程序。"
-LangString ClosingUI ${LANG_ENGLISH} "Closing ${PRODUCT}…"
-LangString ClosingUI ${LANG_SIMPCHINESE} "正在关闭 ${PRODUCT}…"
-LangString StoppingService ${LANG_ENGLISH} "Stopping the ${PRODUCT} service…"
-LangString StoppingService ${LANG_SIMPCHINESE} "正在停止 ${PRODUCT} 服务…"
-LangString RemovingOld ${LANG_ENGLISH} "Removing the installed version…"
-LangString RemovingOld ${LANG_SIMPCHINESE} "正在移除已安装的版本…"
-LangString StartingService ${LANG_ENGLISH} "Starting the ${PRODUCT} service…"
-LangString StartingService ${LANG_SIMPCHINESE} "正在启动 ${PRODUCT} 服务…"
-LangString RemovingService ${LANG_ENGLISH} "Removing the ${PRODUCT} service…"
-LangString RemovingService ${LANG_SIMPCHINESE} "正在移除 ${PRODUCT} 服务…"
 LangString DataSection ${LANG_ENGLISH} "Subscriptions, settings and logs"
 LangString DataSection ${LANG_SIMPCHINESE} "订阅、设置和日志"
 
@@ -193,9 +170,10 @@ Function .onInit
   ${EndIf}
   IfSilent done
   ${If} $Upgrade == 1
-    !insertmacro UiBegin "upgrade"
+    ReadRegStr $1 HKLM "${UNINSTALL_KEY}" "DisplayVersion"
+    !insertmacro UiBegin "upgrade" "$1"
   ${Else}
-    !insertmacro UiBegin "install"
+    !insertmacro UiBegin "install" ""
   ${EndIf}
   done:
 FunctionEnd
@@ -203,6 +181,9 @@ FunctionEnd
 Section
   InitPluginsDir
   File "/oname=$PLUGINSDIR\setup.ps1" "${SETUP_SCRIPT}"
+  ; The window's steps: check the location (stop Solaris, for an update), copy (replace) the
+  ; files, register, start the service.
+  !insertmacro UiStep 0
   !insertmacro UiStatus "$(CheckingDirectory)"
   !insertmacro Setup prepare-directory
   ; setup.ps1 asks the UI to quit, and ends it when it does not; the tunnel runs in the service.
@@ -210,6 +191,7 @@ Section
   !insertmacro Setup close-ui
   !insertmacro UiStatus "$(StoppingService)"
   !insertmacro Setup stop-service
+  !insertmacro UiStep 1
   ; The previous uninstaller removes exactly the files it installed, so files a newer
   ; version no longer ships do not stay behind. Without it, the new files go over the old.
   ${If} $Upgrade == 1
@@ -257,6 +239,7 @@ Section
     !insertmacro Fail "$(CopyFailed)" 1603
   ${EndIf}
 
+  !insertmacro UiStep 2
   !insertmacro UiStatus "$(RegisteringApp)"
   WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayName" "${PRODUCT}"
   WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayVersion" "${APP_VERSION}"
@@ -278,6 +261,7 @@ Section
 
   ; Created, or pointed at this installation again, and started; it restores the tunnel
   ; that was running before the upgrade.
+  !insertmacro UiStep 3
   !insertmacro UiStatus "$(StartingService)"
   !insertmacro Setup install-service
 SectionEnd
@@ -323,6 +307,15 @@ Function un.onUninstFailed
   ${EndIf}
 FunctionEnd
 
+; Called by a newer installer (/UPGRADE), the uninstaller reports to it, and the installer is
+; what to run again; on its own, the uninstaller is.
+!macro RemovalFailed PATH
+  ${If} $UpgradeCall == 1
+    !insertmacro Fail "$(RemovalFailed) ${PATH}" 1603
+  ${Else}
+    !insertmacro Fail "$(UninstallRemovalFailed) ${PATH}" 1603
+  ${EndIf}
+!macroend
 !include "${REMOVE_FILES_INCLUDE}"
 
 Function un.RemoveFiles
@@ -340,8 +333,12 @@ Section "!un.${PRODUCT}" UninstallProgram
   ${EndIf}
   InitPluginsDir
   File "/oname=$PLUGINSDIR\setup.ps1" "${SETUP_SCRIPT}"
+  ; The window's steps: close Solaris, remove the service, remove the files, and the data
+  ; when it was chosen.
+  !insertmacro UiStep 0
   !insertmacro UiStatus "$(ClosingUI)"
   !insertmacro Setup close-ui
+  !insertmacro UiStep 1
   !insertmacro UiStatus "$(RemovingService)"
   !insertmacro Setup remove-service
   ; Every user's "Open at sign-in" task (src/solaris/desktop/login.py).
@@ -350,6 +347,7 @@ Section "!un.${PRODUCT}" UninstallProgram
   !insertmacro UnregisterScheme clash
   Delete "$SMPROGRAMS\${PRODUCT}.lnk"
   DeleteRegKey HKLM "${UNINSTALL_KEY}"
+  !insertmacro UiStep 2
   !insertmacro UiStatus "$(RemovingFiles)"
   Call un.RemoveFiles
   Delete "$INSTDIR\${UNINSTALLER}"
@@ -365,6 +363,7 @@ Section /o "un.$(DataSection)" UninstallData
   ${If} $UpgradeCall == 1
     Return
   ${EndIf}
+  !insertmacro UiStep 3
   !insertmacro UiStatus "$(ClearingData)"
   RMDir /r "$APPDATA\${PRODUCT}"
   SetShellVarContext current
@@ -396,9 +395,9 @@ Function un.onInit
   ${EndIf}
   IfSilent done
   ${If} ${SectionIsSelected} ${UninstallData}
-    !insertmacro UiBegin "uninstall-purge"
+    !insertmacro UiBegin "uninstall-purge" ""
   ${Else}
-    !insertmacro UiBegin "uninstall"
+    !insertmacro UiBegin "uninstall" ""
   ${EndIf}
   ${If} $0 == "purge"
     !insertmacro SelectSection ${UninstallData}
