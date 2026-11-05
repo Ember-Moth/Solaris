@@ -13,7 +13,7 @@
 - **macOS**：在 Apple Silicon 构建机上安装 Xcode、XcodeGen（`brew install xcodegen`）和 Rosetta 2。脚本分别用 arm64/x86_64 Python 编译，再合并；产物是双架构的 `build/app/Solaris.app`：
 
   ```bash
-  uv run --with nuitka==4.2.2 python scripts/build_app.py --unsigned
+  uv run --with nuitka==4.3.4 python scripts/build_app.py --unsigned
   ```
 
   不带 `--unsigned` 时用钥匙串里的 Developer ID 证书和描述文件签名。不签名的 app 只能查看，不能激活系统扩展；签名
@@ -22,7 +22,7 @@
   `build/windows/Solaris-<版本>-windows-x64-setup.exe`：
 
   ```bash
-  uv run --with nuitka==4.2.2 python scripts/build_windows.py
+  uv run --with nuitka==4.3.4 python scripts/build_windows.py
   ```
 
   Windows 11 ARM64 上使用原生 ARM64 Python 构建，产物位于 `build/windows-arm64/`：
@@ -30,7 +30,7 @@
   ```powershell
   $env:UV_PYTHON_ARCH = 'aarch64'
   uv sync --frozen --python cpython-3.14.7-windows-aarch64
-  uv run --frozen --with nuitka==4.2.2 python scripts/build_windows.py --arch arm64
+  uv run --frozen --with nuitka==4.3.4 python scripts/build_windows.py --arch arm64
   ```
 
   GUI 的 Python、PySide6 和原生扩展必须同架构；构建器会检查解释器及全部打包 PE 文件。Go 服务可交叉编译，GUI 使用

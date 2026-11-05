@@ -147,7 +147,7 @@ jobs:
         env:
           SOLARIS_GOOGLE_CLIENT_ID: ${{ secrets.SOLARIS_GOOGLE_CLIENT_ID }}
           SOLARIS_GOOGLE_CLIENT_SECRET: ${{ secrets.SOLARIS_GOOGLE_CLIENT_SECRET }}
-        run: uv run --frozen --with nuitka==4.2.2 python scripts/build_app.py
+        run: uv run --frozen --with nuitka==4.3.4 python scripts/build_app.py
 
       # The app is notarized and stapled first, so that it opens offline once copied out of
       # the image; then the image itself.
@@ -308,7 +308,7 @@ jobs:
         env:
           SOLARIS_GOOGLE_CLIENT_ID: ${{ secrets.SOLARIS_GOOGLE_CLIENT_ID }}
           SOLARIS_GOOGLE_CLIENT_SECRET: ${{ secrets.SOLARIS_GOOGLE_CLIENT_SECRET }}
-        run: uv run --frozen --with nuitka==4.2.2 python scripts/build_windows.py --arch ${{ matrix.arch }} --skip-installer
+        run: uv run --frozen --with nuitka==4.3.4 python scripts/build_windows.py --arch ${{ matrix.arch }} --skip-installer
 
       # Releases are unsigned (D29), and this step marks where signing goes: it would sign
       # Solaris.exe, solaris-service.exe and the other executables, DLLs and .pyd files in

@@ -812,7 +812,7 @@ Windows 安装器为两个 Solaris 可执行文件设置独立的 WER mini dump 
 | macOS 包 | `scripts/build_app.py` 组装并签名 `Solaris.app`；发布工作流公证后做成 `.dmg` |
 | 崩溃符号 | Nuitka `--unstripped`；macOS dSYM 校验 UUID；Windows PDB 与精确 Go 服务二进制独立存档，发布 artifact 保留 90 天 |
 
-- **Windows 构建**（`scripts/build_windows.py`，在 Windows 上运行，`uv run --with nuitka==4.2.2`）：拉取 GEO 数据
+- **Windows 构建**（`scripts/build_windows.py`，在 Windows 上运行，`uv run --with nuitka==4.3.4`）：拉取 GEO 数据
   （`scripts/fetch_geodata.py`）、构建服务、Nuitka 构建界面（不带界面用不到的 Qt 模块、QML 目录和图片格式插件，与
   macOS 相同；Qt 的 OpenSSL 后端也不带，TLS 用 Schannel，CPython 自带的 libssl 和 libcrypto 留着给 `ssl` 模块），
   x64 组装到 `build/windows/Solaris/`，ARM64 组装到 `build/windows-arm64/Solaris/`；检查必需文件、链接及每个 PE 的目标架构，

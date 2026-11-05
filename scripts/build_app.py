@@ -2,8 +2,8 @@
 Contents/MacOS, SolarisManager.dylib in Contents/Frameworks and the system extension in
 Contents/Library/SystemExtensions, then sign it with the Developer ID identity and verify.
 
-    uv run --with nuitka==4.2.2 python scripts/build_app.py               # signed
-    uv run --with nuitka==4.2.2 python scripts/build_app.py --unsigned    # ad hoc
+    uv run --with nuitka==4.3.4 python scripts/build_app.py               # signed
+    uv run --with nuitka==4.3.4 python scripts/build_app.py --unsigned    # ad hoc
 
 The native parts come from scripts/build_apple.py's steps, built for the same version and build
 number; the app lands in build/app/Solaris.app. Signing follows build_apple.py: the identity is
@@ -60,7 +60,7 @@ EXECUTABLE = "SolarisUI"
 URL_SCHEMES = ("solaris", "clash")  # one-click import (D6); the UI handles the links
 CORE_VERSION_KEY = "SolarisCoreVersion"  # read by solaris.host.extension.bundled_host
 MIHOMO_MODULE = "github.com/metacubex/mihomo"
-NUITKA_VERSION = "4.2.2"
+NUITKA_VERSION = "4.3.4"
 
 # Qt modules that --include-qt-plugins=qml brings and the UI never loads. Libraries are named
 # QtX in the bundle. Kept: QtDBus (QtGui links it), QtOpenGL (the QtQuick binding needs it),

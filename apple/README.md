@@ -124,16 +124,16 @@ Developer ID 证书签名并校验。脚本依次：
 ## 组装 Solaris.app
 
 ```bash
-uv run --with nuitka==4.2.2 python scripts/build_app.py
+uv run --with nuitka==4.3.4 python scripts/build_app.py
 ```
 
 ```bash
-uv run --with nuitka==4.2.2 python scripts/build_app.py --unsigned
+uv run --with nuitka==4.3.4 python scripts/build_app.py --unsigned
 ```
 
 脚本先按 `build_apple.py` 的步骤构建原生部分（带签名，或 `--unsigned` 时不签名），再：
 
-1. 在 `build/app/python/arm64` 和 `x86_64` 建立隔离且锁定依赖的 Python 环境，分别用 Nuitka 4.2.2 把 `package/entry.py` 编成 app（`--mode=app`），带上 `src/solaris/ui`（QML、托盘图标、
+1. 在 `build/app/python/arm64` 和 `x86_64` 建立隔离且锁定依赖的 Python 环境，分别用 Nuitka 4.3.4 把 `package/entry.py` 编成 app（`--mode=app`），带上 `src/solaris/ui`（QML、托盘图标、
    字体）和编译好的翻译。`--include-qt-plugins=qml` 会带进全部 QML 模块，脚本按清单排除界面用不到的
    （3D、图表、多媒体、WebEngine、其他控件样式等）；Qt 的 TLS 只留 Secure Transport。
    编译用 Xcode 的 clang，不用 ccache（ccache 要求 PATH 里同名的 clang 就是所用的那个）；

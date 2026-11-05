@@ -2,8 +2,8 @@
 standalone mode, the service by go build, the GEO data beside it, then the NSIS installer
 around the three.
 
-    uv run --with nuitka==4.2.2 python scripts/build_windows.py                    # all
-    uv run --with nuitka==4.2.2 python scripts/build_windows.py --skip-installer   # directory
+    uv run --with nuitka==4.3.4 python scripts/build_windows.py                    # all
+    uv run --with nuitka==4.3.4 python scripts/build_windows.py --skip-installer   # directory
     uv run python scripts/build_windows.py --installer-only                        # installer
 
 Everything lands in build/windows:
