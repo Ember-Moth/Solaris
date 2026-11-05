@@ -484,7 +484,8 @@ void layout(State& s) {
 
   y = below + s.px(24);
   place(s.purge, m, y, width, s.px(checkRow));
-  place(s.purgeNote, m + s.px(28), y + s.px(checkRow + 4), width - s.px(28), s.px(18));
+  // Two caption lines: the English note wraps.
+  place(s.purgeNote, m + s.px(28), y + s.px(checkRow + 4), width - s.px(28), s.px(36));
 
   y = bottom - s.px(checkRow);
   const int agreementWidth = s.px(28) + measure(s, s.bodyFont, s.agreementLabel).cx + s.px(2);
@@ -956,8 +957,10 @@ void makeControls(State& s) {
                     BS_AUTOCHECKBOX | WS_TABSTOP, purgeID);
   SetWindowSubclass(s.purge, checkboxProcedure, 1, reinterpret_cast<DWORD_PTR>(&s));
   SendMessageW(s.purge, BM_SETCHECK, s.purgeDefault ? BST_CHECKED : BST_UNCHECKED, 0);
-  s.purgeNote = control(s, L"STATIC", s.tr(L"包括此电脑上所有用户的 Solaris 数据，删除后无法恢复。",
-                                           L"Includes Solaris data of every user on this PC. This can’t be undone."), SS_NOPREFIX);
+  // What the data section removes: the service's data for every user, and the UI's data of
+  // the user running the uninstaller only (installer.nsi).
+  s.purgeNote = control(s, L"STATIC", s.tr(L"包括你的订阅、设置和日志，以及后台服务为所有用户保存的配置，删除后无法恢复。",
+                                           L"Includes your subscriptions, settings and logs, and the configuration the background service keeps for every user. This can’t be undone."), SS_NOPREFIX);
   for (int i = 0; i < stepLimit; ++i) s.steps[i] = control(s, L"STATIC", L"", SS_OWNERDRAW | SS_NOPREFIX, firstStepID + i);
   s.logLabel = control(s, L"STATIC", s.tr(L"操作详情", L"Operation details"), SS_NOPREFIX);
   s.logEdit = control(s, L"EDIT", L"", ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL | WS_TABSTOP, logID);
