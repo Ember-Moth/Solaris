@@ -5,6 +5,7 @@ directory, when makensis is installed."""
 from __future__ import annotations
 
 import ctypes
+import re
 import shutil
 import stat
 import struct
@@ -14,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts import build_windows
+from scripts import build_installer_ui, build_windows
 from scripts.build_apple import BuildError
 
 
@@ -125,6 +126,21 @@ def test_installer_name() -> None:
     assert build_windows.installer_name("0.2.0", "arm64") == "Solaris-0.2.0-windows-arm64-setup.exe"
     with pytest.raises(BuildError, match="unsupported Windows architecture"):
         build_windows.installer_name("0.2.0", "x86")
+
+
+def test_installer_ui_theme_has_what_the_surface_uses() -> None:
+    # The Win32 surface compiles only on Windows; its colours and sizes come from DESIGN.md.
+    header = build_installer_ui.theme_header()
+    fields = re.findall(r"COLORREF (\w+);", header)
+    for mode in ("kLight", "kDark"):
+        values = re.search(rf"{mode} = \{{(.*)\}};", header)
+        assert values
+        assert values.group(1).count("RGB(") == len(fields)
+    source = (build_installer_ui.SOURCE / "setup_ui.cpp").read_text(encoding="utf-8")
+    assert set(re.findall(r"palette\.(\w+)", source)) <= set(fields)
+    constants = set(re.findall(r"inline constexpr \w+ (k\w+) =", header))
+    assert set(re.findall(r"\b(k[A-Z]\w+)\b", source)) <= constants | {"kLight", "kDark"}
+    assert "inline constexpr int kButtonHeight = 32;" in header
 
 
 @pytest.mark.skipif(

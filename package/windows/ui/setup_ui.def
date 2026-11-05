@@ -3,6 +3,7 @@ EXPORTS
     Begin
     Status
     Log
+    Step
     Finish
     Capture
     Close
