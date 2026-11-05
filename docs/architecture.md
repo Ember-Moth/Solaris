@@ -757,6 +757,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
     交互安装与升级需主动勾选 GPLv3 同意项，可在同一窗口阅读仓库 LICENSE 全文；静默执行不显示确认页。
     写文件及执行已有程序前，`prepare-directory` 检查本地固定 NTFS/ReFS 卷、路径各级的所有者和 ACL、目录链接及已有内容。
     只新建缺失目录，并在创建时设置受保护的 ACL（SYSTEM / Administrators 完全控制，Users 读取执行），不修改现有父目录权限。
+    路径只接受 `\` 分隔、与 Windows 规范化结果一致的写法（静默安装的 `/D=` 不经界面，含 `/` 时直接拒绝），逐级检查；
+    安装目录及其中的文件夹上只对子项生效（inherit-only）的授权也计入，因为装进去的文件会继承（CREATOR OWNER 除外）。
     普通用户可修改/替换的目录、链接和不属于 Solaris 的非空目标会被拒绝；应用目录的标记支持失败后的重试。然后复制
     文件；用 `sc.exe` 注册 `SolarisService`（LocalSystem、自动启动，5.2 节的故障恢复，`failureflag 1` 让服务带错误
     退出时也重启）并启动；在 HKLM 下注册 `solaris:` 和 `clash:`，命令是 `"<安装目录>\Solaris.exe" "%1"`；所有用户的

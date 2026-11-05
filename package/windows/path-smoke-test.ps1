@@ -39,10 +39,54 @@ try {
     $before = (Get-Acl -LiteralPath $writable).Sddl
     Check-Path (Join-Path $writable 'Child') $false
     if ((Test-Path (Join-Path $writable 'Child')) -or (Get-Acl -LiteralPath $writable).Sddl -ne $before) { throw 'An unsafe parent was changed' }
+    # A silent /D= passes '/' through: Windows reads it as a separator, so the writable
+    # parent must not hide behind it as part of one path component.
+    Check-Path "$writable/Child" $false
+    Check-Path "$sandbox/Slash" $false
+    if ((Test-Path (Join-Path $writable 'Child')) -or (Test-Path (Join-Path $sandbox 'Slash'))) { throw 'A path with / was created' }
     $link = Join-Path $sandbox 'Junction'
     $null = New-Item -ItemType Junction -Path $link -Target $safe
     Check-Path (Join-Path $link 'Child') $false
+    Check-Path "$link/Child" $false
     if (Test-Path (Join-Path $safe 'Child')) { throw 'A directory link was followed' }
+    # Inherit-only entries grant nothing on a folder itself, but the installed files and
+    # folders inherit them. Fixtures are owned by Administrators, so only the entry decides.
+    function New-Fixture([string] $Path, [string] $Sid = '', [string] $Inheritance = 'ObjectInherit') {
+        if (-not (Test-Path -LiteralPath $Path)) { $null = New-Item -ItemType Directory -Path $Path }
+        $acl = Get-Acl -LiteralPath $Path
+        $acl.SetOwner([Security.Principal.SecurityIdentifier]::new('S-1-5-32-544'))
+        if ($Sid) {
+            $acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new(
+                [Security.Principal.SecurityIdentifier]::new($Sid), [Security.AccessControl.FileSystemRights]::Modify,
+                [Security.AccessControl.InheritanceFlags]$Inheritance, [Security.AccessControl.PropagationFlags]::InheritOnly,
+                [Security.AccessControl.AccessControlType]::Allow))
+        }
+        Set-Acl -LiteralPath $Path -AclObject $acl
+    }
+    $control = Join-Path $sandbox 'Existing'
+    New-Fixture $control
+    Check-Path $control $true
+    $inheritOnly = Join-Path $sandbox 'InheritOnly'
+    New-Fixture $inheritOnly 'S-1-5-32-545'
+    Check-Path $inheritOnly $false
+    $folders = Join-Path $sandbox 'InheritOnlyFolders'
+    New-Fixture $folders 'S-1-5-32-545' 'ContainerInherit'
+    Check-Path $folders $false
+    # An earlier installation's folder, as an upgrade finds it.
+    $upgrade = Join-Path $sandbox 'Upgrade'
+    Check-Path $upgrade $true
+    New-Fixture (Join-Path $upgrade 'Lib')
+    Check-Path $upgrade $true
+    New-Fixture (Join-Path $upgrade 'Lib') 'S-1-5-32-545'
+    Check-Path $upgrade $false
+    # CREATOR OWNER's entry becomes the elevated installer's owner, as in Program Files.
+    $creator = Join-Path $sandbox 'CreatorOwner'
+    New-Fixture $creator 'S-1-3-0' 'ContainerInherit, ObjectInherit'
+    Check-Path $creator $true
+    # A parent's inherit-only entry does not reach the protected folder created in it.
+    $parent = Join-Path $sandbox 'InheritOnlyParent'
+    New-Fixture $parent 'S-1-5-32-545' 'ContainerInherit, ObjectInherit'
+    Check-Path (Join-Path $parent 'Child') $true
     $userOwned = Join-Path $sandbox 'UserOwned'
     $null = New-Item -ItemType Directory -Path $userOwned
     $acl = Get-Acl -LiteralPath $userOwned
@@ -58,7 +102,7 @@ try {
         [Security.AccessControl.AccessControlType]::Allow))
     Set-Acl -LiteralPath $unsafeFile -AclObject $acl
     Check-Path $safe $false
-    Write-Output 'Custom paths: Unicode, protected ACL, retries, unsafe parents/content, user ownership and reparse points passed.'
+    Write-Output 'Custom paths: Unicode, protected ACL, retries, unsafe parents/content, / separators, inherit-only entries, user ownership and reparse points passed.'
 } finally {
     if (Test-Path -LiteralPath (Join-Path $sandbox 'Junction')) { (Get-Item -LiteralPath (Join-Path $sandbox 'Junction') -Force).Delete() }
     Remove-Item -LiteralPath $sandbox -Recurse -Force -ErrorAction SilentlyContinue

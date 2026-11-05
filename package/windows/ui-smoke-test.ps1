@@ -94,8 +94,9 @@ public static class SetupUI {
 '@ -ReferencedAssemblies System.Drawing
 
 # Control IDs (setup_ui.cpp).
-$Action = 1001; $Cancel = 1002; $Details = 1003; $Purge = 1004; $Agreement = 1005; $Path = 1006
-$Link = 1008; $LicenseText = 1009; $Subtitle = 1010; $FirstStep = 1011; $Log = 1015
+# PowerShell names ignore case: the Id suffix keeps them apart from locals such as $licenseText.
+$ActionId = 1001; $CancelId = 1002; $DetailsId = 1003; $PurgeId = 1004; $AgreementId = 1005; $PathId = 1006
+$LinkId = 1008; $LicenseId = 1009; $SubtitleId = 1010; $FirstStepId = 1011; $LogId = 1015
 $Tab = 0x09; $Enter = 0x0D; $Escape = 0x1B
 
 # A step's accessible name ends with its state, in English or Chinese.
@@ -147,7 +148,7 @@ function Toggle([IntPtr] $Window, [int] $Id) {
 
 # The license link is a SysLink: its link item is invoked like a button.
 function Invoke-Link([IntPtr] $Window) {
-    $element = Element $Window $Link
+    $element = Element $Window $LinkId
     $candidates = @($element) + @($element.FindAll([System.Windows.Automation.TreeScope]::Descendants,
         [System.Windows.Automation.Condition]::TrueCondition))
     foreach ($candidate in $candidates) {
@@ -155,7 +156,7 @@ function Invoke-Link([IntPtr] $Window) {
         if ($candidate.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern, [ref] $pattern)) {
             if ($candidate.Current.Name -notmatch 'GPL') { throw "The license link is named '$($candidate.Current.Name)'" }
             $pattern.Invoke()
-            Wait-Until { Visible $Window $LicenseText } 'The license link did not open the license'
+            Wait-Until { Visible $Window $LicenseId } 'The license link did not open the license'
             return
         }
     }
@@ -163,11 +164,11 @@ function Invoke-Link([IntPtr] $Window) {
     Write-Output "::warning::The license link exposes no invoke pattern: $(($candidates | ForEach-Object { $_.Current.ControlType.ProgrammaticName }) -join ', ')"
     $element.SetFocus()
     [SetupUI]::Key($Window, $Enter)
-    Wait-Until { Visible $Window $LicenseText } 'The license link did not open the license'
+    Wait-Until { Visible $Window $LicenseId } 'The license link did not open the license'
 }
 
 function Step-State([IntPtr] $Window, [int] $Index) {
-    $name = [SetupUI]::Text((Handle $Window ($FirstStep + $Index)))
+    $name = [SetupUI]::Text((Handle $Window ($FirstStepId + $Index)))
     foreach ($state in $StepStates.Keys) {
         foreach ($marker in $StepStates[$state]) { if ($name.Contains($marker)) { return $state } }
     }
@@ -184,14 +185,14 @@ function Start-Preview([string] $Mode, [string] $Language, [string] $Theme, [str
     Wait-Until { [SetupUI]::Find($process.Id) -ne [IntPtr]::Zero } 'No installer window appeared'
     $window = [SetupUI]::Find($process.Id)
     Wait-Until {
-        if ([SetupUI]::GetDlgItem($window, $Action) -eq [IntPtr]::Zero) { return $false }
-        try { return (Element $window $Action).Current.Name.Length -gt 0 } catch { return $false }
+        if ([SetupUI]::GetDlgItem($window, $ActionId) -eq [IntPtr]::Zero) { return $false }
+        try { return (Element $window $ActionId).Current.Name.Length -gt 0 } catch { return $false }
     } 'Installer text was not initialized'
     Start-Sleep -Milliseconds 250
-    if ($Language -eq 'zh' -and (Element $window $Action).Current.Name -notmatch '[\u4e00-\u9fff]') {
+    if ($Language -eq 'zh' -and (Element $window $ActionId).Current.Name -notmatch '[\u4e00-\u9fff]') {
         throw 'Chinese UI did not load'
     }
-    if ((Element $window $Subtitle).Current.Name -notmatch "Windows $Architecture$") { throw 'Wrong application architecture in the installer header' }
+    if ((Element $window $SubtitleId).Current.Name -notmatch "Windows $Architecture$") { throw 'Wrong application architecture in the installer header' }
     if ($Dpi -ne 96) { [SetupUI]::LayoutDpi($window, $Dpi) }
     $scale = if ($Dpi -ne 96) { "-$([int]($Dpi * 100 / 96))" } else { '' }
     return @{ Process = $process; Window = $window; Name = "$Mode-$Language-$Theme$scale" }
@@ -208,18 +209,18 @@ function Snapshot($Case, [string] $State) {
 }
 
 function Consent($Case) {
-    if (Enabled $Case.Window $Action) { throw 'The action was enabled before license consent' }
-    $agreement = Toggle $Case.Window $Agreement
+    if (Enabled $Case.Window $ActionId) { throw 'The action was enabled before license consent' }
+    $agreement = Toggle $Case.Window $AgreementId
     if ($agreement.Current.ToggleState -ne [System.Windows.Automation.ToggleState]::Off) { throw 'License consent was selected by default' }
     $agreement.Toggle()
-    if (-not (Enabled $Case.Window $Action)) { throw 'License consent did not enable the action' }
+    if (-not (Enabled $Case.Window $ActionId)) { throw 'License consent did not enable the action' }
 }
 
 # Starts the operation and captures each step as the preview reports it. The preview fails
 # at the second step with -Outcome failure; the steps after it stay waiting.
 function Run-Steps($Case, [int] $Count, [string] $Outcome, [switch] $DetailsWhileWorking) {
-    Invoke-Button $Case.Window $Action
-    Wait-Until { -not (Visible $Case.Window $Cancel) } 'Progress was not shown'
+    Invoke-Button $Case.Window $ActionId
+    Wait-Until { -not (Visible $Case.Window $CancelId) } 'Progress was not shown'
     $null = [SetupUI]::SendMessage($Case.Window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
     if (-not [SetupUI]::IsWindow($Case.Window)) { throw 'The busy window closed mid-operation' }
     $last = if ($Outcome -eq 'failure') { 1 } else { $Count - 1 }
@@ -230,31 +231,31 @@ function Run-Steps($Case, [int] $Count, [string] $Outcome, [switch] $DetailsWhil
         }
         Snapshot $Case "step$index"
         if ($DetailsWhileWorking -and $index -eq 1) {
-            Invoke-Button $Case.Window $Details
-            Wait-Until { Visible $Case.Window $Log } 'The details did not open'
+            Invoke-Button $Case.Window $DetailsId
+            Wait-Until { Visible $Case.Window $LogId } 'The details did not open'
             Snapshot $Case 'working-details'
-            Invoke-Button $Case.Window $Details
-            Wait-Until { -not (Visible $Case.Window $Log) } 'The details did not close'
+            Invoke-Button $Case.Window $DetailsId
+            Wait-Until { -not (Visible $Case.Window $LogId) } 'The details did not close'
         }
     }
-    Wait-Until { Visible $Case.Window $Cancel } 'No completion state' 30
+    Wait-Until { Visible $Case.Window $CancelId } 'No completion state' 30
     if ($Outcome -eq 'failure') {
         if ((Step-State $Case.Window 1) -ne 'failed') { throw 'The failing step is not marked failed' }
         for ($index = 2; $index -lt $Count; $index++) {
             if ((Step-State $Case.Window $index) -ne 'waiting') { throw "Step $index ran after the failure" }
         }
-        if (Visible $Case.Window $Action) { throw 'A failure offers more than Close' }
+        if (Visible $Case.Window $ActionId) { throw 'A failure offers more than Close' }
     }
     Snapshot $Case $Outcome
-    Invoke-Button $Case.Window $Details
-    Wait-Until { Visible $Case.Window $Log } 'The details did not open'
+    Invoke-Button $Case.Window $DetailsId
+    Wait-Until { Visible $Case.Window $LogId } 'The details did not open'
     Snapshot $Case "$Outcome-details"
 }
 
 # Cancel remains the default for uninstall. Enter must not remove anything.
 $case = Start-Preview 'uninstall' 'en' 'light'
 try {
-    Wait-Until { [SetupUI]::FocusedControl($case.Window) -eq $Cancel } 'Uninstall did not default to Cancel'
+    Wait-Until { [SetupUI]::FocusedControl($case.Window) -eq $CancelId } 'Uninstall did not default to Cancel'
     Snapshot $case 'ready'
     [SetupUI]::Key($case.Window, $Enter)
     Assert-Exit $case 1223
@@ -264,16 +265,16 @@ try {
 $case = Start-Preview 'install' 'zh' 'light'
 try {
     Snapshot $case 'ready'
-    Wait-Until { [SetupUI]::FocusedControl($case.Window) -eq $Path } 'Install did not start in the location field'
-    $pathElement = Element $case.Window $Path
+    Wait-Until { [SetupUI]::FocusedControl($case.Window) -eq $PathId } 'Install did not start in the location field'
+    $pathElement = Element $case.Window $PathId
     if (-not $pathElement.Current.Name) { throw 'The install path has no accessible label' }
     $pathElement.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue('C:\Solaris Preview')
     1..3 | ForEach-Object { [SetupUI]::Key($case.Window, $Tab) }
-    Wait-Until { [SetupUI]::FocusedControl($case.Window) -eq $Link } 'Tab did not reach the license link'
+    Wait-Until { [SetupUI]::FocusedControl($case.Window) -eq $LinkId } 'Tab did not reach the license link'
     Snapshot $case 'ready-focus'
     [SetupUI]::Key($case.Window, $Enter)
-    Wait-Until { Visible $case.Window $LicenseText } 'Enter did not open the license'
-    $licenseElement = Element $case.Window $LicenseText
+    Wait-Until { Visible $case.Window $LicenseId } 'Enter did not open the license'
+    $licenseElement = Element $case.Window $LicenseId
     if ($licenseElement.Current.Name -notmatch 'GPL') { throw 'The license reader has no accessible label' }
     # Multiline native readers expose TextPattern, not the single-line ValuePattern.
     $license = $licenseElement.GetCurrentPattern([System.Windows.Automation.TextPattern]::Pattern)
@@ -282,34 +283,34 @@ try {
     if ($readOnly -ne $true -or $licenseText -cne $licenseSource) { throw 'The complete read-only GPLv3 text differs from LICENSE' }
     Snapshot $case 'license'
     [SetupUI]::Key($case.Window, $Escape)
-    Wait-Until { -not (Visible $case.Window $LicenseText) } 'Esc did not leave the license'
-    if (Enabled $case.Window $Action) { throw 'Reading the license implicitly accepted it' }
+    Wait-Until { -not (Visible $case.Window $LicenseId) } 'Esc did not leave the license'
+    if (Enabled $case.Window $ActionId) { throw 'Reading the license implicitly accepted it' }
     Consent $case
-    (Toggle $case.Window $Agreement).Toggle()
-    if (Enabled $case.Window $Action) { throw 'Revoking consent did not disable Install' }
+    (Toggle $case.Window $AgreementId).Toggle()
+    if (Enabled $case.Window $ActionId) { throw 'Revoking consent did not disable Install' }
     Invoke-Link $case.Window
-    Invoke-Button $case.Window $Action
-    if ((Toggle $case.Window $Agreement).Current.ToggleState -ne [System.Windows.Automation.ToggleState]::On) { throw 'Agree did not accept the license' }
+    Invoke-Button $case.Window $ActionId
+    if ((Toggle $case.Window $AgreementId).Current.ToggleState -ne [System.Windows.Automation.ToggleState]::On) { throw 'Agree did not accept the license' }
     Run-Steps $case 4 'success' -DetailsWhileWorking
-    Invoke-Button $case.Window $Action
+    Invoke-Button $case.Window $ActionId
     Assert-Exit $case 10
 } finally { if (-not $case.Process.HasExited) { $case.Process.Kill() } }
 
 foreach ($sample in @(
-    @{ Mode='upgrade'; Lang='en'; Theme='dark'; Outcome='success'; Steps=4; Finish=$Action; Code=10 },
-    @{ Mode='install'; Lang='en'; Theme='dark'; Outcome='failure'; Steps=4; Finish=$Cancel; Code=0 },
-    @{ Mode='uninstall'; Lang='zh'; Theme='dark'; Outcome='success'; Steps=4; Purge=$true; Finish=$Cancel; Code=20 },
-    @{ Mode='uninstall'; Lang='en'; Theme='light'; Outcome='failure'; Steps=3; Finish=$Cancel; Code=0 },
-    @{ Mode='install'; Lang='en'; Theme='light'; Outcome='success'; Steps=4; Dpi=144; License=$true; Finish=$Cancel; Code=0 },
-    @{ Mode='upgrade'; Lang='zh'; Theme='dark'; Outcome='failure'; Steps=4; Dpi=144; License=$true; Finish=$Cancel; Code=0 }
+    @{ Mode='upgrade'; Lang='en'; Theme='dark'; Outcome='success'; Steps=4; Finish=$ActionId; Code=10 },
+    @{ Mode='install'; Lang='en'; Theme='dark'; Outcome='failure'; Steps=4; Finish=$CancelId; Code=0 },
+    @{ Mode='uninstall'; Lang='zh'; Theme='dark'; Outcome='success'; Steps=4; Purge=$true; Finish=$CancelId; Code=20 },
+    @{ Mode='uninstall'; Lang='en'; Theme='light'; Outcome='failure'; Steps=3; Finish=$CancelId; Code=0 },
+    @{ Mode='install'; Lang='en'; Theme='light'; Outcome='success'; Steps=4; Dpi=144; License=$true; Finish=$CancelId; Code=0 },
+    @{ Mode='upgrade'; Lang='zh'; Theme='dark'; Outcome='failure'; Steps=4; Dpi=144; License=$true; Finish=$CancelId; Code=0 }
 )) {
     $dpi = if ($sample.Dpi) { $sample.Dpi } else { 96 }
     $case = Start-Preview $sample.Mode $sample.Lang $sample.Theme $sample.Outcome $dpi
     try {
         Snapshot $case 'ready'
         if ($sample.Mode -eq 'uninstall') {
-            Wait-Until { [SetupUI]::FocusedControl($case.Window) -eq $Cancel } 'Uninstall did not default to Cancel'
-            $purge = Toggle $case.Window $Purge
+            Wait-Until { [SetupUI]::FocusedControl($case.Window) -eq $CancelId } 'Uninstall did not default to Cancel'
+            $purge = Toggle $case.Window $PurgeId
             if ($purge.Current.ToggleState -ne [System.Windows.Automation.ToggleState]::Off) { throw 'Data deletion was selected by default' }
             if ($sample.Purge) {
                 $purge.Toggle()
@@ -320,13 +321,13 @@ foreach ($sample in @(
             if ($sample.License) {
                 Invoke-Link $case.Window
                 Snapshot $case 'license'
-                Invoke-Button $case.Window $Cancel
-                Wait-Until { -not (Visible $case.Window $LicenseText) } 'Back did not leave the license'
+                Invoke-Button $case.Window $CancelId
+                Wait-Until { -not (Visible $case.Window $LicenseId) } 'Back did not leave the license'
             }
             Consent $case
         }
         Run-Steps $case $sample.Steps $sample.Outcome
-        if ($sample.Mode -eq 'uninstall' -and (Visible $case.Window $Action)) { throw 'Uninstall offers to open Solaris' }
+        if ($sample.Mode -eq 'uninstall' -and (Visible $case.Window $ActionId)) { throw 'Uninstall offers to open Solaris' }
         Invoke-Button $case.Window $sample.Finish
         Assert-Exit $case $sample.Code
     } finally { if (-not $case.Process.HasExited) { $case.Process.Kill() } }
