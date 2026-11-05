@@ -99,7 +99,7 @@ AppDialog {
                                     text: snapshot.modelData.detail
                                     role: Theme.type.caption
                                     color: Theme.textMuted
-                                    elide: Text.ElideRight
+                                    elide: Text.ElideMiddle  // a long device name, then counts
                                 }
                             }
 

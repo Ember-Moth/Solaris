@@ -26,7 +26,7 @@ AppDialog {
                 Layout.fillWidth: true
                 text: dialog.backup.snapshotTitle
                 role: Theme.type.bodySm
-                elide: Text.ElideRight
+                elide: Text.ElideMiddle  // a long device name, then when
             }
 
             AccessibleText {

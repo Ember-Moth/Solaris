@@ -23,6 +23,8 @@ ColumnLayout {
     }
 
     Flow {
+        id: flow
+
         Layout.fillWidth: true
         spacing: Theme.space2
 
@@ -38,9 +40,11 @@ ColumnLayout {
                 required property bool picked
                 required property bool added
 
-                width: Math.max(implicitWidth, 112)
+                // A long name takes a line at most and loses its middle, so the count stays.
+                width: Math.min(Math.max(implicitWidth, 112), flow.width)
                 implicitHeight: Theme.controlSm
                 text: note !== "" ? name + "  " + note : name
+                elide: Text.ElideMiddle
                 checked: picked
                 enabled: !added
                 Accessible.name: name

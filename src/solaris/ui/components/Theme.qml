@@ -142,6 +142,7 @@ QtObject {
     readonly property int pageBottom: 40  // spacing.page-bottom
     readonly property int sidebarWidth: 216  // spacing.sidebar-width
     readonly property int groupColumnMin: 400  // spacing.group-column-min
+    readonly property int nameMinWidth: 160  // spacing.name-min-width
     readonly property int windowDefaultWidth: 1280  // spacing.window-default-width
     readonly property int windowDefaultHeight: 800  // spacing.window-default-height
     readonly property int windowMinWidth: 960  // spacing.window-min-width
@@ -150,7 +151,7 @@ QtObject {
     readonly property int titlebarPageTop: 6  // spacing.titlebar-page-top
     readonly property int captionButtonWidth: 46  // spacing.caption-button-width
     readonly property int sidebarTopMacos: 52  // spacing.sidebar-top-macos
-    readonly property int sidebarTopWindows: 9  // spacing.sidebar-top-windows
+    readonly property int sidebarTopWindows: 16  // spacing.sidebar-top-windows
     readonly property int controlSm: 32  // spacing.control-sm
     readonly property int controlMd: 36  // spacing.control-md
     readonly property int rowSingle: 44  // spacing.row-single
@@ -161,6 +162,7 @@ QtObject {
     readonly property int overlayShadowY: 4  // spacing.overlay-shadow-y
     readonly property int overlayShadowBlur: 16  // spacing.overlay-shadow-blur
     readonly property int menuMinWidth: 180  // spacing.menu-min-width
+    readonly property int menuMaxWidth: 480  // spacing.menu-max-width
     readonly property int popoverMinWidth: 240  // spacing.popover-min-width
     readonly property int popoverMaxWidth: 360  // spacing.popover-max-width
     readonly property int dialogWidth: 400  // spacing.dialog-width
