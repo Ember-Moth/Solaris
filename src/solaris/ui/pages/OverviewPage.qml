@@ -131,10 +131,12 @@ ScrollView {
                     }
 
                     // What routes the traffic (docs/routing.md §4.6): a plan, or a profile's own
-                    // rules; the routing page is where it changes.
+                    // rules; the routing page is where it changes. The label and the link keep
+                    // their width; a long name shortens the button (DESIGN.md "长名称").
                     GroupRow {
                         UiText {
                             Layout.fillWidth: true
+                            Layout.minimumWidth: implicitWidth
                             text: qsTr("当前使用")
                         }
 
@@ -150,6 +152,8 @@ ScrollView {
                         Button {
                             id: usingButton
 
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: implicitWidth
                             implicitHeight: Theme.controlSm
                             leftPadding: 10
                             rightPadding: Theme.space2
@@ -161,9 +165,12 @@ ScrollView {
                             contentItem: RowLayout {
                                 spacing: 10
 
+                                // The middle of the name goes, so 方案 or 的规则 stays.
                                 UiText {
+                                    Layout.fillWidth: true
                                     text: page.routing.usingLabel
                                     role: Theme.type.labelMd
+                                    elide: Text.ElideMiddle
                                 }
 
                                 Icon {
@@ -189,12 +196,16 @@ ScrollView {
                     GroupRow {
                         UiText {
                             Layout.fillWidth: true
+                            Layout.minimumWidth: Math.min(implicitWidth, Theme.nameMinWidth)
                             text: page.overview.nodeGroup
+                            elide: Text.ElideRight
                         }
 
                         Button {
                             id: nodeButton
 
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: implicitWidth
                             implicitHeight: Theme.controlSm
                             leftPadding: 10
                             rightPadding: Theme.space2
@@ -207,8 +218,10 @@ ScrollView {
                                 spacing: 10
 
                                 UiText {
+                                    Layout.fillWidth: true
                                     text: page.overview.nodeName
                                     role: Theme.type.labelMd
+                                    elide: Text.ElideRight
                                 }
 
                                 UiText {

@@ -290,6 +290,12 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   再让 Qt 执行删除，保留编辑信号与撤销栈；只读、输入法组合和带修饰键的操作交给原生控件。
   `text.utf8_prefix` 仅用于受字节数限制的云端摘要，保留完整字素；
   备份正文仍保存完整原文。新字体或 Qt 升级必须运行 `tests/test_fonts.py` 与 `tests/test_text.py`。
+- **长名称**（DESIGN.md「长名称」）：`UiText` 被截断（`truncated`）时才用一个 `Loader` 建出悬停处理和
+  `AppToolTip`，完整显示的文字不多建对象；所以名称只要设了 `elide` 和宽度约束，悬停提示随之而来。名称在
+  按钮或行里时，按钮 `Layout.fillWidth` 加 `Layout.maximumWidth: implicitWidth`，同一行的标签用
+  `Layout.minimumWidth` 保住宽度；嵌在固定文字里的名称用 `Text.ElideMiddle`。`AppMenu` 的宽度以
+  `menu-max-width` 为上限。`scripts/preview.py --long-names` 用 `tests/support/simulated.py` 里的
+  `LONG_*` 样本（中文、英文、Emoji）给订阅、节点、策略组、方案、组网和连接起长名称。
 - **测试**：`tests/test_qml.py` 检查 Theme.qml 与 DESIGN.md 一致、两组颜色角色相同，并按 DESIGN.md 的用法
   核对两种外观的对比度；`tests/test_appearance.py` 用 `tests/support/appearance.py` 模拟系统切换外观；
   `tests/test_app.py` 在浅色和深色下加载界面，并检查系统切换后窗口立即重绘。

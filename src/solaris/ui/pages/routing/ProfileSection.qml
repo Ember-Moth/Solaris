@@ -35,8 +35,13 @@ ColumnLayout {
             color: Theme.textSecondary
         }
 
+        // Narrows to the select's least width before the row runs past the page, as it
+        // would in English at the narrowest window.
         AppSelect {
+            Layout.fillWidth: true
             Layout.preferredWidth: 220
+            Layout.maximumWidth: 220
+            Layout.minimumWidth: 120
             options: section.profile.options
             current: section.profile.profileId
             accessibleName: qsTr("使用的订阅")

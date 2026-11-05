@@ -6,6 +6,8 @@ import QtQuick.Controls.Basic
 CheckBox {
     id: control
 
+    property int elide: Text.ElideRight  // when the box is narrower than its text
+
     padding: 0
     spacing: Theme.space2
     opacity: enabled ? 1 : Theme.disabledOpacity
@@ -41,5 +43,6 @@ CheckBox {
         role: Theme.type.bodySm
         color: Theme.textSecondary
         verticalAlignment: Text.AlignVCenter
+        elide: control.elide
     }
 }

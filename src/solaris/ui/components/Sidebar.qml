@@ -31,7 +31,8 @@ Rectangle {
     ColumnLayout {
         anchors.fill: parent
         // macOS: the mark goes below the traffic lights, which the system places in the title
-        // bar the safe area covers. Windows: it is centred in the title band.
+        // bar the safe area covers. Windows: the app's name is on the title band's centre line,
+        // level with the page title and the caption buttons.
         anchors.topMargin: TitleBand.mac
             ? Math.max(Theme.sidebarTopMacos, root.SafeArea.margins.top + Theme.space6)
             : Theme.sidebarTopWindows
@@ -71,7 +72,7 @@ Rectangle {
                     text: root.routing.sidebarLabel
                     role: Theme.type.caption
                     color: Theme.textMuted
-                    elide: Text.ElideRight
+                    elide: Text.ElideMiddle
                 }
             }
         }

@@ -12,6 +12,8 @@
     uv run python scripts/preview.py --plan  # route with my plan, the default template
     uv run python scripts/preview.py --update  # a newer release on a fake GitHub
     uv run python scripts/preview.py --google  # Google Drive backup to a fake Google
+    uv run python scripts/preview.py --long-names  # long names in Chinese, English and emoji,
+                                                   # and a plan of them that --plan routes with
 
 Profiles live in a temporary directory and links resolve to sample data, so the preview
 touches neither the real profiles nor the network; updates come from a fake GitHub on a
@@ -43,7 +45,12 @@ from solaris.viewmodels.appearance import MODES
 from tests.support.credentials import MemoryCredentials
 from tests.support.google import FakeGoogle
 from tests.support.releases import FakeVerifier, sample_github
-from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
+from tests.support.simulated import (
+    SimulatedFetcher,
+    SimulatedHost,
+    seed_long_plan,
+    seed_profiles,
+)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the UI against the simulated host")
@@ -65,6 +72,9 @@ if __name__ == "__main__":
     )
     parser.add_argument("--update", action="store_true", help="offer a newer release")
     parser.add_argument("--google", action="store_true", help="back up to a fake Google Drive")
+    parser.add_argument(
+        "--long-names", action="store_true", help="name everything at length, to try the layout"
+    )
     args, qt_args = parser.parse_known_args()
     sys.argv[1:] = qt_args
     google = FakeGoogle() if args.google else None
@@ -76,17 +86,21 @@ if __name__ == "__main__":
         contextlib.closing(google) if google else contextlib.nullcontext(),
     ):
         store = ProfileStore(Path(directory))
-        seed_profiles(store, time.time())
+        seed_profiles(store, time.time(), long_names=args.long_names)
+        # The plan of long names is there to choose; --plan routes with it.
+        plan = seed_long_plan(store) if args.long_names else None
         if args.plan:
             routing = RoutingStore(store.database)
-            plan = default_plan()
-            routing.put_plan(plan)
+            if plan is None:
+                plan = default_plan()
+                routing.put_plan(plan)
             routing.update_state(mode=MODE_PLAN, plan_id=plan.id)
         host = SimulatedHost(
             health_check_s=0.8,
             crowd=args.crowd,
             development=args.development,
             takeover=TAKEOVER_NONE if args.development else args.takeover,
+            long_names=args.long_names,
         )
         code = main(
             host,

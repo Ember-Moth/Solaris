@@ -34,8 +34,9 @@ Menu {
         popup(anchor, x, below ? anchor.height + Theme.overlayGap : -Theme.overlayGap - implicitHeight)
     }
 
-    // At least menu-min-width, and as wide as the longest item: the ListView that holds the
-    // items reports no width of its own.
+    // At least menu-min-width, and as wide as the longest item up to menu-max-width, where a
+    // long name ends in an ellipsis: the ListView that holds the items reports no width of
+    // its own.
     implicitWidth: {
         let widest = Math.max(implicitBackgroundWidth + leftInset + rightInset, minimumWidth)
         for (let i = 0; i < count; i++) {
@@ -43,7 +44,7 @@ Menu {
             if (item)
                 widest = Math.max(widest, item.implicitWidth + leftPadding + rightPadding)
         }
-        return widest
+        return Math.min(widest, Math.max(Theme.menuMaxWidth, minimumWidth))
     }
     margins: Theme.overlayMargin
     padding: Theme.space1
