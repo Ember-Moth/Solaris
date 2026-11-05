@@ -740,6 +740,31 @@ def test_service_host_gives_up_on_a_restart_that_does_not_end(
     assert raised.value.code == "timeout"
 
 
+def test_service_host_forgets_a_client_whose_close_was_cut_short() -> None:
+    """The claim's deadline can cancel the close between retries; closing again must not
+    await that client's cancelled close waiter."""
+    closes = 0
+
+    class CutShort:
+        async def close(self) -> None:
+            nonlocal closes
+            closes += 1
+            raise asyncio.CancelledError
+
+    async def never() -> Streams:
+        raise AssertionError("no connection is opened")
+
+    async def scenario() -> None:
+        host = ServiceHost(never)
+        host._client = cast(ControlClient, CutShort())
+        with pytest.raises(asyncio.CancelledError):
+            await host.close()
+        await host.close()
+
+    asyncio.run(scenario())
+    assert closes == 1
+
+
 @pytest.mark.parametrize(
     "code",
     ["service_restarting", "connection_closed", "service_unavailable", "owned_by_other_user"],
