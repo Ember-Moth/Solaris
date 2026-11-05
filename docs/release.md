@@ -26,13 +26,12 @@ Windows 安装器采用自定义 Win32 界面（D39），由 MSVC 编译为 NSIS
 | 标签 | `v<版本>`，版本即 `pyproject.toml` 的 `version`，形如 `1.0.0`（三段数字）。预发布和草稿不提供给更新 |
 | 标题与说明 | `Solaris <版本>`；说明取自 `.github/release-notes.md`，`{{version}}` 换成版本，"更新内容"在草稿里手写 |
 | macOS 安装包 | `Solaris-<版本>-macos-universal.dmg`：由 `scripts/build_dmg.py` 制作，挂载后是一个固定的窗口，左边 `Solaris.app`、右边“应用程序”的快捷方式（apple/README.md 的“磁盘映像”）；磁盘映像用 Developer ID（Team `GY9ZKZMAZA`）签名、公证并 staple |
-| macOS 安装包的旧名 | `Solaris-<版本>-macos-arm64.dmg`：与上一行是同一个文件，兼容已安装的 1.0.0 的别名。1.0.0 只有 arm64 的磁盘映像，它的更新器按这个名字找安装包，也按这个名字在 `SHA256SUMS` 里找校验和；所以发布工作流把通用包以这个名字再上传一份，`SHA256SUMS` 里给它单独一行。新版本的更新器只找 `-macos-universal.dmg`，但只要还有 1.0.0 在用，每个版本都要带上这个别名，否则这些 Mac 上「关于」只会显示没有适合本机的安装包。`tests/test_release_workflow.py` 固定这个名字 |
 | Windows 安装包 | `Solaris-<版本>-windows-x64-setup.exe`：NSIS 安装器（architecture.md 第 9 节）。目前不签名（D29），更新时只核对校验和（第 3 节第 4 步）；加入签名后用 Authenticode 签名 |
 | Windows ARM64 安装包 | `Solaris-<版本>-windows-arm64-setup.exe`：Windows 11 ARM64 原生应用、服务及匹配的 Cronet/Wintun；NSIS 引导仍为 x86，安装逻辑与 x64 版相同 |
 | 校验和 | `SHA256SUMS`：`sha256sum` 的输出格式，每行 `<64 位小写十六进制>  <文件名>`，覆盖本次发布的其他每个文件 |
 | 源代码 | `Solaris-<版本>-source.tar.gz`：本仓库在这个标签的代码，加上 `go mod vendor` 得到的全部 Go 依赖（第 5 节） |
 
-Release 上有三个安装包、macOS 安装包的旧名副本、SHA256SUMS 和源代码包，共六个文件。支持 Windows x64、Windows 11 ARM64 和 macOS arm64 / x64（通用包，D2、D40）。其他平台的界面不提供
+Release 上有三个安装包、SHA256SUMS 和源代码包，共五个文件。支持 Windows x64、Windows 11 ARM64 和 macOS arm64 / x64（通用包，D2、D40）。其他平台的界面不提供
 下载，「检查更新」照常显示有没有新版本。
 
 ### 1.1 发布工作流
@@ -48,12 +47,11 @@ Release 上有三个安装包、macOS 安装包的旧名副本、SHA256SUMS 和�
 2. **release** job（只对标签运行，`contents: write`）：
    - 确认标签是 `v<pyproject.toml 的版本>`，版本是三段数字（界面只认这种，第 2 节）；
    - 取回三个安装包 artifact，用构建 job 写的 `.sha256` 核对三个安装包；`.sha256` 文件不上传；
-   - 把 macOS 安装包复制一份，以旧名 `Solaris-<版本>-macos-arm64.dmg` 存放（第 1 节）；
    - 源代码包：`git archive` 取出标签的代码，在 `src/core` 里 `go mod vendor`，再以 `GOPROXY=off` 用 vendor 的依赖
      构建一次 Windows 服务，确认不联网也能构建；打包时文件按名称排序、属主为 root、时间取标签所在提交的时间、gzip 不写
      时间戳，同一个标签得到同样的包；
-   - 用 `sha256sum` 为三个安装包、旧名副本和源代码包写 `SHA256SUMS`；
-   - `gh release create --draft --verify-tag` 创建**草稿**，上传这六个文件。同一个标签已有 Release 时这一步失败，要先
+   - 用 `sha256sum` 为三个安装包和源代码包写 `SHA256SUMS`；
+   - `gh release create --draft --verify-tag` 创建**草稿**，上传这五个文件。同一个标签已有 Release 时这一步失败，要先
      删掉旧的草稿再重新运行。
 
 **为什么是草稿**：界面检查更新用的 `releases/latest` 跳过草稿，Release 一旦发布，所有装了 Solaris 的机器就会看到它。

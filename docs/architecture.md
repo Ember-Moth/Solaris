@@ -838,7 +838,7 @@ Windows 安装器为两个 Solaris 可执行文件设置独立的 WER mini dump 
   两种 Windows 架构的安装包和各自的 `.sha256`。Windows 目前不签名（D29），签名这一步只打一条警告；有了
   签名后，先给安装目录里的 exe、dll、pyd 签名并在链接服务时打开 `SignedRelease`（服务要求界面与它同一签名者，5.3 节），
   再经 makensis 的 `!finalize`、`!uninstfinalize` 给安装器和卸载器签名。三个安装包存为 workflow artifact；对标签，最后一个
-  job 再经一次审批，核对三个安装包，把 macOS 安装包以 1.0.0 的旧名再放一份，打出含 vendor 依赖的源代码包，写 `SHA256SUMS`，把这六个文件放进一个**草稿**
+  job 再经一次审批，核对三个安装包，打出含 vendor 依赖的源代码包，写 `SHA256SUMS`，把这五个文件放进一个**草稿**
   GitHub Release，由人试过安装包、写好说明后发布（release.md 第 1.1 节）。
 - 许可：本项目以 GPL-3.0-only 发布（[LICENSE](../LICENSE)）；服务和扩展链接的 mihomo 同为 GPL-3.0。
   发布二进制时须同时提供对应的源代码；新增依赖须与 GPL-3.0 兼容。
