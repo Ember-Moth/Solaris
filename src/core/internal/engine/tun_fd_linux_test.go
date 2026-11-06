@@ -11,6 +11,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/netip"
 	"net/url"
 	"os"
 	"os/exec"
@@ -40,20 +41,22 @@ func TestFDTUN(t *testing.T) {
 	if target == "" || outbound == "" {
 		t.Fatal("SOLARIS_TUN_TARGET names the HTTP server outside the namespace, SOLARIS_TUN_OUTBOUND the link to it")
 	}
+	// The UDP echo server is on the HTTP server's host, which hostTUNDevice routes into the TUN.
+	udp := udpTarget(t)
 	stacks := strings.Split(os.Getenv("SOLARIS_TUN_STACKS"), ",")
 	if stacks[0] == "" {
 		stacks = []string{"system"}
 	}
 	for _, stack := range stacks {
-		t.Run(stack, func(t *testing.T) { fdTUN(t, stack, target, outbound) })
+		t.Run(stack, func(t *testing.T) { fdTUN(t, stack, target, udp, outbound) })
 		// The stacks NetworkExtension breaks once the tunnel includes all networks (D19).
 		if stack == "system" || stack == "mixed" {
-			t.Run(stack+" including all networks", func(t *testing.T) { fdTUNAllNetworks(t, stack, target, outbound) })
+			t.Run(stack+" including all networks", func(t *testing.T) { fdTUNAllNetworks(t, stack, target, udp, outbound) })
 		}
 	}
 }
 
-func fdTUN(t *testing.T, stack, target, outbound string) {
+func fdTUN(t *testing.T, stack, target string, udp netip.AddrPort, outbound string) {
 	address, err := url.Parse(target)
 	if err != nil {
 		t.Fatal(err)
@@ -107,6 +110,8 @@ tun: {stack: %s, dns-hijack: [%s]}
 	if addresses := lookupThroughTUN(t, "through-tun.test"); len(addresses) != 1 || addresses[0] != address.Hostname() {
 		t.Fatalf("the TUN's DNS address answered %v", addresses)
 	}
+	udpThroughTUN(t, engine, udp)
+	udpThroughTUNNode(t, engine, udp, outbound, profile)
 
 	// Unchanged TUN settings keep mihomo's TUN and its duplicate.
 	running := listener.LastTunConf.FileDescriptor
@@ -147,7 +152,7 @@ tun: {stack: %s, dns-hijack: [%s]}
 
 // fdTUNAllNetworks runs a stack that NetworkExtension breaks once the tunnel includes all
 // networks (D19): the engine runs the default fd stack in its place, and traffic still flows.
-func fdTUNAllNetworks(t *testing.T, stack, target, outbound string) {
+func fdTUNAllNetworks(t *testing.T, stack, target string, udp netip.AddrPort, outbound string) {
 	address, err := url.Parse(target)
 	if err != nil {
 		t.Fatal(err)
@@ -175,6 +180,7 @@ dns: {nameserver: ['udp://127.0.0.1:1'], enhanced-mode: redir-host}
 		t.Fatalf("mihomo runs the %s stack, want %s", got, want)
 	}
 	throughTUN(t, engine, target)
+	udpThroughTUN(t, engine, udp)
 }
 
 // hostTUNDevice does what the extension and NetworkExtension do: a TUN with
