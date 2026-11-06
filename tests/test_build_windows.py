@@ -443,9 +443,10 @@ ON_WINDOWS = pytest.mark.skipif(sys.platform != "win32", reason="Authenticode is
 def test_sign_script_checks_signer_and_usage(tmp_path: Path) -> None:
     unsigned = tmp_path / "unsigned.exe"
     unsigned.write_bytes(_pe(build_windows.PE_MACHINE_AMD64))
+    # Not a whole PE: Windows has no signature to read in it ("UnknownError").
     status, output = _sign_script("-Check", str(unsigned))
     assert status == 1, output
-    assert "NotSigned" in output
+    assert output.startswith(f"::error::{unsigned}: "), output
     # A copy of a system program is valid here through Windows' catalogs, not on its own.
     copied = tmp_path / "where.exe"
     shutil.copyfile(Path(os.environ["SYSTEMROOT"]) / "System32" / "where.exe", copied)
