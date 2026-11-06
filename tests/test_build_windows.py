@@ -444,6 +444,12 @@ def test_sign_script_checks_signer_and_usage(tmp_path: Path) -> None:
     status, output = _sign_script("-Check", str(unsigned))
     assert status == 1, output
     assert "NotSigned" in output
+    # A copy of a system program is valid here through Windows' catalogs, not on its own.
+    copied = tmp_path / "where.exe"
+    shutil.copyfile(Path(os.environ["SYSTEMROOT"]) / "System32" / "where.exe", copied)
+    status, output = _sign_script("-Check", str(unsigned), str(copied))
+    assert status == 1, output
+    assert "signed only in this machine's Catalog" in output
     # Microsoft's signature is one Windows trusts, but not Solaris's.
     programs = Path(os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)"))
     edge = programs / "Microsoft" / "Edge" / "Application" / "msedge.exe"

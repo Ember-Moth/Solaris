@@ -3,14 +3,16 @@
 # developer's machine.
 #
 #     ./package/windows/sign.ps1 -Directory build/windows/Solaris   # the install directory
-#     ./package/windows/sign.ps1 <file>                             # one file
-#     ./package/windows/sign.ps1 -Check <file>, <file>              # only check
+#     ./package/windows/sign.ps1 <file> [<file> ...]                # these files
+#     ./package/windows/sign.ps1 -Check <file> [<file> ...]         # only check them
 #
-# -Directory signs every .exe, .dll and .pyd under it that has no signature Windows trusts.
-# Those another publisher signed keep their signature: Microsoft's C++ runtime, Python's and
-# Qt's libraries. Solaris.exe and solaris-service.exe must end up signed by Solaris. One file
-# at a time are the setup UI's plugin and, through makensis' !uninstfinalize and !finalize
-# (package/windows/installer.nsi), the uninstaller and the installer.
+# -Directory signs every .exe, .dll and .pyd under it that does not carry a signature of its
+# own that Windows trusts. Those another publisher signed keep their signature: Microsoft's C++
+# runtime, Python's and Qt's libraries. A file Windows finds only in a catalog of the build
+# machine's is signed: users' machines may lack the catalog. Solaris.exe and
+# solaris-service.exe must end up signed by Solaris. The setup UI's plugin is signed on its
+# own, and the uninstaller and the installer through makensis' !uninstfinalize and !finalize
+# (package/windows/installer.nsi).
 #
 # Signing needs what the release workflow sets up: SIGNTOOL, the x64 signtool.exe of the
 # Windows SDK build tools; ARTIFACT_SIGNING_DLIB, the x64 Azure.CodeSigning.Dlib.dll of
@@ -21,11 +23,12 @@
 # trusts the signature, the certificate is Herta Network LLC's and has the certificate
 # profile's extended key usage; and the signature has a timestamp, without which it would
 # expire with the certificate in three days. -Check does only that.
-[CmdletBinding(DefaultParameterSetName = 'File')]
+[CmdletBinding(DefaultParameterSetName = 'Files')]
 param(
     [Parameter(Mandatory = $true, ParameterSetName = 'Directory')][string] $Directory,
-    [Parameter(Mandatory = $true, ParameterSetName = 'File', Position = 0)][string] $Path,
-    [Parameter(Mandatory = $true, ParameterSetName = 'Check')][string[]] $Check
+    [Parameter(ParameterSetName = 'Files')][switch] $Check,
+    [Parameter(Mandatory = $true, ParameterSetName = 'Files', Position = 0, ValueFromRemainingArguments = $true)]
+    [string[]] $Path
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 3.0
@@ -46,6 +49,9 @@ function Get-SignatureProblem([string] $File) {
     $signature = Get-AuthenticodeSignature -LiteralPath $File
     if ($signature.Status -ne 'Valid') {
         return "$($signature.Status): $($signature.StatusMessage)"
+    }
+    if ($signature.SignatureType -ne 'Authenticode') {
+        return "signed only in this machine's $($signature.SignatureType)"
     }
     $certificate = $signature.SignerCertificate
     $name = $certificate.GetNameInfo([Security.Cryptography.X509Certificates.X509NameType]::SimpleName, $false)
@@ -111,26 +117,27 @@ function Assert-Signed([string[]] $Files) {
 }
 
 switch ($PSCmdlet.ParameterSetName) {
-    'Check' {
-        $files = @($Check | ForEach-Object { (Resolve-Path -LiteralPath $_).Path })
-        $problems = 0
-        foreach ($file in $files) {
-            $problem = Get-SignatureProblem $file
-            if ($problem) {
-                Write-Output "::error::${file}: $problem"
-                $problems += 1
-            } else {
-                Write-Output "Signed by ${Signer}: $file"
+    'Files' {
+        $files = @($Path | ForEach-Object { (Resolve-Path -LiteralPath $_).Path })
+        if ($Check) {
+            $problems = 0
+            foreach ($file in $files) {
+                $problem = Get-SignatureProblem $file
+                if ($problem) {
+                    Write-Output "::error::${file}: $problem"
+                    $problems += 1
+                } else {
+                    Write-Output "Signed by ${Signer}: $file"
+                }
             }
+            exit [int]($problems -gt 0)
         }
-        exit [int]($problems -gt 0)
-    }
-    'File' {
-        $file = (Resolve-Path -LiteralPath $Path).Path
-        Invoke-Signing @($file)
-        Assert-Signed @($file)
+        Invoke-Signing $files
+        Assert-Signed $files
         # The chain, the timestamp and its authority, for the log.
-        Invoke-SignTool @('verify', '/pa', '/v', $file)
+        foreach ($file in $files) {
+            Invoke-SignTool @('verify', '/pa', '/v', $file)
+        }
     }
     'Directory' {
         $root = (Resolve-Path -LiteralPath $Directory).Path
@@ -145,7 +152,7 @@ switch ($PSCmdlet.ParameterSetName) {
         $publishers = @{}
         foreach ($file in $files) {
             $signature = Get-AuthenticodeSignature -LiteralPath $file
-            if ($signature.Status -eq 'Valid' -and $own -notcontains $file) {
+            if ($signature.Status -eq 'Valid' -and $signature.SignatureType -eq 'Authenticode' -and $own -notcontains $file) {
                 $name = $signature.SignerCertificate.GetNameInfo(
                     [Security.Cryptography.X509Certificates.X509NameType]::SimpleName, $false)
                 $publishers[$name] = 1 + [int]$publishers[$name]

@@ -226,9 +226,12 @@ function Assert-Signed {
     Expect ($LASTEXITCODE -eq 0) 'The installer or a program it installed is not signed as a release signs it'
     $programs = @(Get-ChildItem -LiteralPath $Root -Recurse -File |
             Where-Object { @('.exe', '.dll', '.pyd') -contains $_.Extension.ToLowerInvariant() })
-    $untrusted = @($programs | Where-Object { (Get-AuthenticodeSignature -LiteralPath $_.FullName).Status -ne 'Valid' } |
-            ForEach-Object { $_.FullName.Substring($Root.Length + 1) })
-    Expect ($untrusted.Count -eq 0) "Installed without a signature Windows trusts: $($untrusted -join ', ')"
+    # Its own signature: one in a catalog of the runner's proves nothing on a user's machine.
+    $untrusted = @($programs | Where-Object {
+            $signature = Get-AuthenticodeSignature -LiteralPath $_.FullName
+            $signature.Status -ne 'Valid' -or $signature.SignatureType -ne 'Authenticode'
+        } | ForEach-Object { $_.FullName.Substring($Root.Length + 1) })
+    Expect ($untrusted.Count -eq 0) "Installed without a signature of its own that Windows trusts: $($untrusted -join ', ')"
     $started = @(Select-String -LiteralPath (Join-Path $ServiceData 'service.log') -Pattern 'msg="service started"')
     Expect ($started.Count -gt 0 -and $started[-1].Line -match ' signed=true') 'The service does not run as a signed release'
     Write-Output "Signed: the installer, the uninstaller and $($programs.Count) installed programs"
