@@ -30,7 +30,7 @@ from solaris.viewmodels import about as about_module
 from solaris.viewmodels.about import AboutViewModel
 from solaris.viewmodels.composition import ViewModels, compose
 from tests.support.releases import FakeGitHub, FakeVerifier, fake_github, offline_updater
-from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
+from tests.support.simulated import CORE_VERSION, SimulatedFetcher, SimulatedHost, seed_profiles
 
 NOW = datetime(2026, 10, 30, 9).timestamp()
 DMG = "Solaris-1.1.0-macos-universal.dmg"
@@ -527,7 +527,7 @@ def test_export_diagnostics(qtbot: QtBot, tmp_path: Path) -> None:
     assert info["language"] == "zh"
     assert info["exported_at"] == datetime.fromtimestamp(NOW, UTC).isoformat(timespec="seconds")
     host = json.loads(files["host.json"])
-    assert host["info"]["core_version"] == "mihomo v1.19.33"
+    assert host["info"]["core_version"] == CORE_VERSION  # the screens show only v1.19.33
     assert host["status"]["state"] == "running"
     assert "www.example.com:443" in files["mihomo.log"]
     assert "WARN  dial failed" in files["mihomo.log"]

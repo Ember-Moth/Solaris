@@ -844,18 +844,17 @@ ScrollView {
                         }
 
                         GroupRow {
+                            visible: page.about.autoCheck
                             rowHeight: Theme.rowSingle
 
                             UiText {
                                 Layout.fillWidth: true
                                 text: qsTr("检查频率")
-                                color: page.about.autoCheck ? Theme.text : Theme.textMuted
                             }
 
                             AppSelect {
                                 options: page.about.intervalOptions
                                 current: page.about.checkInterval
-                                enabled: page.about.autoCheck
                                 accessibleName: qsTr("检查频率")
                                 onPicked: value => page.about.setCheckInterval(value)
                             }
@@ -863,9 +862,7 @@ ScrollView {
 
                         Repeater {
                             model: [
-                                { label: qsTr("服务"), value: page.settings.serviceVersion },
                                 { label: qsTr("内核"), value: page.settings.coreVersion },
-                                { label: qsTr("控制协议"), value: page.settings.protocolVersion },
                                 { label: qsTr("许可证"), value: page.settings.license }
                             ]
 

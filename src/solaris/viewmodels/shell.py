@@ -7,6 +7,7 @@ from PySide6.QtQml import QmlElement, QmlUncreatable
 
 from solaris.host.base import HostInfo, TunnelHost
 from solaris.i18n import QT_TRANSLATE_NOOP
+from solaris.models import format as fmt
 from solaris.viewmodels.common.async_runner import AsyncRunner
 
 QML_IMPORT_NAME = "Solaris"
@@ -96,7 +97,7 @@ class ShellViewModel(QObject):
         if self._info is None:
             return self.tr("未能连接到服务") if self._service_failed else ""
         return self.tr("{core} · 协议 v{protocol}").format(
-            core=self._info.core_version, protocol=self._info.protocol_version
+            core=fmt.version_number(self._info.core_version), protocol=self._info.protocol_version
         )
 
     @Slot()

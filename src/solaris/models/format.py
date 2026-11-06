@@ -1,13 +1,17 @@
-"""Text for numbers the screens show: rates, sizes, durations, latency and dates.
+"""Text for numbers the screens show: rates, sizes, durations, latency, dates and versions.
 
 Dates follow the UI language: the patterns are translated and QLocale's default (set by
 i18n.Translations) names the months."""
 
 from __future__ import annotations
 
+import re
+
 from PySide6.QtCore import QCoreApplication, QDate, QDateTime, QLocale
 
 _UNITS = ("B", "KB", "MB", "GB", "TB")
+# The timestamp and commit a Go pseudo-version adds to vX.Y.Z, vX.Y.Z-pre or vX.0.0.
+_PSEUDO_VERSION = re.compile(r"[-.](?:0\.)?\d{14}-[0-9A-Za-z]+$")
 
 
 def size(byte_count: int) -> str:
@@ -86,3 +90,10 @@ def ago(timestamp: float, now: float) -> str:
         pattern = QCoreApplication.translate("Format", "M 月 d 日", "date pattern, this year")
         return QLocale().toString(then, pattern)
     return date(timestamp)
+
+
+def version_number(version: str) -> str:
+    """The release number in a Go module version, without a pseudo-version's timestamp and
+    commit or build metadata: ``v1.19.33`` for ``v1.19.33-0.20261103155416-c2de0f865c7e``,
+    which the core reports for mihomo pinned to a commit (D38)."""
+    return _PSEUDO_VERSION.sub("", version.strip().partition("+")[0])

@@ -115,7 +115,7 @@ def test_english_view_models(qtbot: QtBot, view_models: ViewModels) -> None:
     ]
     qtbot.waitUntil(lambda: prop(shell, "serviceAvailable"))
     assert prop(shell, "serviceText") == "Service running"
-    assert prop(shell, "serviceDetail") == "mihomo v1.19.33\nProtocol v1"
+    assert prop(shell, "serviceDetail") == "v1.19.33\nProtocol v1"
 
     qtbot.waitUntil(lambda: prop(overview, "connected"))
     assert prop(overview, "statusTitle") == "Connected"
