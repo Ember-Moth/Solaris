@@ -98,6 +98,8 @@ secret 注入。而且接口面由 mihomo 决定：上游升级时新增的接�
 - **自管模式**按 `RunOptions.tun_enabled` 写 `tun.enable`，强制 `auto-route`、`auto-detect-interface`、
   `strict-route` 为 true，`auto-redirect` 为 false，`file-descriptor` 为 0；保留用户的设备名、MTU 和排除项。栈取
   `RunOptions.tun_stack`（设置页的"TUN 协议栈"，D3），没有指定时保留用户的。
+  这时 `system` 栈对需要 TUN 分片的 UDP 数据报（超过 TUN 的 MTU，9000 时约 9 KB）收不到回包，fd 模式和其他栈
+  没有这个问题；普通应用和 QUIC 的数据报都在 1500 字节以内，碰不到。
   TUN 打开时同时打开 mihomo DNS，因为 dns-hijack 要交给它解析。`allow_lan` 为 false 时，入站同样限制在回环地址。
 - **fd 模式**（`engine.Options.TunFD` 是宿主的 utun 描述符）：TUN 总是开着，因为扩展只在隧道连接时运行；
   关闭 `auto-route`、`auto-redirect`、`auto-detect-interface`、`strict-route`，`dns-mode` 设为 `disabled`，
@@ -917,7 +919,8 @@ NSIS 及自定义安装窗口是 x86 引导组件，由系统仿真运行。更�
     `system` 和 `mixed` 栈再以 `IncludeAllNetworks` 跑一次，确认 mihomo 换用默认栈后流量照常（D19）。
     两种模式都测 UDP（`tun_udp_linux_test.go`）：`md-srv` 在 10.201.0.1:8081 起 UDP 回显，测试进程经 TUN 发数据报，
     先 DIRECT，再经同一进程里的 shadowsocks 节点（节点监听回环口，经 `md-veth0` 转发）；大小覆盖 1、1200、1472、
-    4000 字节、TUN 一个包能装下的最大值，以及超过 TUN MTU、要分片进出协议栈的数据报。
+    4000 字节、TUN 一个包能装下的最大值，以及超过 TUN MTU、要分片进出协议栈的数据报（自管模式的 `system` 栈
+    不测最后这一项，见 3.1 节）。
 - **UDP 端到端（无 TUN）**：`internal/engine/udp_test.go` 在本机起 UDP 回显，用 mihomo 入站在同一进程里扮演节点
   （只转发到回环地址），经混合端口的 SOCKS5 UDP ASSOCIATE 往返，并检查回复的中继地址就是 127.0.0.1 上的混合端口。
   订阅自带的配置和「我的方案」各跑一遍，都经过准入改写（`restrictToLoopback`、`setMixedPort`）。覆盖 Shadowsocks
