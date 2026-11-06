@@ -3803,16 +3803,8 @@ Your subscriptions, settings, and credentials are kept; connecting again will re
         <translation>How often</translation>
     </message>
     <message>
-        <source>服务</source>
-        <translation>Service</translation>
-    </message>
-    <message>
         <source>内核</source>
         <translation>Core</translation>
-    </message>
-    <message>
-        <source>控制协议</source>
-        <translation>Control protocol</translation>
     </message>
     <message>
         <source>许可证</source>

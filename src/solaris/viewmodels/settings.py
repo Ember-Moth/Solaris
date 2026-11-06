@@ -20,6 +20,7 @@ from solaris import __version__
 from solaris.desktop.login import LoginItem, LoginItemStatus
 from solaris.host.base import DELAY_TESTS, HostInfo, TunnelHost
 from solaris.i18n import QT_TRANSLATE_NOOP
+from solaris.models import format as fmt
 from solaris.models.library import ProfileLibrary
 from solaris.models.settings import (
     ALL_NETWORKS_BREAKS,
@@ -403,16 +404,9 @@ class SettingsViewModel(QObject):
         return __version__
 
     @Property(str, notify=changed)
-    def serviceVersion(self) -> str:
-        return self._info.service_version if self._info else "—"
-
-    @Property(str, notify=changed)
     def coreVersion(self) -> str:
-        return self._info.core_version if self._info else "—"
-
-    @Property(str, notify=changed)
-    def protocolVersion(self) -> str:
-        return f"v{self._info.protocol_version}" if self._info else "—"
+        """The release number alone; diagnostics keep the version the core reports."""
+        return (fmt.version_number(self._info.core_version) if self._info else "") or "—"
 
     @Property(str, constant=True)
     def license(self) -> str:

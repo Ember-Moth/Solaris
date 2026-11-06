@@ -62,6 +62,25 @@ def test_latency_levels(delay: int | None, level: str) -> None:
     assert fmt.latency(delay)[1] == level
 
 
+@pytest.mark.parametrize(
+    ("version", "number"),
+    [
+        ("v1.19.33", "v1.19.33"),
+        ("v1.19.33-0.20261103155416-c2de0f865c7e", "v1.19.33"),
+        ("v1.20.0-alpha.1.0.20261103155416-c2de0f865c7e", "v1.20.0-alpha.1"),
+        ("v0.0.0-20261103155416-c2de0f865c7e", "v0.0.0"),
+        ("v1.20.0-alpha.1", "v1.20.0-alpha.1"),
+        ("v2.0.0+incompatible", "v2.0.0"),
+        ("v1.19.33-0.20261103155416-c2de0f865c7e+dirty", "v1.19.33"),
+        (" v1.19.33\n", "v1.19.33"),
+        ("1.10.0", "1.10.0"),  # mihomo's own placeholder when the build info has no version
+        ("", ""),
+    ],
+)
+def test_version_number(version: str, number: str) -> None:
+    assert fmt.version_number(version) == number
+
+
 def test_nested_groups_resolve_to_the_final_proxy() -> None:
     groups = asyncio.run(SimulatedHost().list_groups())
     main = main_group(groups)

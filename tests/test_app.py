@@ -19,7 +19,7 @@ from solaris.i18n import Translations
 from solaris.viewmodels import settings as settings_view_model
 from solaris.viewmodels.composition import ViewModels
 from tests.support.appearance import SystemColorScheme
-from tests.support.simulated import SimulatedHost
+from tests.support.simulated import CORE_VERSION, SimulatedHost
 from tests.support.window import Loaded, find, find_all, texts
 
 TRAY_QML = MAIN_QML.parent / "components" / "TrayIcon.qml"
@@ -304,10 +304,27 @@ def test_settings_page_loads_without_qml_warnings(
 ) -> None:
     settings = loaded.view_models.settings
     loaded.view_models.shell.setPage("settings")
-    qtbot.waitUntil(lambda: settings.property("coreVersion") == "mihomo v1.19.33")
+    qtbot.waitUntil(lambda: settings.property("coreVersion") == "v1.19.33")
     shown = texts(loaded.window.contentItem())
     assert set(labels) <= shown
-    assert "mihomo v1.19.33" in shown
+    assert "v1.19.33" in shown
+    assert loaded.warnings == []
+
+
+def test_the_check_interval_shows_only_with_automatic_checks(qtbot: QtBot, loaded: Loaded) -> None:
+    about = loaded.view_models.about
+    loaded.view_models.shell.setPage("settings")
+    content = loaded.window.contentItem()
+
+    def interval() -> QQuickItem | None:
+        return find(content, lambda i: i.property("text") == "检查频率")
+
+    qtbot.waitUntil(lambda: interval() is not None)  # automatic checks are on by default
+    assert not {"服务", "控制协议", CORE_VERSION} & texts(content)
+    about.setAutoCheck(False)
+    qtbot.waitUntil(lambda: interval() is None)
+    about.setAutoCheck(True)
+    qtbot.waitUntil(lambda: interval() is not None)
     assert loaded.warnings == []
 
 

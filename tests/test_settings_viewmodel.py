@@ -13,6 +13,7 @@ from solaris.models.settings import DatabaseSettingsStore, Settings
 from solaris.models.store import ProfileStore, open_database
 from solaris.viewmodels import settings as settings_view_model
 from solaris.viewmodels.composition import ViewModels, compose
+from tests.support import simulated
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
 from tests.support.storage import refuse_writes
 
@@ -63,11 +64,19 @@ def view_models(qtbot: QtBot, tmp_path: Path, login_item: FakeLoginItem) -> Iter
 
 def test_about_shows_the_versions(qtbot: QtBot, view_models: ViewModels) -> None:
     settings = view_models.settings
-    qtbot.waitUntil(lambda: prop(settings, "coreVersion") == "mihomo v1.19.33")
-    assert prop(settings, "serviceVersion") == "simulated"
-    assert prop(settings, "protocolVersion") == "v1"
+    qtbot.waitUntil(lambda: prop(settings, "coreVersion") == "v1.19.33")
     assert prop(settings, "license") == "GPL-3.0-only"
     assert prop(settings, "projectUrl") == "https://github.com/Ember-Moth/Solaris"
+
+
+def test_a_core_without_a_version_shows_a_dash(
+    qtbot: QtBot, view_models: ViewModels, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = view_models.settings
+    qtbot.waitUntil(lambda: prop(settings, "coreVersion") == "v1.19.33")
+    monkeypatch.setattr(simulated, "CORE_VERSION", "")  # a replace pointing at a directory
+    settings.refreshInfo()
+    qtbot.waitUntil(lambda: prop(settings, "coreVersion") == "—")
 
 
 def test_choices_are_stored(qtbot: QtBot, view_models: ViewModels, tmp_path: Path) -> None:

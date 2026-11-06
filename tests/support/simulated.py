@@ -95,6 +95,9 @@ from tests.support.simulated_core import (
 GB = 1024**3
 MB = 1024**2
 
+# What the core reports: mihomo pinned to a commit by go.mod replace (D38) has a pseudo-version.
+CORE_VERSION = "v1.19.33-0.20261103155416-c2de0f865c7e"
+
 NODES: dict[str, tuple[str, int]] = {  # a delay of 0 is a failed test
     "香港 01": ("VLESS", 68),
     "香港 02": ("Hysteria2", 54),
@@ -647,7 +650,7 @@ class SimulatedHost:
         self._tunnel_up = True
 
     async def get_info(self) -> HostInfo:
-        return HostInfo(1, "simulated", "mihomo v1.19.33", self._state(), "available")
+        return HostInfo(1, "simulated", CORE_VERSION, self._state(), "available")
 
     async def get_status(self) -> HostStatus:
         return HostStatus(
