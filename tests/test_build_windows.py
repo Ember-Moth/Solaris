@@ -463,6 +463,32 @@ def test_sign_script_checks_signer_and_usage(tmp_path: Path) -> None:
     assert "signed by 'Microsoft Corporation', not 'Herta Network LLC'" in output
 
 
+def test_smoke_test_names_each_file_to_check_on_its_own() -> None:
+    """smoke-test.ps1 runs in Windows PowerShell, which joins an array given to sign.ps1's
+    remaining arguments into one string."""
+    smoke_test = (build_windows.SIGN_SCRIPT.parent / "smoke-test.ps1").read_text(encoding="utf-8")
+    assert "-Check $Installer $Uninstaller $Client $ServiceExecutable" in smoke_test
+
+
+@ON_WINDOWS
+def test_sign_script_checks_each_file_a_windows_powershell_script_names(tmp_path: Path) -> None:
+    first, second = tmp_path / "with space.exe", tmp_path / "second.exe"
+    for program in (first, second):
+        program.write_bytes(_pe(build_windows.PE_MACHINE_AMD64))
+    command = f"& '{build_windows.SIGN_SCRIPT}' -Check '{first}' '{second}'; exit $LASTEXITCODE"
+    done = subprocess.run(
+        [*SIGN[:-2], "-Command", command],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=120,
+    )
+    output = done.stdout + done.stderr
+    assert done.returncode == 1, output
+    assert f"::error::{first}: " in output, output
+    assert f"::error::{second}: " in output, output
+
+
 @ON_WINDOWS
 def test_sign_script_needs_the_release_signing_setup(tmp_path: Path) -> None:
     program = tmp_path / "Solaris.exe"

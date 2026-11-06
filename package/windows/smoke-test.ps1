@@ -222,7 +222,9 @@ function Assert-Installed {
 }
 
 function Assert-Signed {
-    & (Join-Path $PSScriptRoot 'sign.ps1') -Check $Installer, $Uninstaller, $Client, $ServiceExecutable
+    # One argument per file: Windows PowerShell joins an array given to sign.ps1's remaining
+    # arguments into one string.
+    & (Join-Path $PSScriptRoot 'sign.ps1') -Check $Installer $Uninstaller $Client $ServiceExecutable
     Expect ($LASTEXITCODE -eq 0) 'The installer or a program it installed is not signed as a release signs it'
     $programs = @(Get-ChildItem -LiteralPath $Root -Recurse -File |
             Where-Object { @('.exe', '.dll', '.pyd') -contains $_.Extension.ToLowerInvariant() })

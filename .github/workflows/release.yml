@@ -416,7 +416,7 @@ jobs:
           $ErrorActionPreference = 'Stop'
           & $env:SIGNTOOL verify /pa /v $env:INSTALLER
           if ($LASTEXITCODE -ne 0) { throw "signtool verify failed with exit code $LASTEXITCODE" }
-          ./package/windows/sign.ps1 -Check $env:INSTALLER, "$env:DIRECTORY/Solaris.exe", "$env:DIRECTORY/solaris-service.exe"
+          ./package/windows/sign.ps1 -Check $env:INSTALLER "$env:DIRECTORY/Solaris.exe" "$env:DIRECTORY/solaris-service.exe"
           if ($LASTEXITCODE -ne 0) { throw 'The installer or the programs are not signed as a release signs them' }
           $signature = Get-AuthenticodeSignature -LiteralPath $env:INSTALLER
           $signature.SignerCertificate | Format-List Subject, Issuer, Thumbprint, NotBefore, NotAfter, EnhancedKeyUsageList
