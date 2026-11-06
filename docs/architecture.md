@@ -570,19 +570,26 @@ PID 来防止管道名被抢注。
    管理员接管用的辅助进程（5.4 节），要求第 3 项读到管理员权限；
 3. 客户端必须在用户会话里（会话 ID 不为 0）；读取它 token 的用户 SID、会话 ID，以及 Administrators 组是否启用
    （管理员权限），作为属主判断的身份；
-4. 签名的发布构建（链接时设 `product.SignedRelease=true`）还要求客户端的 Authenticode 签名为 Windows 信任、签名者
-   的显示名是 `product.WindowsSigner`。不检查吊销：那可能要联网，而且每条连接都要做。目前没有这样的构建，
-   `product.WindowsSigner` 是占位值；
+4. 发布构建（`scripts/build_windows.py --sign`，链接时设 `product.SignedRelease=true`）还要求客户端的 Authenticode
+   签名为 Windows 信任，签名证书主题的显示名是 `product.WindowsSigner`（`Herta Network LLC`），并且证书带
+   `product.WindowsSignerEKU` 这个扩展密钥用法（EKU）。Artifact Signing 的证书有效期只有几天、每天换新，中间 CA 也会变
+   （D42），所以不固定证书或 CA；组织名别的同名机构也可能通过验证，而这个 EKU 是 Artifact Signing 只发给 Solaris 这个
+   证书配置文件的。不检查吊销：那可能要联网，而且每条连接都要做。被拒的连接在 `service.log` 里记一行
+   `rejected control client`，原因是 `pipe client signature: …` 或 `pipe client is signed by …`；
 5. 最后确认客户端进程仍在运行。
 
-**未签名的构建**：Windows 安装包目前不签名（D29），`scripts/build_windows.py` 链接服务时只注入版本，
-`SignedRelease` 保持默认的 `"false"`，服务把空的签名者交给 `peer.PipeClientVerifier`，只跳过第 4 项。第 1、2、3、5 项
+服务启动时在 `service.log` 的 `service started` 一行记下 `signed=true` 或 `signed=false`。
+
+**未签名的构建**：CI、测试 VM 和本地的构建不加 `--sign`，链接服务时只注入版本，`SignedRelease` 保持默认的 `"false"`，
+服务把零值的 `peer.Signer` 交给 `peer.PipeClientVerifier`，只跳过第 4 项；1.0.0 也是这样（D29）。第 1、2、3、5 项
 照常：客户端必须就是服务旁边那个 `Solaris.exe` 文件本身（卷序列号和文件 ID 相同，连接期间锁住），复制到别处的同一个
 程序、同名的其他程序都会被断开。安装目录（默认 `C:\Program Files\Solaris`）只有管理员能写，所以能换掉这个文件的人本来就
-能换掉服务。`peer_windows_test.go` 用空签名者测这几项（复制出的程序被拒、界面没装时被拒、会话 0 被拒），以及服务的
-可执行文件只在有管理员权限时通过（以 UAC 那样过滤过的 token 起的子进程被拒）；CI 的
-`smoke-test.ps1` 用 PowerShell 连一次装好的服务的管道，只确认它在监听。签名以后发布构建链接时打开
-`SignedRelease`，同时界面的 `signature.WINDOWS_SIGNER` 填上同一个显示名（release.md 第 3 节）。
+能换掉服务。`peer_windows_test.go` 用零值的签名者测这几项（复制出的程序被拒、界面没装时被拒、会话 0 被拒），以及服务的
+可执行文件只在有管理员权限时通过（以 UAC 那样过滤过的 token 起的子进程被拒）；用发布的签名者测未签名的测试程序被拒，
+用 Edge 的微软签名测显示名和 EKU 的读取，以及同名不同 EKU 被拒（`signer_test.go` 用生成的证书在所有平台上测后者）。
+CI 的 `smoke-test.ps1` 用 PowerShell 连一次装好的服务的管道，只确认它在监听；发布工作流以 `-Signed` 运行它，另外核对
+装好的程序的签名、`signed=true`，以及服务没有因签名拒绝界面。界面的更新器用同样的两项校验下载的安装包（release.md
+第 3 节）。
 
 做法参考 sing-box `experimental/boxdd` 的 `peer_windows.go`。
 
@@ -793,6 +800,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
     其他用户的界面数据和系统凭据库里的 WARP 账户卸载器够不着，留着。
   - 失败时显示独立的失败状态和操作详情，静默运行时原因写进 `%TEMP%\Solaris-setup-error.log`；退出码沿用 Windows Installer 的：
     1603 一般失败、1633 不是 64 位的 Windows 10 及以上、1638 已装在别的目录。
+  - 签名（D42，第 10 节）：发布构建的安装器和卸载器都由 Artifact Signing 签名，卸载器经 makensis 的 `!uninstfinalize`
+    在放进安装器之前签名；安装目录里的程序在编译安装包之前签好。
   - 验证：CI 的 `windows-installer` job 在 `windows-latest` 上构建不签名的安装包，由 `package/windows/smoke-test.ps1`
     首次安装通过 UI Automation 操作真实安装窗口，之后打开界面、静默升级、静默卸载（保留数据）、再安装、以 `/PURGE` 卸载，核对文件、服务的
     路径、启动方式、账户、恢复策略与管道监听、注册表、快捷方式、计划任务，升级和卸载时界面自己退出（退出码 0，
@@ -835,16 +844,29 @@ Windows 安装器为两个 Solaris 可执行文件设置独立的 WER mini dump 
   macOS 相同；Qt 的 OpenSSL 后端也不带，TLS 用 Schannel，CPython 自带的 libssl 和 libcrypto 留着给 `ssl` 模块），
   x64 组装到 `build/windows/Solaris/`，ARM64 组装到 `build/windows-arm64/Solaris/`；检查必需文件、链接及每个 PE 的目标架构，
   再生成卸载清单与 `Solaris-<版本>-windows-<x64|arm64>-setup.exe`。`--skip-installer` 停在安装目录，
-  `--installer-only` 只从已有的安装目录编译安装包，有了签名后，签名步骤插在两者之间。
-- 需要的证书：Apple Developer ID。Windows 安装包目前不签名（D29），还不需要 Authenticode 证书。
+  `--installer-only` 只从已有的安装目录编译安装包。`--sign` 只给发布工作流用（D42）：构建服务时打开 `SignedRelease`
+  （5.3 节），编译安装包时先由 `package/windows/sign.ps1 -Directory` 给安装目录里没有发布者签名的 exe、dll、pyd 签名
+  （微软的 C++ 运行库、Python 和 Qt 的库保留它们自己的签名；只认文件自带的签名，runner 上靠系统 catalog 才有效的文件
+  照样签，用户的机器上未必有那份 catalog；`Solaris.exe`、`solaris-service.exe` 必须是 Solaris 的签名），
+  再签安装界面插件 `SolarisSetupUI.dll`，然后经 makensis 的 `!uninstfinalize`、`!finalize` 签卸载器和安装器。
+  Wintun 不是单独的文件：它嵌在服务里，随服务一起签名。每签一个文件，`sign.ps1` 都核对 Windows 信任这个签名、证书是
+  `Herta Network LLC` 的且带证书配置文件的 EKU、签名带时间戳；任何一步失败，makensis 和整个构建都失败。
+- 需要的证书：Apple Developer ID；Windows 用 Azure Artifact Signing 的 Public Trust 证书配置文件（D42），证书由服务
+  每天签发，不经手私钥。
 - **发布工作流** `.github/workflows/release.yml`：`v*` 标签或手动触发，在 `release` Environment 里经审批后运行；
   macOS 上建临时钥匙串、签名、`notarytool` 公证、staple，产出 `Solaris-<版本>-macos-universal.dmg` 和它的 `.sha256`；
-  Windows 上构建安装目录、签名、编译安装包，用 `smoke-test.ps1` 在 runner 上装一遍、升级、卸载，产出
-  两种 Windows 架构的安装包和各自的 `.sha256`。Windows 目前不签名（D29），签名这一步只打一条警告；有了
-  签名后，先给安装目录里的 exe、dll、pyd 签名并在链接服务时打开 `SignedRelease`（服务要求界面与它同一签名者，5.3 节），
-  再经 makensis 的 `!finalize`、`!uninstfinalize` 给安装器和卸载器签名。三个安装包存为 workflow artifact；对标签，最后一个
+  Windows 上以 `--skip-installer --sign` 构建安装目录，再经 `azure/login` 用 GitHub OIDC 以托管标识登录 Azure（不选订阅），
+  立即取一次签名用的访问令牌，然后以 `--installer-only --sign` 签名并编译安装包，用 `signtool verify /pa /v` 和
+  `sign.ps1 -Check` 核对安装包，用 `smoke-test.ps1 -Signed` 在 runner 上装一遍、升级、卸载，产出两种 Windows 架构的
+  安装包和各自的 `.sha256`。signtool（Windows SDK build tools）和 Artifact Signing 的 dlib（`Microsoft.ArtifactSigning.Client`）
+  按固定版本和 SHA-256 从 nuget.org 取得，都用 x64 版：dlib 只有 x86、x64 版，ARM64 runner 在 Windows 11 的 x64 仿真下
+  运行它们，另装 x64 的 .NET 10 到 `C:\Program Files\dotnet\x64`；被签的文件是什么架构都可以。三个安装包存为 workflow artifact；对标签，最后一个
   job 再经一次审批，核对三个安装包，打出含 vendor 依赖的源代码包，写 `SHA256SUMS`，把这五个文件放进一个**草稿**
   GitHub Release，由人试过安装包、写好说明后发布（release.md 第 1.1 节）。
+- 签名的范围：签名和构建在同一个 job 里，构建时运行的依赖（Nuitka、PyPI 包、Go 模块）与签名在同一台 runner 上，
+  也能取到这个 job 的 OIDC 令牌，和 macOS 的签名证书在同一个 job 里一样。能换到的只是这个证书配置文件的签名权限，
+  只在这次运行里。`metadata.json` 的 `CorrelationId`（`solaris-<运行 ID>-<尝试次数>-<架构>`）把发布工作流的签名请求
+  与运行对应起来，便于在 Azure 的签名日志里查找。
 - 许可：本项目以 GPL-3.0-only 发布（[LICENSE](../LICENSE)）；服务和扩展链接的 mihomo 同为 GPL-3.0。
   发布二进制时须同时提供对应的源代码；新增依赖须与 GPL-3.0 兼容。
 
@@ -930,7 +952,7 @@ NSIS 及自定义安装窗口是 x86 引导组件，由系统仿真运行。更�
   - 属主：认领与换属主重启、管理员接管、按属主恢复、注销停止、系统代理的开启与还原，用替身平台在所有平台上测
     （`internal/owner`），分发器的放行、接管时停止内核和错误码见 `internal/control/host_test.go`，接管辅助进程的
     请求见 `service/takeover_test.go`；
-  - Windows CI：客户端校验（真实的命名管道、文件 ID、锁住映像、签名者，服务的可执行文件只在有管理员权限时通过）、
+  - Windows CI：客户端校验（真实的命名管道、文件 ID、锁住映像、签名者与 EKU，服务的可执行文件只在有管理员权限时通过）、
     管理员权限的判断（对照 `CheckTokenMembership` 和 UAC 那样过滤过的 token）、home 目录的 ACL 与拒绝链接、WinINet
     代理设置的读写与还原（只在 CI 上改代理），以及界面以 `runas` 启动程序并取回退出码（runner 本来就提权，不弹
     UAC 提示）。服务的安装、升级与卸载由 `windows-installer` job 覆盖（第 9 节）；模拟属主 token、认领后的服务

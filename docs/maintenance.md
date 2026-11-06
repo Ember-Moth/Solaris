@@ -54,10 +54,16 @@ CI 覆盖构建、安装器界面、文件清理和架构迁移。发布验收�
 
 ### 1.4 没有实现的
 
-- Tor 出口（D23，[exits.md](exits.md) 第 4 节）：只有设计；
-- Windows 代码签名（D29、D42）：Azure Artifact Signing 的申请已于 2026-11-05 提交，等待微软审核。通过后在 Azure
-  建签名账户和证书配置，给发布工作流配 GitHub OIDC 联合凭据，再接上 `product.WindowsSigner`、`SignedRelease` 和界面的
-  `signature.WINDOWS_SIGNER`（[release.md](release.md) 第 3 节）；
+- Tor 出口（D23，[exits.md](exits.md) 第 4 节）：只有设计。
+
+Windows 代码签名（D42）已接上：发布工作流经 GitHub OIDC 登录 Azure，用 Artifact Signing 给 Windows 安装包和它装的程序
+签名，服务和更新器核对签名者 `Herta Network LLC` 及证书配置文件的 EKU（[release.md](release.md) 第 1.1、3 节）。Azure 一侧：
+签名账户 `hertanetworksigning`（`https://eus.codesigning.azure.net/`）、Public Trust 证书配置文件 `hertanetwork-public`、
+用户分配的托管标识 `id-solaris-release`，它的联合凭据只认 `release` 环境（subject 用 GitHub 的固定编号格式
+`repo:Ember-Moth@177856324/Solaris@1438281339:environment:release`），只在这个证书配置文件上有「Artifact Signing Certificate
+Profile Signer」角色。仓库改名、转移或换 Environment 时要同步改联合凭据，否则登录失败。证书配置文件的 EKU 只要配置文件
+不重建就不变；重建或换配置文件时，`product.WindowsSignerEKU`、`signature.WINDOWS_SIGNER_EKU` 和 `sign.ps1` 要一起改，
+而且已装的版本只认旧的 EKU，要先发一个同时接受新旧两个的版本。
 
 ## 2. 真机验收
 
@@ -104,15 +110,22 @@ CI 覆盖构建、安装器界面、文件清理和架构迁移。发布验收�
 
 同时核对：
 
-- 安装器的 UAC 提示（发布者显示"未知"），SmartScreen 的提示与 README 写的一致；
+- 签名（D42）：在测试机上对下载的安装包运行 `Get-AuthenticodeSignature`，或在文件属性的「数字签名」页查看：状态
+  `Valid`，签名者 `Herta Network LLC`，带时间戳。装好后 `C:\Program Files\Solaris` 里的 `Solaris.exe`、
+  `solaris-service.exe`、`uninstall.exe` 同样，其他 exe、dll、pyd 是 Solaris 或原发布者（Microsoft、Python Software
+  Foundation、The Qt Company）的有效签名；有 Windows SDK 时 `signtool verify /pa /v <文件>` 通过。`service.log` 里
+  `service started` 一行是 `signed=true`，界面能连上服务，没有 `rejected control client … pipe client is signed by`；
+- 安装器的 UAC 提示显示经验证的发布者 `Herta Network LLC`（不再是"未知"），接管辅助进程 `solaris-service.exe` 的同意提示
+  也是；SmartScreen 的提示与 README 写的一致：证书新，下载量少时仍可能提示"Windows 已保护你的电脑"，发布者一栏是
+  `Herta Network LLC`；
 - 认领：用第二个用户打开界面，属主的隧道在运行时它看到"其他用户正在使用"；隧道停了以后它能认领，服务经辅助进程
   重启；
 - 注销属主时隧道停止，再登录后恢复；开机后先登录的其他用户不走属主的隧道（D5）；
 - 管理员接管（D5b）。准备一个标准用户和一个管理员（UAC 保持默认），标准用户是属主，开着"系统代理"连接：
   1. 用快速切换用户登录管理员，打开界面：概览页标题栏写"其他用户正在使用 · 另一位用户已连接"，右侧有"接管"。
      再登录一个标准用户，他看到的是"……对方断开后才能在这里连接"，没有"接管"；
-  2. 管理员点"接管"：确认框默认聚焦"取消"。确认后弹出 UAC 的同意提示（程序 `solaris-service.exe`，发布者"未知"），
-     不要求密码。选"否"：什么都不变，也不报错；
+  2. 管理员点"接管"：确认框默认聚焦"取消"。确认后弹出 UAC 的同意提示（程序 `solaris-service.exe`，经验证的发布者
+     `Herta Network LLC`），不要求密码。选"否"：什么都不变，也不报错；
   3. 再点一次，在 UAC 里选"是"：服务重启，管理员的概览页变成"未连接"，可以连接；`service.log` 里有
      `an administrator took over the tunnel`，`owner.json` 是管理员的 SID；
   4. 切回原属主：他的系统代理已写回原来的设置，浏览器不再经代理；管理员连接后他的界面写"其他用户正在使用"；
@@ -295,7 +308,9 @@ exits.md 第 9 节的待实测项。
 
 - macOS 的登录项启动 app 后会显示窗口；Windows 的登录任务仅进入托盘。
 - WARP 注册使用第三方接口，服务方变动或限流可能导致失败；失败时拒绝连接，不切换到未经选择的出口。
-- Tor 出口和 Windows 代码签名尚未实现，见 1.4 节。
+- Tor 出口尚未实现，见 1.4 节。
+- Windows 安装包的签名刚开始还没有 SmartScreen 信誉，最初的一些版本下载后仍可能看到 SmartScreen 的提示（发布者
+  一栏是 `Herta Network LLC`），直到微软积累了足够的下载和安装数据。
 
 版本相关的问题和修复记录保留在 Issue、提交与发布说明中。
 
@@ -306,9 +321,19 @@ exits.md 第 9 节的待实测项。
 1. **改版本**：`pyproject.toml` 的 `version`，三段数字（`X.Y.Z`）。`uv lock` 更新锁文件里的版本；macOS 构建的版本
    号由 `scripts/build_apple.py` 从 `pyproject.toml` 读取。合并到 main，CI 全绿。
 2. **试运行**：在 Actions 里手动运行 Release 工作流（`workflow_dispatch`，选 main）。它在 `release` Environment
-   里，审批后构建三个安装包（Windows x64 / ARM64，macOS 签名与公证），存为 workflow artifact，不建 Release。下载 artifact，在测试 Mac 和
+   里，审批后构建三个安装包（Windows x64 / ARM64 用 Artifact Signing 签名，macOS 签名与公证），存为 workflow artifact，不建 Release。下载 artifact，在测试 Mac 和
    Windows 虚拟机上装一遍；macOS 的磁盘映像打开后应与 `package/dmg/preview.png` 一致。Environment 里没有
    Google OAuth 客户端的两个机密（2.8 节）时，各构建任务分别给出警告，安装包里没有 Google Drive 备份。
+
+   Windows 两个任务的日志里核对：「Signing tools」两个 NuGet 包的 SHA-256 对上，`dotnet --list-runtimes` 有 10.x 的
+   `Microsoft.NETCore.App`（ARM64 上是 `C:\Program Files\dotnet\x64` 下的 x64 版）；「Sign in to Azure」没有选订阅，
+   「Signing token」只打印到期时间；「Sign and build the installer」里 `sign.ps1` 列出保留了谁的签名、签了多少个文件，
+   signtool 每个文件 `Successfully signed`，`Solaris.exe`、`solaris-service.exe`、安装界面插件、卸载器和安装器各有一段
+   `signtool verify /pa /v`：`Issued to: Herta Network LLC`、签发者是微软的 CA（`Microsoft ID Verified …`）、`The signature is
+   timestamped`、`Successfully verified`；「Check the signatures」的证书 `Subject` 是
+   `CN=Herta Network LLC, O=Herta Network LLC, L=Sheridan, S=Wyoming, C=US`，`EnhancedKeyUsageList` 里有代码签名和
+   `1.3.6.1.4.1.311.97.242074350.326480862.720558710.91084369`，时间戳证书是微软的；「Install, upgrade and uninstall」
+   以 `-Signed` 通过（签名、`signed=true`、界面没被拒）。下载 artifact 后在测试机上按 2.1 节核对签名。
 3. **打标签**：`v<版本>`，必须与 `pyproject.toml` 的版本一致。
 
    ```bash
@@ -325,8 +350,8 @@ exits.md 第 9 节的待实测项。
      只能从 Releases 页面手动下载。
 
 检查更新提示的版本：`releases/latest` 的标签去掉 `v` 后是三段数字，并且比当前版本新；Release 里有本机平台的安装包
-和 `SHA256SUMS`。下载后核对 SHA-256；macOS 还核对签名、公证和 Team ID；Windows 安装包不签名（D29），只核对
-SHA-256。界面从不静默安装，用户确认后才打开安装包。
+和 `SHA256SUMS`。下载后核对 SHA-256；macOS 还核对签名、公证和 Team ID；Windows 还核对签名、签名者 `Herta Network LLC`
+和证书配置文件的 EKU（D42）。1.0.0 没有签名者，只核对 SHA-256，照常接受签了名的安装包。界面从不静默安装，用户确认后才打开安装包。
 
 每个候选版本核对公证与系统启动检查、浅深色下的磁盘映像、当前版本提示，以及从上一版本检查、下载、校验和安装的完整路径。
 签名或启动检查的结论不一致时，保留对应日志和失败资源路径，按该版本的问题跟踪处理。

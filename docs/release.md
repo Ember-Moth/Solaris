@@ -8,7 +8,7 @@
 「关于」分组（[ui.md](ui.md) 第 8 节）。面向用户的材料：README 的"下载与安装"、[PRIVACY.md](../PRIVACY.md) 和发布
 说明的模板 `.github/release-notes.md`。
 
-Windows 安装包目前不签名（D29），更新时只核对校验和（第 3 节）。`solaris:` 和 `clash:` 两个 scheme 由打包向
+Windows 安装包由 Azure Artifact Signing 签名（D42），更新时核对校验和与签名者（第 3 节）。`solaris:` 和 `clash:` 两个 scheme 由打包向
 系统注册（macOS 的 Info.plist，Windows 安装器写在 HKLM，第 6 节）。
 
 Windows 安装器采用自定义 Win32 界面（D39），由 MSVC 编译为 NSIS 的 x86 Unicode 插件；它只随安装器/卸载器
@@ -26,8 +26,8 @@ Windows 安装器采用自定义 Win32 界面（D39），由 MSVC 编译为 NSIS
 | 标签 | `v<版本>`，版本即 `pyproject.toml` 的 `version`，形如 `1.0.0`（三段数字）。预发布和草稿不提供给更新 |
 | 标题与说明 | `Solaris <版本>`；说明取自 `.github/release-notes.md`，`{{version}}` 换成版本，"更新内容"在草稿里手写 |
 | macOS 安装包 | `Solaris-<版本>-macos-universal.dmg`：由 `scripts/build_dmg.py` 制作，挂载后是一个固定的窗口，左边 `Solaris.app`、右边“应用程序”的快捷方式（apple/README.md 的“磁盘映像”）；磁盘映像用 Developer ID（Team `GY9ZKZMAZA`）签名、公证并 staple |
-| Windows 安装包 | `Solaris-<版本>-windows-x64-setup.exe`：NSIS 安装器（architecture.md 第 9 节）。目前不签名（D29），更新时只核对校验和（第 3 节第 4 步）；加入签名后用 Authenticode 签名 |
-| Windows ARM64 安装包 | `Solaris-<版本>-windows-arm64-setup.exe`：Windows 11 ARM64 原生应用、服务及匹配的 Cronet/Wintun；NSIS 引导仍为 x86，安装逻辑与 x64 版相同 |
+| Windows 安装包 | `Solaris-<版本>-windows-x64-setup.exe`：NSIS 安装器（architecture.md 第 9 节）。安装器、卸载器和装进去的程序用 Azure Artifact Signing 做 Authenticode 签名并加时间戳，签名者是 `Herta Network LLC`（D42）；更新时核对校验和与签名者（第 3 节第 4 步）。1.0.0 不签名（D29） |
+| Windows ARM64 安装包 | `Solaris-<版本>-windows-arm64-setup.exe`：Windows 11 ARM64 原生应用、服务及匹配的 Cronet/Wintun；NSIS 引导仍为 x86，安装逻辑与签名与 x64 版相同 |
 | 校验和 | `SHA256SUMS`：`sha256sum` 的输出格式，每行 `<64 位小写十六进制>  <文件名>`，覆盖本次发布的其他每个文件 |
 | 源代码 | `Solaris-<版本>-source.tar.gz`：本仓库在这个标签的代码，加上 `go mod vendor` 得到的全部 Go 依赖（第 5 节） |
 
@@ -39,11 +39,19 @@ Release 上有三个安装包、SHA256SUMS 和源代码包，共五个文件。�
 `.github/workflows/release.yml` 在推送 `v*` 标签时运行（也可以手动运行，但只有标签才创建 Release）。每个 job 都在
 `release` Environment 里，由它的审批人批准后才开始：先批准 macOS 和两个 Windows 架构的构建 job，它们成功后再批准创建 Release 的 job。
 
-1. **macOS universal** 和 **Windows x64 / ARM64** 三个构建任务分别构建、签名（Windows 目前不签名）、公证安装包，Windows 的安装包还在 runner 上装一遍、
-   升级、卸载（architecture.md 第 10 节）。产物连同各自的 `.sha256` 存为 workflow artifact。各构建任务都把 Environment
+1. **macOS universal** 和 **Windows x64 / ARM64** 三个构建任务分别构建、签名、公证（macOS）安装包，Windows 的安装包还在
+   runner 上装一遍、升级、卸载（architecture.md 第 10 节）。产物连同各自的 `.sha256` 存为 workflow artifact。各构建任务都把 Environment
    的机密 `SOLARIS_GOOGLE_CLIENT_ID`、`SOLARIS_GOOGLE_CLIENT_SECRET` 交给构建脚本，打包进 Google Drive 备份用的 OAuth
    客户端（storage.md 第 4 节）；没有这两个机密时给出警告，照常构建，安装包里没有 Google Drive 备份。客户端在 Google
    Cloud 里的设置见 [maintenance.md](maintenance.md) 2.8 节。
+
+   Windows 的签名（D42）：job 有 `id-token: write`，构建完安装目录后由 `azure/login` 用 GitHub 的 OIDC 令牌以托管标识
+   `id-solaris-release` 登录 Azure。它的联合凭据只认这个仓库的 `release` 环境；它只在证书配置文件上有
+   「Artifact Signing Certificate Profile Signer」角色，订阅里没有角色，所以登录设 `allow-no-subscriptions` 且不选订阅。
+   用到 Environment 的这些变量（不是机密）：`AZURE_CLIENT_ID`、`AZURE_TENANT_ID`、`ARTIFACT_SIGNING_ENDPOINT`、
+   `ARTIFACT_SIGNING_ACCOUNT`、`ARTIFACT_SIGNING_PROFILE`；`AZURE_SUBSCRIPTION_ID` 不用。签名由 `package/windows/sign.ps1`
+   调用 signtool 和 Artifact Signing 的 dlib 完成，时间戳来自 `http://timestamp.acs.microsoft.com`；签什么、怎么核对见
+   architecture.md 第 10 节。签名失败、核对不过，job 就失败，不会产出未签名的安装包。
 2. **release** job（只对标签运行，`contents: write`）：
    - 确认标签是 `v<pyproject.toml 的版本>`，版本是三段数字（界面只认这种，第 2 节）；
    - 取回三个安装包 artifact，用构建 job 写的 `.sha256` 核对三个安装包；`.sha256` 文件不上传；
@@ -58,7 +66,7 @@ Release 上有三个安装包、SHA256SUMS 和源代码包，共五个文件。�
 审批发生在构建之前，审批人那时还看不到产物；本机又不能运行组装好的 app。所以由人从草稿下载三个安装包在真机上
 试过、写好"更新内容"再发布；草稿有错可以直接删掉重来。发版的步骤见 [maintenance.md](maintenance.md) 第 4 节。
 
-**发布说明**：模板 `.github/release-notes.md` 写下载、两个平台的安装提示（Windows 未签名、SmartScreen 与"未知发布者"；
+**发布说明**：模板 `.github/release-notes.md` 写下载、两个平台的安装提示（Windows 的发布者与可能出现的 SmartScreen 提示；
 macOS 允许系统扩展和 VPN 配置）、源代码与许可、隐私说明的链接。GitHub 把正文里的换行原样显示，所以模板的段落不折行；
 除 `{{version}}` 以外不能有别的 `{{` 占位，否则这一步失败。
 
@@ -103,14 +111,16 @@ macOS 允许系统扩展和 VPN 配置）、源代码与许可、隐私说明的
      不挂载磁盘映像去单独验证里面的 `.app`：映像的签名封住了整个映像的内容，公证时 Apple 已扫描过里面的
      代码，用户首次打开 App 时 Gatekeeper 还会再检查一次。挂载会在 Finder 里留下一个卷，也多一个失败点。
    - **Windows**：看构建有没有配置签名者 `signature.WINDOWS_SIGNER`。
-     - **没有**（目前如此，D29，这个常量是空字符串）：不检查签名（`signature.ChecksumOnly`）。第 2、3 步
+     - **没有**（1.0.0，D29，这个常量是空字符串）：不检查签名（`signature.ChecksumOnly`）。第 2、3 步
        已经确认安装包的 SHA-256 与同一个 Release 的 `SHA256SUMS` 一致，这就是全部的校验，所以安装包的可信程度等于
        GitHub 上这个 Release 的可信程度：能改 Release 文件的人也能改 `SHA256SUMS`。说明不显示"正在校验签名…"，
        确认框写明安装包未签名（第 5 步）。这样的构建遇到签了名的安装包也照常接受。
-     - **有**（加入签名以后）：经 ctypes 调用 `WinVerifyTrust`（`WINTRUST_ACTION_GENERIC_VERIFY_V2`，整条证书链检查
-       吊销，不弹任何界面），通过后用 `WTHelperProvDataFromStateData` 取出签名者证书，`CertGetNameStringW` 读出它的
-       显示名，必须等于 `WINDOWS_SIGNER`。签名的那个版本把常量填成证书的显示名，与 `product.WindowsSigner` 相同；
-       从此这个版本只接受这个签名者签的安装包，未签名的会被拒绝。
+     - **有**（1.0.0 以后的版本，D42）：经 ctypes 调用 `WinVerifyTrust`（`WINTRUST_ACTION_GENERIC_VERIFY_V2`，整条证书链
+       检查吊销，不弹任何界面），通过后用 `WTHelperProvDataFromStateData` 取出签名者证书，`CertGetNameStringW` 读出它的
+       显示名，必须等于 `WINDOWS_SIGNER`（`Herta Network LLC`）；`CertGetEnhancedKeyUsage` 读出证书扩展里的 EKU，必须含
+       `WINDOWS_SIGNER_EKU`，Artifact Signing 只把它发给 Solaris 的证书配置文件，同名的别的组织拿不到。两个常量与
+       `product.WindowsSigner`、`product.WindowsSignerEKU` 相同。Artifact Signing 每天换证书，中间 CA 也会变，所以不认
+       具体证书。未签名的、别人签的安装包都被拒绝。
    - 其他平台没有安装包，不会走到这一步。
 5. **确认安装**：校验通过后按钮变成「打开安装包…」。点它先弹普通确认框「打开 Solaris 1.1.0 的安装包？」，
    正文写明接下来发生什么：
@@ -133,7 +143,7 @@ macOS 允许系统扩展和 VPN 配置）、源代码与许可、隐私说明的
 | `checksum_mismatch` | 「下载的文件与校验和不符」 |
 | `download_failed` | 「下载失败：…」 |
 | `signature_invalid` | 「安装包的签名无效：…」，细节是 codesign、spctl 或 WinVerifyTrust 的原话 |
-| `signer_mismatch` | 「安装包不是由 Solaris 的开发者签名的」；Windows 上只在配置了签名者的构建里出现 |
+| `signer_mismatch` | 「安装包不是由 Solaris 的开发者签名的」；Windows 上签名者的显示名不符，或证书没有 Solaris 证书配置文件的 EKU。只在配置了签名者的构建里出现 |
 
 ## 4. 诊断信息
 
@@ -268,9 +278,10 @@ macOS 允许系统扩展和 VPN 配置）、源代码与许可、隐私说明的
 - `tests/test_update.py`：本机起一个假的 GitHub（`tests/support/releases.py`，`http.server`，回环地址），覆盖有新
   版本、已是最新、还没有发布、标签无法识别、HTTP 错误、没有本机安装包、没有校验和、哈希不符、大小与声明不符、
   取消下载、签名被拒、签名者不符、打开前文件被换；签名校验用替身。Windows 的两种构建都测：没有签名者时不校验
-  签名、仍要求 `SHA256SUMS` 里有这个文件且哈希一致、结果标为未签名；配置了签名者时未签名的安装包被拒。macOS 上
+  签名、仍要求 `SHA256SUMS` 里有这个文件且哈希一致、结果标为未签名；配置了签名者时未签名的安装包被拒；显示名对但
+  没有那个 EKU 的签名者被拒；更新器、服务和 `sign.ps1` 的签名者常量一致。macOS 上
   另用系统自带的 App 真实运行 `codesign`，确认 Team ID 不符时被拒；Windows 上真实调用 `WinVerifyTrust`，未签名的
-  文件被拒，找得到带内嵌签名的程序（如 PowerShell 7）时确认签名者不符被拒。
+  文件被拒，找得到带内嵌签名的程序（如 PowerShell 7）时确认签名者不符被拒、读出代码签名的 EKU、没有 Solaris 的 EKU 时被拒。
 - `tests/test_about.py`：「关于」分组的各个状态与按钮、自动检查的计时与设置项、确认后才打开安装包、未签名的
   Windows 安装包在确认框里写明未签名和"未知发布者"；诊断 zip
   的内容，订阅链接、名称、路径、覆写原文和方案内容不出现在任何文件里，设置项全部归了类；许可证列表与搜索。
