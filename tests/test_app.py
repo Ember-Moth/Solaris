@@ -400,6 +400,20 @@ def test_settings_page_says_when_only_the_mixed_port_serves(qtbot: QtBot, loaded
     assert loaded.warnings == []
 
 
+def test_settings_page_says_udp_needs_the_tun(qtbot: QtBot, loaded: Loaded) -> None:
+    overview = loaded.view_models.overview
+    loaded.view_models.shell.setPage("settings")
+    content = loaded.window.contentItem()
+    hint = "游戏、语音通话等 UDP 流量不经过系统代理，需要 TUN 模式"  # noqa: RUF001 - the UI's copy
+    qtbot.waitUntil(lambda: overview.property("connected"))
+    assert hint not in (shown_row(content, "系统代理") or set())
+    overview.setTun(False)
+    qtbot.waitUntil(lambda: hint in (shown_row(content, "系统代理") or set()))
+    overview.setSystemProxy(False)
+    qtbot.waitUntil(lambda: hint not in (shown_row(content, "系统代理") or set()))
+    assert loaded.warnings == []
+
+
 def cramped(item: QQuickItem) -> list[set[str]]:
     """The texts of the rows under ``item`` that need more width than they have, so that
     something in them is elided, wraps or runs under its neighbour."""
