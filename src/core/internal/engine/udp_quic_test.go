@@ -121,12 +121,7 @@ func TestQUICThroughNode(t *testing.T) {
 	seen := netip.AddrPortFrom(quicServer.Addr(), quicPort)
 	// Not shadowsocks: under a burst of datagrams the race detector finds a race in its
 	// server's NAT (sing's udpnat), which is not under test.
-	var node udpNode
-	for _, candidate := range udpNodes(credentials) {
-		if candidate.name == "vless xudp" {
-			node = candidate
-		}
-	}
+	node := vlessNode()
 	for _, routing := range []string{"subscription", "plan"} {
 		t.Run(routing, func(t *testing.T) {
 			mu.Lock()

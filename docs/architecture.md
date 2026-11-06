@@ -904,6 +904,13 @@ NSIS 及自定义安装窗口是 x86 引导组件，由系统仿真运行。更�
   几个发出，Hysteria2 丢弃超过 4096 字节的，Snell v4/v5 的数据报要装进当前记录（空闲 31 秒后是 1421 字节）。
   节点没有 `udp: true` 时 UDP 跳过规则、直连，也有用例固定。`udp_quic_test.go` 经节点建立 QUIC 连接，ClientHello
   跨两个 Initial 包，确认「我的方案」的 QUIC 嗅探不依赖本机能解析 SNI。
+- **TUN 协议栈的 UDP（无 TUN）**：`internal/engine/tun_stack_test.go` 不建 TUN，用内存里的设备代替：测试扮演 TUN
+  另一侧的系统，写入 IP 包，读回协议栈写出的包，检查 MTU、校验和，并把分片拼回去。协议栈、mihomo 的 TUN 处理器和
+  运行中的 engine 都是宿主实际用的那一套，按 `sing_tun.New` 的方式组装；设备分别模拟 Windows 服务的 wintun（逐包
+  `ReadPacket`）和 macOS 扩展的 utun（recvmsg_x 批量读、带四字节地址族头写，即 mihomo 在 macOS 上的默认值）。
+  覆盖 mips 栈在 MTU 9000 和 1500 下的 1–8972 字节数据报、进出都要分片的数据报（含最后一片先到）、IPv6 分片、
+  64 个 1350 字节的突发和 64 条并发流，都经节点往返。macOS 的 `net.inet.udp.maxdgram` 是 9216 字节，回环上的
+  socket 发不出更大的数据报，所以最大只测到 9000 字节。gVisor 栈需要设备自己的链路端点，这里不测。
 - **端到端测试**（`tests/e2e`，标记 `e2e`）：界面连真实的开发服务。每个测试起一个开发服务子进程，用
   `ServiceHost`、临时数据目录和真实的 ViewModel 组装界面，离屏加载 QML，通过 ViewModel 的槽操作，再用
   `curl -x` 经混合端口访问本机的 HTTP 服务；配置里的节点是本机的 HTTP 代理，它们记下经过的请求，所以能看出

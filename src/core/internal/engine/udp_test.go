@@ -87,9 +87,11 @@ type nodeTunnel struct {
 	// reach it: the TUN tests' echo server, past the TUN.
 	remote  netip.Prefix
 	control func(network, address string, c syscall.RawConn) error
-	// ports moves destination ports, so a client can aim at a well-known port on loopback.
-	ports    map[uint16]uint16
-	datagram atomic.Int64
+	// addresses and ports move destinations, so a client can aim at a well-known port, or
+	// at an address on the internet, and reach a server on loopback.
+	addresses map[netip.Addr]netip.Addr
+	ports     map[uint16]uint16
+	datagram  atomic.Int64
 
 	mu       sync.Mutex
 	sessions map[string]*nodeSession
@@ -109,9 +111,13 @@ type nodeSession struct {
 // destination is where the node relays metadata's target, and the target as the client
 // named it.
 func (n *nodeTunnel) destination(metadata *C.Metadata) (relayed, seen netip.AddrPort, ok bool) {
-	address := metadata.DstIP
-	if !address.IsValid() {
-		address = n.hosts[metadata.Host]
+	named := metadata.DstIP.Unmap()
+	if !named.IsValid() {
+		named = n.hosts[metadata.Host]
+	}
+	address := named
+	if moved, ok := n.addresses[address]; ok {
+		address = moved
 	}
 	if !address.IsValid() || !address.IsLoopback() && !n.remote.Contains(address) {
 		return netip.AddrPort{}, netip.AddrPort{}, false
@@ -120,7 +126,7 @@ func (n *nodeTunnel) destination(metadata *C.Metadata) (relayed, seen netip.Addr
 	if moved, ok := n.ports[port]; ok {
 		port = moved
 	}
-	return netip.AddrPortFrom(address, port), netip.AddrPortFrom(address, metadata.DstPort), true
+	return netip.AddrPortFrom(address, port), netip.AddrPortFrom(named, metadata.DstPort), true
 }
 
 func (n *nodeTunnel) HandleTCPConn(conn net.Conn, metadata *C.Metadata) {
@@ -358,11 +364,7 @@ func udpNodes(credentials nodeCredentials) []udpNode {
 			inbound:  map[string]any{"type": "vmess", "users": []any{map[string]any{"uuid": nodeUUID, "alterId": 0}}},
 			outbound: map[string]any{"type": "vmess", "uuid": nodeUUID, "alterId": 0, "cipher": "auto", "udp": true},
 		},
-		{
-			name:     "vless xudp",
-			inbound:  map[string]any{"type": "vless", "users": []any{map[string]any{"uuid": nodeUUID}}, "allow-insecure": true},
-			outbound: map[string]any{"type": "vless", "uuid": nodeUUID, "udp": true},
-		},
+		vlessNode(),
 		{
 			name: "vless vision tls",
 			inbound: with(tlsServer, map[string]any{"type": "vless",
@@ -445,6 +447,16 @@ func shadowsocksNode() udpNode {
 		name:     "shadowsocks aes-128-gcm",
 		inbound:  map[string]any{"type": "shadowsocks", "cipher": "aes-128-gcm", "password": nodePassword, "udp": true},
 		outbound: map[string]any{"type": "ss", "cipher": "aes-128-gcm", "password": nodePassword, "udp": true},
+	}
+}
+
+// vlessNode carries UDP as XUDP and needs no certificate either. Its server, unlike
+// shadowsocks's, takes bursts of datagrams without a race (TestQUICThroughNode).
+func vlessNode() udpNode {
+	return udpNode{
+		name:     "vless xudp",
+		inbound:  map[string]any{"type": "vless", "users": []any{map[string]any{"uuid": nodeUUID}}, "allow-insecure": true},
+		outbound: map[string]any{"type": "vless", "uuid": nodeUUID, "udp": true},
 	}
 }
 
