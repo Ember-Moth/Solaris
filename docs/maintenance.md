@@ -55,7 +55,8 @@ CI 覆盖构建、安装器界面、文件清理和架构迁移。发布验收�
 ### 1.4 没有实现的
 
 - Tor 出口（D23，[exits.md](exits.md) 第 4 节）：只有设计；
-- Windows 代码签名（D29）：签名方案定下后接上 `product.WindowsSigner`、`SignedRelease` 和界面的
+- Windows 代码签名（D29、D42）：Azure Artifact Signing 的申请已于 2026-11-05 提交，等待微软审核。通过后在 Azure
+  建签名账户和证书配置，给发布工作流配 GitHub OIDC 联合凭据，再接上 `product.WindowsSigner`、`SignedRelease` 和界面的
   `signature.WINDOWS_SIGNER`（[release.md](release.md) 第 3 节）；
 
 ## 2. 真机验收

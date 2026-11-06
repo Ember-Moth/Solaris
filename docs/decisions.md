@@ -1,6 +1,6 @@
 # 决策
 
-本文记录 Solaris 的设计决策。代码注释和其他文档按编号引用它们（如"D19"），所以编号不变、不重用；新的决策从 D42
+本文记录 Solaris 的设计决策。代码注释和其他文档按编号引用它们（如"D19"），所以编号不变、不重用；新的决策从 D43
 接着编号。每条只写结论，理由和细节在"详见"一栏的文档里。
 
 ## 待决策
@@ -40,7 +40,7 @@
 | D26 | 界面上只有一个连接开关（概览页出站分组第一行）；连接时怎样接管流量由设置页"接管方式"决定，TUN 和系统代理默认都开；macOS 上 TUN 是必选的 | [DESIGN.md](../DESIGN.md)"连接开关"、[ui.md](ui.md) §8 |
 | D27 | 订阅由 Python 下载、Go 内核解析和校验，只此一份解析。没有内核能应答时（macOS 隧道断开）先存下原文，连接后、`Start` 之前再解析和校验；界面在没有内核时隐藏需要它的部分 | [ui.md](ui.md) §3 |
 | D28 | 最低支持 macOS 26：PySide6 保持 6.12，不为 macOS 15 降到 6.11 | [apple/README.md](../apple/README.md)"组装 Solaris.app" |
-| D29 | Windows 安装包不签名：服务对客户端只做文件身份校验，检查更新只核对 SHA-256；签名方案定下后再接上签名者常量和 `SignedRelease` | [release.md](release.md) §3、[architecture.md](architecture.md) §5.3 |
+| D29 | Windows 安装包不签名：服务对客户端只做文件身份校验，检查更新只核对 SHA-256；签名方案定下后再接上签名者常量和 `SignedRelease`。方案已定为 D42，审核通过前沿用本条 | [release.md](release.md) §3、[architecture.md](architecture.md) §5.3 |
 | D30 | 设置页不为备份不加密单独提示：导出、开启 iCloud、登录 Google Drive 都不弹确认框，各行的说明里也不写"不加密"；备份不加密这一事实写在隐私说明里 | [storage.md](storage.md) §3、[ui.md](ui.md) §8、[PRIVACY.md](../PRIVACY.md) |
 | D31 | engine 的方法直接返回控制协议的 protobuf 消息（`controlpb`），从 mihomo 类型的映射留在 engine，分发器不再映射，也不另设一套对应的 Go 类型 | [architecture.md](architecture.md) §3.2 |
 | D32 | 设置页「延迟测试」可选 HTTP（默认）或 TCP 握手，只用于用户发起的测速和界面显示的结果；自动选择、故障转移、负载均衡组照旧按 mihomo 的 URL 测试选择。TCP 握手由内核像 mihomo 的出站一样直接拨节点的服务器，不进 TUN；结果存在 engine，应用下一份配置时清空。没有 TCP 服务器可拨的不测、显示「—」：走 UDP 或可能走 UDP 的类型、经 `dialer-proxy` 的节点、组网出站、直连和拒绝；组显示它此刻所用节点的结果 | [architecture.md](architecture.md) §4.3、[ui.md](ui.md) §8 |
@@ -53,3 +53,4 @@
 | D39 | Windows 安装器使用自定义 Win32 UI，沿用 Solaris 设计规范；NSIS 保留为安装事务引擎。首次安装可选经权限检查的本地目录，升级沿用已有位置；交互安装/升级需主动同意随包 GPLv3 原文。保留 `/S`、`/PURGE`、`/UPGRADE` 和普通权限启动应用的行为。卸载默认取消且默认保留数据，执行事务期间禁止中途关闭 | [architecture.md](architecture.md) §9、[DESIGN.md](../DESIGN.md) |
 | D40 | Windows 11 ARM64 使用原生 ARM64 GUI、Go 服务、Cronet 与 Wintun；NSIS 引导程序及其 UI 插件仍是 x86。构建按架构隔离并检查 PE，更新按原生 OS 架构选择安装包，x64 到 ARM64 原位升级保留数据；CI 在原生 ARM runner 检查安装与迁移 | [architecture.md](architecture.md) §10、[release.md](release.md) §1 |
 | D41 | 退出 Solaris 就是完全退出：托盘或菜单栏的「退出 Solaris」、macOS 的 ⌘Q 和 Dock 的「退出」、关闭动作为「退出 Solaris」时关闭主窗口，都先像「断开」一样断开本用户的隧道，再退出界面进程；服务记为未运行，睡眠唤醒（D34）和服务重启后都不再恢复。断开最多等 10 秒，失败或超时时询问重试还是仍然退出，并说明隧道可能仍在运行。关闭动作为「留在托盘 / 菜单栏」时关闭窗口只隐藏窗口。别的用户的隧道（D5b）、没有服务应答时不断开；安装器的 `--quit` 和系统注销、关机时直接退出，隧道交给服务（D5、升级保留 `was_running`）；界面崩溃或被结束时隧道仍由服务或扩展维持。取代"退出界面后隧道继续运行"：用户把退出理解为退出整个应用，退出后流量仍经隧道却没有界面，不易察觉 | [ui.md](ui.md) §8、[architecture.md](architecture.md) §1 |
+| D42 | Windows 签名用 Azure Artifact Signing（原 Trusted Signing），申请已于 2026-11-05 提交，等待微软的身份验证审核。通过后，发布工作流经 GitHub OIDC 登录 Azure，用 signtool 和 Artifact Signing 的 dlib 给安装目录里的 exe、dll、pyd 以及安装器、卸载器签名并加时间戳；证书有效期只有几天、每天轮换，签名者校验只认证书主题里经验证的组织名，不认具体证书或中间 CA。审核通过前沿用 D29 | [release.md](release.md) §3、[architecture.md](architecture.md) §9 |
