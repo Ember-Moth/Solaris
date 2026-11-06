@@ -55,7 +55,7 @@ def test_defaults_without_rows(tmp_path: Path, database: Database) -> None:
     assert store.current == Settings()
     assert rows(tmp_path) == {}  # nothing is written until a change
     # Connecting takes over with both (D26), as far as the host does.
-    assert store.current.run_options() == RunOptions(True, True, mixed_port=7890)
+    assert store.current.run_options() == RunOptions(True, True, mixed_port=7890, tun_stack="mips")
 
 
 def test_update_writes_and_notifies(tmp_path: Path, database: Database) -> None:
@@ -68,7 +68,7 @@ def test_update_writes_and_notifies(tmp_path: Path, database: Database) -> None:
     assert store.current == changed
     assert seen == [(Settings(), changed)]
     assert DatabaseSettingsStore(database).current == changed
-    assert store.current.run_options() == RunOptions(True, False, 7897, True)
+    assert store.current.run_options() == RunOptions(True, False, 7897, True, tun_stack="mips")
     # One row per setting changed (storage.md §2).
     assert rows(tmp_path) == {
         "language": ("en", 1_000.0),
@@ -87,13 +87,23 @@ def test_update_writes_and_notifies(tmp_path: Path, database: Database) -> None:
 
 def test_run_options_carry_the_stack_and_all_networks(database: Database) -> None:
     store = DatabaseSettingsStore(database)
-    assert store.current.run_options().tun_stack == ""  # "profile": the profile's own
+    assert store.current.run_options().tun_stack == "mips"  # the default (D3)
+    assert store.update(tun_stack="profile").run_options().tun_stack == ""  # the profile's own
     for stack in ("system", "mips", "gvisor", "mixed"):
         assert store.update(tun_stack=stack).run_options().tun_stack == stack
     options = store.update(include_all_networks=True).run_options()
     assert options == RunOptions(
         True, True, mixed_port=7890, tun_stack="mixed", include_all_networks=True
     )
+
+
+def test_a_stack_never_picked_follows_the_default(database: Database) -> None:
+    """Only changed settings are stored, so the stack is mips (D3) until the user picks one;
+    a stack picked before, "profile" among them, stays."""
+    assert DatabaseSettingsStore(database).current.tun_stack == "mips"
+    with database.transaction() as connection:
+        write_settings(connection, {"tun_stack": "profile"}, 2_000.0)
+    assert DatabaseSettingsStore(database).current.tun_stack == "profile"
 
 
 @pytest.mark.parametrize(

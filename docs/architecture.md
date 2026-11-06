@@ -228,12 +228,12 @@ mihomo 提供的可选标签有 `with_gvisor`、`with_low_memory`、`no_tailscal
 
 - TUN 栈：`system` 和 `mips`（mihomo 的默认栈）总是可用；`gvisor` 和 `mixed` 需要 `with_gvisor`，否则要到创建
   TUN 时才报错，所以准入流水线在缺少该标签时直接以 `invalid_config` 拒绝这两种栈，不论它来自配置、覆写还是
-  `RunOptions.tun_stack`。用户在设置页的"TUN 协议栈"里选（D3，ui.md §8），两个平台都默认"跟随配置"；各平台的
-  默认栈在真机验收后再定（[maintenance.md](maintenance.md) 2.1、2.2 节）。
+  `RunOptions.tun_stack`。用户在设置页的"TUN 协议栈"里选（D3，ui.md §8），两个平台都默认 `mips`。选"跟随配置"
+  而配置没写 `tun.stack` 时，自管模式用 mihomo 的默认栈 `mips`，fd 模式用 gVisor（3.1 节）。
 - macOS NE 开启 `includeAllNetworks` 时，`system` 和 `mixed` 栈不能工作，只剩 `mips` 和 `gvisor`。sing-tun 有
   对应的检查（`StackOptions.IncludeAllNetworks`），但 mihomo 不传这个选项，所以由准入流水线在 fd 模式下把这两种栈
   换成 gVisor（3.1 节）。`includeAllNetworks` 默认关闭，用户可以在设置页打开（D19，ui.md §8），下次连接时生效；
-  设置页同时把这两种栈置灰，已选的改成 gVisor。CI 的 fd 模式测试对这两种栈再各跑一次打开它的情形。
+  设置页同时把这两种栈置灰，已选的改成 `gvisor`。CI 的 fd 模式测试对这两种栈再各跑一次打开它的情形。
 - 系统扩展的可执行文件（Release，`with_gvisor,with_naive`）由 Xcode 在签名前做 `strip -x`（`STRIP_STYLE: non-global`），
   最终体积包含下文静态链接的 Cronet 原生库。
 - TUN 自动化在 Linux 网络命名空间中运行（第 11 节）；平台验收按 [维护清单](maintenance.md) 执行。

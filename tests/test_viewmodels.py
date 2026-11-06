@@ -195,7 +195,7 @@ def test_overview_actions(qtbot: QtBot, view_models: ViewModels) -> None:
     qtbot.waitUntil(lambda: not prop(overview, "busy"))
     assert prop(overview, "connected")
     assert host.config is not None
-    assert host.config.options == RunOptions(False, False, mixed_port=7890)
+    assert host.config.options == RunOptions(False, False, mixed_port=7890, tun_stack="mips")
     # With neither, connecting opens the mixed port only.
     assert prop(overview, "statusDetail").startswith("混合端口 7890 · 已运行 ")
 
@@ -242,7 +242,7 @@ def test_development_service_opens_the_mixed_port_only(qtbot: QtBot, tmp_path: P
         qtbot.waitUntil(lambda: prop(overview, "connected") and not prop(overview, "busy"))
         assert prop(overview, "connectionDetail") == ""
         assert host.config is not None
-        assert host.config.options == RunOptions(mixed_port=7890)
+        assert host.config.options == RunOptions(mixed_port=7890, tun_stack="mips")
         assert prop(overview, "statusDetail").startswith("混合端口 7890 · 已运行 ")
     finally:
         built.shutdown()

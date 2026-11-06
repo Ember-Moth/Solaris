@@ -380,7 +380,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 | `system_proxy` | 布尔 | `true` | 本机 | 设置页「接管方式」的系统代理开关：连接时是否设置系统代理。只有 Windows 服务设置系统代理 |
 | `mixed_port` | 1024–65535 | 7890 | 本机 | 混合端口，总是覆盖配置里的 `mixed-port` |
 | `allow_lan` | 布尔 | `false` | 本机 | 允许局域网连接（architecture.md §8"局域网暴露"） |
-| `tun_stack` | `profile`、`system`、`mips`、`gvisor`、`mixed` | `profile` | 本机 | "TUN 协议栈"（D3）：`profile` 是"跟随配置"，用配置里的 `tun.stack`；其余写进 `RunOptions.tun_stack`，盖过配置和覆写（architecture.md §3.1、§3.4） |
+| `tun_stack` | `profile`、`system`、`mips`、`gvisor`、`mixed` | `mips` | 本机 | "TUN 协议栈"（D3）：`profile` 是"跟随配置"，用配置里的 `tun.stack`；其余写进 `RunOptions.tun_stack`，盖过配置和覆写（architecture.md §3.1、§3.4）。默认 `mips`，即 mihomo 自己的默认栈 |
 | `include_all_networks` | 布尔 | `false` | 本机 | 仅 macOS（D19）："包含所有网络"，把系统默认绕开隧道的流量也送进隧道，局域网流量除外。写进 VPN 配置的 `includeAllNetworks` 和 `excludeLocalNetworks`，下次连接时生效；打开后 TUN 协议栈不能用 `system` 和 `mixed`（architecture.md §3.4） |
 | `delay_test` | `http`、`tcp` | `http` | 同步 | "延迟测试"（D32）：代理页「测速」经节点请求测试地址（HTTP），还是只计到节点服务器的 TCP 握手。代理页、概览页和策略组编辑器显示所选测试的结果（architecture.md §4.3） |
 | `warp_protocol` | `masque-h2`、`masque-h3`、`wireguard` | `masque-h2` | 本机 | WARP 出口的协议，在分流页的出口设置对话框里改，设置页不列出。账户只有一种协议的密钥，改了协议就为它换密钥（exits.md 3.1、3.2 节） |
@@ -444,13 +444,14 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   - **macOS 不设系统代理**：扩展不提供 `SetSystemProxy`（architecture.md §6.3），TUN 已经接管全部流量，所以
     不列这一行，`system_proxy` 在 macOS 上不起作用。
   - **端口、局域网连接与 TUN 协议栈**：隧道运行时先带新值 Reload，成功后才写入设置；内核拒绝（如端口被占用，
-    `apply_failed`；内核不带 `with_gvisor` 时选了 gVisor 或 Mixed，`invalid_config`）时保留原值，错误写在对应的
+    `apply_failed`；内核不带 `with_gvisor` 时选了 `gvisor` 或 `mixed`，`invalid_config`）时保留原值，错误写在对应的
     行下。隧道停止时直接写入。
-  - **TUN 协议栈**在"接管方式"分组里 TUN 模式的下一行，是下拉框：跟随配置、System、Mips、gVisor、Mixed，栈名用
-    mihomo 的写法，不翻译。
+  - **TUN 协议栈**在"接管方式"分组里 TUN 模式的下一行，是下拉框：跟随配置、system、mips、gvisor、mixed，默认
+    mips。栈名照 mihomo 配置里 `tun.stack` 的值写成小写，不翻译。
   - **包含所有网络**是它下面的开关，只在 macOS 上显示，说明写着「系统默认绕开隧道的流量也进入隧道，下次连接时
-    生效」。打开它只写设置，不动运行中的隧道；打开时 TUN 协议栈若是 System 或 Mixed，就和设置一起改成 gVisor，
-    这一步像改栈一样先带新值 Reload。打开期间下拉框里的 System、Mixed 不可选，注记「包含所有网络时不可用」。
+    生效」。打开它只写设置，不动运行中的隧道；打开时 TUN 协议栈若是 `system` 或 `mixed`，就和设置一起改成
+    `gvisor`，这一步像改栈一样先带新值 Reload。打开期间下拉框里的 `system`、`mixed` 不可选，注记「包含所有网络时
+    不可用」。
   - **开发模式**：开发服务对开启 TUN 或系统代理返回 `unsupported_method`（architecture.md §11）。Windows 以外的
     服务都是开发服务，`app.default_host` 给它的 `ServiceHost` 是 `TAKEOVER_NONE`，界面不向它要这两项，所以两项
     默认打开时开发模式照样能连接，只开放混合端口。直接向开发服务要求时，`ProfileLibrary` 仍把拒绝换成

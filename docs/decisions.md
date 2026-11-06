@@ -13,7 +13,7 @@
 | --- | --- | --- |
 | D1 | 产品名与应用名都是 Solaris。GitHub 仓库为 `Ember-Moth/Solaris`，macOS bundle id 前缀 `dev.tschen.solaris`；产品标识集中在 `src/core/internal/product/product.go` 与 `src/solaris/product.py` | [architecture.md](architecture.md) |
 | D2 | macOS 提供 arm64 + x86_64 通用 DMG，UI、Python/Qt、管理库和扩展均含两个架构；Windows 提供 x64，并按 D40 扩展到 ARM64 | [architecture.md](architecture.md) §6.1、[release.md](release.md) §1 |
-| D3 | Windows 服务带 `with_gvisor` 构建，四种 TUN 栈都提供，由用户在设置里选择；macOS 系统扩展同样带 `with_gvisor`，fd 模式默认 gVisor 栈 | [architecture.md](architecture.md) §3.4 |
+| D3 | Windows 服务带 `with_gvisor` 构建，四种 TUN 栈都提供，由用户在设置里选择，两个平台都默认 `mips`；macOS 系统扩展同样带 `with_gvisor`，"跟随配置"而配置没写栈时 fd 模式用 gVisor 栈 | [architecture.md](architecture.md) §3.4 |
 | D4 | 覆写只做 Merge，不做 Script；一份全局覆写，加上每份订阅各一份 | [ui.md](ui.md) §4、[architecture.md](architecture.md) §3.2 |
 | D5 | 属主注销时停止隧道，下次登录后恢复 | [architecture.md](architecture.md) §5.4 |
 | D5b | Windows 上别的用户的隧道在运行时，管理员经 UAC 确认后可以接管：停掉对方的隧道、写回对方的系统代理，自己成为属主；不是管理员只能等对方断开或注销。界面经 UAC 启动服务自己的接管辅助进程（`solaris-service.exe -take-over`），服务凭客户端 token 里启用的 Administrators 组认定管理员 | [architecture.md](architecture.md) §5.4、[ui.md](ui.md) §8 |
@@ -30,7 +30,7 @@
 | D16 | 分流配置在内核里拼装，节点筛选和规则匹配都用 mihomo 自己的逻辑 | [routing.md](routing.md) §8.1 |
 | D17 | GEO 分类列表由内核从正在使用的 GEO 数据里读取；安装包附带初始 GEO 数据，另附一份分类名清单作兜底 | [routing.md](routing.md) §8.4 |
 | D18 | GEO 数据全量随安装包附带（geosite 约 4.4 MB、geoip 约 16.5 MB） | [routing.md](routing.md) §8.4 |
-| D19 | macOS 扩展的 `includeAllNetworks` 默认关闭，用户可在设置页打开；打开后 `system`、`mixed` 栈换成 gVisor | [architecture.md](architecture.md) §3.4、[ui.md](ui.md) §8 |
+| D19 | macOS 扩展的 `includeAllNetworks` 默认关闭，用户可在设置页打开；打开后 `system`、`mixed` 栈换成 `gvisor` | [architecture.md](architecture.md) §3.4、[ui.md](ui.md) §8 |
 | D20 | fd 模式的 `dns.fake-ip-range` 固定为 `198.18.0.1/16`，TUN 地址由它得出；用户关掉 `ipv6` 时，进入隧道的 IPv6 流量被丢弃 | [architecture.md](architecture.md) §3.1 |
 | D21 | 链式出口只在"我的方案"下提供；出口不可用时，指向它的规则拒绝连接，不改走普通代理 | [exits.md](exits.md) §1 |
 | D22 | WARP 出口放在内核：mihomo 的 MASQUE 或 WireGuard 出站，`dialer-proxy` 经用户的节点，默认 MASQUE over HTTP/2；内核经节点注册账户，账户存系统凭据库、不进备份 | [exits.md](exits.md) §3 |
