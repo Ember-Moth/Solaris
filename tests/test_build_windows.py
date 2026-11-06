@@ -13,8 +13,10 @@ import struct
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
+import yaml
 
 from scripts import build_installer_ui, build_windows
 from scripts.build_apple import BuildError
@@ -475,3 +477,37 @@ def test_sign_script_needs_the_release_signing_setup(tmp_path: Path) -> None:
     status, output = _sign_script("-Directory", str(tmp_path), env=environment)
     assert status != 0
     assert "has no solaris-service.exe" in output
+
+
+def _workflow(name: str) -> dict[str, Any]:
+    path = build_windows.ROOT / ".github" / "workflows" / name
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+def test_only_the_release_workflow_signs() -> None:
+    # The release's Windows job signs in to Azure between the build and the installer, and
+    # passes --sign to both; CI's builds stay unsigned, without SignedRelease (D42).
+    job = _workflow("release.yml")["jobs"]["windows"]
+    assert job["environment"] == "release"
+    assert job["permissions"] == {"contents": "read", "id-token": "write"}
+    steps = job["steps"]
+    runs = [str(step.get("run", "")) for step in steps]
+    (build,) = [index for index, run in enumerate(runs) if "--skip-installer" in run]
+    (installer,) = [index for index, run in enumerate(runs) if "--installer-only" in run]
+    (login,) = [
+        index
+        for index, step in enumerate(steps)
+        if str(step.get("uses", "")).startswith("azure/login@")
+    ]
+    assert build < login < installer
+    assert "--sign" in runs[build].split()
+    assert "--sign" in runs[installer].split()
+    assert re.fullmatch(r"azure/login@[0-9a-f]{40}", steps[login]["uses"])
+    # The identity has no role in the subscription: azure/login would fail to select it.
+    assert steps[login]["with"]["allow-no-subscriptions"] is True
+    assert "subscription-id" not in steps[login]["with"]
+    (smoke,) = [run for run in runs if "smoke-test.ps1" in run]
+    assert "-Signed" in smoke.split()
+    ci = (build_windows.ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    for signing in ("--sign", "-Signed", "id-token", "azure/login", "ARTIFACT_SIGNING"):
+        assert signing not in ci

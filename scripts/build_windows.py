@@ -123,8 +123,8 @@ def installer_name(version: str, arch: str = "x64") -> str:
 
 
 def build_service(version: str, arch: str = "x64", signed: bool = False) -> Path:
-    """Native Windows service, with DWARF for retained crash symbols. A signed release's
-    accepts only a UI with Solaris's signature."""
+    """Native Windows service, with DWARF for retained crash symbols. Linked ``signed``, as a
+    release is, it accepts only a UI with Solaris's signature."""
     output = build_directory(arch) / "service" / SERVICE
     output.unlink(missing_ok=True)
     environment = os.environ | {
@@ -272,7 +272,7 @@ def uninstall_list(directory: Path) -> str:
 
 
 def sign(*arguments: str | Path) -> None:
-    """package/windows/sign.ps1 with ``arguments``: ``"-Directory", path`` or one file."""
+    """package/windows/sign.ps1 with ``arguments``: ``"-Directory", path`` or files."""
     build_apple._run(
         [
             "powershell.exe",

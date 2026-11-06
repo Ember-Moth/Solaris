@@ -49,6 +49,7 @@ OutFile "${OUTPUT_FILE}"
 !uninstfinalize 'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${SIGN_SCRIPT}" "%1"' = 0
 !finalize 'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${SIGN_SCRIPT}" "%1"' = 0
 !endif
+
 InstallDir "$PROGRAMFILES64\${PRODUCT}"
 BrandingText "${PRODUCT} ${APP_VERSION}"
 ShowInstDetails show
