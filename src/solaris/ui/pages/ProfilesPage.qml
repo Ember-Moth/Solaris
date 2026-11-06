@@ -440,6 +440,8 @@ ScrollView {
         Accessible.role: Accessible.ListItem
         Accessible.name: name
         Accessible.description: qsTr("%1。用量 %2，到期 %3，更新 %4").arg(note ? qsTr("%1 · %2").arg(source).arg(note) : source).arg(usage).arg(expiry).arg(updated)
+        // A right-click opens its menu at the pointer (DESIGN.md "右键菜单").
+        ContextMenu.onRequested: position => profileMenu.openContext(profileRow.moreButton, profileRow, position)
 
         Rectangle {
             anchors.fill: parent

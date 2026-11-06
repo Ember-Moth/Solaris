@@ -54,6 +54,16 @@ ScrollView {
         Keys.onEnterPressed: event => editor.submitOrType(event)
         Keys.onTabPressed: nextItemInFocusChain(true).forceActiveFocus(Qt.TabFocusReason)
         Keys.onBacktabPressed: nextItemInFocusChain(false).forceActiveFocus(Qt.BacktabFocusReason)
+
+        // The app's edit menu (DESIGN.md "右键菜单"), with 复制 and 全选 alone when read-only.
+        ContextMenu.menu: null
+        ContextMenu.onRequested: position => editMenu.open(position)
+
+        EditContextMenu {
+            id: editMenu
+
+            editor: area
+        }
     }
 
     background: Rectangle {
@@ -64,7 +74,7 @@ ScrollView {
 
         FocusRing {
             targetRadius: Theme.radiusSm
-            visible: area.activeFocus
+            visible: area.activeFocus || editMenu.opened
         }
     }
 }

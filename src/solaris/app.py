@@ -12,6 +12,7 @@ from typing import Any
 from PySide6.QtCore import QCoreApplication, QEvent, Qt, QUrl
 from PySide6.QtGui import QGuiApplication, QIcon
 from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtQuick import QQuickWindow
 
 from solaris import __version__
 from solaris.desktop.instance import SingleInstance, ask_to_quit
@@ -34,6 +35,7 @@ from solaris.product import DISPLAY_NAME, PIPE_NAME
 from solaris.update.updater import Updater
 from solaris.viewmodels.appearance import Appearance, resolve_mode
 from solaris.viewmodels.composition import ViewModels, compose
+from solaris.viewmodels.text_editing import ClickAway
 
 # Import registers the presentation helper for QML, including standalone component tests.
 from solaris.viewmodels.text_editing import TextEditing as TextEditing
@@ -114,6 +116,9 @@ def load_ui(engine: QQmlApplicationEngine, view_models: ViewModels) -> bool:
     register_fonts()
     engine.setInitialProperties(view_models.initial_properties())
     engine.load(QUrl.fromLocalFile(str(MAIN_QML)))
+    for window in engine.rootObjects():
+        if isinstance(window, QQuickWindow):
+            ClickAway(window)
     return bool(engine.rootObjects())
 
 

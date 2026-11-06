@@ -59,14 +59,9 @@ def ui_locale(language: str, system: QLocale | None = None) -> QLocale:
     return system if system.language() == default.language() else default
 
 
-# Catalogs for text of Qt's own that its catalogs do not translate yet, such as the text
-# fields' context menu (QtQuick.Controls.impl's CutAction and the like), by UI language.
-QT_CATALOGS = {"zh": "qtquick_zh_CN"}
-
-
 class Translations:
-    """Installs one language's translators and default locale on the application: the UI's
-    catalog, and ``QT_CATALOGS`` for Qt's own text.
+    """Installs one language's translator and default locale on the application: the UI's
+    catalog, which Chinese, the source language, does without.
 
     ``apply`` can run again to switch languages. A switch while the UI is up also needs
     ``QQmlEngine.retranslate()`` and the ViewModels to re-emit their text properties."""
@@ -81,8 +76,6 @@ class Translations:
             raise ValueError(f"unsupported language: {language!r}")
         self.remove()
         names = [] if language == SOURCE_LANGUAGE else [language]
-        if language in QT_CATALOGS:
-            names.append(QT_CATALOGS[language])
         for name in names:
             translator = QTranslator(self._app)
             catalog = TRANSLATIONS_DIR / f"{name}.qm"

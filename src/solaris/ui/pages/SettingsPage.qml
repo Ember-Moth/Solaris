@@ -276,16 +276,14 @@ ScrollView {
                                 }
                             }
 
-                            AppTextField {
+                            SettingField {
                                 id: portField
 
+                                objectName: "portField"
                                 implicitWidth: 88
-                                implicitHeight: Theme.controlSm
-                                leftPadding: Theme.space2
-                                rightPadding: Theme.space2
                                 font.family: Fonts.resolve(Theme.type.dataMd.fontFamily)
                                 font.pixelSize: Theme.type.dataMd.fontSize
-                                text: page.settings.mixedPort.toString()
+                                value: page.settings.mixedPort.toString()
                                 error: page.settings.portError !== ""
                                 enabled: !page.settings.applying
                                 inputMethodHints: Qt.ImhDigitsOnly
@@ -294,7 +292,7 @@ ScrollView {
                                 }
                                 Accessible.name: qsTr("混合端口")
                                 Accessible.description: page.settings.portError
-                                onEditingFinished: page.settings.setMixedPort(text)
+                                onCommitted: text => page.settings.setMixedPort(text)
                             }
                         }
 
@@ -459,8 +457,12 @@ ScrollView {
 
                         // macOS only (docs/storage.md §5).
                         GroupRow {
+                            id: icloudRow
+
                             visible: page.backup.icloudShown
                             verticalPadding: Theme.space2
+                            // A right-click opens its menu at the pointer (DESIGN.md "右键菜单").
+                            ContextMenu.onRequested: position => icloudMenu.openContext(icloudMoreButton, icloudRow, position)
 
                             ColumnLayout {
                                 Layout.fillWidth: true
@@ -510,8 +512,11 @@ ScrollView {
 
                         // Where the build has a Google OAuth client (docs/storage.md §4).
                         GroupRow {
+                            id: googleRow
+
                             visible: page.backup.googleShown
                             verticalPadding: Theme.space2
+                            ContextMenu.onRequested: position => googleMenu.openContext(googleMoreButton, googleRow, position)
 
                             ColumnLayout {
                                 Layout.fillWidth: true
