@@ -5,6 +5,7 @@ around the three.
     uv run --with nuitka==4.2.2 python scripts/build_windows.py                    # all
     uv run --with nuitka==4.2.2 python scripts/build_windows.py --skip-installer   # directory
     uv run python scripts/build_windows.py --installer-only                        # installer
+    ... --sign                                                                     # a release
 
 Everything lands in build/windows:
 
@@ -19,12 +20,16 @@ against Solaris/ and an uninstall list of exactly its files; package/windows/set
 part that closes the UI and registers, stops and removes the service. wintun is not shipped on
 its own: sing-tun embeds wintun.dll in the service and loads it from memory.
 
-Nothing is signed: Windows releases are unsigned (docs/decisions.md D29). Once a signing
-scheme is chosen, the release workflow signs the executables and DLLs in Solaris/ between
---skip-installer and --installer-only (the service checks that the UI has its signer), and the
-installer and its uninstaller through makensis' !finalize and !uninstfinalize. Nothing here
-installs or runs anything; package/windows/smoke-test.ps1 does that on a disposable CI runner.
-The Google OAuth client comes from the environment as for scripts/build_app.py.
+Only the release workflow signs, with --sign (Azure Artifact Signing, docs/decisions.md D42):
+the service links with SignedRelease, so that it accepts only a UI with Solaris's signature
+(docs/architecture.md §5.3), and compiling the installer first has package/windows/sign.ps1
+sign the executables, DLLs and extension modules in Solaris/ that carry no publisher's
+signature, then the setup UI's plugin, then through makensis' !uninstfinalize and !finalize
+the uninstaller and the installer. The release workflow builds with --skip-installer --sign,
+signs in to Azure, then runs --installer-only --sign: the sign-in stays fresh. Without --sign
+nothing is signed, as in CI. Nothing here installs or runs anything;
+package/windows/smoke-test.ps1 does that on a disposable CI runner. The Google OAuth client
+comes from the environment as for scripts/build_app.py.
 """
 
 from __future__ import annotations
@@ -52,6 +57,8 @@ CORE = ROOT / "src" / "core"
 INSTALLER_SCRIPT = PACKAGE / "installer.nsi"
 ICON = ROOT / "package" / "icons" / "solaris.ico"  # scripts/gen_icons.py
 SETUP_SCRIPT = PACKAGE / "setup.ps1"
+SIGN_SCRIPT = PACKAGE / "sign.ps1"
+SIGNED_RELEASE_VARIABLE = "github.com/Ember-Moth/Solaris/src/core/internal/product.SignedRelease"
 
 APP_NAME = "Solaris"
 # The only client the service accepts, from its own directory (src/core/internal/product).
@@ -115,8 +122,9 @@ def installer_name(version: str, arch: str = "x64") -> str:
     return f"{APP_NAME}-{version}-windows-{arch}-setup.exe"
 
 
-def build_service(version: str, arch: str = "x64") -> Path:
-    """Native Windows service, with DWARF for retained crash symbols."""
+def build_service(version: str, arch: str = "x64", signed: bool = False) -> Path:
+    """Native Windows service, with DWARF for retained crash symbols. A signed release's
+    accepts only a UI with Solaris's signature."""
     output = build_directory(arch) / "service" / SERVICE
     output.unlink(missing_ok=True)
     environment = os.environ | {
@@ -125,6 +133,9 @@ def build_service(version: str, arch: str = "x64") -> Path:
         "GOARCH": target(arch)[0],
         "CGO_ENABLED": "0",
     }
+    variables = f"-X {build_apple.GO_VERSION_VARIABLE}={version}"
+    if signed:
+        variables += f" -X {SIGNED_RELEASE_VARIABLE}=true"
     command: list[str | Path] = [
         "go",
         "-C",
@@ -133,7 +144,7 @@ def build_service(version: str, arch: str = "x64") -> Path:
         "-trimpath",
         "-tags",
         GO_TAGS,
-        f"-ldflags=-X {build_apple.GO_VERSION_VARIABLE}={version}",
+        f"-ldflags={variables}",
         "-o",
         output,
         "./service",
@@ -260,6 +271,22 @@ def uninstall_list(directory: Path) -> str:
     return "\n".join(lines) + "\n"
 
 
+def sign(*arguments: str | Path) -> None:
+    """package/windows/sign.ps1 with ``arguments``: ``"-Directory", path`` or one file."""
+    build_apple._run(
+        [
+            "powershell.exe",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            SIGN_SCRIPT,
+            *arguments,
+        ]
+    )
+
+
 def find_makensis(given: str | None) -> Path:
     candidates = [given] if given else ["makensis"]
     if not given and (programs := os.environ.get("PROGRAMFILES(X86)")):
@@ -271,13 +298,21 @@ def find_makensis(given: str | None) -> Path:
 
 
 def build_installer(
-    directory: Path, version: str, makensis: Path, output: Path, arch: str = "x64"
+    directory: Path,
+    version: str,
+    makensis: Path,
+    output: Path,
+    arch: str = "x64",
+    signed: bool = False,
 ) -> Path:
     """Compile installer.nsi against ``directory`` into ``output``/<installer name>. The
-    definitions and the uninstall list go into ``output``/nsis."""
+    definitions and the uninstall list go into ``output``/nsis. ``signed`` signs the setup
+    UI's plugin, the uninstaller and the installer; ``directory`` is already signed."""
     work = output / "nsis"
     work.mkdir(parents=True, exist_ok=True)
     plugin = build_installer_ui.build(work / "ui")
+    if signed:
+        sign(plugin)
     files = work / "uninstall-files.nsh"
     # makensis reads a file without a byte order mark in the system's code page, unless an
     # !include names the charset: the generated files get the mark, installer.nsi the option.
@@ -298,6 +333,8 @@ def build_installer(
         "INSTALLER_FONTS": ROOT / "src" / "solaris" / "ui" / "fonts",
         "INSTALLER_LICENSE": ROOT / "LICENSE",
     }
+    if signed:
+        definitions["SIGN_SCRIPT"] = SIGN_SCRIPT
     wrapper = work / "installer.nsi"
     lines = [f'!define {key} "{nsis_string(str(value))}"' for key, value in definitions.items()]
     lines.append(f'!include /CHARSET=UTF8 "{nsis_string(str(INSTALLER_SCRIPT))}"')
@@ -334,6 +371,12 @@ def main() -> None:
     parser.add_argument(
         "--arch", choices=tuple(TARGETS), help="target architecture (default: native Python)"
     )
+    parser.add_argument(
+        "--sign",
+        action="store_true",
+        help="a signed release (D42): link the service with SignedRelease, and sign the "
+        "programs and the installer when compiling it; needs the release workflow's signing setup",
+    )
     arguments = parser.parse_args()
     if sys.platform != "win32":
         sys.exit("build_windows: the Windows installer is built on Windows")
@@ -348,7 +391,7 @@ def main() -> None:
         if not arguments.installer_only:
             _check_nuitka()
             geodata = fetch_geodata.fetch()
-            service = build_service(version, arch)
+            service = build_service(version, arch, arguments.sign)
             ui = build_ui(version, arch)
             directory = assemble(ui, service, geodata, arch)
             symbol_dir = build / "symbols"
@@ -361,9 +404,12 @@ def main() -> None:
         shown = directory.relative_to(ROOT)
         print(f"build_windows: {shown}, {count} {arch} binaries, {size / 2**20:.1f} MiB")
         if makensis is not None:
-            installer = build_installer(directory, version, makensis, build, arch)
+            if arguments.sign:
+                sign("-Directory", directory)
+            installer = build_installer(directory, version, makensis, build, arch, arguments.sign)
             megabytes = installer.stat().st_size / 2**20
-            print(f"build_windows: {installer.relative_to(ROOT)}, {megabytes:.1f} MiB (unsigned)")
+            signed = "signed" if arguments.sign else "unsigned"
+            print(f"build_windows: {installer.relative_to(ROOT)}, {megabytes:.1f} MiB ({signed})")
     except (BuildError, OSError, subprocess.CalledProcessError) as error:
         sys.exit(f"build_windows: {error}")
 

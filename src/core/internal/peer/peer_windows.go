@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"slices"
 	"sync"
 	"unsafe"
 
@@ -20,9 +21,9 @@ type handleConn interface{ Fd() uintptr }
 // to take over another user's tunnel (decision D5b, §5.4); run without those rights it is
 // turned away. The connection it hands back holds the client's process and executable open
 // until it closes: the process ID cannot pass to another process meanwhile, nor can the
-// file be replaced. With signer set, as in signed release builds, the client's Authenticode
+// file be replaced. With a signer, as in signed release builds, the client's Authenticode
 // signature must be one Windows trusts, by that signer.
-func PipeClientVerifier(installedUI, helper, signer string) Verifier {
+func PipeClientVerifier(installedUI, helper string, signer Signer) Verifier {
 	return func(conn net.Conn) (net.Conn, Identity, error) {
 		pipe, ok := conn.(handleConn)
 		if !ok {
@@ -42,7 +43,7 @@ func PipeClientVerifier(installedUI, helper, signer string) Verifier {
 	}
 }
 
-func verify(processID uint32, installedUI, helper, signer string, held *heldHandles) (Identity, error) {
+func verify(processID uint32, installedUI, helper string, signer Signer, held *heldHandles) (Identity, error) {
 	process, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION|windows.SYNCHRONIZE, false, processID)
 	if err != nil {
 		return Identity{}, fmt.Errorf("open pipe client process: %w", err)
@@ -70,13 +71,13 @@ func verify(processID uint32, installedUI, helper, signer string, held *heldHand
 	if !isUI && !isHelper {
 		return Identity{}, fmt.Errorf("pipe client %s is not the installed UI", imagePath)
 	}
-	if signer != "" {
-		name, err := TrustedSigner(imagePath, image)
+	if signer != (Signer{}) {
+		name, certificate, err := TrustedSigner(imagePath, image)
 		if err != nil {
 			return Identity{}, fmt.Errorf("pipe client signature: %w", err)
 		}
-		if name != signer {
-			return Identity{}, fmt.Errorf("pipe client is signed by %q, not %q", name, signer)
+		if err := signer.check(name, certificate); err != nil {
+			return Identity{}, fmt.Errorf("pipe client is %w", err)
 		}
 	}
 	var sessionID uint32
@@ -210,13 +211,14 @@ type providerCertificate struct {
 	certificate *windows.CertContext
 }
 
-// TrustedSigner is the display name of the certificate that signed file at path, when
-// Windows trusts the signature; src/solaris/update/signature.py reads installers the same
-// way. Revocation is not checked: that may need the network, and runs on every connection.
-func TrustedSigner(path string, file windows.Handle) (string, error) {
+// TrustedSigner is the certificate that signed file at path, its display name and DER
+// encoding, when Windows trusts the signature; src/solaris/update/signature.py reads
+// installers the same way. Revocation is not checked: that may need the network, and runs
+// on every connection.
+func TrustedSigner(path string, file windows.Handle) (string, []byte, error) {
 	name, err := windows.UTF16PtrFromString(path)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	fileInfo := windows.WinTrustFileInfo{
 		Size:     uint32(unsafe.Sizeof(windows.WinTrustFileInfo{})),
@@ -240,27 +242,29 @@ func TrustedSigner(path string, file windows.Handle) (string, error) {
 		windows.WinVerifyTrustEx(windows.InvalidHWND, &action, &data)
 	}()
 	if verifyErr != nil {
-		return "", verifyErr
+		return "", nil, verifyErr
 	}
 	provider, _, _ := providerDataFromStateData.Call(uintptr(data.StateData))
 	if provider == 0 {
-		return "", errors.New("no signature provider data")
+		return "", nil, errors.New("no signature provider data")
 	}
 	signer, _, _ := providerSignerFromChain.Call(provider, 0, 0, 0)
 	if signer == 0 {
-		return "", errors.New("no signer")
+		return "", nil, errors.New("no signer")
 	}
 	certificate, _, _ := providerCertificateFromSigner.Call(signer, 0)
 	if certificate == 0 {
-		return "", errors.New("no signer certificate")
+		return "", nil, errors.New("no signer certificate")
 	}
 	// The address WinTrust returned, read as the structure it points to.
 	context := (*(**providerCertificate)(unsafe.Pointer(&certificate))).certificate
-	if context == nil {
-		return "", errors.New("no signer certificate")
+	if context == nil || context.EncodedCert == nil {
+		return "", nil, errors.New("no signer certificate")
 	}
 	size := windows.CertGetNameString(context, windows.CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, nil, nil, 0)
 	buffer := make([]uint16, max(size, 1))
 	windows.CertGetNameString(context, windows.CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, nil, &buffer[0], uint32(len(buffer)))
-	return windows.UTF16ToString(buffer), nil
+	// A copy: closing the state frees the context.
+	encoded := slices.Clone(unsafe.Slice(context.EncodedCert, context.Length))
+	return windows.UTF16ToString(buffer), encoded, nil
 }

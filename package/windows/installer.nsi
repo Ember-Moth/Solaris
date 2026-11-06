@@ -6,6 +6,7 @@
 ;   SETUP_SCRIPT     package/windows/setup.ps1, which closes the UI and handles the service
 ;   UNINSTALL_FILES  RemoveInstalledFile and RMDir lines for the owned payload
 ;   REMOVE_FILES_INCLUDE  shared removal routine with retries and error propagation
+;   SIGN_SCRIPT      package/windows/sign.ps1, in signed releases only (--sign, D42)
 ;
 ; It is the only place Solaris asks for elevation: the installer and the uninstaller run as
 ; administrator, the UI never does. Custom directories are verified and protected before
@@ -40,6 +41,14 @@ SetCompressor /SOLID lzma
 
 Name "${PRODUCT}"
 OutFile "${OUTPUT_FILE}"
+
+; A signed release (D42) signs the uninstaller before it goes into the installer, then the
+; installer itself. A command that fails, or fails to run, fails the compile: no unsigned
+; installer comes out of a signed build.
+!ifdef SIGN_SCRIPT
+!uninstfinalize 'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${SIGN_SCRIPT}" "%1"' = 0
+!finalize 'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${SIGN_SCRIPT}" "%1"' = 0
+!endif
 InstallDir "$PROGRAMFILES64\${PRODUCT}"
 BrandingText "${PRODUCT} ${APP_VERSION}"
 ShowInstDetails show

@@ -171,7 +171,7 @@ def test_windows_says_what_its_installer_does(
     settle(qtbot, about, "ready")
     message = prop(about, "installMessage")
     assert "管理员权限" in message
-    # An unsigned installer (D29) says so, and what Windows shows for it.
+    # An unsigned installer (a build without a signer) says so, and what Windows shows for it.
     assert ("安装包未签名" in message) is not signed
     assert ("未知发布者" in message) is not signed
 

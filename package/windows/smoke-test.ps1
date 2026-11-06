@@ -14,11 +14,16 @@
 #    shortcut or file left; the user data stays.
 # 5. Install again and uninstall with /PURGE: the user data goes too.
 #
+# With -Signed, as the release workflow runs it: the installer, the uninstaller, Solaris.exe and
+# solaris-service.exe carry Solaris's signature (package/windows/sign.ps1 -Check) and the other
+# programs one Windows trusts; the service runs as a signed release, which requires Solaris's
+# signature of the UI (docs/architecture.md section 5.3), and has not turned the UI away.
+#
 # Each start of the UI writes its output to $env:RUNNER_TEMP\solaris-ui, with Qt's messages,
 # which a GUI program otherwise loses; a UI that exits while starting also leaves a copy of its
 # crash directory there, before step 5 purges it. CI uploads that directory when this fails.
 [CmdletBinding()]
-param([Parameter(Mandatory = $true)][string] $Installer)
+param([Parameter(Mandatory = $true)][string] $Installer, [switch] $Signed)
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true') {
     throw 'This installs a LocalSystem service: run it only on a disposable GitHub Actions runner.'
@@ -216,6 +221,27 @@ function Assert-Installed {
     Write-Output "Installed $Version; $ServiceName running as process $($service.ProcessId)"
 }
 
+function Assert-Signed {
+    & (Join-Path $PSScriptRoot 'sign.ps1') -Check $Installer, $Uninstaller, $Client, $ServiceExecutable
+    Expect ($LASTEXITCODE -eq 0) 'The installer or a program it installed is not signed as a release signs it'
+    $programs = @(Get-ChildItem -LiteralPath $Root -Recurse -File |
+            Where-Object { @('.exe', '.dll', '.pyd') -contains $_.Extension.ToLowerInvariant() })
+    $untrusted = @($programs | Where-Object { (Get-AuthenticodeSignature -LiteralPath $_.FullName).Status -ne 'Valid' } |
+            ForEach-Object { $_.FullName.Substring($Root.Length + 1) })
+    Expect ($untrusted.Count -eq 0) "Installed without a signature Windows trusts: $($untrusted -join ', ')"
+    $started = @(Select-String -LiteralPath (Join-Path $ServiceData 'service.log') -Pattern 'msg="service started"')
+    Expect ($started.Count -gt 0 -and $started[-1].Line -match ' signed=true') 'The service does not run as a signed release'
+    Write-Output "Signed: the installer, the uninstaller and $($programs.Count) installed programs"
+}
+
+# A signed release's service checks the UI's signature on every connection; it logs a
+# rejection with the reason.
+function Assert-UIAccepted {
+    Start-Sleep -Seconds 5
+    $rejected = @(Select-String -LiteralPath (Join-Path $ServiceData 'service.log') -Pattern 'rejected control client.*pipe client (signature|is signed by)')
+    Expect ($rejected.Count -eq 0) "The service turned the UI away: $($rejected | ForEach-Object Line)"
+}
+
 function Assert-Removed {
     foreach ($image in @('Solaris.exe', 'solaris-service.exe')) {
         Expect (-not (Test-Path -LiteralPath (Join-Path $DumpRoot $image))) "WER policy remains for $image"
@@ -311,6 +337,7 @@ try {
     Write-Output '1. Install'
     Invoke-InteractiveSetup $Installer
     Assert-Installed
+    if ($Signed) { Assert-Signed }
 
     Write-Output '2. The UI'
     $quit = Start-Process -FilePath $Client -ArgumentList '--quit' -PassThru
@@ -324,6 +351,7 @@ try {
     Expect (-not (Test-Path -LiteralPath $UserData)) "Solaris.exe --quit made $UserData"
     Start-UI
     Expect (Test-Path -LiteralPath $UserData) "The UI made no $UserData"
+    if ($Signed) { Assert-UIAccepted }
 
     Write-Output '3. Upgrade over the running UI'
     $before = (Get-SolarisService).ProcessId
