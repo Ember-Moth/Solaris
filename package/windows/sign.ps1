@@ -32,6 +32,12 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 3.0
+# Started under PowerShell 7, as the workflow's steps and what they run start it, Windows
+# PowerShell inherits PowerShell 7's PSModulePath and fails to load that version of the module
+# Get-AuthenticodeSignature comes from: load its own.
+if ($PSVersionTable.PSEdition -eq 'Desktop') {
+    Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1')
+}
 
 # src/core/internal/product's WindowsSigner and WindowsSignerEKU; tests/test_update.py
 # keeps the three copies equal.
