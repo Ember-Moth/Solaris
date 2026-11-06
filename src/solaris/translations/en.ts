@@ -3583,6 +3583,10 @@ prepend-rules:
         <translation>With both off, connecting opens the mixed port only</translation>
     </message>
     <message>
+        <source>游戏、语音通话等 UDP 流量不经过系统代理，需要 TUN 模式</source>
+        <translation>UDP traffic such as games and voice calls bypasses the system proxy; it needs TUN mode</translation>
+    </message>
+    <message>
         <source>混合端口</source>
         <translation>Mixed port</translation>
     </message>

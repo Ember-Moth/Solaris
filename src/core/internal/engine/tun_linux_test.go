@@ -12,6 +12,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"os/exec"
 	"strings"
@@ -31,15 +32,17 @@ func TestOwnedTUN(t *testing.T) {
 	}
 	requireIsolatedNamespace(t)
 	target := os.Getenv("SOLARIS_TUN_TARGET")
-	if target == "" {
-		t.Fatal("SOLARIS_TUN_TARGET names the HTTP server outside the namespace")
+	outbound := os.Getenv("SOLARIS_TUN_OUTBOUND")
+	if target == "" || outbound == "" {
+		t.Fatal("SOLARIS_TUN_TARGET names the HTTP server outside the namespace, SOLARIS_TUN_OUTBOUND the link to it")
 	}
+	udp := udpTarget(t)
 	stacks := strings.Split(os.Getenv("SOLARIS_TUN_STACKS"), ",")
 	if stacks[0] == "" {
 		stacks = []string{"system"}
 	}
 	for _, stack := range stacks {
-		t.Run(stack, func(t *testing.T) { ownedTUN(t, stack, target) })
+		t.Run(stack, func(t *testing.T) { ownedTUN(t, stack, target, udp, outbound) })
 	}
 }
 
@@ -58,7 +61,7 @@ func requireIsolatedNamespace(t *testing.T) {
 	}
 }
 
-func ownedTUN(t *testing.T, stack, target string) {
+func ownedTUN(t *testing.T, stack, target string, udp netip.AddrPort, outbound string) {
 	engine := openEngine(t, admission.TunOwned)
 	var mu sync.Mutex
 	var lines []string
@@ -103,6 +106,12 @@ tun:
 	// mihomo's DIRECT dial is bound to the veth and leaves through it. The target must be
 	// off the namespace's link: auto-route leaves on-link destinations to the main table.
 	throughTUN(t, engine, target)
+	// UDP takes the TUN too, DIRECT and through a node; the TUN stays as the node comes in.
+	udpThroughTUN(t, engine, udp)
+	udpThroughTUNNode(t, engine, udp, outbound, profile)
+	if again := waitForInterface(t, true); again != index {
+		t.Fatalf("the node rebuilt the TUN: index %d -> %d", index, again)
+	}
 
 	// An unchanged TUN survives a reload.
 	if _, err := engine.Reload(profile); err != nil {

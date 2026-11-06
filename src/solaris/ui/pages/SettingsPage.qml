@@ -146,6 +146,17 @@ ScrollView {
                                     color: Theme.textMuted
                                     wrapMode: Text.Wrap
                                 }
+
+                                // Applications reach the system proxy over TCP only, so UDP
+                                // goes around it unless the TUN takes it.
+                                AccessibleText {
+                                    Layout.fillWidth: true
+                                    visible: page.overview.takeover === "settings" && !page.overview.tunEnabled && page.overview.systemProxyEnabled
+                                    text: qsTr("游戏、语音通话等 UDP 流量不经过系统代理，需要 TUN 模式")
+                                    role: Theme.type.caption
+                                    color: Theme.textMuted
+                                    wrapMode: Text.Wrap
+                                }
                             }
 
                             AppSwitch {

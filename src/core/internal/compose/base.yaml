@@ -33,8 +33,14 @@ sniffer:
       override-destination: true
     TLS:
       ports: [443, 8443]
+      # mihomo's default, written out: the node gets the name and resolves it itself.
+      override-destination: true
     QUIC:
       ports: [443, 8443]
+      # The name only feeds the domain rules. UDP outbounds resolve a name on this machine,
+      # so replacing the address would make every QUIC flow to an address depend on
+      # resolving its server name here, and fail when it does not resolve.
+      override-destination: false
   skip-domain:
     - "Mijia Cloud"
     - "+.push.apple.com"

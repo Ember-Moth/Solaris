@@ -510,9 +510,9 @@ jobs:
 
   # The owned-TUN and fd-mode tests create a real TUN, so they run only here, inside network
   # namespaces (docs/architecture.md §11). md-tun holds the engine; md-srv, on the
-  # far side of a veth pair, serves the page the test fetches through the TUN. The
-  # server listens on 10.201.0.1, off md-tun's link: auto-route leaves on-link
-  # destinations to the main table, so a server on 10.200.0.0/24 would bypass the TUN.
+  # far side of a veth pair, serves the page the test fetches through the TUN and echoes
+  # the UDP it sends. The servers listen on 10.201.0.1, off md-tun's link: auto-route leaves
+  # on-link destinations to the main table, so a server on 10.200.0.0/24 would bypass the TUN.
   tun:
     needs: changes
     if: contains(fromJSON(needs.changes.outputs.jobs), 'tun')
@@ -568,12 +568,24 @@ jobs:
           # shellcheck disable=SC2024
           sudo ip netns exec md-srv python3 -m http.server 8080 --bind 10.201.0.1 \
             --directory "$RUNNER_TEMP/www" > "$RUNNER_TEMP/http.log" 2>&1 &
+          # shellcheck disable=SC2024
+          sudo ip netns exec md-srv python3 -c '
+          import socket
+          s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+          s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1 << 20)
+          s.bind(("10.201.0.1", 8081))
+          while True:
+              data, peer = s.recvfrom(65535)
+              s.sendto(data, peer)
+          ' > "$RUNNER_TEMP/udp.log" 2>&1 &
           for _ in $(seq 50); do
             sudo ip netns exec md-tun curl -fsS --max-time 1 http://10.201.0.1:8080/ && break
             sleep 0.2
           done
           sudo env SOLARIS_TUN_TEST=1 \
             SOLARIS_TUN_TARGET=http://10.201.0.1:8080/ \
+            SOLARIS_TUN_UDP_TARGET=10.201.0.1:8081 \
+            SOLARIS_TUN_OUTBOUND=md-veth0 \
             SOLARIS_TUN_STACKS="${{ matrix.stacks }}" \
             ip netns exec md-tun "$RUNNER_TEMP/engine-tun.test" -test.run '^TestOwnedTUN$' -test.v -test.count=1
       # fd mode as the macOS extension runs it: the test creates the TUN and its route, hands
@@ -582,6 +594,7 @@ jobs:
         run: |
           sudo env SOLARIS_TUN_TEST=1 \
             SOLARIS_TUN_TARGET=http://10.201.0.1:8080/ \
+            SOLARIS_TUN_UDP_TARGET=10.201.0.1:8081 \
             SOLARIS_TUN_OUTBOUND=md-veth0 \
             SOLARIS_TUN_STACKS="${{ matrix.stacks }}" \
             ip netns exec md-tun "$RUNNER_TEMP/engine-tun.test" -test.run '^TestFDTUN$' -test.v -test.count=1

@@ -893,6 +893,24 @@ NSIS 及自定义安装窗口是 x86 引导组件，由系统仿真运行。更�
     到服务的路由，把描述符交给 fd 模式的 engine，检查流量经过内核、TUN 的 DNS 地址由 mihomo 应答、TUN 设置
     不变时 Reload 沿用副本，并数 `/dev/net/tun` 的描述符：运行时两个，Stop 和 Close 后只剩宿主的一个。
     `system` 和 `mixed` 栈再以 `IncludeAllNetworks` 跑一次，确认 mihomo 换用默认栈后流量照常（D19）。
+    两种模式都测 UDP（`tun_udp_linux_test.go`）：`md-srv` 在 10.201.0.1:8081 起 UDP 回显，测试进程经 TUN 发数据报，
+    先 DIRECT，再经同一进程里的 shadowsocks 节点（节点监听回环口，经 `md-veth0` 转发）；大小覆盖 1、1200、1472、
+    4000 字节、TUN 一个包能装下的最大值，以及超过 TUN MTU、要分片进出协议栈的数据报。
+- **UDP 端到端（无 TUN）**：`internal/engine/udp_test.go` 在本机起 UDP 回显，用 mihomo 入站在同一进程里扮演节点
+  （只转发到回环地址），经混合端口的 SOCKS5 UDP ASSOCIATE 往返，并检查回复的中继地址就是 127.0.0.1 上的混合端口。
+  订阅自带的配置和「我的方案」各跑一遍，都经过准入改写（`restrictToLoopback`、`setMixedPort`）。覆盖 Shadowsocks
+  （含 2022、UoT）、VMess、VLESS（XUDP、Vision + TLS、Vision + REALITY）、Trojan、Hysteria2、TUIC、SOCKS5、
+  AnyTLS + REALITY、Snell v3–v6，以及按域名发送。协议本身的上限写在用例表里：Trojan 把超过 8192 字节的数据报拆成
+  几个发出，Hysteria2 丢弃超过 4096 字节的，Snell v4/v5 的数据报要装进当前记录（空闲 31 秒后是 1421 字节）。
+  节点没有 `udp: true` 时 UDP 跳过规则、直连，也有用例固定。`udp_quic_test.go` 经节点建立 QUIC 连接，ClientHello
+  跨两个 Initial 包，确认「我的方案」的 QUIC 嗅探不依赖本机能解析 SNI。
+- **TUN 协议栈的 UDP（无 TUN）**：`internal/engine/tun_stack_test.go` 不建 TUN，用内存里的设备代替：测试扮演 TUN
+  另一侧的系统，写入 IP 包，读回协议栈写出的包，检查 MTU、校验和，并把分片拼回去。协议栈、mihomo 的 TUN 处理器和
+  运行中的 engine 都是宿主实际用的那一套，按 `sing_tun.New` 的方式组装；设备分别模拟 Windows 服务的 wintun（逐包
+  `ReadPacket`）和 macOS 扩展的 utun（recvmsg_x 批量读、带四字节地址族头写，即 mihomo 在 macOS 上的默认值）。
+  覆盖 mips 栈在 MTU 9000 和 1500 下的 1–8972 字节数据报、进出都要分片的数据报（含最后一片先到）、IPv6 分片、
+  64 个 1350 字节的突发和 64 条并发流，都经节点往返。macOS 的 `net.inet.udp.maxdgram` 是 9216 字节，回环上的
+  socket 发不出更大的数据报，所以最大只测到 9000 字节。gVisor 栈需要设备自己的链路端点，这里不测。
 - **端到端测试**（`tests/e2e`，标记 `e2e`）：界面连真实的开发服务。每个测试起一个开发服务子进程，用
   `ServiceHost`、临时数据目录和真实的 ViewModel 组装界面，离屏加载 QML，通过 ViewModel 的槽操作，再用
   `curl -x` 经混合端口访问本机的 HTTP 服务；配置里的节点是本机的 HTTP 代理，它们记下经过的请求，所以能看出
