@@ -93,6 +93,37 @@ func TestComposedGroupsHoldThePlannedMembers(t *testing.T) {
 	}
 }
 
+// Picked nodes the pool no longer has, as after an update renamed them or their
+// subscription went, never stop the configuration (docs/routing.md §5.2): mihomo runs the
+// group without them, or with COMPATIBLE when nothing is left, and the rules that named
+// such a group go to "proxy".
+func TestStalePicksStillAdmit(t *testing.T) {
+	admitted, err := admitProfile(admission.Profile{Composition: composition(`{"version": 1, "groups": [
+		{"id": "some", "kind": "custom", "name": "还剩一个", "type": "fallback", "members": {"nodes": [
+		  {"source": "a", "name": "香港 03"}, {"source": "b", "name": "香港 01"}]}},
+		{"id": "none", "kind": "custom", "name": "都没了", "type": "url-test", "members": {"nodes": [
+		  {"source": "a", "name": "香港 03"}, {"source": "gone", "name": "香港 01"}]}}],
+		"rules": [{"id": "r", "items": [{"type": "DOMAIN", "value": "a.example"}], "target": "none"}],
+		"fallback": "some"}`)}, noTUN)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := admitted.cfg
+	if got := members(t, cfg, "还剩一个"); !slices.Equal(got, []string{"香港 01 · B"}) {
+		t.Errorf("还剩一个 = %v", got)
+	}
+	if got := members(t, cfg, "都没了"); !slices.Equal(got, []string{"COMPATIBLE"}) {
+		t.Errorf("都没了 = %v", got)
+	}
+	var rules []string
+	for _, rule := range cfg.Rules {
+		rules = append(rules, rule.Payload()+","+rule.Adapter())
+	}
+	if want := []string{"a.example,节点选择", ",还剩一个"}; !slices.Equal(rules, want) {
+		t.Errorf("rules = %v, want %v", rules, want)
+	}
+}
+
 // The pipeline order (docs/routing.md §5.6): the composed configuration, then the
 // overrides, then the platform patches and the security items. The subscription only
 // lends its nodes.

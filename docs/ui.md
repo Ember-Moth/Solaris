@@ -622,7 +622,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   （macOS 隧道未连接）改动不经校验直接存储，报告留空，连接时由 `Start` 校验，被拒绝就断开并报错。
 - **没有内核时隐藏的部分**：`RoutingViewModel.coreAvailable` 取自 `TunnelHost.core_available`（经
   `ProfileLibrary.core_available`），概览看到隧道起停时更新；Windows 上恒为真，什么都不隐藏。为假时：规则测试框
-  禁用，占位写「连接后可测试域名或 IP」；策略组编辑器的预览和手动挑选的节点列表只写「连接后显示」；不显示
+  禁用，占位写「连接后可测试域名或 IP」；策略组编辑器的预览和挑选节点的列表只写「连接后显示」；不显示
   "以此创建我的方案"，方案菜单里的"导入…"、"导出…"和"查看生成的配置…"（`ConvertToPlan`、`ExportPlan`）。
   节点数和地区来自报告，没有报告时本来就不写。分类列表照旧用安装包的清单。
 - **`RoutingViewModel`**（`viewmodels/routing.py`）：
@@ -651,6 +651,9 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
     报告里的 `node_count`。编辑器是 `GroupEditor`（`viewmodels/routing_groups.py`）：条件改动停止 0.25 秒后经
     `ProfileLibrary.plans.preview_group` 调用 `PreviewGroup`（组名临时用 id，名称不影响预览），延迟取自运行中内核的
     `list_groups`，按设置「延迟测试」取 HTTP 或 TCP 的结果。保存走 `PlanGroups.put_group`：编辑的组保持位置，新组排在最后，内核拒绝时对话框不关闭。
+    挑选节点的列表是 `GroupEditor.nodes`（`NodeRow`，带 `category` 供 `PickList` 分节），取自报告的节点池；挑选的
+    节点按（订阅 id，原名）与报告的 `PoolNode.source_id`、`original_name` 对上，对不上的按订阅是否还在、是否加入
+    节点池给出失效原因（`_picks`），`PlanGroups` 用同一段给自建组行写 `warning`。没有报告时不判断失效。
     删除前列出引用它的规则条目、兜底和其他组（routing.md §5.5），确认后这些规则改走节点选择、其他组去掉它，
     可以撤销。
   - **转换与导出**是 `PlanTransfer`（`viewmodels/routing_transfer.py`）：`convert_profile` / `convert_file`

@@ -973,6 +973,22 @@
         <translation>The node pool is empty, so there are no regions to choose</translation>
     </message>
     <message>
+        <source>节点</source>
+        <translation>Nodes</translation>
+    </message>
+    <message>
+        <source>收起节点列表</source>
+        <translation>Hide the node list</translation>
+    </message>
+    <message>
+        <source>搜索节点、订阅或地区</source>
+        <translation>Search nodes</translation>
+    </message>
+    <message>
+        <source>节点的分组方式</source>
+        <translation>Group nodes by</translation>
+    </message>
+    <message>
         <source>来源订阅</source>
         <translation>Subscriptions</translation>
     </message>
@@ -985,10 +1001,6 @@
         <translation>A keyword or a regex, such as IPLC|Premium</translation>
     </message>
     <message>
-        <source>手动挑选</source>
-        <translation>Picked nodes</translation>
-    </message>
-    <message>
         <source>收起</source>
         <translation>Done</translation>
     </message>
@@ -997,16 +1009,8 @@
         <translation>Pick</translation>
     </message>
     <message>
-        <source>收起手动挑选</source>
-        <translation>Hide the node list</translation>
-    </message>
-    <message>
         <source>挑选节点</source>
         <translation>Pick nodes</translation>
-    </message>
-    <message>
-        <source>搜索节点</source>
-        <translation>Search nodes</translation>
     </message>
     <message>
         <source>没有匹配的节点</source>
@@ -1025,8 +1029,8 @@
         <translation>A keyword or a regex in the name</translation>
     </message>
     <message>
-        <source>满足任一条件即加入，再去掉排除的节点；手动挑选和其他成员不受排除影响</source>
-        <translation>Nodes matching any condition join, minus the excluded ones; manual picks and other members are never excluded</translation>
+        <source>满足任一条件即加入，再去掉排除的节点；挑选的节点和其他成员不受排除影响</source>
+        <translation>Nodes matching any condition join, minus the excluded ones; picked nodes and other members are never excluded</translation>
     </message>
     <message>
         <source>高级</source>
@@ -1092,6 +1096,26 @@
         <translation>Regex</translation>
     </message>
     <message>
+        <source>按订阅</source>
+        <translation>By subscription</translation>
+    </message>
+    <message>
+        <source>按地区</source>
+        <translation>By region</translation>
+    </message>
+    <message>
+        <source>订阅已删除</source>
+        <translation>Subscription deleted</translation>
+    </message>
+    <message>
+        <source>订阅不在节点池</source>
+        <translation>Subscription left out of the pool</translation>
+    </message>
+    <message>
+        <source>订阅里已没有这个节点</source>
+        <translation>No longer in the subscription</translation>
+    </message>
+    <message>
         <source>{name} 副本</source>
         <translation>{name} copy</translation>
     </message>
@@ -1111,6 +1135,32 @@
         <source>添加</source>
         <translation>Add</translation>
     </message>
+    <message>
+        <source>、</source>
+        <translation>, </translation>
+    </message>
+    <message numerus="yes">
+        <source>已选 %n 个：{names}</source>
+        <translation>
+            <numerusform>%n picked: {names}</numerusform>
+            <numerusform>%n picked: {names}</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 个已失效：{names}</source>
+        <translation>
+            <numerusform>%n unavailable: {names}</numerusform>
+            <numerusform>%n unavailable: {names}</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>节点池为空</source>
+        <translation>The node pool is empty</translation>
+    </message>
+    <message>
+        <source>没有匹配的节点</source>
+        <translation>No matching nodes</translation>
+    </message>
     <message numerus="yes">
         <source>更多条件（已设置 %n 项）</source>
         <translation>
@@ -1123,15 +1173,12 @@
         <translation>More conditions</translation>
     </message>
     <message>
+        <source>已失效</source>
+        <translation>Unavailable</translation>
+    </message>
+    <message>
         <source>未挑选</source>
         <translation>None picked</translation>
-    </message>
-    <message numerus="yes">
-        <source>已挑选 %n 个节点</source>
-        <translation>
-            <numerusform>%n node picked</numerusform>
-            <numerusform>%n nodes picked</numerusform>
-        </translation>
     </message>
     <message numerus="yes">
         <source>%n 个节点</source>
@@ -2129,6 +2176,13 @@ prepend-rules:
     <message>
         <source>没有成员</source>
         <translation>No members</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n 个挑选的节点已失效</source>
+        <translation>
+            <numerusform>%n picked node unavailable</numerusform>
+            <numerusform>%n picked nodes unavailable</numerusform>
+        </translation>
     </message>
     <message>
         <source>自动 · 已隐藏</source>

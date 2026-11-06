@@ -185,6 +185,101 @@ def test_editing_and_copying_a_group(qtbot: QtBot, planned: ViewModels) -> None:
     assert [r.id for r in rows(dialog, "regions") if r.picked] == ["JP"]
 
 
+def test_single_nodes_beside_the_regions(qtbot: QtBot, planned: ViewModels) -> None:
+    """Nodes are members beside the regions, picked from the pool by subscription or by
+    region and found by their names, subscriptions or regions (routing.md §4.5)."""
+    routing = planned.routing
+    dialog = group_editor(routing)
+    with qtbot.waitSignal(dialog.opened):
+        dialog.openAdd()
+    assert prop(dialog, "nodeSummary") == "未挑选"
+    assert not prop(dialog, "pickerOpen")
+    nodes = rows(dialog, "nodes")
+    assert len(nodes) == 27
+    assert [(n.name, n.note, n.category) for n in nodes[8:10]] == [
+        ("美国 02", "", "示例订阅 A"),
+        ("香港 01 · 示例订阅 B", "", "示例订阅 B"),
+    ]
+
+    dialog.setGrouping("region")
+    nodes = rows(dialog, "nodes")
+    assert list(dict.fromkeys(n.category for n in nodes)) == ["香港", "日本", "新加坡", "美国"]
+    assert [(n.name, n.note) for n in nodes[2:5]] == [
+        ("香港 03", "示例订阅 A"),
+        ("香港 01 · 示例订阅 B", "示例订阅 B"),
+        ("香港 02 · 示例订阅 B", "示例订阅 B"),
+    ]
+    dialog.setNodeQuery("新加坡")
+    assert [n.name for n in rows(dialog, "nodes")][:2] == ["新加坡 01", "新加坡 02"]
+    dialog.setNodeQuery("本地配置")  # a subscription finds its nodes
+    assert {n.note for n in rows(dialog, "nodes")} == {"本地配置"}
+    dialog.setNodeQuery("火星")
+    assert prop(dialog, "nodesEmpty")
+    assert prop(dialog, "nodesEmptyText") == "没有匹配的节点"
+    dialog.setNodeQuery("")
+
+    dialog.setName("东京")
+    picked = next(n for n in rows(dialog, "nodes") if n.name == "日本 02 · 示例订阅 B")
+    dialog.toggleNode(picked.id)
+    dialog.toggleOther("DIRECT")
+    assert prop(dialog, "nodeSummary") == "已选 1 个：日本 02 · 示例订阅 B"  # noqa: RUF001
+    assert prop(dialog, "nodeWarning") == ""
+    assert prop(dialog, "moreLabel") == "更多条件（已设置 1 项）"  # noqa: RUF001
+    qtbot.waitUntil(lambda: prop(dialog, "previewTitle") == "1 个节点、1 个其他成员")
+    with qtbot.waitSignal(dialog.saved):
+        dialog.save()
+    plan = routing.plan()
+    assert plan is not None
+    # The node by its subscription and the name it has there, not the one the pool gave it.
+    assert plan.groups[-1].conditions == {
+        "nodes": [{"source": "sample-b", "name": "日本 02"}],
+        "others": ["DIRECT"],
+    }
+
+
+def test_picked_nodes_the_pool_lost_are_marked(qtbot: QtBot, planned: ViewModels) -> None:
+    """A picked node the pool no longer has stays in the group, marked with the reason, until
+    it is taken out; the core leaves it out meanwhile (routing.md §5.2)."""
+    routing, profiles = planned.routing, planned.profiles
+    dialog = group_editor(routing)
+    with qtbot.waitSignal(dialog.opened):
+        dialog.openAdd()
+    dialog.setName("挑选")
+    for key in (
+        "sample-a\n香港 01",
+        "sample-a\n香港 09",  # an update took it away
+        "sample-gone\n日本 01",  # its subscription was deleted
+        "sample-c\n美国 01",  # its subscription leaves the pool below
+    ):
+        dialog.toggleNode(key)
+    with qtbot.waitSignal(dialog.saved):
+        dialog.save()
+    with qtbot.waitSignal(profiles.applied):
+        profiles.setInPool("sample-c", False)
+    qtbot.waitUntil(lambda: prop(routing, "summary") == "使用「日常」 · 节点池 18 个节点")
+    (row,) = rows(routing.plan_groups(), "custom")
+    assert (row.caption, row.warning) == ("手动选择 · 1 个节点", "3 个挑选的节点已失效")
+
+    with qtbot.waitSignal(dialog.opened):
+        dialog.openEdit(row.id)
+    assert prop(dialog, "nodeSummary") == "已选 4 个：香港 01、香港 09、日本 01、美国 01"  # noqa: RUF001
+    assert prop(dialog, "nodeWarning") == "3 个已失效：香港 09、日本 01、美国 01"  # noqa: RUF001
+    stale = [(n.name, n.note, n.category, n.picked) for n in rows(dialog, "nodes")[:4]]
+    assert stale == [
+        ("香港 09", "订阅里已没有这个节点", "已失效", True),
+        ("日本 01", "订阅已删除", "已失效", True),
+        ("美国 01", "订阅不在节点池", "已失效", True),
+        ("香港 01", "", "示例订阅 A", True),
+    ]
+    dialog.toggleNode("sample-a\n香港 09")  # unchecked, it goes
+    stale = [(n.name, n.category) for n in rows(dialog, "nodes")[:2]]
+    assert stale == [("日本 01", "已失效"), ("美国 01", "已失效")]
+    with qtbot.waitSignal(dialog.saved):
+        dialog.save()
+    (row,) = rows(routing.plan_groups(), "custom")
+    assert row.warning == "2 个挑选的节点已失效"
+
+
 def test_removing_a_group_names_its_references(qtbot: QtBot, planned: ViewModels) -> None:
     routing = planned.routing
     plan_rules = routing.plan_rules()
