@@ -477,7 +477,7 @@ def test_language_switches_while_running(qtbot: QtBot, loaded: Loaded) -> None:
         shown = texts(content)
         assert {"Overview", "Settings", "Connected", "Connect"} <= shown  # QML and Python
         assert "出站" not in shown
-        assert view_models.shell.property("pages")[0]["label"] == "Overview"
+        assert view_models.shell.property("pages").rows[0].label == "Overview"
         assert view_models.shell.property("serviceText") == "Service running"
         assert [m["label"] for m in view_models.overview.property("modeOptions")] == [
             "Rule",

@@ -161,11 +161,25 @@ ApplicationWindow {
         }
     }
 
+    // The tunnel stopped under a page that needs it, which gives way to the overview: focus
+    // on the page moves to the overview's tab, with its ring if the keyboard had put it there.
+    Connections {
+        target: window.shellViewModel
+
+        function onLeavingPage() {
+            const focused = window.activeFocusItem
+            if (focused && Focus.within(focused, pages.children[window.shellViewModel.pageIndex]))
+                sidebar.tab("overview")?.forceActiveFocus(Focus.reasonAfter(focused))
+        }
+    }
+
     RowLayout {
         anchors.fill: parent
         spacing: 0
 
         Sidebar {
+            id: sidebar
+
             Layout.fillHeight: true
             Layout.preferredWidth: Theme.sidebarWidth
             shell: window.shellViewModel
@@ -173,6 +187,8 @@ ApplicationWindow {
         }
 
         StackLayout {
+            id: pages
+
             Layout.fillWidth: true
             Layout.fillHeight: true
             currentIndex: window.shellViewModel.pageIndex

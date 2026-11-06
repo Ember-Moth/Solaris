@@ -107,17 +107,17 @@ def view_models(english: None, qtbot: QtBot, tmp_path: Path) -> Iterator[ViewMod
 
 def test_english_view_models(qtbot: QtBot, view_models: ViewModels) -> None:
     shell, overview, proxies = view_models.shell, view_models.overview, view_models.proxies
-    assert [page["label"] for page in prop(shell, "pages")][:4] == [
-        "Overview",
-        "Proxies",
-        "Subscriptions",
-        "Routing",
-    ]
     qtbot.waitUntil(lambda: prop(shell, "serviceAvailable"))
     assert prop(shell, "serviceText") == "Service running"
     assert prop(shell, "serviceDetail") == "v1.19.33\nProtocol v1"
 
     qtbot.waitUntil(lambda: prop(overview, "connected"))
+    assert [page.label for page in prop(shell, "pages").rows][:4] == [
+        "Overview",
+        "Proxies",
+        "Subscriptions",
+        "Routing",
+    ]
     assert prop(overview, "statusTitle") == "Connected"
     assert prop(overview, "statusDetail").startswith("TUN and system proxy · running for ")
     assert prop(overview, "connectLabel") == "Disconnect"

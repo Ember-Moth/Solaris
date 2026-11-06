@@ -239,6 +239,13 @@ def compose(
     backup.restored.connect(proxies.refresh)
     # The WARP exit registers once the tunnel runs (docs/exits.md §2).
     overview.changed.connect(lambda: routing.tunnel_running(bool(overview.property("connected"))))
+    # The proxies page lists the running core's groups: it shows while the connection switch
+    # is on and settled, not while it connects, disconnects or recovers (D27).
+    overview.changed.connect(
+        lambda: shell.tunnel_running(
+            bool(overview.property("connected")) and not overview.property("connectionChanging")
+        )
+    )
 
     def routing_shown() -> None:
         proxies.set_pool(*routing.pool_sources())
