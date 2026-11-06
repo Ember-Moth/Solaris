@@ -512,8 +512,9 @@ D 编号也在那里。
 - **GEO 数据**：`geodata-mode: true`、`geodata-loader: memconservative`（按需读文件，内存占用小）、
   `geo-auto-update: true`、`geo-update-interval: 24`；`geox-url` 是 meta-rules-dat 的 `latest` 发布（与 mihomo
   的默认值相同）。
-- **嗅探**：开启；HTTP（80、8080–8880，覆盖目标地址）、TLS 和 QUIC（443、8443）；跳过 `Mijia Cloud` 和
-  `+.push.apple.com`；`parse-pure-ip`、`force-dns-mapping`。
+- **嗅探**：开启；HTTP（80、8080–8880）和 TLS（443、8443）用嗅探到的域名覆盖目标地址，由节点解析；QUIC（443、
+  8443）的域名只用于规则匹配，目标地址不变：UDP 出站在本机解析域名，覆盖后每条发往 IP 的 QUIC 都要先在本机解析
+  SNI，解析不到就连不上；跳过 `Mijia Cloud` 和 `+.push.apple.com`；`parse-pure-ip`、`force-dns-mapping`。
 - **DNS**：
   - `enhanced-mode: fake-ip`，地址段 `198.18.0.1/16`；`fake-ip-filter` 排除 `geosite:private`、局域网和本机
     后缀、Windows 联网检测、NTP 和 STUN 的域名；
