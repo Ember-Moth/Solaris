@@ -11,6 +11,9 @@
 
 - 分层参考 hypervpn：视图 → ViewModel → models → 宿主客户端。界面用 QML，控件基于 Qt Quick Controls 的
   Basic 样式按 DESIGN.md 定制；主题由 `scripts/gen_theme.py` 从 DESIGN.md 生成。
+  - `ui/components/` 里的文件引用同目录组件靠隐式导入，它的优先级低于显式导入的模块：Qt 6.10 起
+    `QtQuick.Controls` 也有 `SearchField`，所以在那里用 `SearchField` 的文件导入 Controls 之后再写 `import "."`，
+    否则拿到的是 Qt 的控件而不是 DESIGN.md 的搜索框。页面目录本来就显式导入 `"../components"`，不受影响。
 - asyncio 事件循环运行在后台线程，结果通过排队信号回到 Qt 线程。
 - **控制客户端**：负责构造 Request、校验 Response 的版本和 ID，并按间隔调用 `PollEvents` 拉取订阅。
   传输有两种实现：

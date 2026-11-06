@@ -3,6 +3,8 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import Solaris
+// After QtQuick.Controls, whose own SearchField (Qt 6.10) would hide this directory's.
+import "."
 
 // The third-party licenses (docs/release.md §5): every component with its version and
 // license, grouped by kind, in a list box like a searchable list's (DESIGN.md "可搜索列表")

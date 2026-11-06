@@ -1,5 +1,8 @@
 """QML static validation and generated theme/accessibility constraints."""
 
+import re
+from pathlib import Path
+
 import pytest
 
 from scripts.gen_theme import DESIGN_MD, THEME_QML, color_modes, frontmatter, render
@@ -90,3 +93,18 @@ def test_qml_passes_qmllint() -> None:
     unexpected, stale = check()
     assert [str(finding) for finding in unexpected] == []
     assert stale == []
+
+
+def test_components_see_their_own_search_field() -> None:
+    """QtQuick.Controls has a SearchField of its own since Qt 6.10, which outranks the one
+    beside a component that imports the module, unless the directory is imported after it
+    (docs/ui.md §0). qmllint takes either."""
+    components = Path(__file__).resolve().parents[1] / "src/solaris/ui/components"
+    hidden = [
+        path.name
+        for path in sorted(components.glob("*.qml"))
+        if re.search(r"^\s*SearchField \{", text := path.read_text(encoding="utf-8"), re.M)
+        and "import QtQuick.Controls" in text
+        and not re.search(r"^import QtQuick\.Controls.*^import \"\.\"$", text, re.M | re.S)
+    ]
+    assert hidden == []

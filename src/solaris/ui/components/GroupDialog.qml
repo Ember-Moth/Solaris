@@ -3,6 +3,8 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import Solaris
+// After QtQuick.Controls, whose own SearchField (Qt 6.10) would hide this directory's.
+import "."
 
 // The group editor (docs/routing.md §4.5; DESIGN.md "对话框", "可折叠区"): the conditions on
 // the left and, beside them, the members the core computes from them. A window too narrow for

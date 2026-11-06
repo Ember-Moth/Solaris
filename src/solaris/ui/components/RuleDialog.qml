@@ -3,6 +3,8 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import Solaris
+// After QtQuick.Controls, whose own SearchField (Qt 6.10) would hide this directory's.
+import "."
 
 // The add-rule dialog (docs/routing.md §4.4; DESIGN.md "条件编辑表单", "可搜索列表"): what to
 // match, as services, GEO categories, domains or IP ranges, and the target. The dialog stays
