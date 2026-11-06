@@ -146,7 +146,7 @@ def test_switching_while_running_reloads_and_keeps_tun(tmp_path: Path) -> None:
     assert scene.host.config is not None
     assert scene.host.config.config_yaml == OTHER_CONFIG
     # The switches stay as the tunnel runs them; the port comes from the settings.
-    assert scene.host.config.options == RunOptions(True, True, mixed_port=7890)
+    assert scene.host.config.options == RunOptions(True, True, mixed_port=7890, tun_stack="mips")
     assert scene.store.load().active == "sample-b"
 
 
@@ -294,7 +294,7 @@ def test_start_tunnel_uses_the_active_profile(tmp_path: Path) -> None:
     run(scenario)
     assert scene.host.config is not None
     assert scene.host.config.config_yaml == SAMPLE_CONFIG
-    assert scene.host.config.options == RunOptions(False, True, 7897, True)
+    assert scene.host.config.options == RunOptions(False, True, 7897, True, tun_stack="mips")
 
     empty = Scene(tmp_path / "empty", seeded=False)
     with pytest.raises(ProfileError) as raised:
@@ -313,7 +313,7 @@ def test_switches_reload_or_wait_for_the_next_start(tmp_path: Path) -> None:
         assert (await scene.host.get_status()).system_proxy_enabled
         await scene.library.tunnel.apply_settings(Settings(mixed_port=1080, allow_lan=True))
         assert scene.host.config is not None
-        assert scene.host.config.options == RunOptions(False, True, 1080, True)
+        assert scene.host.config.options == RunOptions(False, True, 1080, True, tun_stack="mips")
 
         await scene.host.stop()
         await scene.library.tunnel.set_tun(True)
@@ -372,7 +372,7 @@ def test_connecting_takes_over_what_the_host_does(
     status = run(scenario)
     assert (status.tun_enabled, status.system_proxy_enabled) == runs
     assert scene.host.config is not None
-    assert scene.host.config.options == RunOptions(*runs, mixed_port=1080)
+    assert scene.host.config.options == RunOptions(*runs, mixed_port=1080, tun_stack="mips")
 
 
 def test_development_service_refuses_switching_on(tmp_path: Path) -> None:

@@ -59,8 +59,9 @@ class Settings:
     # A port free here may be taken elsewhere; LAN access exposes it to this network.
     mixed_port: int = _setting(DEFAULT_MIXED_PORT, LOCAL)
     allow_lan: bool = _setting(False, LOCAL)
-    # Which stack works best depends on this machine's system and network (D3).
-    tun_stack: str = _setting("profile", LOCAL)
+    # Which stack works best depends on this machine's system and network (D3); mips, mihomo's
+    # own default, until the user picks another.
+    tun_stack: str = _setting("mips", LOCAL)
     # macOS (D19): the tunnel takes the traffic the system routes around it by default too.
     include_all_networks: bool = _setting(False, LOCAL)
     # The WARP exit's protocol (docs/exits.md §3.1): what this machine's account has a key for.

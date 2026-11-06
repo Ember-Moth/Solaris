@@ -63,11 +63,11 @@ CLOSE_ACTION_LABELS = {
 }
 TUN_STACK_LABELS = {
     "profile": QT_TRANSLATE_NOOP("SettingsViewModel", "跟随配置"),
-    # mihomo's names for its stacks.
-    "system": "System",
-    "mips": "Mips",
-    "gvisor": "gVisor",
-    "mixed": "Mixed",
+    # The stacks as mihomo's tun.stack writes them.
+    "system": "system",
+    "mips": "mips",
+    "gvisor": "gvisor",
+    "mixed": "mixed",
 }
 DELAY_TEST_LABELS = {
     "http": "HTTP",
@@ -333,7 +333,7 @@ class SettingsViewModel(QObject):
 
     @Slot(bool)
     def setIncludeAllNetworks(self, included: bool) -> None:
-        """Stored for the next connection; a stack that cannot run with it becomes gVisor,
+        """Stored for the next connection; a stack that cannot run with it becomes gvisor,
         which the running tunnel takes at once."""
         current = self._current()
         if not INCLUDE_ALL_NETWORKS or included == current.include_all_networks:

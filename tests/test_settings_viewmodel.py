@@ -142,7 +142,7 @@ def test_port_and_lan_reload_the_running_tunnel(qtbot: QtBot, view_models: ViewM
 
     settings.setAllowLan(True)
     qtbot.waitUntil(lambda: prop(settings, "allowLan"))
-    assert host.config.options == RunOptions(True, True, 7897, True)
+    assert host.config.options == RunOptions(True, True, 7897, True, tun_stack="mips")
 
 
 def test_a_port_the_core_cannot_open_is_not_kept(qtbot: QtBot, view_models: ViewModels) -> None:
@@ -229,9 +229,9 @@ def test_the_tun_stack_reloads_the_running_tunnel(qtbot: QtBot, view_models: Vie
     assert isinstance(host, SimulatedHost)
     options = prop(settings, "tunStackOptions")
     assert [o["value"] for o in options] == ["profile", "system", "mips", "gvisor", "mixed"]
-    assert [o["label"] for o in options] == ["跟随配置", "System", "Mips", "gVisor", "Mixed"]
+    assert [o["label"] for o in options] == ["跟随配置", "system", "mips", "gvisor", "mixed"]
     assert all(o.get("enabled", True) for o in options)
-    assert prop(settings, "tunStack") == "profile"
+    assert prop(settings, "tunStack") == "mips"
 
     settings.setTunStack("gvisor")
     qtbot.waitUntil(lambda: prop(settings, "tunStack") == "gvisor")
@@ -256,8 +256,8 @@ def test_a_stack_the_core_refuses_is_not_kept(qtbot: QtBot, view_models: ViewMod
     qtbot.waitUntil(lambda: prop(settings, "stackError") != "")
     message = "配置无效：tun.stack mixed needs a build with the with_gvisor tag"  # noqa: RUF001
     assert prop(settings, "stackError") == message
-    assert prop(settings, "tunStack") == "profile"
-    assert view_models.settings_store.current.tun_stack == "profile"
+    assert prop(settings, "tunStack") == "mips"
+    assert view_models.settings_store.current.tun_stack == "mips"
 
 
 @pytest.fixture
@@ -280,7 +280,7 @@ def test_including_all_networks_rules_out_system_and_mixed(
     qtbot.waitUntil(lambda: prop(settings, "tunStack") == "system")
     reloads = host.reloads
 
-    # The chosen stack cannot run with it, so it becomes gVisor, in the running tunnel too.
+    # The chosen stack cannot run with it, so it becomes gvisor, in the running tunnel too.
     settings.setIncludeAllNetworks(True)
     qtbot.waitUntil(lambda: prop(settings, "includeAllNetworks"))
     assert prop(settings, "tunStack") == "gvisor"

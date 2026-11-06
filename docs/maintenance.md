@@ -121,7 +121,7 @@ CI 覆盖构建、安装器界面、文件清理和架构迁移。发布验收�
      非 0，`service.log` 里是 `rejected control client` 和"without an administrator's rights"，隧道不受影响；
 - 系统代理：开着"系统代理"连接后浏览器经代理；断开、注销、停止服务时写回原来的设置；
 - `C:\ProgramData\Solaris` 和 `users\<SID>` 的 ACL；复制到别处的 `Solaris.exe` 连不上服务；
-- wintun、strict-route，设置页"TUN 协议栈"的四种栈都能连上并转发流量；据此定下 Windows 的默认栈；
+- wintun、strict-route，设置页"TUN 协议栈"的四种栈都能连上并转发流量，包括默认的 `mips`（D3）；
 - 升级后隧道按 `was_running` 恢复；
 - 界面：浅色与深色、125% / 150% 缩放；自绘顶部区域的窗口按钮、拖动、双击最大化、贴靠布局；只用键盘走完各页；用
   讲述人读一遍主要页面。
@@ -137,8 +137,8 @@ CI 覆盖构建、安装器界面、文件清理和架构迁移。发布验收�
   警告，见第 3 节）；
 - 激活时的批准与 VPN 配置的允许；系统要求重启时的提示；
 - app 在 hardened runtime 下启动，"登录时打开"（`SMAppService`）；
-- 扩展找到 utun 描述符；四种栈经过 utun 的流量、DNS 劫持（198.18.0.2）；断开与重连后描述符的归属；据此定下 macOS
-  的默认栈；
+- 扩展找到 utun 描述符；四种栈（包括默认的 `mips`，D3）经过 utun 的流量、DNS 劫持（198.18.0.2）；断开与重连后
+  描述符的归属；
 - `includeAllNetworks`（D19）：打开后系统默认绕开隧道的流量也进入隧道，局域网流量不进；扩展自己（mihomo 的出站）
   的流量不被卷回隧道；`mips` 和 `gvisor` 栈都能工作；保存配置时系统是否再次请用户允许；
 - provider message 的大小上限（D8）：用一份大配置 `Reload`，记下能带多大；配置不分片，真带不动时回到 D8 重新决定；

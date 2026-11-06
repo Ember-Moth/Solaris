@@ -327,7 +327,7 @@ def test_settings_page_offers_the_tun_stack(
     loaded.view_models.shell.setPage("settings")
     content = loaded.window.contentItem()
     qtbot.waitUntil(lambda: find(content, lambda i: i.property("text") == "TUN 协议栈") is not None)
-    assert find(content, lambda i: i.property("text") == "跟随配置") is not None
+    assert find(content, lambda i: i.property("text") == "mips") is not None  # the default
     row = find(content, lambda i: i.property("text") == "包含所有网络")
     assert (row is not None) == all_networks
     assert loaded.warnings == []
