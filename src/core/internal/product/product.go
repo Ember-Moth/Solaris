@@ -21,17 +21,22 @@ const (
 // FrameMagic opens every frame on the Windows pipe.
 var FrameMagic = [4]byte{'S', 'L', 'R', 'S'}
 
-// WindowsSigner is the Authenticode signer, the certificate's display name, that a service
-// linked with SignedRelease requires of the UI. Releases are unsigned (D29) and leave
-// SignedRelease off, so nothing checks it. Signing them means setting WindowsSigner to the
-// certificate's display name, and src/solaris/update/signature.py's WINDOWS_SIGNER, empty
-// while releases are unsigned, to the same value.
-const WindowsSigner = "Ember Moth"
+// WindowsSigner and WindowsSignerEKU name the Authenticode signer that a service linked with
+// SignedRelease requires of the UI (docs/architecture.md §5.3): the display name of the
+// certificate's subject, the organization Artifact Signing verified (decision D42), and an
+// extended key usage that Artifact Signing puts only in the certificates of Solaris's
+// certificate profile. src/solaris/update/signature.py and package/windows/sign.ps1 hold the
+// same values.
+const (
+	WindowsSigner    = "Herta Network LLC"
+	WindowsSignerEKU = "1.3.6.1.4.1.311.97.242074350.326480862.720558710.91084369"
+)
 
 // Version is set at link time with -ldflags "-X <module>/internal/product.Version=<version>".
 var Version = "dev"
 
-// SignedRelease is set to "true" at link time, like Version, in signed release builds. The
-// Windows service then accepts only a UI that WindowsSigner signed (docs/architecture.md
-// §5.3). Unsigned builds, such as those for the test VM, leave it off.
+// SignedRelease is set to "true" at link time, like Version, in the release workflow's
+// builds, which it signs. The Windows service then accepts only a UI that WindowsSigner
+// signed (docs/architecture.md §5.3). Unsigned builds, such as CI's and the test VM's, leave
+// it off.
 var SignedRelease = "false"

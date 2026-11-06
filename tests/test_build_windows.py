@@ -5,6 +5,7 @@ directory, when makensis is installed."""
 from __future__ import annotations
 
 import ctypes
+import os
 import re
 import shutil
 import stat
@@ -12,8 +13,10 @@ import struct
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
+import yaml
 
 from scripts import build_installer_ui, build_windows
 from scripts.build_apple import BuildError
@@ -303,3 +306,209 @@ def test_locked_old_extension_fails_then_retry_cleans_it(tmp_path: Path) -> None
     assert not old.exists()
     # A previously removed file is harmless on retry.
     assert not (installed / "Solaris.exe").exists()
+
+
+@pytest.mark.parametrize("signed", [False, True])
+def test_a_signed_release_links_the_service_with_signed_release(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, signed: bool
+) -> None:
+    commands: list[list[str | Path]] = []
+    monkeypatch.setattr(build_windows, "BUILD", tmp_path)
+    monkeypatch.setattr(
+        build_windows.build_apple, "_run", lambda command, **_: commands.append(command)
+    )
+    build_windows.build_service("1.2.3", "x64", signed)
+    (ldflags,) = [str(part) for part in commands[0] if str(part).startswith("-ldflags=")]
+    assert f"-X {build_windows.build_apple.GO_VERSION_VARIABLE}=1.2.3" in ldflags
+    assert (f"-X {build_windows.SIGNED_RELEASE_VARIABLE}=true" in ldflags) is signed
+    assert build_windows.SIGNED_RELEASE_VARIABLE.endswith("/internal/product.SignedRelease")
+
+
+@pytest.mark.parametrize("signed", [False, True])
+def test_a_signed_installer_signs_its_plugin_and_finalizes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, signed: bool
+) -> None:
+    # The setup UI's plugin is signed before makensis packs it; the installer script gets the
+    # signing script for !uninstfinalize and !finalize.
+    plugin = tmp_path / "ui" / "SolarisSetupUI.dll"
+    commands: list[list[str]] = []
+
+    def run(command: list[str | Path], **_: object) -> None:
+        commands.append([str(part) for part in command])
+        if Path(command[0]).name == "makensis":
+            (tmp_path / "out" / build_windows.installer_name("0.2.0")).write_bytes(b"MZ")
+
+    monkeypatch.setattr(build_windows.build_installer_ui, "build", lambda output: plugin)
+    monkeypatch.setattr(build_windows.build_apple, "_run", run)
+    directory = _install_directory(tmp_path)
+    build_windows.build_installer(
+        directory, "0.2.0", Path("makensis"), tmp_path / "out", "x64", signed
+    )
+    signing = [command for command in commands if str(build_windows.SIGN_SCRIPT) in command]
+    assert signing == ([commands[0]] if signed else [])
+    if signed:
+        assert commands[0][0] == "powershell.exe"
+        assert commands[0][-1] == str(plugin)
+    wrapper = (tmp_path / "out" / "nsis" / "installer.nsi").read_text(encoding="utf-8-sig")
+    defined = f'!define SIGN_SCRIPT "{build_windows.nsis_string(str(build_windows.SIGN_SCRIPT))}"'
+    assert (defined in wrapper) is signed
+
+
+def test_the_installer_script_signs_both_programs_or_fails() -> None:
+    script = build_windows.INSTALLER_SCRIPT.read_text(encoding="utf-8")
+    block = script[script.index("!ifdef SIGN_SCRIPT") :]
+    block = block[: block.index("!endif")]
+    command = (
+        "'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass "
+        '-File "${SIGN_SCRIPT}" "%1"\' = 0'
+    )
+    assert f"!uninstfinalize {command}" in block
+    assert f"!finalize {command}" in block
+
+
+@REQUIRES_NSIS
+@pytest.mark.parametrize("status", [0, 1])
+def test_nsis_finalize_signs_the_uninstaller_then_the_installer(
+    tmp_path: Path, status: int
+) -> None:
+    # What installer.nsi relies on: !uninstfinalize runs on the uninstaller before it goes
+    # into the installer, !finalize on the installer, and "= 0" fails the compile otherwise.
+    log = tmp_path / "signed.txt"
+    signer = tmp_path / "signer.py"
+    signer.write_text(
+        "import sys\n"
+        f"open({str(log)!r}, 'a', encoding='utf-8').write(sys.argv[1] + '\\n')\n"
+        f"sys.exit({status})\n",
+        encoding="utf-8",
+    )
+    installer = tmp_path / "finalized.exe"
+    command = f'{sys.executable} "{signer}" "%1"'
+    script = tmp_path / "finalize.nsi"
+    script.write_text(
+        "Unicode true\n"
+        "RequestExecutionLevel user\n"
+        f'OutFile "{build_windows.nsis_string(str(installer))}"\n'
+        f"!uninstfinalize '{command}' = 0\n"
+        f"!finalize '{command}' = 0\n"
+        'Section\n  WriteUninstaller "$INSTDIR\\uninstall.exe"\nSectionEnd\n'
+        'Section "Uninstall"\nSectionEnd\n',
+        encoding="utf-8-sig",
+    )
+    compiled = subprocess.run(
+        [str(MAKENSIS), "-V2", "-WX", str(script)],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=60,
+        env={**os.environ, "LC_ALL": "en_US.UTF-8"},
+    )
+    signed = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
+    if status == 0:
+        assert compiled.returncode == 0, compiled.stdout + compiled.stderr
+        assert len(signed) == 2
+        assert Path(signed[1]) == installer
+        assert Path(signed[0]) != installer  # the uninstaller, before it went in
+    else:
+        assert compiled.returncode != 0
+        assert len(signed) == 1  # the uninstaller's failure stopped the compile
+
+
+SIGN = (
+    "powershell.exe",
+    "-NoProfile",
+    "-NonInteractive",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-File",
+    str(build_windows.SIGN_SCRIPT),
+)
+
+
+def _sign_script(*arguments: str, env: dict[str, str] | None = None) -> tuple[int, str]:
+    done = subprocess.run(
+        [*SIGN, *arguments],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=120,
+        env=env,
+    )
+    return done.returncode, done.stdout + done.stderr
+
+
+ON_WINDOWS = pytest.mark.skipif(sys.platform != "win32", reason="Authenticode is on Windows")
+
+
+@ON_WINDOWS
+def test_sign_script_checks_signer_and_usage(tmp_path: Path) -> None:
+    unsigned = tmp_path / "unsigned.exe"
+    unsigned.write_bytes(_pe(build_windows.PE_MACHINE_AMD64))
+    # Not a whole PE: Windows has no signature to read in it ("UnknownError").
+    status, output = _sign_script("-Check", str(unsigned))
+    assert status == 1, output
+    assert output.startswith(f"::error::{unsigned}: "), output
+    # A copy of a system program is valid here through Windows' catalogs, not on its own.
+    copied = tmp_path / "where.exe"
+    shutil.copyfile(Path(os.environ["SYSTEMROOT"]) / "System32" / "where.exe", copied)
+    status, output = _sign_script("-Check", str(unsigned), str(copied))
+    assert status == 1, output
+    assert "signed only in this machine's Catalog" in output
+    # Microsoft's signature is one Windows trusts, but not Solaris's.
+    programs = Path(os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)"))
+    edge = programs / "Microsoft" / "Edge" / "Application" / "msedge.exe"
+    if not edge.is_file():
+        pytest.skip("no signed program to check")
+    status, output = _sign_script("-Check", str(edge))
+    assert status == 1, output
+    assert "signed by 'Microsoft Corporation', not 'Herta Network LLC'" in output
+
+
+@ON_WINDOWS
+def test_sign_script_needs_the_release_signing_setup(tmp_path: Path) -> None:
+    program = tmp_path / "Solaris.exe"
+    program.write_bytes(_pe(build_windows.PE_MACHINE_AMD64))
+    environment = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in {"SIGNTOOL", "ARTIFACT_SIGNING_DLIB", "ARTIFACT_SIGNING_METADATA"}
+    }
+    status, output = _sign_script(str(program), env=environment)
+    assert status != 0
+    assert "SIGNTOOL names no file" in output
+    status, output = _sign_script("-Directory", str(tmp_path), env=environment)
+    assert status != 0
+    assert "has no solaris-service.exe" in output
+
+
+def _workflow(name: str) -> dict[str, Any]:
+    path = build_windows.ROOT / ".github" / "workflows" / name
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+def test_only_the_release_workflow_signs() -> None:
+    # The release's Windows job signs in to Azure between the build and the installer, and
+    # passes --sign to both; CI's builds stay unsigned, without SignedRelease (D42).
+    job = _workflow("release.yml")["jobs"]["windows"]
+    assert job["environment"] == "release"
+    assert job["permissions"] == {"contents": "read", "id-token": "write"}
+    steps = job["steps"]
+    runs = [str(step.get("run", "")) for step in steps]
+    (build,) = [index for index, run in enumerate(runs) if "--skip-installer" in run]
+    (installer,) = [index for index, run in enumerate(runs) if "--installer-only" in run]
+    (login,) = [
+        index
+        for index, step in enumerate(steps)
+        if str(step.get("uses", "")).startswith("azure/login@")
+    ]
+    assert build < login < installer
+    assert "--sign" in runs[build].split()
+    assert "--sign" in runs[installer].split()
+    assert re.fullmatch(r"azure/login@[0-9a-f]{40}", steps[login]["uses"])
+    # The identity has no role in the subscription: azure/login would fail to select it.
+    assert steps[login]["with"]["allow-no-subscriptions"] is True
+    assert "subscription-id" not in steps[login]["with"]
+    (smoke,) = [run for run in runs if "smoke-test.ps1" in run]
+    assert "-Signed" in smoke.split()
+    ci = (build_windows.ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    for signing in ("--sign", "-Signed", "id-token", "azure/login", "ARTIFACT_SIGNING"):
+        assert signing not in ci

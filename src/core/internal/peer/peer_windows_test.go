@@ -16,6 +16,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/Ember-Moth/Solaris/src/core/internal/product"
 	"github.com/Microsoft/go-winio"
 	"golang.org/x/sys/windows"
 )
@@ -70,7 +71,7 @@ func TestPipeClientVerifier(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Logf("the test runs in session %d", session)
-	identity, err := verifySelf(t, PipeClientVerifier(executable, "", ""))
+	identity, err := verifySelf(t, PipeClientVerifier(executable, "", Signer{}))
 	switch {
 	case session == 0 && (err == nil || !strings.Contains(err.Error(), "session")):
 		t.Fatalf("a client in session 0: %+v, %v", identity, err)
@@ -96,15 +97,16 @@ func TestPipeClientVerifier(t *testing.T) {
 	if err := os.WriteFile(copied, raw, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := verifySelf(t, PipeClientVerifier(copied, "", "")); err == nil || !strings.Contains(err.Error(), "installed UI") {
+	if _, err := verifySelf(t, PipeClientVerifier(copied, "", Signer{})); err == nil || !strings.Contains(err.Error(), "installed UI") {
 		t.Fatalf("a client that is not the installed UI: %v", err)
 	}
-	if _, err := verifySelf(t, PipeClientVerifier(filepath.Join(t.TempDir(), "missing.exe"), "", "")); err == nil {
+	if _, err := verifySelf(t, PipeClientVerifier(filepath.Join(t.TempDir(), "missing.exe"), "", Signer{})); err == nil {
 		t.Fatal("accepted a client while the UI is not installed")
 	}
 	// This test binary carries no signature, so a signed release build refuses it.
 	if session != 0 {
-		if _, err := verifySelf(t, PipeClientVerifier(executable, "", "Ember Moth")); err == nil || !strings.Contains(err.Error(), "signature") {
+		release := Signer{Name: product.WindowsSigner, EKU: product.WindowsSignerEKU}
+		if _, err := verifySelf(t, PipeClientVerifier(executable, "", release)); err == nil || !strings.Contains(err.Error(), "signature") {
 			t.Fatalf("an unsigned client: %v", err)
 		}
 	}
@@ -148,7 +150,7 @@ func TestTrustedSigner(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer windows.CloseHandle(image)
-	if name, err := TrustedSigner(executable, image); err == nil {
+	if name, _, err := TrustedSigner(executable, image); err == nil {
 		t.Fatalf("an unsigned test binary is signed by %q", name)
 	}
 	// Edge carries its own signature on GitHub's Windows runners.
@@ -158,8 +160,16 @@ func TestTrustedSigner(t *testing.T) {
 		t.Skipf("no signed program to read: %v", err)
 	}
 	defer windows.CloseHandle(signed)
-	if name, err := TrustedSigner(edge, signed); err != nil || name != "Microsoft Corporation" {
+	name, certificate, err := TrustedSigner(edge, signed)
+	if err != nil || name != "Microsoft Corporation" {
 		t.Fatalf("Edge is signed by %q: %v", name, err)
+	}
+	if err := (Signer{Name: name, EKU: "1.3.6.1.5.5.7.3.3"}).check(name, certificate); err != nil {
+		t.Fatalf("Edge's certificate is not for code signing: %v", err)
+	}
+	// Only Solaris's certificate profile has Solaris's usage.
+	if err := (Signer{Name: name, EKU: product.WindowsSignerEKU}).check(name, certificate); err == nil {
+		t.Fatal("Edge's certificate has Solaris's extended key usage")
 	}
 }
 
@@ -234,7 +244,7 @@ func TestPipeClientVerifierHelper(t *testing.T) {
 	if err := os.WriteFile(ui, []byte("MZ"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	verify := PipeClientVerifier(ui, executable, "")
+	verify := PipeClientVerifier(ui, executable, Signer{})
 	var session uint32
 	if err := windows.ProcessIdToSessionId(uint32(os.Getpid()), &session); err != nil {
 		t.Fatal(err)

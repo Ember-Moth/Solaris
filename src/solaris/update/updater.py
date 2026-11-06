@@ -1,7 +1,6 @@
 """The steps of an update, in order (docs/release.md §2, §3): check the latest release, then
 download this machine's installer, check it against the release's checksums and its
-signature (none on Windows until it is signed, D29), and check it once more right before
-the user opens it.
+signature (signature.py), and check it once more right before the user opens it.
 
 Every method blocks: the ViewModel runs them on a worker thread.
 """

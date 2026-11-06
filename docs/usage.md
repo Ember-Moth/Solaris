@@ -14,8 +14,9 @@ Solaris 管理你提供的代理订阅和 mihomo 配置，不提供代理账户�
 
 macOS：打开 DMG，将 Solaris 拖入「应用程序」。首次连接时按提示允许网络扩展并添加 VPN 配置。
 
-Windows：运行安装程序并允许管理员授权。日常使用无需以管理员身份打开 Solaris。当前 Windows 安装包未签名，
-请核对下载来源；发布附件中的 `SHA256SUMS` 可用于核对文件。
+Windows：运行安装程序并允许管理员授权，授权提示里的发布者应是 Herta Network LLC（1.0.0 的安装包未签名）。日常使用
+无需以管理员身份打开 Solaris。SmartScreen 若提示「Windows 已保护你的电脑」，点「更多信息」核对发布者后再运行；发布附件中的
+`SHA256SUMS` 可用于核对文件。
 
 ## 第一次连接
 

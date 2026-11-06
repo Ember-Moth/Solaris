@@ -53,7 +53,8 @@ _FAILURES = {
     "signature_invalid": QT_TRANSLATE_NOOP("AboutViewModel", "安装包的签名无效：{detail}"),
     "signer_mismatch": QT_TRANSLATE_NOOP("AboutViewModel", "安装包不是由 Solaris 的开发者签名的"),
 }
-# Opening a Windows installer that only the release's checksum vouches for (D29).
+# Opening a Windows installer that only the release's checksum vouches for: in a build
+# without a Windows signer, such as 1.0.0.
 UNSIGNED_INSTALLER = QT_TRANSLATE_NOOP(
     "AboutViewModel",
     "安装包未签名，Windows 会提示“未知发布者”。安装器会请求管理员权限，并在升级前关闭界面。",

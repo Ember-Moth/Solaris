@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import sys
 import threading
@@ -28,8 +29,11 @@ from solaris.update.signature import (
     APPLE_TEAM_ID,
     CODESIGN,
     SPCTL,
+    WINDOWS_SIGNER,
+    WINDOWS_SIGNER_EKU,
     ChecksumOnly,
     MacVerifier,
+    Signer,
     WindowsVerifier,
     default_verifier,
     trusted_signer,
@@ -37,8 +41,10 @@ from solaris.update.signature import (
 from solaris.update.updater import Updater
 from tests.support.releases import FakeGitHub, FakeVerifier, fake_github
 
+ROOT = Path(__file__).resolve().parents[1]
 MAC_DMG = "Solaris-1.1.0-macos-universal.dmg"
 SIGNER = "Ember Moth"  # a Windows signer, for the signed path
+CODE_SIGNING = "1.3.6.1.5.5.7.3.3"
 WINDOWS_EXE = "Solaris-1.1.0-windows-x64-setup.exe"
 WINDOWS_ARM64_EXE = "Solaris-1.1.0-windows-arm64-setup.exe"
 BODY = b"installer " * 100_000  # a little under 1 MB: several chunks
@@ -252,6 +258,7 @@ def test_the_verifier_per_platform_and_signer() -> None:
     assert isinstance(default_verifier("darwin"), MacVerifier)
     assert isinstance(default_verifier("darwin", ""), MacVerifier)
     assert isinstance(default_verifier("win32", SIGNER), WindowsVerifier)
+    assert isinstance(default_verifier("win32"), WindowsVerifier)  # signed releases (D42)
     assert isinstance(default_verifier("win32", ""), ChecksumOnly)
     assert default_verifier("linux") is None
     assert [v.signed for v in (MacVerifier(), WindowsVerifier(SIGNER), ChecksumOnly())] == [
@@ -261,9 +268,42 @@ def test_the_verifier_per_platform_and_signer() -> None:
     ]
 
 
+def test_the_windows_signer_is_the_services_and_the_signing_scripts() -> None:
+    # The updater, the service (docs/architecture.md §5.3) and the release workflow's signing
+    # script name the same signer: Artifact Signing's verified organization and the
+    # extended key usage of Solaris's certificate profile (D42).
+    product = (ROOT / "src/core/internal/product/product.go").read_text(encoding="utf-8")
+    go = dict(re.findall(r'^\s*(WindowsSigner(?:EKU)?)\s*=\s*"([^"]*)"', product, re.MULTILINE))
+    script = (ROOT / "package/windows/sign.ps1").read_text(encoding="utf-8")
+    ps = dict(re.findall(r"^\$(Signer(?:Eku)?) = '([^']*)'", script, re.MULTILINE))
+    assert WINDOWS_SIGNER == "Herta Network LLC"
+    assert re.fullmatch(r"1\.3\.6\.1\.4\.1\.311\.97(\.\d+)+", WINDOWS_SIGNER_EKU)
+    assert go == {"WindowsSigner": WINDOWS_SIGNER, "WindowsSignerEKU": WINDOWS_SIGNER_EKU}
+    assert ps == {"Signer": WINDOWS_SIGNER, "SignerEku": WINDOWS_SIGNER_EKU}
+
+
+def test_the_windows_verifier_needs_the_profiles_usage(tmp_path: Path) -> None:
+    installer = tmp_path / WINDOWS_EXE
+    profile = frozenset({CODE_SIGNING, WINDOWS_SIGNER_EKU})
+
+    def verifier(found: Signer) -> WindowsVerifier:
+        return WindowsVerifier(WINDOWS_SIGNER, read=lambda path: found)
+
+    verifier(Signer(WINDOWS_SIGNER, profile)).verify(installer)
+    # Another organization verified under the same name has its own profile's usage.
+    namesake = Signer(WINDOWS_SIGNER, frozenset({CODE_SIGNING, "1.3.6.1.4.1.311.97.1.2.3"}))
+    with pytest.raises(UpdateError) as caught:
+        verifier(namesake).verify(installer)
+    assert caught.value.code == "signer_mismatch"
+    assert caught.value.message == f"{WINDOWS_SIGNER} without {WINDOWS_SIGNER_EKU}"
+    with pytest.raises(UpdateError) as caught:
+        verifier(Signer("Someone Else", profile)).verify(installer)
+    assert (caught.value.code, caught.value.message) == ("signer_mismatch", "Someone Else")
+
+
 def test_without_a_windows_signer_the_checksum_vouches(github: FakeGitHub, tmp_path: Path) -> None:
-    # A build without a signer (D29) takes an unsigned installer whose SHA-256 is the one
-    # in the release's SHA256SUMS, and says it is unsigned.
+    # A build without a signer, as 1.0.0 was, takes an unsigned installer whose SHA-256 is
+    # the one in the release's SHA256SUMS, and says it is unsigned.
     update = windows_updater(github, tmp_path, "")
     order: list[str] = []
     downloaded = update.download(update.check(), verifying=lambda: order.append("verifying"))
@@ -501,8 +541,13 @@ def test_windows_verifier_names_the_signer() -> None:
     if program is None:
         pytest.skip("no program with an embedded signature on this machine")
     signer = trusted_signer(program)
-    assert signer
+    assert signer.name
+    assert CODE_SIGNING in signer.ekus
     with pytest.raises(UpdateError) as caught:
         WindowsVerifier(SIGNER).verify(program)
-    assert (caught.value.code, caught.value.message) == ("signer_mismatch", signer)
-    WindowsVerifier(signer=signer).verify(program)
+    assert (caught.value.code, caught.value.message) == ("signer_mismatch", signer.name)
+    WindowsVerifier(signer.name, eku=CODE_SIGNING).verify(program)
+    # Only Solaris's certificate profile has Solaris's usage.
+    with pytest.raises(UpdateError) as caught:
+        WindowsVerifier(signer.name).verify(program)
+    assert caught.value.code == "signer_mismatch"

@@ -12,7 +12,7 @@
 
 `SHA256SUMS` 是本页每个文件的 SHA-256。已安装的 Solaris 在设置页的"关于"里检查更新，下载后核对校验和再打开安装包。
 
-- **Windows**：安装包暂未签名。从浏览器下载后打开时，SmartScreen 可能提示"Windows 已保护你的电脑"，点"更多信息"再点"仍要运行"；之后的管理员权限确认框里发布者显示为"未知"。
+- **Windows**：安装包由 Herta Network LLC 签名（Azure Artifact Signing），管理员权限确认框里的发布者是 Herta Network LLC。签名还在积累 SmartScreen 信誉时，从浏览器下载后打开可能仍提示"Windows 已保护你的电脑"：点"更多信息"，确认发布者是 Herta Network LLC，再点"仍要运行"。
 - **macOS**：打开磁盘映像，把 Solaris 拖到"应用程序"文件夹。第一次连接时，系统会请求允许 Solaris 的系统扩展和 VPN 配置，按提示在"系统设置"里允许。
 
 ## 源代码与许可

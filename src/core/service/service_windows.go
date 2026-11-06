@@ -191,13 +191,14 @@ func serve(ctx context.Context, sessions <-chan sessionEvent, powerEvents *power
 	if err != nil {
 		return fmt.Errorf("listen on %s: %w", product.PipeName, err)
 	}
-	signer := ""
+	var signer peer.Signer
 	if product.SignedRelease == "true" {
-		signer = product.WindowsSigner
+		signer = peer.Signer{Name: product.WindowsSigner, EKU: product.WindowsSignerEKU}
 	}
 	// The service's own executable connects as the take-over helper (decision D5b).
 	verify := peer.PipeClientVerifier(filepath.Join(filepath.Dir(executable), product.UIExecutable), executable, signer)
-	logger.Info("service started", "version", product.Version, "core", engine.Version(), "owned", home != "")
+	logger.Info("service started", "version", product.Version, "core", engine.Version(), "owned", home != "",
+		"signed", product.SignedRelease == "true")
 	return server.Serve(ctx, listener, verify, dispatcher, logger)
 }
 

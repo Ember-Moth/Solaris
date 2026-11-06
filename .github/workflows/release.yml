@@ -1,12 +1,12 @@
 name: Release
 
 # The signed and notarized macOS build (apple/README.md): Solaris.app from scripts/build_app.py,
-# notarized and stapled, in a notarized disk image with its SHA-256. And the Windows installer
-# from scripts/build_windows.py with its SHA-256, unsigned (D29). Runs for v* tags and
-# by hand, in the release environment: its reviewers approve each run before the jobs get the
-# signing secrets and the Google OAuth client. For a tag, a last job puts all three installers,
-# SHA256SUMS and the source archive into a draft GitHub Release (docs/release.md §1), which a
-# person publishes.
+# notarized and stapled, in a notarized disk image with its SHA-256. And the Windows installers
+# from scripts/build_windows.py, signed with Azure Artifact Signing (D42), with their SHA-256.
+# Runs for v* tags and by hand, in the release environment: its reviewers approve each run
+# before the jobs get the signing secrets, the Azure sign-in and the Google OAuth client. For a
+# tag, a last job puts all three installers, SHA256SUMS and the source archive into a draft
+# GitHub Release (docs/release.md §1), which a person publishes.
 on:
   workflow_dispatch:
   push:
@@ -246,10 +246,15 @@ jobs:
           rm -rf "$signing"
 
   windows:
-    name: Windows ${{ matrix.arch }} (unsigned, D29)
+    name: Windows ${{ matrix.arch }} (signed)
     runs-on: ${{ matrix.os }}
     environment: release
     timeout-minutes: 120
+    # GitHub's OIDC token for azure/login: Azure's federated credential for the signing
+    # identity trusts this repository's release environment and nothing else.
+    permissions:
+      contents: read
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -304,30 +309,124 @@ jobs:
             echo "::warning::No Google OAuth client in the release environment; this installer has no Google Drive backup."
           fi
 
+      # --sign links the service with SignedRelease: it accepts only a UI with Solaris's
+      # signature (docs/architecture.md §5.3). Signing comes after the long build, so that the
+      # Azure sign-in below is fresh when the first file is signed.
       - name: Build Solaris.exe and the service
         env:
           SOLARIS_GOOGLE_CLIENT_ID: ${{ secrets.SOLARIS_GOOGLE_CLIENT_ID }}
           SOLARIS_GOOGLE_CLIENT_SECRET: ${{ secrets.SOLARIS_GOOGLE_CLIENT_SECRET }}
-        run: uv run --frozen --with nuitka==4.2.2 python scripts/build_windows.py --arch ${{ matrix.arch }} --skip-installer
+        run: uv run --frozen --with nuitka==4.2.2 python scripts/build_windows.py --arch ${{ matrix.arch }} --skip-installer --sign
 
-      # Releases are unsigned (D29), and this step marks where signing goes: it would sign
-      # Solaris.exe, solaris-service.exe and the other executables, DLLs and .pyd files in
-      # build/windows/Solaris with a timestamp, and the service would link with SignedRelease=true
-      # so that it checks the UI's signer (docs/architecture.md §5.3). The next step would sign
-      # the installer and its uninstaller through makensis' !finalize and !uninstfinalize, and
-      # product.WindowsSigner and src/solaris/update/signature.WINDOWS_SIGNER would take the
-      # certificate's display name.
-      - name: Sign the programs (unsigned, D29)
-        run: echo "::warning::Windows releases are unsigned (D29); so is this installer."
+      # Azure Artifact Signing (D42, docs/release.md §1): signtool with Artifact Signing's dlib,
+      # both x64, at exact versions with their SHA-256. The dlib is built only for x86 and x64,
+      # so the ARM64 runner runs both under Windows 11's x64 emulation, with an x64 .NET beside
+      # the native one in C:\Program Files\dotnet\x64; what they sign may be any architecture.
+      # metadata.json names the account and the certificate profile, and leaves the dlib only
+      # the Azure CLI's sign-in.
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+          architecture: x64
+      - name: Signing tools
+        shell: pwsh
+        env:
+          ARTIFACT_SIGNING_ENDPOINT: ${{ vars.ARTIFACT_SIGNING_ENDPOINT }}
+          ARTIFACT_SIGNING_ACCOUNT: ${{ vars.ARTIFACT_SIGNING_ACCOUNT }}
+          ARTIFACT_SIGNING_PROFILE: ${{ vars.ARTIFACT_SIGNING_PROFILE }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($variable in 'ARTIFACT_SIGNING_ENDPOINT', 'ARTIFACT_SIGNING_ACCOUNT', 'ARTIFACT_SIGNING_PROFILE') {
+            if (-not [Environment]::GetEnvironmentVariable($variable)) {
+              throw "The release environment has no variable $variable"
+            }
+          }
+          $tools = Join-Path $env:RUNNER_TEMP 'signing'
+          New-Item -ItemType Directory -Path $tools | Out-Null
+          $packages = @(
+            @{ Id = 'Microsoft.Windows.SDK.BuildTools'; Version = '10.0.28000.2705'
+               Sha256 = '8bfdfb6ca2633f531cf80b5fa22512ba61a394d7988f0970db83baadc67929ed' },
+            @{ Id = 'Microsoft.ArtifactSigning.Client'; Version = '1.0.151'
+               Sha256 = '35375a4bc4e1102da729fc3d8d9925f774c3baae6b8b7ff6398d948ca9ab0d8a' }
+          )
+          foreach ($package in $packages) {
+            $id = $package.Id.ToLowerInvariant()
+            $archive = Join-Path $tools "$id.nupkg"
+            Invoke-WebRequest -Uri "https://api.nuget.org/v3-flatcontainer/$id/$($package.Version)/$id.$($package.Version).nupkg" -OutFile $archive
+            $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $archive).Hash
+            if ($hash -ne $package.Sha256) {
+              throw "$($package.Id) $($package.Version) has SHA-256 $hash, not $($package.Sha256)"
+            }
+            [IO.Compression.ZipFile]::ExtractToDirectory($archive, (Join-Path $tools $package.Id))
+          }
+          $signtool = Join-Path $tools 'Microsoft.Windows.SDK.BuildTools\bin\10.0.28000.0\x64\signtool.exe'
+          $dlib = Join-Path $tools 'Microsoft.ArtifactSigning.Client\bin\x64\Azure.CodeSigning.Dlib.dll'
+          $metadata = Join-Path $tools 'metadata.json'
+          [ordered]@{
+            Endpoint = $env:ARTIFACT_SIGNING_ENDPOINT
+            CodeSigningAccountName = $env:ARTIFACT_SIGNING_ACCOUNT
+            CertificateProfileName = $env:ARTIFACT_SIGNING_PROFILE
+            CorrelationId = "solaris-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT-$env:ARCH"
+            ExcludeCredentials = @(
+              'EnvironmentCredential', 'WorkloadIdentityCredential', 'ManagedIdentityCredential',
+              'SharedTokenCacheCredential', 'VisualStudioCredential', 'VisualStudioCodeCredential',
+              'AzurePowerShellCredential', 'AzureDeveloperCliCredential', 'InteractiveBrowserCredential'
+            )
+          } | ConvertTo-Json | Set-Content -LiteralPath $metadata -Encoding utf8
+          Get-Content -LiteralPath $metadata
+          & dotnet --list-runtimes
+          foreach ($file in $signtool, $dlib) {
+            if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "No $file" }
+          }
+          "SIGNTOOL=$signtool" >> $env:GITHUB_ENV
+          "ARTIFACT_SIGNING_DLIB=$dlib" >> $env:GITHUB_ENV
+          "ARTIFACT_SIGNING_METADATA=$metadata" >> $env:GITHUB_ENV
 
-      - name: Installer
-        run: uv run --frozen python scripts/build_windows.py --arch ${{ matrix.arch }} --installer-only
+      # The user-assigned managed identity id-solaris-release, through its federated credential
+      # for this environment. Its only role is signer on the certificate profile, none in the
+      # subscription, so the sign-in names no subscription: azure/login would select
+      # AZURE_SUBSCRIPTION_ID and fail. The Azure CLI exchanges GitHub's short-lived token for
+      # each new access token, so the signing token is fetched at once and then cached for the
+      # dlib, which asks the CLI for it; only its expiry is printed.
+      - name: Sign in to Azure
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906  # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+      - name: Signing token
+        run: az account get-access-token --scope https://codesigning.azure.net/.default --query expiresOn --output tsv
+
+      # package/windows/sign.ps1 signs every program in the install directory without a
+      # publisher's signature, then the setup UI's plugin, the uninstaller and the installer
+      # (makensis' !uninstfinalize and !finalize), each with a timestamp, and checks each
+      # one: Windows trusts it, and the certificate is Herta Network LLC's with the
+      # certificate profile's extended key usage. Any failure fails the job.
+      - name: Sign and build the installer
+        run: uv run --frozen python scripts/build_windows.py --arch ${{ matrix.arch }} --installer-only --sign
+
+      # The installer as it is uploaded: its signature, chain and timestamp, for the log.
+      - name: Check the signatures
+        shell: pwsh
+        env:
+          INSTALLER: ${{ matrix.build }}/${{ steps.version.outputs.installer }}
+          DIRECTORY: ${{ matrix.build }}/Solaris
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & $env:SIGNTOOL verify /pa /v $env:INSTALLER
+          if ($LASTEXITCODE -ne 0) { throw "signtool verify failed with exit code $LASTEXITCODE" }
+          ./package/windows/sign.ps1 -Check $env:INSTALLER, "$env:DIRECTORY/Solaris.exe", "$env:DIRECTORY/solaris-service.exe"
+          if ($LASTEXITCODE -ne 0) { throw 'The installer or the programs are not signed as a release signs them' }
+          $signature = Get-AuthenticodeSignature -LiteralPath $env:INSTALLER
+          $signature.SignerCertificate | Format-List Subject, Issuer, Thumbprint, NotBefore, NotAfter, EnhancedKeyUsageList
+          $signature.TimeStamperCertificate | Format-List Subject, Issuer
 
       - name: Install, upgrade and uninstall
         shell: powershell
         env:
           INSTALLER: ${{ matrix.build }}/${{ steps.version.outputs.installer }}
-        run: ./package/windows/smoke-test.ps1 -Installer $env:INSTALLER
+        run: ./package/windows/smoke-test.ps1 -Installer $env:INSTALLER -Signed
       # The UI's output from each start, and the crash directory of one that died starting.
       - name: Keep the UI's output and crash logs
         if: failure()
