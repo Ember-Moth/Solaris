@@ -340,9 +340,9 @@ exits.md 第 9 节的待实测项。
    git tag v1.0.0 && git push origin v1.0.0
    ```
 
-   标签触发同一个工作流：先批准 macOS 和两个 Windows 架构的构建任务，它们成功后再批准 release job。release job 核对安装包，打出源代码包，
-   写 `SHA256SUMS`，把这五个文件放进一个**草稿** Release。同一个标签已有 Release 时这一步失败，要先删掉旧的草稿
-   再重新运行。
+   标签触发同一个工作流：先批准 macOS 和两个 Windows 架构的构建任务，它们成功后再批准 release job。release job 核对安装包，
+   写 `SHA256SUMS`，把这四个文件放进一个**草稿** Release（不上传源代码包，D43）。同一个标签已有 Release 时这一步失败，
+   要先删掉旧的草稿再重新运行。标签发布后不删除，也不移到别的提交：它就是这个版本的源代码。
 4. **草稿**：从草稿下载三个安装包，在测试机上再装一遍；在"更新内容"下写这个版本的变化，删掉模板里的注释行。
 5. **发布**，二选一：
    - **正式发布**，保留"Set as the latest release"：已安装的 Solaris 检查更新时会提示这个版本；
@@ -396,7 +396,8 @@ exits.md 第 9 节的待实测项。
 
 ### 5.4 依赖升级
 
-- **mihomo 增强版**：固定到 `Meta` 分支的明确提交或 tag（`src/core/go.mod`），不使用浮动分支作为构建输入。mihomo 的运行时（`hub`、`executor`、`tunnel` 等
+- **mihomo 增强版**：固定到 `Meta` 分支的明确提交或 tag（`src/core/go.mod`），不使用浮动分支作为构建输入。发布过的版本
+  固定的提交是那个版本对应的源代码（D43），不要用 force push 或删除分支、tag 让它们从 `Ember-Moth/mihomo` 上消失。mihomo 的运行时（`hub`、`executor`、`tunnel` 等
   包级状态）只在 engine 里用（`imports_test.go` 检查）；`admission`、`compose`、`vpngate` 用 mihomo 无状态的解析
   函数、类型和常量，升级时这几处也要核对。升级前跑完整测试，并按 [architecture.md](architecture.md) §3.3 逐条复核
   安全要求和 3.4 节的发布构建标签。

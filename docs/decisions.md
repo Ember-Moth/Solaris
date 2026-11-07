@@ -1,6 +1,6 @@
 # 决策
 
-本文记录 Solaris 的设计决策。代码注释和其他文档按编号引用它们（如"D19"），所以编号不变、不重用；新的决策从 D43
+本文记录 Solaris 的设计决策。代码注释和其他文档按编号引用它们（如"D19"），所以编号不变、不重用；新的决策从 D44
 接着编号。每条只写结论，理由和细节在"详见"一栏的文档里。
 
 ## 待决策
@@ -54,3 +54,4 @@
 | D40 | Windows 11 ARM64 使用原生 ARM64 GUI、Go 服务、Cronet 与 Wintun；NSIS 引导程序及其 UI 插件仍是 x86。构建按架构隔离并检查 PE，更新按原生 OS 架构选择安装包，x64 到 ARM64 原位升级保留数据；CI 在原生 ARM runner 检查安装与迁移 | [architecture.md](architecture.md) §10、[release.md](release.md) §1 |
 | D41 | 退出 Solaris 就是完全退出：托盘或菜单栏的「退出 Solaris」、macOS 的 ⌘Q 和 Dock 的「退出」、关闭动作为「退出 Solaris」时关闭主窗口，都先像「断开」一样断开本用户的隧道，再退出界面进程；服务记为未运行，睡眠唤醒（D34）和服务重启后都不再恢复。断开最多等 10 秒，失败或超时时询问重试还是仍然退出，并说明隧道可能仍在运行。关闭动作为「留在托盘 / 菜单栏」时关闭窗口只隐藏窗口。别的用户的隧道（D5b）、没有服务应答时不断开；安装器的 `--quit` 和系统注销、关机时直接退出，隧道交给服务（D5、升级保留 `was_running`）；界面崩溃或被结束时隧道仍由服务或扩展维持。取代"退出界面后隧道继续运行"：用户把退出理解为退出整个应用，退出后流量仍经隧道却没有界面，不易察觉 | [ui.md](ui.md) §8、[architecture.md](architecture.md) §1 |
 | D42 | Windows 发布用 Azure Artifact Signing（原 Trusted Signing）签名，取代 D29。发布工作流经 GitHub OIDC 以 `release` 环境专用的托管标识登录 Azure（不选订阅），用 signtool 和 Artifact Signing 的 dlib 给安装目录里没有发布者签名的 exe、dll、pyd，以及安装界面插件、卸载器和安装器签名并加时间戳，任一步失败整个任务失败；dlib 只有 x86、x64 版，ARM64 runner 在 x64 仿真下运行它们。证书有效期只有几天、每天轮换，签名者只按证书主题里经验证的组织名 `Herta Network LLC` 和这个证书配置文件专属的 EKU 识别，不认具体证书或中间 CA：发布构建的服务（`SignedRelease`）这样校验界面，更新器这样校验下载的安装包 | [release.md](release.md) §1、§3、[architecture.md](architecture.md) §5.3、§10 |
+| D43 | 1.0.0 之后的版本，GitHub Release 不再上传源代码包 `Solaris-<版本>-source.tar.gz`，只有三个安装包和 `SHA256SUMS`。对应的源代码在哪里，由发布说明的「源代码与许可」和 NOTICES 的开头写明：Solaris 是本仓库的 `v<版本>` 标签；mihomo 是 `github.com/Ember-Moth/mihomo` 上由这个标签的 `src/core/go.mod` 里 `replace` 固定的提交；其他 Go 模块（包括 Ember-Moth 的 cronet-go、sing-snell）的版本和校验和由 `go.mod`、`go.sum` 固定，从 Go 模块代理（默认 `proxy.golang.org`）取得；GitHub 给每个 Release 自动附带的"Source code"只有本仓库的代码。理由：项目公开，clone 仓库就能拿到源代码；源代码包约 492 MB，大头是 `go mod vendor` 带进来的 cronet-go 各平台预编译库，每个版本都要再传一份。GPL 方面：做法对应 GPL-3.0 第 6 条 d 项，不随二进制附带源代码，而是在二进制旁边写明对应源代码在哪个网络服务器上，并保证在需要的期限内一直可以取得。取舍是源代码不再是一个自足的文件，而是分在三处：本仓库的标签、mihomo 分支的固定提交和 Go 模块代理，从 v1.0.0 起这三处都一直可以取得。前两处由本项目保管，`v*` 标签和 mihomo 分支上被引用过的提交不删除；Go 模块代理是第三方服务，不归本项目控制，而第 6 条 d 项写明源代码不论放在谁的服务器上，保证可以取得的仍是发布者，所以代理上取不到某个模块时要由本项目另行提供。已发布的 1.0.0 Release 和它的源代码包保留不动：1.0.0 的 NOTICES 指向那个文件 | [release.md](release.md) §1、§5 |

@@ -864,14 +864,15 @@ Windows 安装器为两个 Solaris 可执行文件设置独立的 WER mini dump 
   安装包和各自的 `.sha256`。signtool（Windows SDK build tools）和 Artifact Signing 的 dlib（`Microsoft.ArtifactSigning.Client`）
   按固定版本和 SHA-256 从 nuget.org 取得，都用 x64 版：dlib 只有 x86、x64 版，ARM64 runner 在 Windows 11 的 x64 仿真下
   运行它们，另装 x64 的 .NET 10 到 `C:\Program Files\dotnet\x64`；被签的文件是什么架构都可以。三个安装包存为 workflow artifact；对标签，最后一个
-  job 再经一次审批，核对三个安装包，打出含 vendor 依赖的源代码包，写 `SHA256SUMS`，把这五个文件放进一个**草稿**
-  GitHub Release，由人试过安装包、写好说明后发布（release.md 第 1.1 节）。
+  job 再经一次审批，核对三个安装包，写 `SHA256SUMS`，把这四个文件放进一个**草稿** GitHub Release，由人试过安装包、
+  写好说明后发布（release.md 第 1.1 节）。不上传源代码包，源代码是本仓库的标签（D43）。
 - 签名的范围：签名和构建在同一个 job 里，构建时运行的依赖（Nuitka、PyPI 包、Go 模块）与签名在同一台 runner 上，
   也能取到这个 job 的 OIDC 令牌，和 macOS 的签名证书在同一个 job 里一样。能换到的只是这个证书配置文件的签名权限，
   只在这次运行里。`metadata.json` 的 `CorrelationId`（`solaris-<运行 ID>-<尝试次数>-<架构>`）把发布工作流的签名请求
   与运行对应起来，便于在 Azure 的签名日志里查找。
 - 许可：本项目以 GPL-3.0-only 发布（[LICENSE](../LICENSE)）；服务和扩展链接的 mihomo 同为 GPL-3.0。
-  发布二进制时须同时提供对应的源代码；新增依赖须与 GPL-3.0 兼容。
+  发布二进制时须同时提供对应的源代码，发布说明和 NOTICES 写明它在哪里（release.md 第 5 节、D43）；新增依赖须与
+  GPL-3.0 兼容。
 
 Windows ARM64（D40）最低支持 Windows 11。GUI 必须用 ARM64 Python/Nuitka 构建，Go 服务、Cronet 和 Wintun 同为 ARM64；
 NSIS 及自定义安装窗口是 x86 引导组件，由系统仿真运行。更新器通过 `IsWow64Process2` 优先识别原生 OS 架构，

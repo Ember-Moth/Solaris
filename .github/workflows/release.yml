@@ -5,8 +5,8 @@ name: Release
 # from scripts/build_windows.py, signed with Azure Artifact Signing (D42), with their SHA-256.
 # Runs for v* tags and by hand, in the release environment: its reviewers approve each run
 # before the jobs get the signing secrets, the Azure sign-in and the Google OAuth client. For a
-# tag, a last job puts all three installers, SHA256SUMS and the source archive into a draft
-# GitHub Release (docs/release.md §1), which a person publishes.
+# tag, a last job puts all three installers and SHA256SUMS into a draft GitHub Release
+# (docs/release.md §1), which a person publishes. The source is the tag itself (D43).
 on:
   workflow_dispatch:
   push:
@@ -486,10 +486,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: src/core/go.mod
-          cache-dependency-path: src/core/go.sum
       - name: Version
         id: version
         run: |
@@ -509,7 +505,6 @@ jobs:
             echo "dmg=Solaris-$version-macos-universal.dmg"
             echo "installer=Solaris-$version-windows-x64-setup.exe"
             echo "installer_arm64=Solaris-$version-windows-arm64-setup.exe"
-            echo "source=Solaris-$version-source"
           } >> "$GITHUB_OUTPUT"
 
       - uses: actions/download-artifact@v8
@@ -537,35 +532,16 @@ jobs:
           mkdir -p ../release
           mv "$DMG" "$INSTALLER" "$INSTALLER_ARM64" ../release/
 
-      # The tagged tree and every Go module the service and the extension link, so that
-      # the archive builds without the network (GPL-3.0's corresponding source). Ordered,
-      # owned by root and dated at the tagged commit, so that the same tag gives the same
-      # archive.
-      - name: Source archive
-        env:
-          SOURCE: ${{ steps.version.outputs.source }}
-        run: |
-          staging="$RUNNER_TEMP/source"
-          mkdir -p "$staging"
-          git archive --format=tar --prefix="$SOURCE/" HEAD | tar -x -C "$staging"
-          go -C "$staging/$SOURCE/src/core" mod vendor
-          for arch in amd64 arm64; do
-            GOOS=windows GOARCH="$arch" GOFLAGS=-mod=vendor GOPROXY=off \
-              go -C "$staging/$SOURCE/src/core" build -tags with_gvisor,with_naive,with_purego -o /dev/null ./service
-          done
-          tar --sort=name --mtime="$(git log -1 --format=%cI)" --owner=0 --group=0 \
-            --numeric-owner --pax-option=exthdr.name=%d/PaxHeaders/%f,delete=atime,delete=ctime \
-            -C "$staging" -cf - "$SOURCE" | gzip -9n > "build/release/$SOURCE.tar.gz"
-
+      # No source archive (D43): the source is this repository at the tag, and the notes
+      # (.github/release-notes.md) and NOTICES say so.
       - name: SHA256SUMS
         env:
           DMG: ${{ steps.version.outputs.dmg }}
           INSTALLER: ${{ steps.version.outputs.installer }}
           INSTALLER_ARM64: ${{ steps.version.outputs.installer_arm64 }}
-          SOURCE: ${{ steps.version.outputs.source }}
         run: |
           cd build/release
-          sha256sum "$DMG" "$INSTALLER" "$INSTALLER_ARM64" "$SOURCE.tar.gz" > SHA256SUMS
+          sha256sum "$DMG" "$INSTALLER" "$INSTALLER_ARM64" > SHA256SUMS
           cat SHA256SUMS
           ls -l
 
@@ -578,7 +554,6 @@ jobs:
           DMG: ${{ steps.version.outputs.dmg }}
           INSTALLER: ${{ steps.version.outputs.installer }}
           INSTALLER_ARM64: ${{ steps.version.outputs.installer_arm64 }}
-          SOURCE: ${{ steps.version.outputs.source }}
         run: |
           sed "s/{{version}}/$VERSION/g" .github/release-notes.md > "$RUNNER_TEMP/notes.md"
           if grep -q "{{" "$RUNNER_TEMP/notes.md"; then
@@ -588,4 +563,4 @@ jobs:
           gh release create "$GITHUB_REF_NAME" --draft --verify-tag \
             --title "Solaris $VERSION" --notes-file "$RUNNER_TEMP/notes.md" \
             "build/release/$DMG" "build/release/$INSTALLER" "build/release/$INSTALLER_ARM64" \
-            build/release/SHA256SUMS "build/release/$SOURCE.tar.gz"
+            build/release/SHA256SUMS
