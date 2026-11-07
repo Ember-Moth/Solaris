@@ -20,6 +20,7 @@ from solaris.models.library import (
     ProfileLibrary,
     Removal,
     Routing,
+    Updated,
 )
 from solaris.models.profiles import Profile, ProfileList
 from solaris.models.routing import MODE_PLAN, MODE_PROFILE
@@ -222,12 +223,25 @@ class ProfilesViewModel(QObject):
         def failed(error: BaseException) -> None:
             if done is not None:
                 done()
-            self._error = failure_text(error)
-            self.changed.emit()
-            # A failed update still marks its profile; fetch the list that says so.
-            self._runner.submit(self._library.current(), self._loaded)
+            self._failed(error)
 
         self._runner.submit(action, succeeded, failed)
+
+    def _failed(self, error: BaseException) -> None:
+        self._error = failure_text(error)
+        self.changed.emit()
+        # A failed update still marks its profile; fetch the list that says so.
+        self._runner.submit(self._library.current(), self._loaded)
+
+    def _updated(self, update: Updated) -> None:
+        """Show what an update brought. A new text changes what the routing page shows of
+        the profile; one in use reached the tunnel, whose groups and rules the pages read
+        again."""
+        self._loaded(update.profiles)
+        if update.changed:
+            self._routing_touched()
+        if update.applied:
+            self.applied.emit()
 
     def _routing_touched(self) -> None:
         """Read the routing again after a change to the profiles, and let the routing page
@@ -365,12 +379,19 @@ class ProfilesViewModel(QObject):
         if profile_id in self._updating:
             return
         self._updating.add(profile_id)
-        reloads = profile_id == self._list.active
-        self._run(
-            self._library.profiles.update(profile_id),
-            lambda: self._updating.discard(profile_id),
-            reloads=reloads,
-        )
+        self._error = ""
+        self.changed.emit()
+
+        def updated(update: Updated) -> None:
+            self._updating.discard(profile_id)
+            self._error = ""
+            self._updated(update)
+
+        def failed(error: BaseException) -> None:
+            self._updating.discard(profile_id)
+            self._failed(error)
+
+        self._runner.submit(self._library.profiles.update(profile_id), updated, failed)
 
     @Slot(str, bool)
     def setAutoUpdate(self, profile_id: str, enabled: bool) -> None:
@@ -432,15 +453,9 @@ class ProfilesViewModel(QObject):
             return
         self._checking = True
 
-        def checked(profiles: ProfileList) -> None:
+        def checked(update: Updated) -> None:
             self._checking = False
-            reloaded = any(
-                p.id == profiles.active and p.updated_at != self._updated_at(p.id)
-                for p in profiles.profiles
-            )
-            self._loaded(profiles)
-            if reloaded:
-                self.applied.emit()
+            self._updated(update)
 
         def failed(error: BaseException) -> None:
             self._checking = False
@@ -448,9 +463,6 @@ class ProfilesViewModel(QObject):
             self.changed.emit()
 
         self._runner.submit(self._library.profiles.update_due(), checked, failed)
-
-    def _updated_at(self, profile_id: str) -> float | None:
-        return next((p.updated_at for p in self._list.profiles if p.id == profile_id), None)
 
     # -- overrides ---------------------------------------------------------------------------
     @Property(bool, notify=changed)

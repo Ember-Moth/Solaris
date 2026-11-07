@@ -165,6 +165,33 @@ def test_switching_modes_reloads_what_each_runs(tmp_path: Path) -> None:
     assert len(RoutingStore(scene.store.database).plans()) == 1
 
 
+def test_an_update_in_the_pool_reloads_the_plan(tmp_path: Path) -> None:
+    """A subscription in the pool brings the plan in use other nodes, whether or not 订阅自带
+    would use its rules; one kept out of the pool brings it none."""
+    scene = Scene(tmp_path, seeded=True)
+    run(lambda: scene.library.plans.set_mode(MODE_PLAN))
+    run(lambda: scene.library.profiles.set_in_pool("sample-c", False))
+    reloads = scene.host.reloads
+    scene.fetcher.body = NODES_ONLY.encode()
+
+    update = run(lambda: scene.library.profiles.update("sample-b"))
+
+    assert (update.changed, update.applied) == (True, True)
+    assert scene.host.reloads == reloads + 1
+    config = scene.host.config
+    assert config is not None
+    assert config.composition is not None
+    assert {s.id: s.yaml for s in config.composition.sources}["sample-b"] == NODES_ONLY
+    routing = run(scene.library.routing)
+    assert routing.report is not None
+    assert "🇯🇵 日本 01" in {node.original_name for node in routing.report.nodes}
+
+    (tmp_path / "config.yaml").write_text(NODES_ONLY, encoding="utf-8")
+    update = run(lambda: scene.library.profiles.update("sample-c"))
+    assert (update.changed, update.applied) == (True, False)
+    assert scene.host.reloads == reloads + 1
+
+
 def test_a_plan_change_is_validated_stored_and_reloaded(tmp_path: Path) -> None:
     scene = Scene(tmp_path, seeded=True)
     run(lambda: scene.library.plans.set_mode(MODE_PLAN))

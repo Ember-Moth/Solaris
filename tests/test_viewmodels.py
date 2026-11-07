@@ -14,7 +14,7 @@ from solaris.host.transport import Streams
 from solaris.models.profiles import ProfileError
 from solaris.models.store import ProfileStore
 from solaris.viewmodels.composition import ViewModels, compose
-from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
+from tests.support.simulated import SAMPLE_CONFIG, SimulatedFetcher, SimulatedHost, seed_profiles
 from tests.support.storage import has_config, has_override
 
 
@@ -368,6 +368,9 @@ def test_switching_profiles_reloads_the_tunnel(qtbot: QtBot, view_models: ViewMo
     assert [row.active for row in rows(profiles)] == [False, True, False]
     assert host.reloads == 1
 
+    fetcher = view_models.library.profiles._fetcher
+    assert isinstance(fetcher, SimulatedFetcher)
+    fetcher.body = SAMPLE_CONFIG.replace("MATCH,节点选择", "MATCH,DIRECT").encode()
     profiles.updateProfile("sample-b")
     assert prop(profiles, "activeUpdating")
     assert rows(profiles)[1].updated == "正在更新"
