@@ -2,11 +2,23 @@
 setting's field, the mixed port, saves on Enter or as it loses the focus and puts the saved
 value back on Esc."""
 
+import gc
+import time
+from pathlib import Path
+
+import pytest
 from PySide6.QtCore import QMetaObject, Qt
-from PySide6.QtQuick import QQuickItem
+from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtQuick import QQuickItem, QQuickWindow
 from PySide6.QtTest import QTest
 from pytestqt.qtbot import QtBot
 
+from solaris.app import load_ui
+from solaris.models.store import ProfileStore
+from solaris.viewmodels.composition import compose
+from tests.support.i18n import ui_language
+from tests.support.releases import offline_updater
+from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
 from tests.support.window import Loaded, find, kind
 
 RANGE_ERROR = "端口应在 1024–65535 之间"  # noqa: RUF001 - the UI's copy
@@ -56,6 +68,38 @@ def test_a_click_elsewhere_ends_the_editing_and_saves(qtbot: QtBot, loaded: Load
     qtbot.waitUntil(lambda: mixed_port(loaded) == 7891)
     assert field.property("text") == "7891"
     assert loaded.warnings == []
+
+
+def test_a_click_elsewhere_outlives_the_windows_wrapper(
+    qtbot: QtBot, tmp_path: Path, capfd: pytest.CaptureFixture[str]
+) -> None:
+    """Unlike Loaded, the app keeps no Python reference to its window: the collector frees
+    the window's wrapper once load_ui returns, and the click-away has to outlive it."""
+    store = ProfileStore(tmp_path)
+    seed_profiles(store, time.time())
+    with ui_language("zh"):
+        view_models = compose(
+            SimulatedHost(), store, SimulatedFetcher(), updater=offline_updater(tmp_path)
+        )
+        engine = QQmlApplicationEngine()
+        try:
+            assert load_ui(engine, view_models)
+            gc.collect()
+            (window,) = engine.rootObjects()
+            assert isinstance(window, QQuickWindow)
+            view_models.start()
+            loaded = Loaded(view_models, engine, window, [])
+            field = port_field(qtbot, loaded)
+            loaded.click(qtbot, field)
+            assert field.hasActiveFocus()
+            loaded.click(qtbot, label(loaded))
+            assert not field.hasActiveFocus()
+            assert "eventFilter" not in capfd.readouterr().err
+        finally:
+            view_models.shutdown()
+            for root in engine.rootObjects():
+                root.deleteLater()
+            del engine
 
 
 def test_a_refused_port_stays_with_its_error(qtbot: QtBot, loaded: Loaded) -> None:

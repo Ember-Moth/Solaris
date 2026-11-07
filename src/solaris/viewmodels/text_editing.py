@@ -64,10 +64,14 @@ class ClickAway(QObject):
     window (DESIGN.md "输入框"), as clicking the background of a native window or a web page
     does: a press outside the one that has the focus, on something that does not take the
     focus itself, takes it from the field. It goes to the field's focus scope, so a field in
-    a dialog leaves it inside the dialog. A setting's field commits as it loses the focus."""
+    a dialog leaves it inside the dialog. A setting's field commits as it loses the focus.
 
-    def __init__(self, window: QQuickWindow) -> None:
-        super().__init__(window)
+    ``owner``, such as the engine, is an object Python keeps. Nothing keeps the wrapper of the
+    window the engine made, and the collector frees it and its children's wrappers with it;
+    Qt would then call the filter on a new wrapper, one ``__init__`` never set up."""
+
+    def __init__(self, window: QQuickWindow, owner: QObject) -> None:
+        super().__init__(owner)
         self._window = window
         window.installEventFilter(self)
 

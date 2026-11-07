@@ -118,7 +118,7 @@ def load_ui(engine: QQmlApplicationEngine, view_models: ViewModels) -> bool:
     engine.load(QUrl.fromLocalFile(str(MAIN_QML)))
     for window in engine.rootObjects():
         if isinstance(window, QQuickWindow):
-            ClickAway(window)
+            ClickAway(window, engine)
     return bool(engine.rootObjects())
 
 
