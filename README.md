@@ -17,6 +17,14 @@
   <a href="docs/development.md">开发文档</a>
 </p>
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/overview-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="docs/images/overview-light.png">
+    <img src="docs/images/overview-light.png" alt="Solaris 概览页：已连接，显示出站模式、当前节点、实时流量、订阅用量和最近连接">
+  </picture>
+</p>
+
 ---
 
 Solaris 用来管理你的代理订阅、节点和分流规则。无需注册 Solaris 账户，导入自己的订阅或配置即可使用。
@@ -40,6 +48,12 @@ Solaris 用来管理你的代理订阅、节点和分流规则。无需注册 So
 - **选择与排查节点**：切换规则、全局和直连模式，选择策略组与节点，进行 HTTP 或 TCP 握手延迟测试，查看连接列表
   和内核日志。
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/routing-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/routing-light.png">
+  <img src="docs/images/routing-light.png" alt="分流页的「我的方案」：按服务、私有网络和国内常用设置的规则，及各自的目标策略组">
+</picture>
+
 ## 更多网络能力
 
 Solaris 使用 [mihomo 增强版](https://github.com/Ember-Moth/mihomo)内核，在 mihomo 的协议能力上加入：
@@ -60,6 +74,12 @@ EasyTier** 网络，通过分流规则访问网络中的设备。
   云备份的可用条件见 [使用指南](docs/usage.md#备份与恢复)。
 - **应用内更新**：检查新版本、下载安装包并校验，经你确认后安装。
 - **本地诊断**：查看运行日志，导出诊断信息；原始崩溃报告单独确认导出，不会自动上传。
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/settings-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="docs/images/settings-light.png">
+  <img src="docs/images/settings-light.png" alt="设置页：接管方式、语言与外观、备份与同步、启动选项和关于">
+</picture>
 
 ## 下载与安装
 
