@@ -211,10 +211,18 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   1. 设置页的选择（设置项 `language`，见第 8 节；`system` 表示跟随系统）。`app.main(language=…)`
      和 `scripts/preview.py --lang` 在启动时优先于它；
   2. 环境变量 `SOLARIS_LANG=zh|en`，用于预览和测试，`scripts/preview.py --lang en` 等价；
-  3. 系统的首选界面语言（`QLocale.system().uiLanguages()` 的第一项）：`zh` 开头用中文，其他一律用英文。
+  3. 系统的首选界面语言（`i18n.system_ui_languages()` 的第一项）：`zh` 开头（`zh-Hans-CN`、`zh-Hans`、
+     `zh-CN`、`zh-Hant-TW` 等）用中文，其他一律用英文。
 
   格式化日期的 locale：系统 locale 与界面同一语言时用系统的（保留 en_GB 等地区习惯），否则用该语言的默认
   locale（zh_CN、en_US）。
+
+  系统语言和 locale 在 Windows 上取自 `QLocale.system()`。macOS 上不能用它：PySide6 把 `QLocale.system()`
+  改成按 Python 的 `locale.getlocale()` 构造，也就是看 `LANG`、`LC_*`，而从 Finder 打开的应用没有这些变量，
+  得到的是 `C`，跟随系统就成了英文。所以 macOS 上 `i18n` 和 Qt 自己的后端一样直接问 CoreFoundation：
+  语言列表用 `CFLocaleCopyPreferredLanguages`（用户在系统设置里排的顺序，不受应用本地化影响），locale 用
+  `CFLocaleCopyCurrent`（语言按 Info.plist 的 `CFBundleLocalizations`，即 en、zh-Hans 匹配）。从终端运行时
+  `LANG` 同样不影响语言选择，要临时换语言用 `SOLARIS_LANG`。
 - **安装**：`app.py` 在创建 ViewModel 和加载 QML 之前调用 `i18n.Translations.apply()`，安装 `QTranslator` 并
   设置 `QLocale.setDefault`。
 - **运行中切换**：设置页改了语言后，`app.switch_language` 再调用一次 `apply()`，然后
