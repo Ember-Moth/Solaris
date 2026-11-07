@@ -602,8 +602,8 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
     随之切换。
   - 自动备份的定时器也在 `BackupViewModel` 里，见 storage.md 第 3 节。
 - **关于**：设置页的「关于」分组依次是版本（检查更新与下载）、自动检查更新、检查频率、内核、许可证、开源许可、
-  诊断信息、崩溃报告和项目主页。更新、开源许可、诊断和崩溃报告由 `viewmodels/about.py` 的 `AboutViewModel`
-  提供，设计见 [release.md](release.md)；内核版本、许可证和项目主页来自 `SettingsViewModel`。
+  诊断信息和崩溃报告。更新、开源许可、诊断和崩溃报告由 `viewmodels/about.py` 的 `AboutViewModel`
+  提供，设计见 [release.md](release.md)；内核版本和许可证来自 `SettingsViewModel`。
   - 「检查频率」只在开启自动检查更新时显示，关闭时整行隐藏。
   - 「内核」只写版本号。内核报告的是 go.mod 里 replace 的版本，固定到提交时是 Go 伪版本（D38），如
     `v1.19.33-0.20261103155416-c2de0f865c7e`；`models/format.version_number` 去掉时间戳、提交哈希和 `+` 后的

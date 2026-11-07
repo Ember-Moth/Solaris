@@ -320,7 +320,7 @@ def test_the_check_interval_shows_only_with_automatic_checks(qtbot: QtBot, loade
         return find(content, lambda i: i.property("text") == "检查频率")
 
     qtbot.waitUntil(lambda: interval() is not None)  # automatic checks are on by default
-    assert not {"服务", "控制协议", CORE_VERSION} & texts(content)
+    assert not {"服务", "控制协议", CORE_VERSION, "项目主页"} & texts(content)
     about.setAutoCheck(False)
     qtbot.waitUntil(lambda: interval() is None)
     about.setAutoCheck(True)

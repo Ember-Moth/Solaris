@@ -66,7 +66,6 @@ def test_about_shows_the_versions(qtbot: QtBot, view_models: ViewModels) -> None
     settings = view_models.settings
     qtbot.waitUntil(lambda: prop(settings, "coreVersion") == "v1.19.33")
     assert prop(settings, "license") == "GPL-3.0-only"
-    assert prop(settings, "projectUrl") == "https://github.com/Ember-Moth/Solaris"
 
 
 def test_a_core_without_a_version_shows_a_dash(
