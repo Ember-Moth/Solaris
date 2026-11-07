@@ -56,6 +56,12 @@ var fdPayloadMax = int(admission.FDNetwork.MTU) - 20 - 8
 // largest datagram the fd-mode TUN passes whole.
 var udpPayloadSizes = []int{1, 1200, 1472, fdPayloadMax}
 
+// testReadBuffer is the receive buffer of the echo server's and the node's sockets, which a
+// burst of datagrams reaches at once: Windows gives a UDP socket 64 KB, less than the TUN
+// tests' bursts of 64 datagrams, and a slow runner lost some of them there. Servers that
+// carry QUIC raise theirs the same way.
+const testReadBuffer = 4 << 20
+
 // udpEcho answers every datagram with the same bytes, from the port it was sent to.
 func udpEcho(t *testing.T) netip.AddrPort {
 	t.Helper()
@@ -64,6 +70,9 @@ func udpEcho(t *testing.T) netip.AddrPort {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { conn.Close() })
+	if err := conn.SetReadBuffer(testReadBuffer); err != nil {
+		t.Fatal(err)
+	}
 	go func() {
 		buffer := make([]byte, 65535)
 		for {
@@ -179,6 +188,7 @@ func (n *nodeTunnel) session(packet C.UDPPacket, metadata *C.Metadata) *nodeSess
 		return nil
 	}
 	session := &nodeSession{conn: socket.(*net.UDPConn), back: packet, seen: map[netip.AddrPort]netip.AddrPort{}}
+	_ = session.conn.SetReadBuffer(testReadBuffer)
 	if n.sessions == nil {
 		n.sessions = map[string]*nodeSession{}
 	}

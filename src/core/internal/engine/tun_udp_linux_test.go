@@ -39,8 +39,8 @@ func udpTarget(t *testing.T) netip.AddrPort {
 
 // tunUDPSizes are a byte, QUIC's initial datagram, a full Ethernet frame, more than the veth
 // carries in one frame, the most the TUN carries in one packet, and more than that. The
-// owned TUN's system stack gets no answer to a datagram the TUN has to fragment, where fd
-// mode and the other stacks carry it (docs/architecture.md §3.1), so it stops at one packet.
+// system stack gets no answer to a datagram the TUN has to fragment, in either mode, where
+// the other stacks carry it (docs/architecture.md §3.1), so it stops at one packet.
 func tunUDPSizes() []int {
 	conf := listener.GetTunConf()
 	mtu := conf.MTU
@@ -48,7 +48,7 @@ func tunUDPSizes() []int {
 		mtu = 9000 // sing_tun's default
 	}
 	whole := int(mtu) - 20 - 8
-	if conf.FileDescriptor == 0 && conf.Stack == C.TunSystem {
+	if conf.Stack == C.TunSystem {
 		return []int{1, 1200, 1472, 4000, whole}
 	}
 	return []int{1, 1200, 1472, 4000, whole, whole + 1000}
