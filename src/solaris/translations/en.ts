@@ -676,6 +676,33 @@
     </message>
 </context>
 <context>
+    <name>EditMenu</name>
+    <message>
+        <source>撤销</source>
+        <translation>Undo</translation>
+    </message>
+    <message>
+        <source>重做</source>
+        <translation>Redo</translation>
+    </message>
+    <message>
+        <source>剪切</source>
+        <translation>Cut</translation>
+    </message>
+    <message>
+        <source>复制</source>
+        <translation>Copy</translation>
+    </message>
+    <message>
+        <source>粘贴</source>
+        <translation>Paste</translation>
+    </message>
+    <message>
+        <source>全选</source>
+        <translation>Select all</translation>
+    </message>
+</context>
+<context>
     <name>ExitsSection</name>
     <message>
         <source>链式出口</source>

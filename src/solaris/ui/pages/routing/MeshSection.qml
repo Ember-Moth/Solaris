@@ -63,6 +63,8 @@ ColumnLayout {
                 required property string address
 
                 divider: index > 0
+                // A right-click opens its menu at the pointer (DESIGN.md "右键菜单").
+                ContextMenu.onRequested: position => networkMenu.openContext(networkMore, networkRow, position)
 
                 // The name opens the network's settings.
                 AbstractButton {
@@ -139,6 +141,7 @@ ColumnLayout {
                 required property string caption
 
                 divider: index > 0 || meshSection.networks.hasRows
+                ContextMenu.onRequested: position => meshMenu.openContext(meshMore, meshRow, position)
 
                 ColumnLayout {
                     Layout.fillWidth: true

@@ -163,7 +163,11 @@ AppDialog {
                 Layout.fillWidth: true
 
                 GroupRow {
+                    id: accountRow
+
                     divider: false
+                    // A right-click opens its menu at the pointer (DESIGN.md "右键菜单").
+                    ContextMenu.onRequested: position => accountMenu.openContext(accountMore, accountRow, position)
 
                     ColumnLayout {
                         Layout.fillWidth: true

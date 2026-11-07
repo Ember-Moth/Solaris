@@ -3,11 +3,13 @@ import QtQuick.Controls.Basic
 import Solaris
 
 // input: a white field with the border-control outline and body-sm text; `error` turns the
-// outline danger, and the caller writes the error under the field.
+// outline danger, and the caller writes the error under the field. Right-click opens the
+// app's edit menu (DESIGN.md "右键菜单").
 TextField {
     id: control
 
     property bool error
+    readonly property bool editMenuOpen: editMenu.opened
 
     implicitHeight: Theme.controlMd
     leftPadding: 10
@@ -29,6 +31,15 @@ TextField {
         event.accepted = false
     }
 
+    ContextMenu.menu: null
+    ContextMenu.onRequested: position => editMenu.open(position)
+
+    EditContextMenu {
+        id: editMenu
+
+        editor: control
+    }
+
     background: Rectangle {
         implicitWidth: 160
         radius: Theme.radiusSm
@@ -36,9 +47,10 @@ TextField {
         border.width: 1
         border.color: control.error ? Theme.danger : Theme.borderControl
 
+        // Its edit menu has the focus while it is open, on the field's behalf.
         FocusRing {
             targetRadius: Theme.radiusSm
-            visible: control.activeFocus
+            visible: control.activeFocus || control.editMenuOpen
         }
     }
 }

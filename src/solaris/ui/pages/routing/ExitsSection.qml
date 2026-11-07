@@ -41,7 +41,11 @@ ColumnLayout {
         Layout.fillWidth: true
 
         GroupRow {
+            id: warpRow
+
             divider: false
+            // A right-click opens its menu at the pointer (DESIGN.md "右键菜单").
+            ContextMenu.onRequested: position => exitMenu.openContext(warpMore, warpRow, position)
 
             AbstractButton {
                 id: warpButton
@@ -106,6 +110,10 @@ ColumnLayout {
         }
 
         GroupRow {
+            id: vpngateRow
+
+            ContextMenu.onRequested: position => vpngateMenu.openContext(vpngateMore, vpngateRow, position)
+
             AbstractButton {
                 id: vpngateButton
 

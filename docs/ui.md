@@ -11,6 +11,19 @@
 
 - 分层参考 hypervpn：视图 → ViewModel → models → 宿主客户端。界面用 QML，控件基于 Qt Quick Controls 的
   Basic 样式按 DESIGN.md 定制；主题由 `scripts/gen_theme.py` 从 DESIGN.md 生成。
+- **输入框与右键菜单**（DESIGN.md「输入框」「右键菜单」）：
+  - 界面里的 `TextField` 和 `TextArea` 只出现在 `AppTextField` 和 `CodeEditor` 里，两者用
+    `ContextMenu.menu: null` 关掉 Basic 样式的菜单，由 `EditContextMenu` 在 `ContextMenu.requested` 时打开
+    `EditMenu`。菜单第一次用到时才创建；右键时放在指针处（Qt 给文字控件的位置是文字光标，指针位置取自
+    `HoverHandler`），键盘的菜单键仍在文字光标处。
+  - 行的右键调用 `AppMenu.openContext(更多按钮, 行, 位置)`：它记下指针位置后 `click()` 那个「更多」按钮，按钮
+    原来的打开函数照常复制这一行的状态、调用 `openBelow()`，菜单只是改放到指针处；「更多」按钮仍是 `trigger`。
+  - `AppMenu` 记住打开时依据的锚点，高度变化时重新决定放在上方还是下方：菜单第一次打开时，列表要等显示后才排好
+    菜单项，之前的 `implicitHeight` 只有内边距。
+  - 点击别处退出编辑由 `viewmodels/text_editing.ClickAway` 实现：`app.load_ui` 把它装在主窗口上，按下鼠标时
+    若焦点在输入框或编辑框里、按下的位置在它的框外，等这次按下处理完后焦点仍在原处，就把焦点交给它的焦点作用域
+    （页面或对话框）。
+  - 设置行即改即存的输入框用 `SettingField`：`value` 是已保存的值，`committed(text)` 交给 ViewModel 检查和保存。
 - asyncio 事件循环运行在后台线程，结果通过排队信号回到 Qt 线程。
 - **控制客户端**：负责构造 Request、校验 Response 的版本和 ID，并按间隔调用 `PollEvents` 拉取订阅。
   传输有两种实现：
@@ -212,17 +225,9 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 - **`.qm` 提交进仓库**（与 Theme.qml 一样），从源码运行和预览不需要额外步骤。Nuitka 打包时，
   `package/entry.py` 里的 `nuitka-project` 选项把 `translations/*.qm` 复制到 `solaris/translations/`，
   `i18n.py` 按包内路径加载；找不到 `.qm` 时启动报错，而不是静默显示中文。
-- **Qt 自带的文案**：输入框和编辑框的右键菜单（撤销、重做、剪切、复制、粘贴、删除、全选）来自 Qt 自己的 QML，
-  `QtQuick.Controls.impl` 的 `UndoAction`、`CutAction` 等文件里的 `qsTr`，所以翻译上下文就是这些文件名。Qt 附带的
-  zh_CN 目录（PySide6 6.12）还没有这些条目，本项目在 `translations/qtquick_zh_CN.ts` 里补上中文，中文界面下由
-  `Translations` 一并加载（`i18n.QT_CATALOGS`）；英文界面就是 Qt 的原文，不需要目录。
-  - 这个目录不在 `gen_i18n.py` 的流程里（lupdate 扫不到 Qt 的源码），改动后用
-    `pyside6-lrelease -nounfinished -silent src/solaris/translations/qtquick_zh_CN.ts -qm src/solaris/translations/qtquick_zh_CN.qm`
-    编译；`.qm` 同样提交进仓库，打包时随 `translations/*.qm` 一起复制。
-  - `tests/test_i18n.py` 核对：每个条目都是 Qt 那个文件里的 `qsTr` 原文，Basic 样式的菜单正好用这几个
-    Action（升级 Qt 后有变化就失败）；`.qm` 与 `.ts` 一致；在中文和英文界面下实际创建这些 Action，读出的文字分别是
-    中文和 Qt 的英文原文。
-  - 其他 Qt 自带的文案（如系统文件对话框）由操作系统提供，跟随系统语言。
+- **Qt 自带的文案**：输入框和编辑框的右键菜单是本项目的 `EditMenu`（DESIGN.md「右键菜单」），文案在 `en.ts` 里，
+  与其他界面文案一样翻译；Basic 样式自带的那份菜单（`TextEditingContextMenu`）不会出现，也就不需要 Qt 的目录。
+  其他 Qt 自带的文案（如系统文件对话框）由操作系统提供，跟随系统语言。
 - **macOS 扩展用途说明**（D36）：扩展的 `InfoPlist.strings` 提供中文、英文，基础 plist 英文回退；
   跟随 macOS 语言偏好，不受设置页语言开关影响。安装/停用提示的系统按钮和措辞由 macOS 管理；
   应用内安装指引与停用确认框仍跟随应用语言。
@@ -255,8 +260,8 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   2. 环境变量 `SOLARIS_APPEARANCE=system|light|dark`，用于预览和测试，
      `scripts/preview.py --appearance dark` 等价；
   3. `system`。
-- **Qt 控件的调色板**：Basic 样式里本项目没有重绘的部分（滚动条、Qt 自带的右键菜单和工具提示、文字选区的
-  默认值）读窗口的 `palette`，Main.qml 把它映射到 token，浮层继承窗口的调色板：
+- **Qt 控件的调色板**：Basic 样式里本项目没有重绘的部分（滚动条、Qt 自带的工具提示、文字选区的默认值）读窗口的
+  `palette`，Main.qml 把它映射到 token，浮层继承窗口的调色板：
 
   | palette | token |
   | --- | --- |
@@ -264,10 +269,10 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   | `windowText`、`text`、`buttonText`、`toolTipText` | `text` |
   | `base`、`button`、`toolTipBase` | `surface` |
   | `alternateBase` | `surface-subtle` |
-  | `light`（菜单项高亮） | `surface-selected` |
+  | `light` | `surface-selected` |
   | `midlight` | `border` |
-  | `mid`（滚动条滑块、Qt 自带菜单的分隔线） | `border-control` |
-  | `dark`（按下的滑块、Qt 自带菜单的外框） | `text-muted` |
+  | `mid`（滚动条滑块） | `border-control` |
+  | `dark`（按下的滑块） | `text-muted` |
   | `placeholderText` | `text-muted` |
   | `highlight`、`accent` | `primary` |
   | `highlightedText`、`brightText` | `on-primary` |

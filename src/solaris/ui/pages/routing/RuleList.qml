@@ -196,6 +196,8 @@ Group {
         width: ruleColumn.width
         height: Theme.rowDouble
         opacity: rulesBox.dragged === ruleId ? Theme.disabledOpacity : 1
+        // A right-click opens its menu at the pointer (DESIGN.md "右键菜单").
+        ContextMenu.onRequested: position => ruleMenu.openContext(ruleRow.moreButton, ruleRow, position)
 
         // The rule the test matched.
         Rectangle {
