@@ -92,6 +92,10 @@ ApplicationWindow {
         height = Theme.windowDefaultHeight
     }
 
+    // macOS: Solaris is in the Dock while the window shows, however it came up, and in the
+    // menu bar only while it hides; showing it activates Solaris.
+    onVisibleChanged: desktopViewModel.setWindowShown(visible)
+
     // Closing the window leaves the UI in the tray, the tunnel running, or quits Solaris,
     // which disconnects first (D41) and shows the window again if that fails.
     onClosing: close => {

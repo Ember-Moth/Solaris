@@ -548,13 +548,29 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
       `WM_SYSCOMMAND`（`SC_KEYMENU`），由系统弹出原生菜单。
   - 其他平台（如测试用的 offscreen）只有布局，不做平台调用。`tests/test_titlebar.py` 在两种样式下检查布局、
     读屏名称、Tab 顺序和双击，并用替身检查 Windows 的命中测试和消息处理；系统实际怎么响应只能在 Windows 上看。
-- **关闭窗口**：`tray`（默认）时隐藏窗口，界面留在托盘，隧道继续运行；Windows 上点托盘图标、macOS 上点 Dock 图标
-  （Qt 把每次点击报告为应用激活）恢复窗口。`quit` 时先隐藏窗口，再像下面一样退出 Solaris。设置页这一行的说明随
-  选项变：「隧道继续运行」或「先断开连接，再退出」。
+- **关闭窗口**：`tray`（默认）时隐藏窗口，界面留在托盘，隧道继续运行；托盘菜单的「打开主窗口」恢复窗口，Windows
+  上点托盘图标也可以。`quit` 时先隐藏窗口，再像下面一样退出 Solaris。设置页这一行的说明随选项变：「隧道继续运行」
+  或「先断开连接，再退出」。
+  - macOS 上窗口隐藏时 Solaris 只留在菜单栏：`desktop/dock.py` 经 Objective-C 运行时把 `NSApp` 的激活策略设为
+    Accessory，Dock 和 ⌘Tab 里都没有它。窗口无论从哪里显示（菜单栏的「打开主窗口」、再次打开 Solaris、单实例
+    转发、一键导入链接、「未能断开连接」对话框、系统扩展的授权引导），都先设回 Regular，再调用 `activate`
+    激活应用；只显示窗口的话，顶部菜单栏仍是原来前台应用的。
+  - 策略只跟着窗口的 `visible` 走：Main.qml 在 `visible` 变化时调用 `DesktopViewModel.setWindowShown`，不在各个
+    入口分别处理。最小化的窗口仍算显示，留在 Dock 里。关闭动作为 `quit` 时，断开期间 Dock 图标随窗口一起隐藏，
+    断开失败时随对话框回来。没有托盘时不切换（关闭窗口就退出）；其他平台和测试用的 offscreen 不做平台调用，
+    `tests/test_desktop.py`、`tests/test_app.py` 用替身记录调用。
+  - 再次打开 Solaris（如从访达或「启动台」）时，系统发来 reopen，Qt 把它和其他激活一样报告为应用激活，窗口隐藏时
+    就显示出来（`DesktopViewModel.reopened`）。
+  - 带 `--background` 启动时（登录时打开，macOS 的登录项不带它），`DesktopViewModel.start` 在进入事件循环前
+    切到 Accessory。Qt 在启动收尾时会请求激活应用，Accessory 应用会被允许，而 Qt 把这次激活也报告为应用激活，
+    窗口就会弹出来；所以 `app.main` 先设置 Qt 的 `QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM`
+    （`dock.open_in_menu_bar`），Qt 既不把进程转为前台应用，也不请求激活。Qt 在事件循环开始后还会读它，所以
+    整个进程都保留；界面启动的子进程（codesign、schtasks）不是 Qt 程序。
 - **退出 Solaris**（D41）：托盘菜单的「退出 Solaris」、macOS 的 ⌘Q 和 Dock 的「退出」、关闭动作为 `quit` 时关闭
   窗口，都调用 `DesktopViewModel.quit`。它先经 `OverviewViewModel.disconnect_to_quit` 断开本用户的隧道：发的是与
   「断开」相同的 `Stop`，服务据此清除 `was_running`、取消睡眠唤醒恢复（architecture.md §5.2），概览页的开关照常显示
-  正在断开；隧道断开后才离开事件循环。
+  正在断开；隧道断开后才离开事件循环。macOS 上窗口隐藏时没有 Dock 图标和菜单，退出入口是菜单栏的「退出 Solaris」；
+  窗口显示时 ⌘Q 和 Dock 的「退出」照旧。
   - 不需要断开时直接退出：上一次刷新显示隧道已停止且没有在恢复，或隧道属于别的用户（D5b，不是本用户可以断开的），
     或刷新得到 `service_unavailable`（服务没在运行，也就没有隧道）。还没刷新过、刷新因别的原因失败时照样发 `Stop`。
   - 断开最多等 10 秒（`QUIT_DISCONNECT_TIMEOUT_S`）。失败或超时时显示窗口和「未能断开连接」对话框：原因，加上

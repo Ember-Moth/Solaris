@@ -13,9 +13,11 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtCore import QCoreApplication
+from PySide6.QtGui import QGuiApplication
 from pytestqt.qtbot import QtBot
 
 from solaris.desktop import session
+from solaris.desktop.dock import ACCESSORY, QT_NO_FOREGROUND_ENV, REGULAR, open_in_menu_bar
 from solaris.desktop.instance import (
     CONNECT_TIMEOUT_MS,
     LOCK_NAME,
@@ -49,6 +51,7 @@ from solaris.protocol import control_pb2 as pb
 from solaris.viewmodels import desktop as desktop_view_model
 from solaris.viewmodels.composition import ViewModels, compose
 from solaris.viewmodels.desktop import DesktopViewModel
+from tests.support.dock import ACTIVATE, RecordingApplication
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
 from tests.test_control_client import Answer, serve
 
@@ -324,6 +327,118 @@ def test_closing_the_window(
     assert mac.property("trayIconMask")
     assert not mac.property("showOnTrayClick")
     assert mac.property("trayIconOff").endswith("tray-template-off.svg")
+
+
+# -- macOS: the Dock while the window shows, the menu bar only while it hides -------------------
+def test_solaris_leaves_the_dock_while_the_window_hides(
+    qapp: QCoreApplication, tmp_path: Path
+) -> None:
+    settings = DatabaseSettingsStore(open_database(tmp_path))
+    application = RecordingApplication()
+    desktop = DesktopViewModel(
+        settings, tray_available=True, platform="darwin", application=application
+    )
+    desktop.start()
+    assert application.calls == []  # opened as usual: the window shows, Solaris in the Dock
+    desktop.setWindowShown(False)
+    assert application.calls == [ACCESSORY]
+    application.calls.clear()
+    desktop.setWindowShown(True)
+    assert application.calls == [REGULAR, ACTIVATE]  # back in the Dock first, then in front
+    desktop.stop()
+
+
+def test_opened_at_login_solaris_is_in_the_menu_bar_only(
+    qapp: QCoreApplication, tmp_path: Path
+) -> None:
+    settings = DatabaseSettingsStore(open_database(tmp_path))
+    application = RecordingApplication()
+    desktop = DesktopViewModel(
+        settings,
+        tray_available=True,
+        start_hidden=True,
+        platform="darwin",
+        application=application,
+    )
+    assert application.calls == []
+    desktop.start()  # before the event loop: the Dock icon goes as soon as it can
+    assert application.calls == [ACCESSORY]
+    desktop.stop()
+
+
+def test_opened_into_the_menu_bar_qt_does_not_activate_solaris() -> None:
+    """Qt's own activation as it finishes launching would show the window (reopened)."""
+    environ: dict[str, str] = {}
+    open_in_menu_bar(environ, platform="win32")
+    assert environ == {}
+    open_in_menu_bar(environ, platform="darwin")
+    assert environ == {QT_NO_FOREGROUND_ENV: "1"}
+
+
+@pytest.mark.parametrize(("platform", "tray"), [("win32", True), ("darwin", False)])
+def test_the_dock_stays_as_it_is(
+    qapp: QCoreApplication, tmp_path: Path, platform: str, tray: bool
+) -> None:
+    """Windows has no Dock. Without a tray hiding the window quits Solaris, which keeps its
+    Dock icon until it is gone."""
+    settings = DatabaseSettingsStore(open_database(tmp_path))
+    application = RecordingApplication()
+    desktop = DesktopViewModel(
+        settings,
+        tray_available=tray,
+        start_hidden=True,
+        platform=platform,
+        application=application,
+    )
+    desktop.start()
+    desktop.setWindowShown(False)
+    desktop.setWindowShown(True)
+    desktop.stop()
+    assert application.calls == []
+
+
+def test_only_the_cocoa_platform_calls_nsapp(
+    qapp: QCoreApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The tests' offscreen platform makes no platform calls, even on a Mac."""
+    assert QGuiApplication.platformName() == "offscreen"
+
+    def refuse() -> None:
+        raise AssertionError("NSApp was asked")
+
+    monkeypatch.setattr(desktop_view_model, "MacApplication", refuse)
+    settings = DatabaseSettingsStore(open_database(tmp_path))
+    desktop = DesktopViewModel(settings, tray_available=True, start_hidden=True, platform="darwin")
+    desktop.start()
+    desktop.setWindowShown(True)
+    desktop.setWindowShown(False)
+    desktop.stop()
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="asks the Objective-C runtime")
+def test_nsapplication_answers_what_the_dock_asks() -> None:
+    """Asked, not called: in the test process the calls would put Python in the Dock."""
+    ctypes.CDLL("/System/Library/Frameworks/AppKit.framework/AppKit")
+    runtime = ctypes.CDLL("/usr/lib/libobjc.A.dylib")
+    runtime.sel_registerName.restype = ctypes.c_void_p
+    runtime.sel_registerName.argtypes = [ctypes.c_char_p]
+    objc = ObjC()
+    with objc.pool():
+        application = objc.cls(b"NSApplication")
+        assert application
+
+        def answers(question: bytes, selector: bytes) -> bool:
+            return objc.send(
+                ctypes.c_bool,
+                application,
+                question,
+                runtime.sel_registerName(selector),
+                argtypes=(ctypes.c_void_p,),
+            )
+
+        assert answers(b"respondsToSelector:", b"sharedApplication")
+        for selector in (b"setActivationPolicy:", b"activate"):
+            assert answers(b"instancesRespondToSelector:", selector)
 
 
 # -- quitting Solaris (D41) ---------------------------------------------------------------------

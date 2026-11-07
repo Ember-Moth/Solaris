@@ -15,6 +15,7 @@ from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickWindow
 
 from solaris import __version__
+from solaris.desktop.dock import open_in_menu_bar
 from solaris.desktop.instance import SingleInstance, ask_to_quit
 from solaris.desktop.links import LinkReceiver, from_arguments
 from solaris.desktop.login import BACKGROUND_ARG, LoginItem, default_login_item
@@ -158,6 +159,9 @@ def main(
     if QUIT_ARG in sys.argv[1:]:
         _core = QCoreApplication.instance() or QCoreApplication(sys.argv)
         return 0 if ask_to_quit(directory) else 1
+    start_hidden = BACKGROUND_ARG in sys.argv[1:]
+    if start_hidden:
+        open_in_menu_bar()
     app = Application(sys.argv)
     app.setApplicationName(DISPLAY_NAME)
     app.setApplicationVersion(__version__)
@@ -188,7 +192,7 @@ def main(
         settings=settings,
         login_item=login_item or default_login_item(),
         tray_available=tray_supported(app.platformName()),
-        start_hidden=BACKGROUND_ARG in sys.argv[1:],
+        start_hidden=start_hidden,
         updater=updater,
         icloud=bundled_provider(),
         google=google or configured_provider(KeyringCredentials()),

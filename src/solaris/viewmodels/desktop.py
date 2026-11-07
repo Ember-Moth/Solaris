@@ -2,8 +2,9 @@
 requests to show it, and quitting.
 
 Closing the window into the tray leaves the tunnel running in the service or the system
-extension. Quitting Solaris disconnects first (D41); only the installer's ``--quit`` and the
-system's quit at the end of the session leave the tunnel as it is (docs/ui.md §8).
+extension; on macOS Solaris then leaves the Dock and stays in the menu bar (desktop/dock.py).
+Quitting Solaris disconnects first (D41); only the installer's ``--quit`` and the system's
+quit at the end of the session leave the tunnel as it is (docs/ui.md §8).
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from PySide6.QtCore import Property, QObject, Qt, QTimer, QUrl, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
+from solaris.desktop.dock import ACCESSORY, REGULAR, Application, MacApplication
 from solaris.desktop.titlebar import titlebar_style
 from solaris.desktop.tray import taskbar_is_light, tray_icon
 from solaris.models.settings import Settings, SettingsStore
@@ -43,7 +45,7 @@ class DesktopViewModel(QObject):
     trayIconChanged = Signal()
     closeActionChanged = Signal()
     showWindowRequested = Signal()  # another UI started, or the tray asked for the window
-    reopened = Signal()  # macOS: the Dock icon was clicked; show the window if it is hidden
+    reopened = Signal()  # macOS: opened again (the Dock, the Finder); show a hidden window
     quitRequested = Signal()  # leave the event loop now
     quitChanged = Signal()
     quitFailed = Signal()  # the disconnect before quitting failed; ask what to do
@@ -56,11 +58,14 @@ class DesktopViewModel(QObject):
         start_hidden: bool = False,
         platform: str = sys.platform,
         disconnect: Disconnect | None = None,
+        application: Application | None = None,
         parent: QObject | None = None,
     ) -> None:
         """``tray_available``: the Qt platform has a native tray. ``start_hidden``: the UI
         was opened at login and starts in the tray. ``disconnect`` takes this user's tunnel
-        down before Solaris quits; without it quitting leaves at once."""
+        down before Solaris quits; without it quitting leaves at once. ``application``: on
+        macOS, NSApp's activation policy; by default the real one on the ``cocoa`` platform
+        and none elsewhere."""
         super().__init__(parent)
         self._settings = settings
         self._disconnect = disconnect
@@ -72,6 +77,9 @@ class DesktopViewModel(QObject):
         self._start_hidden = start_hidden and tray_available
         self._mac = platform == "darwin"
         self._windows = platform == "win32"
+        if application is None and self._mac and QGuiApplication.platformName() == "cocoa":
+            application = MacApplication()
+        self._application = application if self._mac else None
         self.title_bar = TitleBar(titlebar_style(platform), self)
         self._light_taskbar = taskbar_is_light()
         self._timer = QTimer(self)
@@ -83,6 +91,8 @@ class DesktopViewModel(QObject):
             app.applicationStateChanged.connect(self._state_changed)
 
     def start(self) -> None:
+        if self._start_hidden:
+            self._dock(shown=False)
         if self._tray and self._windows:
             self._timer.start()
             QGuiApplication.styleHints().colorSchemeChanged.connect(self.refreshTaskbar)
@@ -150,6 +160,25 @@ class DesktopViewModel(QObject):
     @Slot()
     def showWindow(self) -> None:
         self.showWindowRequested.emit()
+
+    @Slot(bool)
+    def setWindowShown(self, shown: bool) -> None:
+        """Main.qml: the window was shown or hidden, whichever way: the menu bar's 打开主窗口,
+        a second launch, an install link, the dialogs that bring it back, or closing it."""
+        self._dock(shown=shown)
+
+    def _dock(self, *, shown: bool) -> None:
+        """macOS: in the Dock and ⌘Tab while the window shows; while it hides, in the menu bar
+        only. A minimized window still shows, in the Dock. Showing it activates Solaris, so
+        that the menu bar is Solaris's, not the app's in front. Without a tray, hiding the
+        window quits, and Solaris keeps its Dock icon until it is gone."""
+        if self._application is None or not self._tray:
+            return
+        if shown:
+            self._application.set_policy(REGULAR)
+            self._application.activate()
+        else:
+            self._application.set_policy(ACCESSORY)
 
     # -- quitting ----------------------------------------------------------------------------
     @Property(bool, notify=quitChanged)
