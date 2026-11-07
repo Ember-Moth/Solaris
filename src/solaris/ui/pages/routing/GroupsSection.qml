@@ -89,6 +89,8 @@ ColumnLayout {
                         readonly property bool custom: groupSection.modelData.rows === section.groups.custom
 
                         divider: index > 0
+                        // A right-click opens its menu at the pointer (DESIGN.md "右键菜单").
+                        ContextMenu.onRequested: position => (groupRow.custom ? customGroupMenu : groupMenu).openContext(groupMore, groupRow, position)
 
                         // A custom group's name opens its editor.
                         AbstractButton {

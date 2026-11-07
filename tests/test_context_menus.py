@@ -289,3 +289,69 @@ def test_a_rows_right_click_opens_its_more_menu(qtbot: QtBot, loaded: Loaded) ->
     below = more.mapRectToScene(QRectF(0, 0, more.width(), more.height()))
     assert menu_box(window).right() == below.right()
     assert loaded.warnings == []
+
+
+def test_a_group_rows_right_click_opens_its_more_menu(qtbot: QtBot, loaded: Loaded) -> None:
+    """Built-in and region groups open the menu of types, custom groups their own: whichever
+    the row's more button opens (docs/routing.md §4.5)."""
+    window, view_models = loaded.window, loaded.view_models
+    routing = view_models.routing
+    qtbot.waitUntil(lambda: view_models.overview.property("connected"))
+    view_models.shell.setPage("routing")
+    with qtbot.waitSignal(routing.routingChanged):
+        routing.setMode("plan")
+    qtbot.waitUntil(lambda: routing.property("summary").endswith("27 个节点"))
+    editor = routing._group_editor
+    with qtbot.waitSignal(editor.opened):
+        editor.openAdd()
+    editor.setName("香港精选")
+    editor.toggleRegion("HK")
+    with qtbot.waitSignal(editor.saved):
+        editor.save()
+    page = loaded.item(lambda i: kind(i) == "RoutingPage")
+    page.setProperty("tab", "groups")
+    qtbot.wait(250)  # the dialog closes
+
+    def row(custom: bool) -> tuple[QQuickItem, QQuickItem]:
+        found = find(
+            page,
+            lambda i: (
+                kind(i) == "GroupRow"
+                and bool(i.property("groupId"))
+                and i.property("custom") is custom
+            ),
+        )
+        assert found is not None
+        more = find(found, lambda i: kind(i) == "IconButton")
+        assert more is not None
+        view = found.parentItem()
+        while not view.inherits("QQuickFlickable"):
+            view = view.parentItem()
+        top = found.mapToItem(view.property("contentItem"), QPointF(0, 0)).y()
+        view.setProperty("contentY", max(0.0, top - 40))
+        qtbot.wait(50)
+        assert loaded.on_screen(found)
+        return found, more
+
+    built_in, more = row(custom=False)
+    point = right_click(qtbot, window, built_in, QPointF(60, built_in.height() / 2))
+    assert open_menu(window).property("trigger") == more
+    texts = [text for text, _ in shown_items(window)]
+    assert texts[-2:] == ["隐藏", "复制为自建策略组…"]
+    box = menu_box(window)
+    assert (box.x(), box.y()) == (point.x(), point.y())
+    QTest.keyClick(window, Qt.Key.Key_Escape)
+    qtbot.wait(250)
+
+    custom, more = row(custom=True)
+    point = right_click(qtbot, window, custom, QPointF(60, custom.height() / 2))
+    assert open_menu(window).property("trigger") == more
+    assert [text for text, _ in shown_items(window)] == ["编辑…", "复制…", "删除"]
+    box = menu_box(window)
+    assert (box.x(), box.y()) == (point.x(), point.y())
+    with qtbot.waitSignal(editor.opened):
+        trigger(window, "编辑…")
+    assert editor.property("title") == "编辑策略组「香港精选」"
+    QTest.keyClick(window, Qt.Key.Key_Escape)
+    qtbot.wait(250)
+    assert loaded.warnings == []
