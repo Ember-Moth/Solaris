@@ -108,8 +108,8 @@ def test_without_a_core_changes_are_stored_and_start_checks_them(tmp_path: Path)
     assert run(scene.library.plans.compose_report).report is None
     # Automatic updates wait for a core to read them.
     scene.fetcher.body = SAMPLE_CONFIG.encode()
-    profiles = run(scene.library.profiles.update_due)
-    assert not profiles.profiles[0].unread
+    update = run(scene.library.profiles.update_due)
+    assert not update.profiles.profiles[0].unread
 
     run(scene.library.tunnel.start)
     assert not scene.running_plan()["rules"][0]["enabled"]
@@ -156,9 +156,9 @@ def test_an_update_the_core_refuses_at_connect_falls_back(tmp_path: Path) -> Non
 
     scene = relaunched_without_a_core(tmp_path)
     scene.fetcher.body = BROKEN_RULES.encode()
-    profiles = run(lambda: scene.library.profiles.update(rules.id))
-    assert profiles.profiles[0].unread
-    assert profiles.profiles[0].has_rules is None
+    (unread,) = run(lambda: scene.library.profiles.update(rules.id)).profiles.profiles
+    assert unread.unread
+    assert unread.has_rules is None
     scene.fetcher.body = (BROKEN_RULES + "# again\n").encode()
     run(lambda: scene.library.profiles.update(rules.id))  # another one waiting keeps the read text
 

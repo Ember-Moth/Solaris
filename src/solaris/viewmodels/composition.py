@@ -222,10 +222,16 @@ def compose(
             backup.refreshCloud()
         connections.setActive(shell.currentPage == "connections")
 
+    def profiles_applied() -> None:
+        # The routing page lists the rules the core runs; shown later, it reads them then.
+        if shell.currentPage == "routing":
+            routing.refresh()
+
     shell.currentPageChanged.connect(page_shown)
     proxies.selectionApplied.connect(overview.refreshGroups)
     profiles.applied.connect(overview.refreshGroups)
     profiles.applied.connect(proxies.refresh)
+    profiles.applied.connect(profiles_applied)
     # One page's change of the pool or the routing shows on the other (routing.md §4.2).
     profiles.routingChanged.connect(routing.reload)
     profiles.routingRequested.connect(lambda: shell.setPage("routing"))

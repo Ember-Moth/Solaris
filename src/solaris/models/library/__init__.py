@@ -30,6 +30,7 @@ from solaris.models.library.profiles import (
     RETRY_AFTER_S,
     Profiles,
     Removal,
+    Updated,
 )
 from solaris.models.library.tunnel import Tunnel
 from solaris.models.profiles import ProfileList
@@ -44,6 +45,7 @@ __all__ = [
     "ProfileRules",
     "Removal",
     "Routing",
+    "Updated",
     "live_options",
 ]
 

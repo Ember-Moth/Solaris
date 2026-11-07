@@ -11,7 +11,8 @@ While no core can answer (macOS with the tunnel down, D27), nothing is read or v
 profile imported then is stored unread, and the tunnel part reads it at the next connect.
 
 Switching profiles or updating the one in use reloads it in place, with the TUN and system
-proxy state the host reports, so neither is interrupted.
+proxy state the host reports, so neither is interrupted. An update that brings the text
+stored already only dates the profile: the tunnel runs that text, so nothing reloads.
 """
 
 from __future__ import annotations
@@ -54,6 +55,17 @@ class Removal:
     active: bool  # its rules are the ones in use (订阅自带)
     successor: Profile | None  # whose rules are used afterwards, when ``active``
     pool_nodes: int | None  # nodes the pool of the plan in use loses; None when it loses none
+
+
+@dataclass(frozen=True)
+class Updated:
+    """The profiles after an update, and what the update changed."""
+
+    profiles: ProfileList
+    changed: bool  # some profile brought a text other than the one stored
+    # Such a text is in use: its own rules (订阅自带) or nodes in the pool of the plan in
+    # use (我的方案). A running tunnel reloaded with it.
+    applied: bool
 
 
 class Profiles:
@@ -124,45 +136,50 @@ class Profiles:
         return core.list
 
     # -- update ------------------------------------------------------------------------------
-    async def update(self, profile_id: str) -> ProfileList:
-        """Download a subscription again, or re-read a file, and reload it if it is in use."""
+    async def update(self, profile_id: str) -> Updated:
+        """Download a subscription again, or re-read a file, and reload it if it is in use
+        and its text changed."""
         core = self._core
         profile = core.list.get(profile_id)
         try:
             text, usage, inspection = await self._fetch_again(profile)
             async with core.lock:
-                await self._commit_update(profile_id, text, usage, inspection)
+                changed, applied = await self._commit_update(profile_id, text, usage, inspection)
         except Exception:
             core.mark_failed(profile_id, core.clock())
             raise
         core.mark_failed(profile_id, None)
-        return core.list
+        return Updated(core.list, changed, applied)
 
-    async def update_due(self) -> ProfileList:
+    async def update_due(self) -> Updated:
         """Update every subscription whose interval has passed. A failure shows in
         ``ProfileList.update_failed`` and is retried later instead of raised. They wait while
         no core can read them."""
         core = self._core
         if not core.host.core_available:
-            return core.list
+            return Updated(core.list, changed=False, applied=False)
         now = core.clock()
+        changed = applied = False
         for profile in [p for p in core.list.profiles if self._due(p, now)]:
             try:
                 text, usage, inspection = await self._fetch_again(profile)
                 async with core.lock:
-                    await self._commit_update(profile.id, text, usage, inspection)
+                    new, in_use = await self._commit_update(profile.id, text, usage, inspection)
             except Exception:
                 core.mark_failed(profile.id, now)
             else:
                 core.mark_failed(profile.id, None)
-        return core.list
+                changed |= new
+                applied |= in_use
+        return Updated(core.list, changed, applied)
 
     def _due(self, profile: Profile, now: float) -> bool:
         if not profile.is_subscription or profile.auto_update_hours <= 0:
             return False
         failed_at = self._core.failed.get(profile.id)
-        if failed_at is not None and now - failed_at < RETRY_AFTER_S:
-            return False
+        if failed_at is not None:
+            # Even when the update stored and dated a text the running tunnel then refused.
+            return now - failed_at >= RETRY_AFTER_S
         return now - profile.updated_at >= profile.auto_update_hours * 3600
 
     async def _fetch_again(
@@ -185,12 +202,25 @@ class Profiles:
         inspection: SourceInspection | None,
         *,
         reload: bool = True,
-    ) -> None:
+    ) -> tuple[bool, bool]:
         """Store a profile's new text; None for ``inspection`` stores it unread, keeping the
-        text a core read last for when it refuses the new one at connect."""
+        text a core read last for when it refuses the new one at connect. Returns whether
+        the text changed, and whether the routing in use takes it; a running tunnel reloads
+        with it unless ``reload`` is False. The text stored already only dates the profile."""
         core = self._core
         # The profile may have been removed while it downloaded.
         profile = core.list.get(profile_id)
+        if inspection is not None and not await self._changed(profile, text):
+            core.inspections[profile_id] = inspection
+            dated = replace(
+                profile,
+                updated_at=core.clock(),
+                usage=usage,
+                proxy_count=inspection.node_count,
+                has_rules=inspection.has_rules,
+            )
+            await core.save(core.list.put(dated))
+            return False, False
         if inspection is None:
             unread = replace(
                 profile,
@@ -205,7 +235,7 @@ class Profiles:
             await core.save(core.list.put(unread))
             if profile.in_pool:
                 core.report = None  # the pool lost its nodes until they are read
-            return
+            return True, False
         refreshed = replace(
             profile,
             updated_at=core.clock(),
@@ -226,10 +256,22 @@ class Profiles:
         await core.save(updated)
         if profile.in_pool:
             core.report = report  # the pool has other nodes
-        if not reload:
-            return
-        if pooled or (core.state.mode == MODE_PROFILE and profile_id == core.list.active):
+        in_use = pooled or (core.state.mode == MODE_PROFILE and profile_id == core.list.active)
+        if reload and in_use:
             await core.reload_if_running()
+        return True, in_use
+
+    async def _changed(self, profile: Profile, text: str) -> bool:
+        """Whether ``text`` differs from the profile's stored text, or the stored one may not
+        have reached a core: it waits unread, or the update that stored it failed after, as
+        when the running tunnel refused it."""
+        if profile.unread or profile.id in self._core.failed:
+            return True
+        try:
+            stored = await asyncio.to_thread(self._core.store.read_config, profile.id)
+        except ProfileError:
+            return True  # restored, and not downloaded yet
+        return stored != text
 
     # -- the profile in use, and the pool ------------------------------------------------------
     async def activate(self, profile_id: str) -> ProfileList:

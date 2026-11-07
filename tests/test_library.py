@@ -10,9 +10,11 @@ from solaris.host.base import (
     TAKEOVER_NONE,
     TAKEOVER_SETTINGS,
     TAKEOVER_TUN,
+    CompositionReport,
     HostError,
     HostStatus,
     RunOptions,
+    TunnelConfig,
 )
 from solaris.models.library import RETRY_AFTER_S, ProfileLibrary
 from solaris.models.profiles import KIND_FILE, ProfileError, Usage
@@ -177,9 +179,10 @@ def test_updating_the_active_subscription_reloads_in_place(tmp_path: Path) -> No
     scene.fetcher.usage = Usage(0, 5, 10, 0)
     scene.now += 60
 
-    profiles = run(lambda: scene.library.profiles.update("sample-a"))
+    update = run(lambda: scene.library.profiles.update("sample-a"))
 
-    profile = profiles.get("sample-a")
+    assert (update.changed, update.applied) == (True, True)
+    profile = update.profiles.get("sample-a")
     assert profile.updated_at == scene.now
     assert profile.usage == Usage(0, 5, 10, 0)
     assert profile.proxy_count == 1
@@ -190,13 +193,63 @@ def test_updating_the_active_subscription_reloads_in_place(tmp_path: Path) -> No
     assert scene.host.config.options.tun_enabled
 
 
+def test_an_update_with_the_text_stored_already_only_dates_it(tmp_path: Path) -> None:
+    """The tunnel runs that text: reloading would only cut new connections short and drop
+    the delays measured."""
+    scene = Scene(tmp_path)
+    scene.fetcher.usage = Usage(0, 5, 10, 0)
+    scene.now += 60
+
+    update = run(lambda: scene.library.profiles.update("sample-a"))
+
+    assert (update.changed, update.applied) == (False, False)
+    profile = update.profiles.get("sample-a")
+    assert (profile.updated_at, profile.usage) == (scene.now, Usage(0, 5, 10, 0))
+    assert scene.store.load().get("sample-a") == profile
+    assert scene.host.reloads == 0
+
+
+def test_a_text_the_tunnel_refused_reloads_at_the_next_update(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A reload that fails leaves the new text stored, so the next update, by hand or when
+    due again after the wait for a failed one, tries again with the same text."""
+    scene = Scene(tmp_path)
+    scene.fetcher.body = OTHER_CONFIG.encode()
+    reload = scene.host.reload
+
+    async def refuse(config: TunnelConfig) -> CompositionReport | None:
+        raise HostError("apply_failed", "listen tcp 127.0.0.1:7890: bind: address already in use")
+
+    monkeypatch.setattr(scene.host, "reload", refuse)
+    scene.now += 10 * 3600  # A is due
+    assert run(scene.library.profiles.update_due).profiles.update_failed == {"sample-a"}
+    assert scene.store.read_config("sample-a") == OTHER_CONFIG
+    scene.now += RETRY_AFTER_S - 1
+    run(scene.library.profiles.update_due)
+    assert len(scene.fetcher.requests) == 1  # waits as after a failed download
+
+    monkeypatch.setattr(scene.host, "reload", reload)
+    scene.now += 1
+    update = run(scene.library.profiles.update_due)
+    assert (update.changed, update.applied, update.profiles.update_failed) == (
+        True,
+        True,
+        frozenset(),
+    )
+    assert scene.host.reloads == 1
+    assert scene.host.config is not None
+    assert scene.host.config.config_yaml == OTHER_CONFIG
+
+
 def test_updating_another_profile_does_not_reload(tmp_path: Path) -> None:
     scene = Scene(tmp_path)
     run(lambda: scene.library.profiles.update("sample-b"))
     local = tmp_path / "config.yaml"
     local.write_bytes(OTHER_CONFIG.encode())  # Windows would write \r\n
-    profiles = run(lambda: scene.library.profiles.update("sample-c"))  # re-reads the file
-    assert profiles.get("sample-c").proxy_count == 1
+    update = run(lambda: scene.library.profiles.update("sample-c"))  # re-reads the file
+    assert (update.changed, update.applied) == (True, False)
+    assert update.profiles.get("sample-c").proxy_count == 1
     assert scene.store.read_config("sample-c") == OTHER_CONFIG
     assert scene.host.reloads == 0
 
@@ -208,7 +261,8 @@ def test_failed_update_is_marked_until_the_next_success(tmp_path: Path) -> None:
         run(lambda: scene.library.profiles.update("sample-b"))
     assert run(scene.library.current).update_failed == {"sample-b"}
     scene.fetcher.error = None
-    assert run(lambda: scene.library.profiles.update("sample-b")).update_failed == frozenset()
+    update = run(lambda: scene.library.profiles.update("sample-b"))
+    assert update.profiles.update_failed == frozenset()
 
 
 def test_automatic_updates_follow_the_interval(tmp_path: Path) -> None:
@@ -219,8 +273,10 @@ def test_automatic_updates_follow_the_interval(tmp_path: Path) -> None:
     assert scene.fetcher.requests == []
 
     scene.now += 10 * 3600  # A is due now, and in use
-    run(scene.library.profiles.update_due)
+    scene.fetcher.body = OTHER_CONFIG.encode()
+    update = run(scene.library.profiles.update_due)
     assert scene.fetcher.requests == [scene.library.snapshot().get("sample-a").url]
+    assert (update.changed, update.applied) == (True, True)
     assert scene.host.reloads == 1
 
     run(lambda: scene.library.profiles.set_auto_update("sample-a", False))
@@ -235,12 +291,12 @@ def test_failed_automatic_update_waits_before_retrying(tmp_path: Path) -> None:
     scene = Scene(tmp_path)
     run(lambda: scene.library.profiles.set_auto_update("sample-b", True))  # 3 days old, so due
     scene.fetcher.error = ProfileError("download_failed", "offline")
-    assert run(scene.library.profiles.update_due).update_failed == {"sample-b"}
+    assert run(scene.library.profiles.update_due).profiles.update_failed == {"sample-b"}
     run(scene.library.profiles.update_due)
     assert len(scene.fetcher.requests) == 1
     scene.now += RETRY_AFTER_S
     scene.fetcher.error = None
-    assert run(scene.library.profiles.update_due).update_failed == frozenset()
+    assert run(scene.library.profiles.update_due).profiles.update_failed == frozenset()
     assert len(scene.fetcher.requests) == 2
 
 
