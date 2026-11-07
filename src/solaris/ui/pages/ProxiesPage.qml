@@ -94,6 +94,8 @@ Item {
         spacing: Theme.space5
 
         PageHeader {
+            id: pageHeader
+
             Layout.fillWidth: true
             title: qsTr("代理")
             detail: page.proxies.summary
@@ -114,11 +116,18 @@ Item {
 
         // Side by side, both boxes reach down to the page's bottom margin. Stacked in a narrow
         // window, the groups take up to two fifths of the boxes' height and the nodes the rest.
+        // The arrangement goes by the page's size and the rows' count, never by this layout's
+        // own size or the list's measured height: those change while the layout arranges, and
+        // a binding to them makes it arrange again inside itself (a recursive rearrange).
         GridLayout {
             id: panes
 
-            readonly property bool twoPanes: width >= 260 + Theme.space6 + 420
-            readonly property real stackedGroupsHeight: (height - rowSpacing - 2 * (groupsLabel.implicitHeight + Theme.space2)) * 2 / 5
+            readonly property real availableWidth: page.width - 2 * Theme.pageX
+            readonly property real availableHeight: page.height - Theme.titlebarPageTop - Theme.pageBottom - pageHeader.implicitHeight - Theme.space5
+            readonly property bool twoPanes: availableWidth >= 260 + Theme.space6 + 420
+            readonly property real stackedGroupsHeight: (availableHeight - rowSpacing - 2 * (groupsLabel.implicitHeight + Theme.space2)) * 2 / 5
+            // Every row at its taller height: the one row that folds the regions is shorter.
+            readonly property real groupRowsHeight: groupList.count * Theme.rowDouble + 2
 
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -127,7 +136,7 @@ Item {
             rowSpacing: Theme.space5
 
             ColumnLayout {
-                Layout.preferredWidth: panes.twoPanes ? 260 : panes.width
+                Layout.preferredWidth: panes.twoPanes ? 260 : -1
                 Layout.fillWidth: !panes.twoPanes
                 Layout.fillHeight: panes.twoPanes
                 spacing: Theme.space2
@@ -141,7 +150,7 @@ Item {
                 ListBox {
                     Layout.fillWidth: true
                     Layout.fillHeight: panes.twoPanes
-                    Layout.preferredHeight: panes.twoPanes ? -1 : Math.min(groupList.contentHeight + 2, panes.stackedGroupsHeight)
+                    Layout.preferredHeight: panes.twoPanes ? -1 : Math.min(panes.groupRowsHeight, panes.stackedGroupsHeight)
 
                     ListView {
                         id: groupList
