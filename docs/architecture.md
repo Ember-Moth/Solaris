@@ -844,6 +844,7 @@ Windows 安装器为两个 Solaris 可执行文件设置独立的 WER mini dump 
 - **Windows 构建**（`scripts/build_windows.py`，在 Windows 上运行，`uv run --with nuitka==4.2.2`）：拉取 GEO 数据
   （`scripts/fetch_geodata.py`）、构建服务、Nuitka 构建界面（不带界面用不到的 Qt 模块、QML 目录和图片格式插件，与
   macOS 相同；Qt 的 OpenSSL 后端也不带，TLS 用 Schannel，CPython 自带的 libssl 和 libcrypto 留着给 `ssl` 模块），
+  ARM64 另给 Nuitka 加上依赖分析插件 `package/windows/nuitka_pefile.py`（原因见 [development.md](development.md)「从源码构建」），
   x64 组装到 `build/windows/Solaris/`，ARM64 组装到 `build/windows-arm64/Solaris/`；检查必需文件、链接及每个 PE 的目标架构，
   再生成卸载清单与 `Solaris-<版本>-windows-<x64|arm64>-setup.exe`。`--skip-installer` 停在安装目录，
   `--installer-only` 只从已有的安装目录编译安装包。`--sign` 只给发布工作流用（D42）：构建服务时打开 `SignedRelease`
