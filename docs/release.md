@@ -29,9 +29,9 @@ Windows 安装器采用自定义 Win32 界面（D39），由 MSVC 编译为 NSIS
 | Windows 安装包 | `Solaris-<版本>-windows-x64-setup.exe`：NSIS 安装器（architecture.md 第 9 节）。安装器、卸载器和装进去的程序用 Azure Artifact Signing 做 Authenticode 签名并加时间戳，签名者是 `Herta Network LLC`（D42）；更新时核对校验和与签名者（第 3 节第 4 步）。1.0.0 不签名（D29） |
 | Windows ARM64 安装包 | `Solaris-<版本>-windows-arm64-setup.exe`：Windows 11 ARM64 原生应用、服务及匹配的 Cronet/Wintun；NSIS 引导仍为 x86，安装逻辑与签名与 x64 版相同 |
 | 校验和 | `SHA256SUMS`：`sha256sum` 的输出格式，每行 `<64 位小写十六进制>  <文件名>`，覆盖本次发布的其他每个文件 |
-| 源代码 | `Solaris-<版本>-source.tar.gz`：本仓库在这个标签的代码，加上 `go mod vendor` 得到的全部 Go 依赖（第 5 节） |
+| 源代码 | 不上传源代码包（D43）：源代码是本仓库的 `v<版本>` 标签，mihomo 和其他 Go 依赖由标签里的 `src/core/go.mod`、`go.sum` 固定；发布说明和 NOTICES 写明这些位置（第 5 节）。1.0.0 的 Release 另有 `Solaris-1.0.0-source.tar.gz`，保留不动 |
 
-Release 上有三个安装包、SHA256SUMS 和源代码包，共五个文件。支持 Windows x64、Windows 11 ARM64 和 macOS arm64 / x64（通用包，D2、D40）。其他平台的界面不提供
+Release 上有三个安装包和 SHA256SUMS，共四个文件（1.0.0 另有源代码包）。支持 Windows x64、Windows 11 ARM64 和 macOS arm64 / x64（通用包，D2、D40）。其他平台的界面不提供
 下载，「检查更新」照常显示有没有新版本。
 
 ### 1.1 发布工作流
@@ -55,20 +55,20 @@ Release 上有三个安装包、SHA256SUMS 和源代码包，共五个文件。�
 2. **release** job（只对标签运行，`contents: write`）：
    - 确认标签是 `v<pyproject.toml 的版本>`，版本是三段数字（界面只认这种，第 2 节）；
    - 取回三个安装包 artifact，用构建 job 写的 `.sha256` 核对三个安装包；`.sha256` 文件不上传；
-   - 源代码包：`git archive` 取出标签的代码，在 `src/core` 里 `go mod vendor`，再以 `GOPROXY=off` 用 vendor 的依赖
-     构建一次 Windows 服务，确认不联网也能构建；打包时文件按名称排序、属主为 root、时间取标签所在提交的时间、gzip 不写
-     时间戳，同一个标签得到同样的包；
-   - 用 `sha256sum` 为三个安装包和源代码包写 `SHA256SUMS`；
-   - `gh release create --draft --verify-tag` 创建**草稿**，上传这五个文件。同一个标签已有 Release 时这一步失败，要先
+   - 用 `sha256sum` 为三个安装包写 `SHA256SUMS`；
+   - `gh release create --draft --verify-tag` 创建**草稿**，上传这四个文件。同一个标签已有 Release 时这一步失败，要先
      删掉旧的草稿再重新运行。
+
+   `tests/test_release_workflow.py` 核对这几步：上传的正是界面要找的三个安装包和 `SHA256SUMS`，没有源代码包；发布说明
+   和 NOTICES 写着第 5 节的源代码位置。
 
 **为什么是草稿**：界面检查更新用的 `releases/latest` 跳过草稿，Release 一旦发布，所有装了 Solaris 的机器就会看到它。
 审批发生在构建之前，审批人那时还看不到产物；本机又不能运行组装好的 app。所以由人从草稿下载三个安装包在真机上
 试过、写好"更新内容"再发布；草稿有错可以直接删掉重来。发版的步骤见 [maintenance.md](maintenance.md) 第 4 节。
 
 **发布说明**：模板 `.github/release-notes.md` 写下载、两个平台的安装提示（Windows 的发布者与可能出现的 SmartScreen 提示；
-macOS 允许系统扩展和 VPN 配置）、源代码与许可、隐私说明的链接。GitHub 把正文里的换行原样显示，所以模板的段落不折行；
-除 `{{version}}` 以外不能有别的 `{{` 占位，否则这一步失败。
+macOS 允许系统扩展和 VPN 配置）、源代码与许可（标签、mihomo 的提交和其他 Go 依赖在哪里，第 5 节）、隐私说明的链接。
+GitHub 把正文里的换行原样显示，所以模板的段落不折行；除 `{{version}}` 以外不能有别的 `{{` 占位，否则这一步失败。
 
 ## 2. 检查更新
 
@@ -231,8 +231,13 @@ macOS 允许系统扩展和 VPN 配置）、源代码与许可、隐私说明的
   它核对清单里 Python 组件的版本与当前环境一致、Go 模块的版本与 `go.mod` 一致、每项都有全文、`cpython.json`
   与清单里的 CPython 同一版本且每个库都写了模块和平台、Wintun 一项在、Qt 的组件都有全文，所以升级依赖后
   忘了重新生成会失败。
-- **源代码**：GPL-3.0 要求随二进制提供对应的源代码。每个 Release 附带第 1 节的源代码包（含 vendor 的 Go 依赖，
-  也就包括 mihomo）；Qt 和 PySide6 的源代码在 download.qt.io 的同一版本下。NOTICES 的开头写明这两处。
+- **源代码**：GPL-3.0 要求发布二进制时提供对应的源代码。Release 不附带源代码包（D43），发布说明的「源代码与许可」和
+  NOTICES 的开头写明在哪里取得：Solaris 是本仓库的 `v<版本>` 标签；服务和扩展链接的 mihomo 是
+  `github.com/Ember-Moth/mihomo` 上由这个标签的 `src/core/go.mod` 里 `replace` 固定的提交；其他 Go 模块的版本和校验和
+  由 `src/core/go.mod`、`go.sum` 固定，`go mod download` 从 Go 模块代理（默认 `proxy.golang.org`）取得；GitHub 给每个 Release 自动附带的
+  "Source code"只有本仓库的代码。所以 `v*` 标签和 mihomo 分支上被引用过的提交都不删除。Qt 和 PySide6 的源代码在
+  download.qt.io 的同一版本下。1.0.0 的 Release 附带了源代码包 `Solaris-1.0.0-source.tar.gz`（含 vendor 的 Go
+  依赖），1.0.0 的 NOTICES 指向它，所以它一直保留。
 - **设置页**：「关于」分组的「开源许可」一行写组件的个数，「查看…」打开对话框：搜索框加上按类别分节的列表
   （名称、版本、许可证），样式与可搜索列表相同，只是没有复选框；「打开全文」用系统的文本查看器打开 NOTICES
   文件。
@@ -246,7 +251,7 @@ macOS 允许系统扩展和 VPN 配置）、源代码与许可、隐私说明的
   两个平台共用。
 - Google OAuth 客户端不进仓库：环境变量 `SOLARIS_GOOGLE_CLIENT_ID`、`SOLARIS_GOOGLE_CLIENT_SECRET` 都设了时，两个构建
   脚本把它写成 `build/<平台>/google_client.json`，以 `--include-data-files` 放到 `solaris/google_client.json`；只设了一个
-  时构建失败（storage.md 第 4 节）。源代码包由 `git archive` 打出，不含这个文件。
+  时构建失败（storage.md 第 4 节）。
 - `solaris:` 和 `clash:` 两个 scheme 由打包注册：macOS 在 `Info.plist` 的 `CFBundleURLTypes` 里，Windows
   由安装器写在 HKLM 的 `Software\Classes\solaris` 和 `Software\Classes\clash` 下，命令是
   `"<安装目录>\Solaris.exe" "%1"`。写在 HKLM 而不是 HKCU：安装器以管理员身份运行，这个管理员不一定是使用者本人。

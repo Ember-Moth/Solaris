@@ -17,4 +17,6 @@
 
 ## 源代码与许可
 
-`Solaris-{{version}}-source.tar.gz` 是这个版本的源代码，含全部 Go 依赖。Solaris 以 GPL-3.0 发布，第三方组件的许可证在设置页的"开源许可"里。会离开本机的数据见[隐私说明](https://github.com/Ember-Moth/Solaris/blob/v{{version}}/PRIVACY.md)。
+这个版本的源代码是本仓库的 [`v{{version}}`](https://github.com/Ember-Moth/Solaris/tree/v{{version}}) 标签。服务和扩展链接的 mihomo 是 [Ember-Moth/mihomo](https://github.com/Ember-Moth/mihomo) 的一个提交，由这个标签的 [`src/core/go.mod`](https://github.com/Ember-Moth/Solaris/blob/v{{version}}/src/core/go.mod) 里的 `replace` 固定；其他 Go 依赖的版本和校验和由同一目录的 `go.mod` 和 `go.sum` 固定，在 `src/core` 里运行 `go mod download` 即可从 Go 模块代理（默认 `proxy.golang.org`）取得它们和 mihomo。GitHub 给每个 Release 自动附带的"Source code"压缩包只有本仓库的代码，不含 mihomo 和其他 Go 依赖。
+
+Solaris 以 GPL-3.0 发布，第三方组件的许可证在设置页的"开源许可"里。会离开本机的数据见[隐私说明](https://github.com/Ember-Moth/Solaris/blob/v{{version}}/PRIVACY.md)。

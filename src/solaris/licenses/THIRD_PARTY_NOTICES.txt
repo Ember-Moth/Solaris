@@ -9,9 +9,15 @@ Solaris includes the third-party components listed below, each under its own lic
 license texts follow the list. Texts that several components share are given once.
 
 Corresponding source code:
-- Solaris, mihomo and every Go module: each release on
-  https://github.com/Ember-Moth/Solaris/releases has Solaris-<version>-source.tar.gz, the
-  tagged source with all Go dependencies vendored.
+- Solaris: https://github.com/Ember-Moth/Solaris/tree/v<version>, the repository's tag for
+  this version (Settings, About).
+- mihomo: the commit of https://github.com/Ember-Moth/mihomo that the replace directive in
+  that tag's src/core/go.mod pins.
+- The other Go modules: the versions and checksums in that tag's src/core/go.mod and
+  src/core/go.sum; "go mod download" in src/core fetches them, and mihomo, from the Go
+  module proxy (https://proxy.golang.org by default).
+- The "Source code" archives GitHub attaches to each release hold only this repository's
+  code, without mihomo or the other Go modules.
 - Qt 6.12.0 and PySide6 6.12.0: https://download.qt.io/official_releases/qt/ and
   https://download.qt.io/official_releases/QtForPython/ for the same version.
 
