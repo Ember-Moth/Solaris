@@ -21,6 +21,8 @@ WORKFLOW = ci.ROOT / ".github/workflows/ci.yml"
     ("paths", "expected"),
     [
         (["README.md", "PRIVACY.md", "docs/usage.md", "apple/README.md"], set()),
+        (["docs/images/overview-light.png"], set()),
+        (["scripts/gen_screenshots.py"], {"python"}),
         (
             ["DESIGN.md"],
             {

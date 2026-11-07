@@ -52,6 +52,7 @@ GENERATORS = frozenset(
     {
         "scripts/gen_theme.py",
         "scripts/gen_i18n.py",
+        "scripts/gen_screenshots.py",
         "scripts/qmllint.py",
         "scripts/qmllint_exemptions.toml",
     }
@@ -91,8 +92,10 @@ def select(paths: Iterable[str]) -> Plan:
             return complete("shared build or CI configuration")
         if path == "DESIGN.md":
             jobs.update(UI | {"installer-ui"})
-        elif path in {"README.md", "PRIVACY.md", "apple/README.md"} or (
-            path.startswith("docs/") and path.endswith(".md")
+        elif (
+            path in {"README.md", "PRIVACY.md", "apple/README.md"}
+            or (path.startswith("docs/") and path.endswith(".md"))
+            or path.startswith("docs/images/")  # the screenshots
         ):
             continue
         elif path.startswith("docs/examples/"):

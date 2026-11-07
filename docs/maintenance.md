@@ -373,7 +373,8 @@ exits.md 第 9 节的待实测项。
 - **内核的拼装、读订阅、预览和转换**：改了以后运行 `go -C src/core test ./internal/compose -run TestVectors -update`
   更新 `testdata/core-vectors.json`，再按 `tests/test_simulated.py` 的失败改模拟宿主（`tests/support/simulated_core.py`），
   界面的测试才不会依赖内核不再给的回答。
-- **视觉**：先改 [DESIGN.md](../DESIGN.md)，再运行 `scripts/gen_theme.py` 生成 `Theme.qml`。
+- **视觉**：先改 [DESIGN.md](../DESIGN.md)，再运行 `scripts/gen_theme.py` 生成 `Theme.qml`。改动涉及文档截图里的页面时，
+  运行 `scripts/gen_screenshots.py` 更新 `docs/images/`（[development.md](development.md#生成的文件)）。
 - **文案**：中文是源语言；改动文案后运行 `scripts/gen_i18n.py`，并在 `src/solaris/translations/en.ts` 里补齐英文。
   文案保持中立、简短（DESIGN.md 的 Typography 一节）。
 - **决策**：新的设计决策在 [decisions.md](decisions.md) 的最后一条之后接着编号；已有的编号不变，代码注释引用它们。
