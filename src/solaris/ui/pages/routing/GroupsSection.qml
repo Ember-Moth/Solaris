@@ -85,6 +85,7 @@ ColumnLayout {
                         required property string caption
                         required property string type
                         required property bool hidden
+                        required property string warning
                         readonly property bool custom: groupSection.modelData.rows === section.groups.custom
 
                         divider: index > 0
@@ -99,7 +100,7 @@ ColumnLayout {
                             focusPolicy: groupRow.custom ? Qt.StrongFocus : Qt.NoFocus
                             Accessible.role: groupRow.custom ? Accessible.Button : Accessible.StaticText
                             Accessible.name: groupRow.custom ? qsTr("编辑「%1」").arg(groupRow.name) : groupRow.name
-                            Accessible.description: groupRow.caption
+                            Accessible.description: [groupRow.caption, groupRow.warning].filter(part => part !== "").join("，")
                             onClicked: {
                                 if (!groupRow.custom)
                                     return
@@ -122,12 +123,36 @@ ColumnLayout {
                                         elide: Text.ElideRight
                                     }
 
-                                    UiText {
+                                    // The members, then in warning colour the picked nodes
+                                    // the pool no longer has; the members give way first,
+                                    // down to half the line.
+                                    Item {
+                                        id: captionLine
+
                                         Layout.fillWidth: true
-                                        text: groupRow.caption
-                                        role: Theme.type.caption
-                                        color: Theme.textMuted
-                                        elide: Text.ElideRight
+                                        implicitHeight: membersText.implicitHeight
+
+                                        UiText {
+                                            id: membersText
+
+                                            width: staleText.visible ? Math.min(implicitWidth, Math.max(captionLine.width / 2, captionLine.width - staleText.implicitWidth)) : captionLine.width
+                                            text: groupRow.caption
+                                            role: Theme.type.caption
+                                            color: Theme.textMuted
+                                            elide: Text.ElideRight
+                                        }
+
+                                        UiText {
+                                            id: staleText
+
+                                            x: membersText.width
+                                            width: captionLine.width - x
+                                            visible: groupRow.warning !== ""
+                                            text: " · " + groupRow.warning
+                                            role: Theme.type.caption
+                                            color: Theme.warning
+                                            elide: Text.ElideRight
+                                        }
                                     }
                                 }
                             }

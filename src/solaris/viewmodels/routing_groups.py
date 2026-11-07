@@ -8,8 +8,9 @@ conditions on the left, and on the right its members as the core computes them
 
 Members are the nodes of the chosen regions, of the chosen subscriptions or whose names
 match, less those the exclusion matches; the picked nodes and the other members always
-join. The dialog stays open until the core accepts the change; a refusal shows under the
-form.
+join. A picked node is its subscription's id and the name the subscription gave it
+(§8.5); one the pool no longer has is marked stale here and left out by the core. The
+dialog stays open until the core accepts the change; a refusal shows under the form.
 """
 
 from __future__ import annotations
@@ -22,12 +23,12 @@ from typing import TYPE_CHECKING, Any
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
-from solaris.host.base import GroupPreview, HostError, PoolNode
+from solaris.host.base import CompositionReport, GroupPreview, HostError, PoolNode
 from solaris.i18n import QT_TRANSLATE_NOOP
 from solaris.models import format as fmt
 from solaris.models import plans
 from solaris.models.library import ProfileLibrary
-from solaris.models.profiles import ProfileError
+from solaris.models.profiles import ProfileError, ProfileList
 from solaris.models.regions import region_code, region_id, region_name
 from solaris.models.routing import DIRECT, REJECT, PlanGroup
 from solaris.viewmodels import routing_text as text
@@ -49,11 +50,22 @@ MATCH_MODES = {
     "regex": QT_TRANSLATE_NOOP("GroupEditor", "正则"),
 }
 STRATEGIES = ("consistent-hashing", "round-robin", "sticky-sessions")
+# How the node list is sectioned.
+GROUPINGS = {
+    "source": QT_TRANSLATE_NOOP("GroupEditor", "按订阅"),
+    "region": QT_TRANSLATE_NOOP("GroupEditor", "按地区"),
+}
+# Why a picked node is not in the pool (Pick.missing).
+MISSING = {
+    "deleted": QT_TRANSLATE_NOOP("GroupEditor", "订阅已删除"),
+    "outside": QT_TRANSLATE_NOOP("GroupEditor", "订阅不在节点池"),
+    "gone": QT_TRANSLATE_NOOP("GroupEditor", "订阅里已没有这个节点"),
+}
 
 
 @dataclass(frozen=True)
 class ChoiceRow:
-    """A check box of the form: a region, a subscription, a node or another member."""
+    """A check box of the form: a region, a subscription or another member."""
 
     id: str
     name: str
@@ -64,6 +76,33 @@ class ChoiceRow:
     @property
     def itemId(self) -> str:  # QML reserves ``id``
         return self.id
+
+
+@dataclass(frozen=True)
+class NodeRow:
+    """A node of the pool to pick, in a section of its subscription or region. Picked nodes
+    the pool no longer has come first, in a section of their own, so they can be taken out."""
+
+    id: str
+    name: str
+    note: str
+    picked: bool
+    added: bool  # never: any node may be picked
+    category: str
+
+    @property
+    def itemId(self) -> str:  # QML reserves ``id``
+        return self.id
+
+
+@dataclass(frozen=True)
+class Pick:
+    """A picked node as the editor names it: by its name in the pool, or, when the pool no
+    longer has it, by the name its subscription gave it, with the reason (MISSING's key)."""
+
+    key: str
+    name: str
+    missing: str = ""
 
 
 @dataclass(frozen=True)
@@ -83,6 +122,7 @@ class GroupRow:
     caption: str
     type: str
     hidden: bool
+    warning: str = ""  # picked nodes the pool no longer has
 
     @property
     def groupId(self) -> str:
@@ -95,6 +135,38 @@ def _roles(row_type: type, id_role: str = "itemId") -> list[str]:
 
 def _node_key(source: str, name: str) -> str:
     return f"{source}\n{name}"
+
+
+def _node_refs(conditions: Any) -> list[tuple[str, str]]:
+    """The picked nodes of a group's conditions, as (subscription id, name in it)."""
+    if not isinstance(conditions, dict):
+        return []
+    return [
+        (str(n.get("source", "")), str(n.get("name", "")))
+        for n in conditions.get("nodes", ())
+        if isinstance(n, dict)
+    ]
+
+
+def _picks(
+    refs: list[tuple[str, str]], report: CompositionReport | None, profiles: ProfileList
+) -> list[Pick]:
+    """The picked nodes matched to the pool by subscription id and original name, as the
+    core matches them (routing.md §8.5). Without a report the pool is unknown, so none is
+    missing."""
+    pool = {(n.source_id, n.original_name): n for n in report.nodes} if report else None
+    by_id = {p.id: p for p in profiles.profiles}
+    picks = []
+    for source, name in refs:
+        key = _node_key(source, name)
+        node = pool.get((source, name)) if pool is not None else None
+        if pool is None or node is not None:
+            picks.append(Pick(key, node.name if node else name))
+            continue
+        profile = by_id.get(source)
+        missing = "deleted" if profile is None else "gone" if profile.in_pool else "outside"
+        picks.append(Pick(key, name, missing))
+    return picks
 
 
 def _pattern_error(mode: str, pattern: str) -> bool:
@@ -329,11 +401,19 @@ class PlanGroups(QObject):
                 parts.append(self.tr("%n 个其他成员", "", len(named)))
             parts += [text.target_label(o, plan) for o in others if o in (DIRECT, REJECT)]
             members = self.tr("、").join(parts) if parts else self.tr("没有成员")
-            custom_rows.append(self._row(group.id, group, group.type, members))
+            picks = _picks(_node_refs(group.conditions), report, self._routing.profile_list())
+            stale = sum(bool(p.missing) for p in picks)
+            warning = self.tr("%n 个挑选的节点已失效", "", stale) if stale else ""
+            custom_rows.append(self._row(group.id, group, group.type, members, warning))
         self._custom.sync(custom_rows)
 
     def _row(
-        self, group_id: str, group: PlanGroup | None, group_type: str, members: str
+        self,
+        group_id: str,
+        group: PlanGroup | None,
+        group_type: str,
+        members: str,
+        warning: str = "",
     ) -> GroupRow:
         hidden = bool(group and group.hidden)
         parts = [text.type_label(group_type), members]
@@ -345,7 +425,7 @@ class PlanGroups(QObject):
             caption = self.tr("已隐藏 · {caption}").format(caption=caption)
         code = region_code(group_id)
         name = region_name(code) if code else text.group_name(group, group_id)
-        return GroupRow(group_id, name, caption, group_type, hidden)
+        return GroupRow(group_id, name, caption, group_type, hidden, warning)
 
 
 @QmlElement
@@ -370,7 +450,7 @@ class GroupEditor(QObject):
         self._library = library
         self._regions = KeyedListModel(_roles(ChoiceRow), self)
         self._sources = KeyedListModel(_roles(ChoiceRow), self)
-        self._nodes = KeyedListModel(_roles(ChoiceRow), self)
+        self._nodes = KeyedListModel(_roles(NodeRow), self)
         self._others = KeyedListModel(_roles(ChoiceRow), self)
         self._preview_rows = KeyedListModel(list(PreviewRow.__dataclass_fields__), self)
         self._timer = QTimer(self)
@@ -382,6 +462,7 @@ class GroupEditor(QObject):
         self._previewing = False
         self._pending = False  # the conditions changed while a preview ran
         self._delays: dict[str, int | None] = {}
+        self._grouping = "source"  # kept from one opening to the next
         self._reset(None, copy=False)
         self.changed.connect(self._sync_rows)
         self.previewChanged.connect(self._sync_preview)
@@ -408,10 +489,7 @@ class GroupEditor(QObject):
         exclude = conditions.get("exclude") or {}
         self._exclude_mode = str(exclude.get("mode", "keyword"))
         self._exclude_pattern = str(exclude.get("pattern", ""))
-        self._picked = [
-            _node_key(str(n.get("source", "")), str(n.get("name", "")))
-            for n in conditions.get("nodes", ())
-        ]
+        self._picked = [_node_key(source, name) for source, name in _node_refs(conditions)]
         self._other_ids = [str(o) for o in conditions.get("others", ())]
         self._url = str(options.get("url", ""))
         self._interval = str(options.get("interval", ""))
@@ -420,8 +498,8 @@ class GroupEditor(QObject):
         # Sections with something set start open (DESIGN.md "可折叠区").
         self._more_open = self._more_count() > 0
         self._advanced_open = bool(options)
-        self._manual_open = False
-        self._manual_query = ""
+        self._picker_open = False
+        self._node_query = ""
         self._saving = False
         self._error = ""
         self._preview = None
@@ -529,13 +607,82 @@ class GroupEditor(QObject):
     def toggleRegion(self, code: str) -> None:
         self._toggle(self._region_codes, code)
 
+    # -- 节点 --------------------------------------------------------------------------------
+    @Property(QObject, constant=True)
+    def nodes(self) -> KeyedListModel:
+        """The pool's nodes to pick, by subscription or region and filtered by the search;
+        the picked ones the pool no longer has come first."""
+        return self._nodes
+
+    def _picks(self) -> list[Pick]:
+        refs = [(source, name) for source, _, name in (k.partition("\n") for k in self._picked)]
+        return _picks(refs, self._routing.report(), self._routing.profile_list())
+
+    @Property(str, notify=changed)
+    def nodeSummary(self) -> str:
+        picks = self._picks()
+        if not picks:
+            return self.tr("未挑选")
+        names = self.tr("、").join(p.name for p in picks)
+        return self.tr("已选 %n 个：{names}", "", len(picks)).format(names=names)
+
+    @Property(str, notify=changed)
+    def nodeWarning(self) -> str:
+        """The picked nodes the pool no longer has; the core leaves them out."""
+        missing = [p.name for p in self._picks() if p.missing]
+        if not missing:
+            return ""
+        names = self.tr("、").join(missing)
+        return self.tr("%n 个已失效：{names}", "", len(missing)).format(names=names)
+
+    @Property(bool, notify=changed)
+    def pickerOpen(self) -> bool:
+        return self._picker_open
+
+    @Slot(bool)
+    def setPickerOpen(self, open_: bool) -> None:
+        self._picker_open = open_
+        self.changed.emit()
+
+    @Slot(str)
+    def setNodeQuery(self, query: str) -> None:
+        self._node_query = query
+        self.changed.emit()
+
+    @Property("QVariantList", notify=optionsChanged)  # pyright: ignore[reportArgumentType]
+    def groupingOptions(self) -> list[dict[str, str]]:
+        return [{"value": value, "label": self.tr(label)} for value, label in GROUPINGS.items()]
+
+    @Property(str, notify=changed)
+    def grouping(self) -> str:
+        return self._grouping
+
+    @Slot(str)
+    def setGrouping(self, grouping: str) -> None:
+        if grouping in GROUPINGS and grouping != self._grouping:
+            self._grouping = grouping
+            self.changed.emit()
+
+    @Property(bool, notify=changed)
+    def nodesEmpty(self) -> bool:
+        return not self._node_rows()
+
+    @Property(str, notify=changed)
+    def nodesEmptyText(self) -> str:
+        if not self._pool():
+            return self._core_note() or self.tr("节点池为空")
+        return self.tr("没有匹配的节点")
+
+    @Slot(str)
+    def toggleNode(self, key: str) -> None:
+        self._toggle(self._picked, key)
+
     # -- 更多条件 ----------------------------------------------------------------------------
     def _more_count(self) -> int:
         return sum(
             (
                 bool(self._source_ids) or self._all,
                 bool(self._name_pattern),
-                bool(self._picked),
                 bool(self._other_ids),
                 bool(self._exclude_pattern),
             )
@@ -608,40 +755,6 @@ class GroupEditor(QObject):
     @Property(bool, notify=changed)
     def excludeInvalid(self) -> bool:
         return _pattern_error(self._exclude_mode, self._exclude_pattern)
-
-    @Property(QObject, constant=True)
-    def nodes(self) -> KeyedListModel:
-        """The pool's nodes to pick from, filtered by the manual search."""
-        return self._nodes
-
-    @Property(str, notify=changed)
-    def manualSummary(self) -> str:
-        if not self._picked:
-            return self.tr("未挑选")
-        return self.tr("已挑选 %n 个节点", "", len(self._picked))
-
-    @Property(bool, notify=changed)
-    def manualOpen(self) -> bool:
-        return self._manual_open
-
-    @Slot(bool)
-    def setManualOpen(self, open_: bool) -> None:
-        self._manual_open = open_
-        self.changed.emit()
-
-    @Slot(str)
-    def setManualQuery(self, query: str) -> None:
-        self._manual_query = query
-        self.changed.emit()
-
-    @Property(bool, notify=changed)
-    def nodesEmpty(self) -> bool:
-        query = self._manual_query.strip().lower()
-        return not any(not query or query in node.name.lower() for node in self._pool())
-
-    @Slot(str)
-    def toggleNode(self, key: str) -> None:
-        self._toggle(self._picked, key)
 
     @Property(QObject, constant=True)
     def others(self) -> KeyedListModel:
@@ -720,6 +833,9 @@ class GroupEditor(QObject):
     @Property(str, notify=changed)
     def coreNote(self) -> str:
         """Where the preview and the pool's nodes come from while no core answers."""
+        return self._core_note()
+
+    def _core_note(self) -> str:
         return "" if self._routing.core_available() else self.tr("连接后显示")
 
     def core_changed(self) -> None:
@@ -917,20 +1033,49 @@ class GroupEditor(QObject):
             if profile_id in by_source or profile_id in self._source_ids
         ]
         self._sources.sync(sources)
-        query = self._manual_query.strip().lower()
-        nodes = [
-            ChoiceRow(
-                _node_key(node.source_id, node.original_name),
-                node.name,
-                names.get(node.source_id, ""),
-                _node_key(node.source_id, node.original_name) in self._picked,
-                False,
-            )
-            for node in pool
-            if not query or query in node.name.lower()
-        ]
-        self._nodes.sync(nodes)
+        self._nodes.sync(self._node_rows())
         self._others.sync(self._other_rows())
+
+    def _node_rows(self) -> list[NodeRow]:
+        """Sections of the pool's nodes, by subscription in the pool's order or by region in
+        the region table's, after the picked nodes the pool no longer has. The search finds
+        a node by its name, its subscription or its region."""
+        query = self._node_query.strip().casefold()
+
+        def found(*texts: str) -> bool:
+            return not query or any(query in t.casefold() for t in texts)
+
+        stale = self.tr("已失效")
+        rows = [
+            NodeRow(p.key, p.name, self.tr(MISSING[p.missing]), True, False, stale)
+            for p in self._picks()
+            if p.missing and found(p.name)
+        ]
+        names = self._routing.profile_names()
+        by_region = self._grouping == "region"
+        nodes = [
+            node
+            for node in self._pool()
+            if found(
+                node.name,
+                node.original_name,
+                names.get(node.source_id, ""),
+                region_name(node.region),
+            )
+        ]
+        if by_region:
+            order = {
+                code: n
+                for n, (code, _) in enumerate(text.regions_with_nodes(self._routing.report()))
+            }
+            nodes.sort(key=lambda node: order.get(node.region, len(order)))
+        for node in nodes:
+            key = _node_key(node.source_id, node.original_name)
+            source = names.get(node.source_id, "")
+            category = region_name(node.region) if by_region else source
+            note = source if by_region else ""
+            rows.append(NodeRow(key, node.name, note, key in self._picked, False, category))
+        return rows
 
     def _other_rows(self) -> list[ChoiceRow]:
         plan = self._routing.plan()

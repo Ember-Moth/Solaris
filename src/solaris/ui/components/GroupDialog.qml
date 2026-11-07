@@ -3,6 +3,8 @@ import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import Solaris
+// After QtQuick.Controls, whose own SearchField (Qt 6.10) would hide this directory's.
+import "."
 
 // The group editor (docs/routing.md §4.5; DESIGN.md "对话框", "可折叠区"): the conditions on
 // the left and, beside them, the members the core computes from them. A window too narrow for
@@ -29,7 +31,7 @@ AppDialog {
         nameField.text = editor.name
         namePattern.text = editor.namePattern
         excludePattern.text = editor.excludePattern
-        manualSearch.text = ""
+        nodeSearch.text = ""
         urlField.text = editor.url
         intervalField.text = editor.interval
         toleranceField.text = editor.tolerance
@@ -123,6 +125,91 @@ AppDialog {
                     color: Theme.textMuted
                 }
 
+                // Single nodes beside the regions: the picked ones in a line, and the pool's
+                // nodes to pick from on demand, by subscription or by region.
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+                    Accessible.role: Accessible.Grouping
+                    Accessible.name: qsTr("节点")
+
+                    UiText {
+                        text: qsTr("节点")
+                        role: Theme.type.caption
+                        color: Theme.textTertiary
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Theme.space3
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
+
+                            AccessibleText {
+                                Layout.fillWidth: true
+                                text: dialog.editor.nodeSummary
+                                role: Theme.type.bodySm
+                                color: Theme.textSecondary
+                                elide: Text.ElideRight
+                            }
+
+                            AccessibleText {
+                                Layout.fillWidth: true
+                                visible: text !== ""
+                                text: dialog.editor.nodeWarning
+                                role: Theme.type.caption
+                                color: Theme.warning
+                                elide: Text.ElideRight
+                            }
+                        }
+
+                        AppButton {
+                            variant: "compact"
+                            text: dialog.editor.pickerOpen ? qsTr("收起") : qsTr("挑选")
+                            Accessible.name: dialog.editor.pickerOpen ? qsTr("收起节点列表") : qsTr("挑选节点")
+                            onClicked: dialog.editor.setPickerOpen(!dialog.editor.pickerOpen)
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        visible: dialog.editor.pickerOpen
+                        spacing: Theme.space2
+
+                        SearchField {
+                            id: nodeSearch
+
+                            Layout.fillWidth: true
+                            placeholderText: qsTr("搜索节点、订阅或地区")
+                            onTextEdited: dialog.editor.setNodeQuery(text)
+                            Keys.onDownPressed: nodeList.forceActiveFocus(Qt.TabFocusReason)
+                        }
+
+                        SegmentedControl {
+                            options: dialog.editor.groupingOptions
+                            current: dialog.editor.grouping
+                            accessibleName: qsTr("节点的分组方式")
+                            onPicked: value => dialog.editor.setGrouping(value)
+                        }
+                    }
+
+                    PickList {
+                        id: nodeList
+
+                        Layout.fillWidth: true
+                        implicitHeight: 200
+                        visible: dialog.editor.pickerOpen
+                        sectioned: true
+                        model: dialog.editor.nodes
+                        accessibleName: qsTr("节点")
+                        emptyText: dialog.editor.nodesEmptyText
+                        empty: dialog.editor.nodesEmpty
+                        onToggled: id => dialog.editor.toggleNode(id)
+                    }
+                }
+
                 Disclosure {
                     Layout.fillWidth: true
                     text: dialog.editor.moreLabel
@@ -146,59 +233,6 @@ AppDialog {
                         onEdited: (mode, pattern) => dialog.editor.setNameMatch(mode, pattern)
                     }
 
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-
-                        UiText {
-                            text: qsTr("手动挑选")
-                            role: Theme.type.caption
-                            color: Theme.textTertiary
-                        }
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: Theme.space3
-
-                            AccessibleText {
-                                Layout.fillWidth: true
-                                text: dialog.editor.manualSummary
-                                role: Theme.type.bodySm
-                                color: Theme.textSecondary
-                            }
-
-                            AppButton {
-                                variant: "compact"
-                                text: dialog.editor.manualOpen ? qsTr("收起") : qsTr("挑选")
-                                Accessible.name: dialog.editor.manualOpen ? qsTr("收起手动挑选") : qsTr("挑选节点")
-                                onClicked: dialog.editor.setManualOpen(!dialog.editor.manualOpen)
-                            }
-                        }
-
-                        SearchField {
-                            id: manualSearch
-
-                            Layout.fillWidth: true
-                            visible: dialog.editor.manualOpen
-                            placeholderText: qsTr("搜索节点")
-                            onTextEdited: dialog.editor.setManualQuery(text)
-                            Keys.onDownPressed: nodeList.forceActiveFocus(Qt.TabFocusReason)
-                        }
-
-                        PickList {
-                            id: nodeList
-
-                            Layout.fillWidth: true
-                            implicitHeight: 160
-                            visible: dialog.editor.manualOpen
-                            model: dialog.editor.nodes
-                            accessibleName: qsTr("手动挑选")
-                            emptyText: dialog.editor.coreNote || qsTr("没有匹配的节点")
-                            empty: dialog.editor.nodesEmpty
-                            onToggled: id => dialog.editor.toggleNode(id)
-                        }
-                    }
-
                     CheckGrid {
                         Layout.fillWidth: true
                         label: qsTr("其他成员")
@@ -213,7 +247,7 @@ AppDialog {
                         mode: dialog.editor.excludeMode
                         invalid: dialog.editor.excludeInvalid
                         placeholderText: qsTr("名称包含的关键字或正则")
-                        note: qsTr("满足任一条件即加入，再去掉排除的节点；手动挑选和其他成员不受排除影响")
+                        note: qsTr("满足任一条件即加入，再去掉排除的节点；挑选的节点和其他成员不受排除影响")
                         onEdited: (mode, pattern) => dialog.editor.setExclude(mode, pattern)
                     }
                 }

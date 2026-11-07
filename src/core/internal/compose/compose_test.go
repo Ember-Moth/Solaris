@@ -206,6 +206,57 @@ func TestCustomGroupMembers(t *testing.T) {
 	}
 }
 
+// A picked node is its subscription's id and the name the subscription gave it
+// (docs/routing.md §8.5): a rename for a clash keeps it, an update that keeps the name keeps
+// it, and the same name in another subscription is another node. A node the pool no longer
+// has drops out without an error; a group left with nothing holds COMPATIBLE and its rules go
+// to "proxy", as for any group without members.
+func TestPickedNodes(t *testing.T) {
+	plan := `{"version": 1, "groups": [
+		{"id": "picked", "kind": "custom", "name": "挑选", "type": "fallback",
+		 "members": {"nodes": [{"source": "b", "name": "香港 01"}, {"source": "a", "name": "US-LA 0.1x"},
+		                       {"source": "a", "name": "日本 09"}]}},
+		{"id": "stale", "kind": "custom", "name": "失效", "type": "url-test",
+		 "members": {"nodes": [{"source": "a", "name": "日本 09"}, {"source": "deleted", "name": "香港 01"},
+		                       {"source": "a", "name": "剩余流量：10 GB"}]}}],
+		"rules": [{"id": "r", "items": [{"type": "DOMAIN", "value": "a.example"}], "target": "stale"}],
+		"fallback": "picked"}`
+	updated := sources()
+	// The update moves the picked node and adds one before it; the name still finds it.
+	updated[1].YAML = []byte(`
+proxies:
+  - {name: Mars 2, type: http, server: g.example, port: 8}
+  - {name: Mars 1, type: http, server: f.example, port: 7}
+  - {name: 香港 01, type: http, server: e2.example, port: 9}
+`)
+	for name, composition := range map[string]Composition{
+		"before": {Sources: sources(), InfoFilter: testInfoFilter, Plan: []byte(plan)},
+		"after":  {Sources: updated, InfoFilter: testInfoFilter, Plan: []byte(plan)},
+	} {
+		result, err := Compose(composition)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		// In the pool's order, from both subscriptions.
+		picked := groupConfig(t, result, "挑选")
+		if picked["filter"] != `^(?:US-LA\ 0\.1x|香港\ 01\ ·\ 机场\ B)$` ||
+			!slices.Equal(picked["use"].([]any), []any{"pool:a", "pool:b"}) {
+			t.Errorf("%s: 挑选 = %v", name, picked)
+		}
+		// Gone, from a subscription that is gone, and an information node.
+		stale := groupConfig(t, result, "失效")
+		if !slices.Equal(stale["proxies"].([]any), []any{"COMPATIBLE"}) || stale["use"] != nil {
+			t.Errorf("%s: 失效 = %v", name, stale)
+		}
+		if want := []string{"DOMAIN,a.example,节点选择", "MATCH,挑选"}; !slices.Equal(result.Lines, want) {
+			t.Errorf("%s: rules = %v, want %v", name, result.Lines, want)
+		}
+		if got := result.Report.Warnings; len(got) != 1 || got[0].EntryId != "r" || got[0].Reason != ReasonGroupEmpty {
+			t.Errorf("%s: warnings = %v", name, got)
+		}
+	}
+}
+
 func TestRulesExpandInOrder(t *testing.T) {
 	result := composeOK(t, `{"version": 1, "test_url": "http://127.0.0.1/204",
 		"groups": [{"id": "empty", "kind": "custom", "name": "空组", "members": {"regions": ["KR"]}}],
