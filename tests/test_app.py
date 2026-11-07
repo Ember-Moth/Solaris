@@ -13,12 +13,14 @@ from PySide6.QtTest import QTest
 from pytestqt.qtbot import QtBot
 
 from solaris.app import MAIN_QML, switch_language
+from solaris.desktop.dock import ACCESSORY, REGULAR
 from solaris.desktop.instance import LOCK_NAME
 from solaris.host.base import TAKEOVER_NONE, TAKEOVER_SETTINGS, TAKEOVER_TUN, HostError, Rule
 from solaris.i18n import Translations
 from solaris.viewmodels import settings as settings_view_model
 from solaris.viewmodels.composition import ViewModels
 from tests.support.appearance import SystemColorScheme
+from tests.support.dock import ACTIVATE, RecordingApplication
 from tests.support.simulated import CORE_VERSION, SimulatedHost
 from tests.support.window import Loaded, find, find_all, texts
 
@@ -577,6 +579,79 @@ def test_a_failed_disconnect_asks_before_quitting(
         loaded.key(qtbot, Qt.Key.Key_Return)
     assert running(host)
     assert loaded.warnings == []
+
+
+def in_the_menu_bar(loaded: Loaded) -> RecordingApplication:
+    """The window as on macOS, which the offscreen platform is not: with a tray, and NSApp's
+    activation policy recorded (desktop/dock.py)."""
+    desktop = loaded.view_models.desktop
+    application = RecordingApplication()
+    desktop._tray = True
+    desktop._application = application
+    desktop.closeActionChanged.emit()
+    return application
+
+
+def test_every_way_back_to_the_window_puts_solaris_in_the_dock(
+    qtbot: QtBot, loaded: Loaded
+) -> None:
+    """Hidden in the menu bar, Solaris is out of the Dock; whatever shows the window brings it
+    back and activates it."""
+    view_models, window = loaded.view_models, loaded.window
+    desktop, overview = view_models.desktop, view_models.overview
+    application = in_the_menu_bar(loaded)
+
+    def hide() -> None:
+        application.calls.clear()
+        window.close()
+        assert not window.isVisible()
+        assert application.calls == [ACCESSORY]
+        application.calls.clear()
+
+    for show in (
+        desktop.showWindow,  # the menu bar's 打开主窗口, or a second launch
+        desktop.reopened.emit,  # Solaris opened again, as from the Finder
+        lambda: view_models.open_link("solaris://install-config?url=https%3A%2F%2Fa.example"),
+        lambda: view_models.open_link("clash://install-config?url=https%3A%2F%2Fa.example"),
+        overview.extensionSetupRequested.emit,  # the system extension's approval guide
+    ):
+        hide()
+        show()
+        qtbot.waitUntil(window.isVisible)
+        assert application.calls == [REGULAR, ACTIVATE]
+
+    # Shown already: nothing changes, and a minimized window stays in the Dock.
+    application.calls.clear()
+    desktop.showWindow()
+    window.showMinimized()
+    qtbot.wait(100)
+    assert window.isVisible()
+    assert application.calls == []
+    assert loaded.warnings == []
+
+
+def test_a_failed_disconnect_brings_solaris_back_to_ask(
+    qtbot: QtBot, loaded: Loaded, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Closing the window to quit takes the Dock icon with it while Solaris disconnects; the
+    question when that fails brings both back."""
+    desktop, overview = loaded.view_models.desktop, loaded.view_models.overview
+    host = simulated(loaded)
+    qtbot.waitUntil(lambda: overview.property("connected"))
+    application = in_the_menu_bar(loaded)
+    loaded.view_models.settings_store.update(close_action="quit")
+
+    async def unresponsive() -> None:
+        raise HostError("core_unresponsive", "the core did not answer")
+
+    monkeypatch.setattr(host, "stop", unresponsive)
+    with qtbot.waitSignal(desktop.quitFailed):
+        loaded.window.close()
+        assert application.calls == [ACCESSORY]
+    qtbot.waitUntil(loaded.window.isVisible)
+    assert application.calls == [ACCESSORY, REGULAR, ACTIVATE]
+    loaded.key(qtbot, Qt.Key.Key_Escape)  # stay
+    assert running(host)
 
 
 def test_a_second_launch_shows_the_window(qtbot: QtBot, loaded: Loaded) -> None:
