@@ -83,6 +83,34 @@ def test_gui_build_refuses_an_emulated_python_for_the_native_target(
 
 
 @pytest.mark.parametrize("arch", ["x64", "arm64"])
+def test_only_the_arm64_gui_build_scans_dependencies_with_the_plugin(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, arch: str
+) -> None:
+    commands: list[list[str | Path]] = []
+    monkeypatch.setattr(build_windows, "python_architecture", lambda: arch)
+    monkeypatch.setattr(build_windows, "build_directory", lambda arch: tmp_path / arch)
+    monkeypatch.setattr(build_windows.build_app, "google_client", lambda directory: [])
+    monkeypatch.setattr(
+        build_windows.build_apple, "_run", lambda command, **_: commands.append(command)
+    )
+    build_windows.build_ui("1.2.3", arch)
+    plugins = [part for part in map(str, commands[0]) if part.startswith("--user-plugin=")]
+    assert plugins == ([f"--user-plugin={build_windows.PEFILE_PLUGIN}"] if arch == "arm64" else [])
+    assert build_windows.PEFILE_PLUGIN.is_file()
+
+
+def test_the_dependency_plugin_is_written_for_the_builds_nuitka() -> None:
+    # It replaces a Nuitka internal and stops any other Nuitka; tests/test_nuitka_pefile.py
+    # compares it with the original under that Nuitka.
+    source = build_windows.PEFILE_PLUGIN.read_text(encoding="utf-8")
+    (version,) = re.findall(r'^NUITKA_VERSION = "([^"]+)"$', source, re.MULTILINE)
+    assert version == build_windows.build_app.NUITKA_VERSION
+    for name in ("ci.yml", "release.yml"):
+        workflow = (build_windows.ROOT / ".github" / "workflows" / name).read_text("utf-8")
+        assert set(re.findall(r"--with nuitka==(\S+)", workflow)) == {version}
+
+
+@pytest.mark.parametrize("arch", ["x64", "arm64"])
 @pytest.mark.parametrize("name", ["GeoSite.dat", "GeoIP.dat", "geoip.metadb", "ASN.mmdb"])
 def test_check_wants_every_geodata_file(tmp_path: Path, arch: str, name: str) -> None:
     directory = _install_directory(tmp_path, build_windows.target(arch)[1])

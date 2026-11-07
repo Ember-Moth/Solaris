@@ -139,6 +139,14 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: uv run pytest -q
+      # The ARM64 build's Nuitka plugin against the function it replaces, under the build's
+      # Nuitka and its own copy of pefile, which it installs only on Windows.
+      - name: Nuitka dependency plugin
+        if: runner.os == 'Windows'
+        env:
+          QT_QPA_PLATFORM: offscreen
+          SOLARIS_NUITKA_TESTS: "1"
+        run: uv run --frozen --with nuitka==4.2.2 pytest -q tests/test_nuitka_pefile.py
 
   # The UI against the real development service (docs/architecture.md §11): no TUN, only
   # loopback traffic to local servers through the mixed port.
@@ -466,7 +474,7 @@ jobs:
       - uses: actions/cache@v6
         with:
           path: build/nuitka-cache-${{ matrix.arch }}
-          key: nuitka-windows-${{ matrix.arch }}-${{ hashFiles('uv.lock', 'scripts/build_windows.py') }}
+          key: nuitka-windows-${{ matrix.arch }}-${{ hashFiles('uv.lock', 'scripts/build_windows.py', 'package/windows/nuitka_pefile.py') }}
       - name: Build (unsigned)
         run: uv run --frozen --with nuitka==4.2.2 python scripts/build_windows.py --arch ${{ matrix.arch }}
       - name: Install, upgrade and uninstall

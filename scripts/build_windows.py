@@ -13,7 +13,10 @@ Everything lands in build/windows:
     Solaris-<version>-windows-x64-setup.exe
 
 Native Windows ARM64 builds use --arch arm64 and build/windows-arm64 instead.
-The GUI must be built with a Python interpreter of the selected architecture.
+The GUI must be built with a Python interpreter of the selected architecture. There Nuitka scans
+DLL dependencies with pefile, which took most of an hour; the ARM64 build passes the user plugin
+package/windows/nuitka_pefile.py, which gets the same result in a fraction of the time and works
+only with the Nuitka it was written against.
 
 The installer is package/windows/installer.nsi, compiled by makensis (NSIS 3.08 or later)
 against Solaris/ and an uninstall list of exactly its files; package/windows/setup.ps1 is the
@@ -58,6 +61,8 @@ INSTALLER_SCRIPT = PACKAGE / "installer.nsi"
 ICON = ROOT / "package" / "icons" / "solaris.ico"  # scripts/gen_icons.py
 SETUP_SCRIPT = PACKAGE / "setup.ps1"
 SIGN_SCRIPT = PACKAGE / "sign.ps1"
+# Nuitka's pefile dependency scan, which only the ARM64 build uses, without its repeated full loads.
+PEFILE_PLUGIN = PACKAGE / "nuitka_pefile.py"
 SIGNED_RELEASE_VARIABLE = "github.com/Ember-Moth/Solaris/src/core/internal/product.SignedRelease"
 
 APP_NAME = "Solaris"
@@ -164,6 +169,8 @@ def build_ui(version: str, arch: str = "x64") -> Path:
     # Qt's 6.12 ARM64 wheel carries an unused ARM32 C++/CX runtime. None of the
     # retained Qt libraries imports it; keep it out of the native ARM64 payload.
     excluded = EXCLUDED + (("*vccorlib140.dll",) if arch == "arm64" else ())
+    # x64 scans with depends.exe; the plugin would change nothing there.
+    plugins = (f"--user-plugin={PEFILE_PLUGIN}",) if arch == "arm64" else ()
     command: list[str | Path] = [
         sys.executable,
         "-m",
@@ -173,6 +180,7 @@ def build_ui(version: str, arch: str = "x64") -> Path:
         "--unstripped",
         "--msvc=latest",
         "--enable-plugins=pyside6",
+        *plugins,
         "--include-qt-plugins=qml",
         # The Nuitka plugin pulls in the QtWidgets binding for QtQuick; the UI never imports it.
         "--nofollow-import-to=PySide6.QtWidgets",

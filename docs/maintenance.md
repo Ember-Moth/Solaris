@@ -17,7 +17,7 @@
 | job | 平台 | 内容 |
 | --- | --- | --- |
 | `changes` | Linux | 从完整 Git 差异选择任务；依赖锁、CI 配置、选择脚本自身和未知输入触发全量 |
-| `python` | macOS arm64 / x64、Windows x64 / ARM64 | ruff 只在 macOS 运行一次；各平台保留 pyright、pytest（含主题与翻译一致性）。协议输入变化时额外核对生成绑定 |
+| `python` | macOS arm64 / x64、Windows x64 / ARM64 | ruff 只在 macOS 运行一次；各平台保留 pyright、pytest（含主题与翻译一致性）。协议输入变化时额外核对生成绑定。Windows 上再带上构建用的 Nuitka，核对 ARM64 构建的依赖分析插件与它替换的 Nuitka 函数结果一致（`tests/test_nuitka_pefile.py`） |
 | `e2e` | macOS arm64 / x64 | 界面连真实的开发服务（`tests/e2e`）：导入、连接、各页数据、分流与方案、重载不断开连接；节点是本机起的代理，只走回环地址 |
 | `go` | macOS arm64 / x64、Windows x64 / ARM64、Linux | `go vet`、`go test`，再在支持的架构以 `-race` 跑一遍（Go 1.27 不支持 Windows ARM64 race）；Linux 上以 `with_gvisor` 带 `-race` 再跑安全项和组网测试，交叉编译 Windows 服务；macOS 上编扩展用的 C archive |
 | `apple` | macOS | 两份匹配架构的 Python/Nuitka UI、双架构管理库和扩展，合并后检查全部 Mach-O，ad hoc 签名并制作真实通用 DMG；再分别以 arm64 和 Rosetta 下的 x86_64 启动界面，等到它的窗口出现，用 `--quit` 让它退出（退出码 0，没有崩溃记录）。不连接，不激活扩展；失败时上传界面输出和崩溃记录（artifact `macos-ui-<提交>`） |
@@ -405,4 +405,8 @@ exits.md 第 9 节的待实测项。
 - **macOS** 的产品最低版本固定为 26（D28）；构建器同时检查 PySide6 等依赖的实际 Mach-O 版本要求，只能提高该底线。**Nuitka** 的版本是 `scripts/build_app.py` 的 `NUITKA_VERSION`，CI 和
   发布工作流里的 `--with nuitka==` 要一起改。4.3.4 构建的 Windows 界面在冒烟测试里启动即退出（退出码 3，即
   `abort()`），原因未查明，所以仍用 4.2.2；再试新版本时，失败的 `windows-installer` 任务会上传界面的输出和崩溃目录
-  （`windows-ui-<架构>-<提交>`），从那里看原因。
+  （`windows-ui-<架构>-<提交>`），从那里看原因。ARM64 构建的 Nuitka 插件 `package/windows/nuitka_pefile.py` 换掉了
+  Nuitka 内部的 `getPEFileUsedDllNames()`（为什么见 [development.md](development.md)「从源码构建」），只在它的
+  `NUITKA_VERSION` 下运行，否则构建失败。升级时重读新版的这个函数、`detectDLLsWithPEFile()` 怎么调用它和 Nuitka 自带的
+  pefile，照着改插件和 `tests/test_nuitka_pefile.py`，再改它的 `NUITKA_VERSION`（`tests/test_build_windows.py` 核对它与
+  构建用的版本相同）；新版若已不再用 pefile 查 ARM64 的依赖，或自己解决了这个问题，就删掉插件。

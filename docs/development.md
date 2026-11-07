@@ -36,6 +36,22 @@
   GUI 的 Python、PySide6 和原生扩展必须同架构；构建器会检查解释器及全部打包 PE 文件。Go 服务可交叉编译，GUI 使用
   对应架构的 Windows 构建环境。构建步骤见 [architecture.md](architecture.md) §10。
 
+  ARM64 上 Nuitka 查 DLL 依赖用的是 pefile（depends.exe 读不了 ARM64 程序，WinDepends 只能在 x64 上跑），x64 用的是
+  depends.exe。Nuitka 4.2.2 对每个扩展模块和 DLL 递归查依赖，路上遇到的每个文件都用 pefile 完整解析一遍（数每个字节，
+  解析导出表、资源、重定位等全部目录），关闭时还对整个进程做一次 `gc.collect()`，查过的结果也不跨调用保留；Qt6Core、
+  Qt6Gui 这些大 DLL 几乎在每个模块底下，于是被解析上百次。一次发布构建里，Nuitka 的 Python 编译与优化阶段 x64 用
+  4 分钟，ARM64 用 55 分钟。所以 ARM64 构建给 Nuitka 加上用户插件 `package/windows/nuitka_pefile.py`
+  （`--user-plugin`），换掉 `getPEFileUsedDllNames()`：只解析导入表和延迟导入表，每个文件按路径、大小和修改时间只
+  解析一次，不做 `gc.collect()`。结果必须与原函数完全一致：pefile 每个文件最多读 0x2000 个导入项（查找表和地址表
+  都计数），原函数的完整解析先计了数，导入超过约 4096 个符号的文件第二遍读延迟导入表时会少读甚至读不到，所以插件
+  也先按原顺序完整解析这两个目录，再做原函数的两次调用。`tests/test_nuitka_pefile.py` 在生成的 ARM64 样本上，以及 Windows 上本机 Python 和
+  PySide6 的全部 PE 文件上，逐个对比两个函数的结果；CI 的 python 任务在 Windows runner 上跑它。
+
+  不在 Nuitka 启动前用脚本打补丁，是因为 Nuitka 一开始会以 `-S` 重新启动自己，直接运行 `nuitka/__main__.py`，之前
+  进程里的改动都不在了；用户插件在重启后的进程里、解析完参数才加载，早于任何依赖扫描。插件只认它照着写的 Nuitka
+  版本（`NUITKA_VERSION`），版本不同或被替换的函数不在时直接让构建失败。升级 Nuitka 时要重新核对它，见
+  [maintenance.md](maintenance.md) §5.4。
+
 两个脚本都会先下载钉住版本的 GEO 数据（`scripts/fetch_geodata.py`）。发布用的安装包由 GitHub Actions 的发布工作流
 构建（[release.md](release.md)）。
 
