@@ -9,6 +9,16 @@ Rectangle {
     required property ShellViewModel shell
     required property RoutingViewModel routing
 
+    // The page's tab in the sidebar, or null while the sidebar does not list it.
+    function tab(page: string): NavItem {
+        for (let i = 0; i < tabs.count; ++i) {
+            const item = tabs.itemAt(i) as NavItem
+            if (item?.page === page)
+                return item
+        }
+        return null
+    }
+
     implicitWidth: Theme.sidebarWidth
     color: Theme.sidebar
 
@@ -84,16 +94,24 @@ Rectangle {
             Accessible.name: qsTr("页面")
 
             Repeater {
+                id: tabs
+
                 model: root.shell.pages
+                // A tab that goes as the tunnel stops hands its focus to the shown page's tab.
+                onItemRemoved: (index, item) => {
+                    if (item.activeFocus)
+                        root.tab(root.shell.currentPage)?.forceActiveFocus(Focus.reasonAfter(item))
+                }
 
                 NavItem {
-                    required property var modelData
+                    required property string label
+                    required page
+                    required iconName
 
                     Layout.fillWidth: true
-                    text: modelData.label
-                    iconName: modelData.icon
-                    active: root.shell.currentPage === modelData.id
-                    onClicked: root.shell.setPage(modelData.id)
+                    text: label
+                    active: root.shell.currentPage === page
+                    onClicked: root.shell.setPage(page)
                 }
             }
         }

@@ -211,6 +211,9 @@ ScrollView {
                             rightPadding: Theme.space2
                             topPadding: 0
                             bottomPadding: 0
+                            // The proxies page shows only while the tunnel runs.
+                            enabled: page.shell.tunnelRunning
+                            opacity: enabled ? 1 : Theme.disabledOpacity
                             Accessible.name: qsTr("当前节点 %1，前往代理页切换").arg(page.overview.nodeName)
                             onClicked: page.shell.setPage("proxies")
 

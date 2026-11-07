@@ -5,6 +5,7 @@ import QtQuick.Controls.Basic
 AbstractButton {
     id: item
 
+    property string page  // the page it opens, by ShellViewModel's id
     property string iconName
     property bool active
 

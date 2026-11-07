@@ -45,8 +45,7 @@ def show_page(qtbot: QtBot, loaded: Loaded, page: str) -> QQuickItem:
 
 
 def nav_item(loaded: Loaded, page: str) -> QQuickItem:
-    labels = {p["id"]: p["label"] for p in loaded.view_models.shell.property("pages")}
-    return loaded.item(lambda i: kind(i) == "NavItem" and i.property("text") == labels[page])
+    return loaded.item(lambda i: kind(i) == "NavItem" and i.property("page") == page)
 
 
 def tab_cycle(qtbot: QtBot, loaded: Loaded, start: QQuickItem) -> list[QQuickItem]:
