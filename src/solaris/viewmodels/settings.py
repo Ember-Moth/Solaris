@@ -42,7 +42,6 @@ QML_IMPORT_NAME = "Solaris"
 QML_IMPORT_MAJOR_VERSION = 1
 
 LICENSE = "GPL-3.0-only"
-PROJECT_URL = "https://github.com/Ember-Moth/Solaris"
 
 LANGUAGE_LABELS = {
     "system": QT_TRANSLATE_NOOP("SettingsViewModel", "跟随系统"),
@@ -411,11 +410,3 @@ class SettingsViewModel(QObject):
     @Property(str, constant=True)
     def license(self) -> str:
         return LICENSE
-
-    @Property(str, constant=True)
-    def projectUrl(self) -> str:
-        return PROJECT_URL
-
-    @Property(str, constant=True)
-    def projectLabel(self) -> str:
-        return PROJECT_URL.removeprefix("https://")

@@ -3928,10 +3928,6 @@ Your subscriptions, settings, and credentials are kept; connecting again will re
         <translation>Export diagnostics</translation>
     </message>
     <message>
-        <source>项目主页</source>
-        <translation>Project page</translation>
-    </message>
-    <message>
         <source>打开</source>
         <translation>Open</translation>
     </message>

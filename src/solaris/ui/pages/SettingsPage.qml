@@ -995,21 +995,6 @@ ScrollView {
                                 onClicked: rawCrashesDialog.show(exportCrashesButton)
                             }
                         }
-
-                        GroupRow {
-                            rowHeight: Theme.rowSingle
-
-                            UiText {
-                                Layout.fillWidth: true
-                                text: qsTr("项目主页")
-                            }
-
-                            LinkButton {
-                                text: page.settings.projectLabel
-                                Accessible.description: page.settings.projectUrl
-                                onClicked: Qt.openUrlExternally(page.settings.projectUrl)
-                            }
-                        }
                     }
                 }
             }
