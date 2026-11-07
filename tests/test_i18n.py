@@ -1,3 +1,6 @@
+import os
+import subprocess
+import sys
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
@@ -9,7 +12,7 @@ from pytestqt.qtbot import QtBot
 
 from scripts.gen_i18n import stale_binaries, stale_catalogs, unfinished_messages
 from solaris.host.base import HostError
-from solaris.i18n import LANG_ENV, resolve_language, ui_locale
+from solaris.i18n import LANG_ENV, resolve_language, system_ui_languages, ui_locale
 from solaris.models import format as fmt
 from solaris.models.profiles import ProfileError
 from solaris.models.store import ProfileStore
@@ -36,7 +39,12 @@ def test_compiled_catalogs_match() -> None:
     ("preference", "environ", "system", "language"),
     [
         ("", {}, ["zh-Hans-CN", "en-US"], "zh"),
+        ("", {}, ["zh-Hans-US", "en-US"], "zh"),
+        ("", {}, ["zh-Hans"], "zh"),
+        ("", {}, ["zh-CN"], "zh"),
+        ("", {}, ["zh"], "zh"),
         ("", {}, ["zh-Hant-TW"], "zh"),
+        ("", {}, ["en-CN", "zh-Hans-CN"], "en"),
         ("", {}, ["en-US", "zh-Hans-US"], "en"),
         ("", {}, ["ja-JP", "zh-Hans-CN"], "en"),
         ("", {}, [], "en"),
@@ -51,6 +59,43 @@ def test_language_choice(
     preference: str, environ: dict[str, str], system: list[str], language: str
 ) -> None:
     assert resolve_language(preference, environ, system) == language
+
+
+LANGUAGE_PROBE = """
+from solaris.i18n import resolve_language, ui_locale
+language = resolve_language("", {})
+print(language, ui_locale(language).name())
+"""
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="CoreFoundation is on macOS")
+@pytest.mark.parametrize(
+    ("lang", "preferences", "shown"),
+    [
+        # Opened from Finder: no LANG, so PySide6's QLocale.system() is C.
+        (None, ["-AppleLanguages", "(zh-Hans-CN, en-CN)", "-AppleLocale", "zh_CN"], "zh zh_CN"),
+        ("en_US.UTF-8", ["-AppleLanguages", "(zh-Hans-CN)", "-AppleLocale", "zh_CN"], "zh zh_CN"),
+        ("zh_CN.UTF-8", ["-AppleLanguages", "(en-GB)", "-AppleLocale", "en_GB"], "en en_GB"),
+    ],
+)
+def test_macos_follows_the_system_not_the_posix_locale(
+    lang: str | None, preferences: list[str], shown: str
+) -> None:
+    environ = {k: v for k, v in os.environ.items() if not k.startswith(("LANG", "LC_"))}
+    if lang:
+        environ["LANG"] = lang
+    # The arguments stand in for the system's settings, as for any app on macOS.
+    command = [sys.executable, "-c", LANGUAGE_PROBE, *preferences]
+    result = subprocess.run(command, env=environ, capture_output=True, text=True, timeout=60)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == shown
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="CoreFoundation is on macOS")
+def test_macos_system_languages_are_tags() -> None:
+    languages = system_ui_languages()
+    assert languages
+    assert "C" not in languages
 
 
 def test_dates_keep_the_system_conventions_of_the_same_language() -> None:
