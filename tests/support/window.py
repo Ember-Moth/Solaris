@@ -3,11 +3,12 @@ keyboard reaches and what a screen reader is told."""
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from PySide6.QtCore import QEvent, QPointF, QRectF, Qt
-from PySide6.QtGui import QAccessible, QGuiApplication, QKeyEvent
+from PySide6.QtCore import QEvent, QPoint, QPointF, QRectF, Qt
+from PySide6.QtGui import QAccessible, QGuiApplication, QKeyEvent, QWheelEvent
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickItem, QQuickWindow
 from PySide6.QtTest import QTest
@@ -122,6 +123,29 @@ class Loaded:
         point = item.mapToScene(middle).toPoint()
         button, modifier = Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier
         QTest.mouseClick(self.window, button, modifier, point)
+        qtbot.wait(250)
+
+    def wheel(self, qtbot: QtBot, item: QQuickItem, notches: int) -> None:
+        """Turn the mouse wheel over the middle of ``item``, a notch a frame: down for positive
+        ``notches``. How far a view scrolls depends on the notches' timing, as with a real
+        wheel; scroll a view to a place by its content position instead."""
+        point = item.mapToScene(QPointF(item.width() / 2, item.height() / 2))
+        delta = QPoint(0, -120 if notches > 0 else 120)
+        for _ in range(abs(notches)):
+            event = QWheelEvent(
+                point,
+                self.window.mapToGlobal(point),
+                QPoint(),
+                delta,
+                Qt.MouseButton.NoButton,
+                Qt.KeyboardModifier.NoModifier,
+                Qt.ScrollPhase.NoScrollPhase,
+                False,
+            )
+            # Views read the wheel's speed from the events' times.
+            event.setTimestamp(int(time.monotonic() * 1000))
+            QGuiApplication.sendEvent(self.window, event)
+            qtbot.wait(16)
         qtbot.wait(250)
 
     def item(self, test: Callable[[QQuickItem], bool]) -> QQuickItem:

@@ -5,33 +5,96 @@ import QtQuick.Layouts
 import Solaris
 import "../components"
 
-ScrollView {
+// The header stays put; the groups and the current group's nodes each scroll in their own
+// box, which makes only the rows in sight: a group can hold hundreds of nodes.
+Item {
     id: page
 
     required property ProxiesViewModel proxies
     readonly property int sourceWidth: 140
+    // Tab stops at every row only where the platform tabs to buttons (DESIGN.md "焦点与键盘").
+    readonly property bool tabsToRows: Application.styleHints.tabFocusBehavior === Qt.TabFocusAllControls
+    readonly property string currentGroup: proxies.currentGroup
+    readonly property string sort: proxies.sort
 
-    // The arrows move the focus between the rows of a list; Space selects the focused one.
-    function focusRow(rows: Repeater, index: int) {
-        rows.itemAt(Math.max(0, Math.min(index, rows.count - 1))).forceActiveFocus(Qt.TabFocusReason)
+    // Another group's nodes, or the nodes in another order, show from the top.
+    function showFirstNodes() {
+        if (!nodeList.activeFocus)
+            nodeList.currentIndex = -1
+        nodeList.positionViewAtBeginning()
     }
 
-    contentWidth: availableWidth
-    clip: true
+    // The keys move by index, since a row out of sight may not be made yet: the list scrolls
+    // to it first.
+    function focusRow(list: ListView, index: int, reason: int) {
+        const row = Math.max(0, Math.min(index, list.count - 1))
+        list.positionViewAtIndex(row, ListView.Contain)
+        list.itemAtIndex(row)?.forceActiveFocus(reason)
+    }
+
+    // Tab goes on to the next row, and past the last one to the controls after the list;
+    // Shift+Tab likewise backwards. Whether it handled the key.
+    function tabFrom(list: ListView, row: Item, index: int, forward: bool): bool {
+        if (!tabsToRows)
+            return false
+        const reason = forward ? Qt.TabFocusReason : Qt.BacktabFocusReason
+        const next = index + (forward ? 1 : -1)
+        if (next >= 0 && next < list.count) {
+            focusRow(list, next, reason)
+            return true
+        }
+        let item = row.nextItemInFocusChain(forward)
+        while (item && item !== row && Focus.within(item, list))
+            item = item.nextItemInFocusChain(forward)
+        item?.forceActiveFocus(reason)
+        return true
+    }
+
+    // The list holds its rows in the order they were made, not in the rows' order, so Tab
+    // from the controls before it, or Shift+Tab from those after it, reaches whichever row
+    // comes first, or last, there. Focus that arrives there moves on to the first or last
+    // row; focus given to a row on purpose stays.
+    function enter(list: ListView) {
+        const row = list.Window.activeFocusItem as AbstractButton
+        if (!row)
+            return
+        let first = null
+        let last = null
+        for (const item of list.contentItem.children) {
+            if (item.visible && item.activeFocusOnTab) {
+                first = first ?? item
+                last = item
+            }
+        }
+        if (row.focusReason === Qt.TabFocusReason && row === first)
+            focusRow(list, 0, Qt.TabFocusReason)
+        else if (row.focusReason === Qt.BacktabFocusReason && row === last)
+            focusRow(list, list.count - 1, Qt.BacktabFocusReason)
+    }
+
+    onCurrentGroupChanged: showFirstNodes()
+    onSortChanged: showFirstNodes()
 
     ScrollToFocus {
-        flickable: page.contentItem as Flickable
+        flickable: groupList
+        horizontal: false
+    }
+
+    ScrollToFocus {
+        flickable: nodeList
+        horizontal: false
     }
 
     ColumnLayout {
-        width: page.availableWidth
+        anchors.fill: parent
+        anchors.topMargin: Theme.titlebarPageTop
+        anchors.leftMargin: Theme.pageX
+        anchors.rightMargin: Theme.pageX
+        anchors.bottomMargin: Theme.pageBottom
         spacing: Theme.space5
 
         PageHeader {
             Layout.fillWidth: true
-            Layout.topMargin: Theme.titlebarPageTop
-            Layout.leftMargin: Theme.pageX
-            Layout.rightMargin: Theme.pageX
             title: qsTr("代理")
             detail: page.proxies.summary
 
@@ -49,15 +112,16 @@ ScrollView {
             }
         }
 
+        // Side by side, both boxes reach down to the page's bottom margin. Stacked in a narrow
+        // window, the groups take up to two fifths of the boxes' height and the nodes the rest.
         GridLayout {
             id: panes
 
             readonly property bool twoPanes: width >= 260 + Theme.space6 + 420
+            readonly property real stackedGroupsHeight: (height - rowSpacing - 2 * (groupsLabel.implicitHeight + Theme.space2)) * 2 / 5
 
             Layout.fillWidth: true
-            Layout.leftMargin: Theme.pageX
-            Layout.rightMargin: Theme.pageX
-            Layout.bottomMargin: Theme.pageBottom
+            Layout.fillHeight: true
             columns: twoPanes ? 2 : 1
             columnSpacing: Theme.space6
             rowSpacing: Theme.space5
@@ -65,22 +129,39 @@ ScrollView {
             ColumnLayout {
                 Layout.preferredWidth: panes.twoPanes ? 260 : panes.width
                 Layout.fillWidth: !panes.twoPanes
-                Layout.alignment: Qt.AlignTop
+                Layout.fillHeight: panes.twoPanes
                 spacing: Theme.space2
 
                 SectionLabel {
+                    id: groupsLabel
+
                     text: qsTr("代理组")
                 }
 
-                Group {
+                ListBox {
                     Layout.fillWidth: true
+                    Layout.fillHeight: panes.twoPanes
+                    Layout.preferredHeight: panes.twoPanes ? -1 : Math.min(groupList.contentHeight + 2, panes.stackedGroupsHeight)
 
-                    Repeater {
-                        id: groupRepeater
+                    ListView {
+                        id: groupList
 
+                        anchors.fill: parent
+                        anchors.margins: 1
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+                        currentIndex: -1
+                        keyNavigationEnabled: false
+                        highlightFollowsCurrentItem: false
                         model: page.proxies.groups
+                        onActiveFocusChanged: {
+                            if (activeFocus)
+                                page.enter(groupList)
+                        }
 
-                        AbstractButton {
+                        ScrollBar.vertical: ScrollBar {}
+
+                        delegate: AbstractButton {
                             id: groupButton
 
                             required property int index
@@ -91,9 +172,8 @@ ScrollView {
                             required property bool header  // folds the region groups
                             required property bool region
                             required property bool expanded
-                            readonly property bool last: index === groupRepeater.count - 1
 
-                            Layout.fillWidth: true
+                            width: groupList.width
                             implicitHeight: header ? Theme.rowSingle : Theme.rowDouble
                             leftPadding: region ? 14 + Theme.space3 : 14
                             rightPadding: 14
@@ -109,8 +189,15 @@ ScrollView {
                                 else
                                     page.proxies.selectGroup(name)
                             }
-                            Keys.onUpPressed: page.focusRow(groupRepeater, index - 1)
-                            Keys.onDownPressed: page.focusRow(groupRepeater, index + 1)
+                            // The list keeps its current row while it scrolls out of sight.
+                            onActiveFocusChanged: {
+                                if (activeFocus)
+                                    groupList.currentIndex = index
+                            }
+                            Keys.onUpPressed: page.focusRow(groupList, index - 1, Qt.TabFocusReason)
+                            Keys.onDownPressed: page.focusRow(groupList, index + 1, Qt.TabFocusReason)
+                            Keys.onTabPressed: event => event.accepted = page.tabFrom(groupList, groupButton, index, !(event.modifiers & Qt.ShiftModifier))
+                            Keys.onBacktabPressed: event => event.accepted = page.tabFrom(groupList, groupButton, index, false)
 
                             contentItem: ColumnLayout {
                                 spacing: 0
@@ -160,10 +247,6 @@ ScrollView {
                             }
 
                             background: Rectangle {
-                                topLeftRadius: groupButton.index === 0 ? Theme.radiusMd - 1 : 0
-                                topRightRadius: topLeftRadius
-                                bottomLeftRadius: groupButton.last ? Theme.radiusMd - 1 : 0
-                                bottomRightRadius: bottomLeftRadius
                                 color: groupButton.selected ? Theme.surfaceSelected : groupButton.hovered ? Theme.surfaceSubtle : "transparent"
 
                                 Rectangle {
@@ -186,7 +269,7 @@ ScrollView {
 
             ColumnLayout {
                 Layout.fillWidth: true
-                Layout.alignment: Qt.AlignTop
+                Layout.fillHeight: true
                 spacing: Theme.space2
 
                 RowLayout {
@@ -204,14 +287,19 @@ ScrollView {
                     }
                 }
 
-                Group {
+                ListBox {
                     Layout.fillWidth: true
+                    Layout.fillHeight: true
 
+                    // The column titles stay at the top of the box over the nodes.
                     Rectangle {
-                        Layout.fillWidth: true
-                        implicitHeight: Theme.rowHeader
-                        topLeftRadius: Theme.radiusMd - 1
-                        topRightRadius: Theme.radiusMd - 1
+                        id: nodeHeader
+
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.margins: 1
+                        height: Theme.rowHeader
                         color: Theme.surfaceSubtle
                         Accessible.ignored: true
 
@@ -257,12 +345,30 @@ ScrollView {
                         }
                     }
 
-                    Repeater {
-                        id: nodeRepeater
+                    ListView {
+                        id: nodeList
 
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: nodeHeader.bottom
+                        anchors.bottom: parent.bottom
+                        anchors.margins: 1
+                        anchors.topMargin: 0
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+                        currentIndex: -1
+                        keyNavigationEnabled: false
+                        highlightFollowsCurrentItem: false
+                        reuseItems: true
                         model: page.proxies.nodes
+                        onActiveFocusChanged: {
+                            if (activeFocus)
+                                page.enter(nodeList)
+                        }
 
-                        AbstractButton {
+                        ScrollBar.vertical: ScrollBar {}
+
+                        delegate: AbstractButton {
                             id: nodeRow
 
                             required property int index
@@ -274,7 +380,7 @@ ScrollView {
                             required property string source
                             readonly property bool selectable: page.proxies.currentSelectable
 
-                            Layout.fillWidth: true
+                            width: nodeList.width
                             implicitHeight: Theme.rowSingle
                             leftPadding: 14
                             rightPadding: 14
@@ -289,8 +395,15 @@ ScrollView {
                                 if (selectable)
                                     page.proxies.selectProxy(name)
                             }
-                            Keys.onUpPressed: page.focusRow(nodeRepeater, index - 1)
-                            Keys.onDownPressed: page.focusRow(nodeRepeater, index + 1)
+                            // The list keeps its current row while it scrolls out of sight.
+                            onActiveFocusChanged: {
+                                if (activeFocus)
+                                    nodeList.currentIndex = index
+                            }
+                            Keys.onUpPressed: page.focusRow(nodeList, index - 1, Qt.TabFocusReason)
+                            Keys.onDownPressed: page.focusRow(nodeList, index + 1, Qt.TabFocusReason)
+                            Keys.onTabPressed: event => event.accepted = page.tabFrom(nodeList, nodeRow, index, !(event.modifiers & Qt.ShiftModifier))
+                            Keys.onBacktabPressed: event => event.accepted = page.tabFrom(nodeList, nodeRow, index, false)
 
                             contentItem: RowLayout {
                                 spacing: Theme.space3
@@ -340,8 +453,6 @@ ScrollView {
                             }
 
                             background: Rectangle {
-                                bottomLeftRadius: nodeRow.index === nodeRepeater.count - 1 ? Theme.radiusMd - 1 : 0
-                                bottomRightRadius: bottomLeftRadius
                                 color: nodeRow.selected ? Theme.surfaceSelected : nodeRow.hovered ? Theme.surfaceSubtle : "transparent"
 
                                 Rectangle {
@@ -360,6 +471,33 @@ ScrollView {
                     }
                 }
             }
+        }
+    }
+
+    // A group-style box (DESIGN.md "分组") whose rows scroll inside it. A list clips to a
+    // rectangle, so the border is drawn over the rows, with the page's background past its
+    // rounded corners: a row scrolled into a corner does not show beyond the curve.
+    component ListBox: Rectangle {
+        color: Theme.surface
+        radius: Theme.radiusMd
+
+        Rectangle {
+            z: 1
+            anchors.fill: parent
+            anchors.margins: -Theme.space1
+            radius: Theme.radiusMd + Theme.space1
+            color: "transparent"
+            border.width: Theme.space1 + 1
+            border.color: Theme.background
+        }
+
+        Rectangle {
+            z: 1
+            anchors.fill: parent
+            radius: Theme.radiusMd
+            color: "transparent"
+            border.width: 1
+            border.color: Theme.border
         }
     }
 }
