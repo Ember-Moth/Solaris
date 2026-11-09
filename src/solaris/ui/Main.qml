@@ -24,14 +24,40 @@ ApplicationWindow {
     required property BackupViewModel backupViewModel
     required property SystemExtensionViewModel systemExtensionViewModel
 
-    // Bring the window back from the tray, the Dock or a second launch.
+    // Whether the window holds its pages: while it shows, and for a moment after it hides.
+    // Hidden in the tray or the menu bar, it lets them go and gives back the memory they and
+    // their drawing took (docs/ui.md §8, "隐藏时释放"); it makes them again before it shows.
+    // The page on show and what the ViewModels hold come back as they were, with what `kept`
+    // keeps; scroll positions and the keyboard focus do not.
+    property bool holdsPages: !desktopViewModel.startHidden
+
+    // Bring the window back from the tray, the Dock or a second launch, its pages made before
+    // its first frame.
     function present() {
+        holdsPages = true
         if (visibility === Window.Minimized)
             showNormal()
         else
             show()
         raise()
         requestActivate()
+    }
+
+    // Let the pages go, unless a dialog or a menu is still open on them, and give back what
+    // drawing the window took. The window keeps the routing page's tab and the import form.
+    function release() {
+        if (visible || desktopViewModel.quitting)
+            return
+        if (!Overlay.overlay.children.some(item => item.visible)) {
+            const routing = routingLoader.item as RoutingPage
+            const profiles = profilesLoader.item as ProfilesPage
+            if (routing)
+                kept.routingTab = routing.tab
+            if (profiles)
+                kept.importForm = profiles.importDraft()
+            holdsPages = false
+        }
+        desktopViewModel.releaseWindow(window)
     }
 
     width: Theme.windowDefaultWidth
@@ -94,7 +120,33 @@ ApplicationWindow {
 
     // macOS: Solaris is in the Dock while the window shows, however it came up, and in the
     // menu bar only while it hides; showing it activates Solaris.
-    onVisibleChanged: desktopViewModel.setWindowShown(visible)
+    onVisibleChanged: {
+        desktopViewModel.setWindowShown(visible)
+        if (visible) {
+            releaseTimer.stop()
+            holdsPages = true
+        } else {
+            releaseTimer.restart()
+        }
+    }
+
+    // Long enough that a window brought straight back, or Solaris quitting as it closes, does
+    // not load its pages again for nothing.
+    Timer {
+        id: releaseTimer
+
+        interval: 2000
+        onTriggered: window.release()
+    }
+
+    // What the pages keep while the window lets them go. The ViewModels hold the rest of what
+    // they show, such as the proxies page's group and the search fields.
+    QtObject {
+        id: kept
+
+        property string routingTab: "rules"
+        property var importForm: null  // ProfilesPage.importDraft()
+    }
 
     // Closing the window leaves the UI in the tray, the tunnel running, or quits Solaris,
     // which disconnects first (D41) and shows the window again if that fails.
@@ -151,10 +203,11 @@ ApplicationWindow {
         target: window.overviewViewModel
 
         function onExtensionSetupRequested() {
-            const from = window.visible && Focus.within(window.activeFocusItem, overviewPage)
-                ? window.activeFocusItem : overviewPage.connectionControl
+            const focused = window.visible ? window.activeFocusItem : null
             window.shellViewModel.setPage("overview")
             window.present()
+            const overview = overviewLoader.item as OverviewPage
+            const from = Focus.within(focused, overview) ? focused : overview.connectionControl
             if (!extensionSetupDialog.visible)
                 extensionSetupDialog.show(from)
         }
@@ -162,6 +215,16 @@ ApplicationWindow {
         function onChanged() {
             if (window.overviewViewModel.extensionSetup === "" && extensionSetupDialog.visible)
                 extensionSetupDialog.close()
+        }
+    }
+
+    // An import that ends while the window has let the page go closes its form, as it would
+    // on the page.
+    Connections {
+        target: window.profilesViewModel
+
+        function onImported() {
+            kept.importForm = null
         }
     }
 
@@ -197,42 +260,76 @@ ApplicationWindow {
             Layout.fillHeight: true
             currentIndex: window.shellViewModel.pageIndex
 
-            OverviewPage {
-                id: overviewPage
+            PageLoader {
+                id: overviewLoader
 
-                overview: window.overviewViewModel
-                profiles: window.profilesViewModel
-                routing: window.routingViewModel
-                shell: window.shellViewModel
+                active: window.holdsPages
+
+                sourceComponent: OverviewPage {
+                    overview: window.overviewViewModel
+                    profiles: window.profilesViewModel
+                    routing: window.routingViewModel
+                    shell: window.shellViewModel
+                }
             }
 
-            ProxiesPage {
-                proxies: window.proxiesViewModel
+            PageLoader {
+                active: window.holdsPages
+
+                sourceComponent: ProxiesPage {
+                    proxies: window.proxiesViewModel
+                }
             }
 
-            ProfilesPage {
-                profiles: window.profilesViewModel
+            PageLoader {
+                id: profilesLoader
+
+                active: window.holdsPages
+
+                sourceComponent: ProfilesPage {
+                    profiles: window.profilesViewModel
+                    Component.onCompleted: restoreImport(kept.importForm)
+                }
             }
 
-            RoutingPage {
-                routing: window.routingViewModel
-                shell: window.shellViewModel
+            PageLoader {
+                id: routingLoader
+
+                active: window.holdsPages
+
+                sourceComponent: RoutingPage {
+                    routing: window.routingViewModel
+                    shell: window.shellViewModel
+                    tab: kept.routingTab
+                }
             }
 
-            ConnectionsPage {
-                connections: window.connectionsViewModel
+            PageLoader {
+                active: window.holdsPages
+
+                sourceComponent: ConnectionsPage {
+                    connections: window.connectionsViewModel
+                }
             }
 
-            LogsPage {
-                logs: window.logsViewModel
+            PageLoader {
+                active: window.holdsPages
+
+                sourceComponent: LogsPage {
+                    logs: window.logsViewModel
+                }
             }
 
-            SettingsPage {
-                settings: window.settingsViewModel
-                overview: window.overviewViewModel
-                about: window.aboutViewModel
-                backup: window.backupViewModel
-                systemExtension: window.systemExtensionViewModel
+            PageLoader {
+                active: window.holdsPages
+
+                sourceComponent: SettingsPage {
+                    settings: window.settingsViewModel
+                    overview: window.overviewViewModel
+                    about: window.aboutViewModel
+                    backup: window.backupViewModel
+                    systemExtension: window.systemExtensionViewModel
+                }
             }
         }
     }

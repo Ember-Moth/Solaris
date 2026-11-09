@@ -38,6 +38,24 @@ ScrollView {
             linkButton.forceActiveFocus(Focus.reasonAfter(focused))
     }
 
+    // The import form as the user left it, which the window keeps while it lets the page go
+    // (Main.qml); null while the form is closed.
+    function importDraft(): var {
+        if (!importOpen)
+            return null
+        return { url: urlField.text, name: nameField.text, autoUpdate: autoUpdate.checked }
+    }
+
+    // The form as importDraft() kept it, as the page loads again; the focus stays where it is.
+    function restoreImport(draft: var) {
+        if (!draft)
+            return
+        urlField.text = draft.url
+        nameField.text = draft.name
+        autoUpdate.checked = draft.autoUpdate
+        importOpen = true
+    }
+
     function rowAt(index: int): ProfileRow {
         return profileRepeater.itemAt(Math.max(0, Math.min(index, profileRepeater.count - 1))) as ProfileRow
     }
