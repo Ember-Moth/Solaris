@@ -7,7 +7,7 @@ runs against a stand-in for user32; only a Windows machine shows what the system
 import ctypes
 
 import pytest
-from PySide6.QtCore import QCoreApplication, QPoint, QRectF, Qt
+from PySide6.QtCore import QCoreApplication, QPoint, QRect, QRectF, Qt
 from PySide6.QtGui import QAccessible, QGuiApplication, QWindow
 from PySide6.QtQuick import QQuickItem
 from PySide6.QtTest import QTest
@@ -39,6 +39,7 @@ from solaris.desktop.titlebar import (
     titlebar_style,
     window_flags,
 )
+from solaris.viewmodels import titlebar as titlebar_view_model
 from solaris.viewmodels.titlebar import TitleBar
 from tests.support.window import Loaded, accessible, find_all, kind
 
@@ -85,6 +86,28 @@ def test_a_double_click_does_what_macos_is_set_to(preference: str | None, action
 def test_off_macos_a_double_click_zooms(qapp: object) -> None:
     assert TitleBar(MAC).doubleClickAction() == ZOOM  # the offscreen platform
     assert TitleBar(WINDOWS).doubleClickAction() == ZOOM
+
+
+def test_macos_sets_up_the_native_window_qt_creates_again(
+    qapp: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The window gives up its native window while it hides (desktop/memory.py). The one Qt
+    creates as it shows has the frame of a window with a title bar; the window gets back the
+    place and the size it had, and its title hides again."""
+    hidden: list[int] = []
+    monkeypatch.setattr(titlebar_view_model, "hide_mac_title", hidden.append)
+    bar = TitleBar(MAC)
+    window = QWindow()
+    window.installEventFilter(bar)  # as attach does on macOS
+
+    window.setGeometry(QRect(140, 196, 1000, 640))
+    window.create()
+    window.destroy()
+    window.setGeometry(QRect(140, 168, 1000, 668))  # as Qt creates it again
+    window.create()
+    assert window.geometry() == QRect(140, 196, 1000, 640)
+    assert len(hidden) == 2  # on each native window, the new one last
+    assert hidden[-1] == int(window.winId())
 
 
 # -- Windows: the hit test and the maximize button ----------------------------------------------

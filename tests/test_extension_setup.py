@@ -5,13 +5,13 @@ from collections.abc import Callable, Coroutine
 from typing import Any
 
 import pytest
-from PySide6.QtCore import QObject, Qt
+from PySide6.QtCore import QMetaObject, QObject, Qt
 from pytestqt.qtbot import QtBot
 
 from solaris.host.base import HostError, TunnelConfig
 from solaris.viewmodels import overview as overview_module
 from tests.support.simulated import SimulatedHost
-from tests.support.window import Loaded, find_all
+from tests.support.window import Loaded, find_all, pages
 
 
 class Activation:
@@ -111,6 +111,27 @@ def test_approval_from_the_tray_shows_a_guide_and_continues_only_on_request(
     qtbot.waitUntil(lambda: not dialog.property("visible"))
     assert overview.property("extensionSetup") == ""
     assert overview.property("connectionDetail") == ""
+    assert loaded.warnings == []
+
+
+def test_the_guide_shows_on_a_window_that_let_its_pages_go(
+    qtbot: QtBot, loaded: Loaded, activation: Activation
+) -> None:
+    """Hidden in the menu bar for a while, the window loads its pages again for the guide."""
+    desktop, window = loaded.view_models.desktop, loaded.window
+    desktop._tray = True
+    desktop.closeActionChanged.emit()
+    loaded.view_models.shell.setPage("settings")
+    window.close()
+    QMetaObject.invokeMethod(window, "release")
+    assert pages(window) == set()
+    loaded.view_models.overview.toggleConnection()
+    dialog = guide(loaded)
+    qtbot.waitUntil(lambda: dialog.property("opened"))
+    assert window.isVisible()
+    assert loaded.view_models.shell.property("currentPage") == "overview"
+    loaded.key(qtbot, Qt.Key.Key_Escape)
+    assert loaded.focused().metaObject().className().startswith("AppSwitch_")
     assert loaded.warnings == []
 
 

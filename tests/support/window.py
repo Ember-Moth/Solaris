@@ -4,7 +4,7 @@ keyboard reaches and what a screen reader is told."""
 from __future__ import annotations
 
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 
 from PySide6.QtCore import QEvent, QPoint, QPointF, QRectF, Qt
@@ -48,6 +48,32 @@ def texts(item: QQuickItem) -> set[str]:
 def kind(item: QQuickItem) -> str:
     """The QML type an item was declared as, such as ``AppButton``."""
     return item.metaObject().className().split("_QML")[0]
+
+
+PAGES = frozenset(
+    {
+        "OverviewPage",
+        "ProxiesPage",
+        "ProfilesPage",
+        "RoutingPage",
+        "ConnectionsPage",
+        "LogsPage",
+        "SettingsPage",
+    }
+)
+
+
+def every_item(item: QQuickItem) -> Iterator[QQuickItem]:
+    """``item`` and everything under it, shown or not."""
+    yield item
+    for child in item.childItems():
+        yield from every_item(child)
+
+
+def pages(window: QQuickWindow) -> set[str]:
+    """The pages made in the main window, shown or not; none while it has let them go
+    (Main.qml)."""
+    return {kind(item) for item in every_item(window.contentItem())} & PAGES
 
 
 @dataclass(frozen=True)

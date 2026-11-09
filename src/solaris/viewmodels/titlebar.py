@@ -7,8 +7,8 @@ calls ``attach`` for them once it is complete.
 
 from __future__ import annotations
 
-from PySide6.QtCore import Property, QObject, QRectF, Signal, Slot
-from PySide6.QtGui import QGuiApplication, QWindow
+from PySide6.QtCore import Property, QEvent, QObject, QRect, QRectF, Qt, Signal, Slot
+from PySide6.QtGui import QGuiApplication, QPlatformSurfaceEvent, QWindow
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
 from solaris.desktop.titlebar import (
@@ -42,6 +42,7 @@ class TitleBar(QObject):
         self._maximize_hovered = False
         self._maximize_pressed = False
         self._frame: WindowsFrame | None = None
+        self._geometry: QRect | None = None  # macOS: the window's, as its native window went
 
     @Property(str, constant=True)
     def style(self) -> str:
@@ -62,13 +63,31 @@ class TitleBar(QObject):
     @Slot(QWindow)
     def attach(self, window: QWindow) -> None:
         """Do what Qt leaves to the platform for ``window``, the main window. This creates the
-        native window if it is still hidden."""
+        native window if it is still hidden. On macOS the window gives up its native window
+        while it hides (desktop/memory.py); the one Qt creates as it shows again is set up the
+        same way. Windows keeps its native window."""
         platform = QGuiApplication.platformName()
         if self._style == MAC and platform == "cocoa":
             hide_mac_title(int(window.winId()))
+            window.installEventFilter(self)
         elif self._style == WINDOWS and platform == "windows":
             self._frame = WindowsFrame(window, self, User32())
             self._frame.install()
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        """macOS: Qt creates the native window again with the frame of a window with a title
+        bar, as it did the first time (Main.qml); the window gets back the place and the size
+        it had, unless it was zoomed or full screen, which Qt restores itself."""
+        if isinstance(watched, QWindow) and isinstance(event, QPlatformSurfaceEvent):
+            surface = event.surfaceEventType()
+            if surface == QPlatformSurfaceEvent.SurfaceEventType.SurfaceAboutToBeDestroyed:
+                normal = watched.windowState() == Qt.WindowState.WindowNoState
+                self._geometry = watched.geometry() if normal else None
+            elif surface == QPlatformSurfaceEvent.SurfaceEventType.SurfaceCreated:
+                hide_mac_title(int(watched.winId()))
+                if self._geometry is not None:
+                    watched.setGeometry(self._geometry)
+        return super().eventFilter(watched, event)
 
     # -- Windows: the maximize button, seen through the system's hit test ---------------------
     @property

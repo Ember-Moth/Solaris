@@ -526,7 +526,8 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   平台调用在 `desktop/titlebar.py`，Main.qml 创建完成后调用 `attach`。
   - 窗口用 Qt 的 `ExpandedClientAreaHint` 和 `NoTitleBarBackgroundHint` 去掉系统标题栏，内容铺到上沿；
     `ApplicationWindow` 的 `topPadding` 设为 0，不按安全边距下移。Qt 按有标题栏时的外框创建窗口，窗口会高出
-    标题栏的高度，所以 Main.qml 随后把大小设回 1280 × 800。
+    标题栏的高度，所以 Main.qml 随后把大小设回 1280 × 800。macOS 上原生窗口隐藏时会销毁、显示时重建
+    （见「关闭窗口」的「隐藏时释放」），重建后由 `TitleBar` 还原。
   - 拖动和双击：侧栏顶部和页面标题栏（`PageHeader`，向上、向两侧盖住页边距）下面各垫一层 `TitleBandArea`。
     拖过阈值后调用 `startSystemMove()`，由系统移动窗口，贴靠照常；双击按 `TitleBar.doubleClickAction()`
     缩放或最小化。控件在它上面，点击归控件。页面滚动后，滚进标题带的内容不能拖动窗口，侧栏顶部始终可以。
@@ -566,6 +567,29 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
     窗口就会弹出来；所以 `app.main` 先设置 Qt 的 `QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM`
     （`dock.open_in_menu_bar`），Qt 既不把进程转为前台应用，也不请求激活。Qt 在事件循环开始后还会读它，所以
     整个进程都保留；界面启动的子进程（codesign、schtasks）不是 Qt 程序。
+  - **隐藏时释放**：窗口隐藏后界面进程仍常驻，只剩托盘或菜单栏时把只为画窗口占的内存还回去。窗口隐藏 2 秒后
+    （Main.qml 的 `releaseTimer`，窗口马上又显示、或关闭即退出时不做），Main.qml 卸下七个页面，再调用
+    `DesktopViewModel.releaseWindow`，由 `desktop/memory.py` 删除卸下的页面，回收 QML 和 Python 的垃圾，清空
+    `QPixmapCache`，临时关掉 `persistentGraphics` 和 `persistentSceneGraph` 调用 `releaseResources()`，放掉
+    场景图、字形和纹理缓存、图形设备和 Qt Quick 的图片缓存。之后仍是持久的，2 秒内隐藏又显示不必重建。
+    - macOS 上还销毁原生窗口：它的 Metal 图层一直留着画过的帧（IOSurface，30–50 MB），只有销毁才释放。
+      窗口显示时 Qt 重新创建原生窗口，又按有标题栏的外框创建；`TitleBar` 像第一次那样隐藏标题，并还原窗口原来的
+      位置和大小（最大化、全屏由 Qt 还原）。Windows 保留原生窗口，`WindowsFrame` 绑在它上面。
+    - 页面各在一个 `PageLoader` 里，`active` 跟随 Main.qml 的 `holdsPages`。`present()` 在显示窗口前同步创建
+      七个页面，第一帧就有内容；登录时隐藏启动的窗口第一次显示时才创建。`PageLoader` 不用 `Loader`：`Loader` 是
+      焦点域，Tab、Shift+Tab 经它进入页面时丢掉焦点原因，代理页靠这个原因决定落到哪一行；它的异步加载也会改变
+      页面里对象完成的先后，如策略组菜单用 `Instantiator` 插入的类型项会排到后面。侧栏、托盘、「未能断开连接」
+      对话框和授权引导不卸下。
+    - 回来时当前页（`ShellViewModel`）和 ViewModel 里的状态不变，如代理页选中的组、各页的搜索、排序和筛选；分流页
+      的标签和「从链接导入」表单由 Main.qml 的 `kept` 在卸下前记下、装上后还原，隐藏期间导入完成就不还原表单。
+      滚动位置和键盘焦点不保留。窗口上还开着对话框或菜单时不卸页面，只释放图形资源，留着用户没做完的编辑。
+    - 隐藏期间托盘菜单、「未能断开连接」对话框、授权引导和一键导入链接照常：它们先 `present()`，页面随之装上。
+      订阅更新、自动备份等定时任务在 ViewModel 里，不受影响；网状网络的状态只在分流页显示时查询，卸下后不再查。
+    - 实测（macOS，`scripts/preview.py` 的模拟宿主）：先显示再隐藏从约 232 MB 降到 135–160 MB，登录时隐藏启动从
+      145 MB 降到 103 MB，显示中不变（250–280 MB）；释放后再显示 `present()` 约 100 ms、首帧 120–160 ms，原来
+      10 ms 左右。多次显示隐藏后停在 160 MB 左右，多出的是 malloc 没还给系统的空闲页，活对象各轮之间不增长。
+      Windows 没有实测。
+      `tests/test_hidden_window.py` 检查卸下、还原和隐藏期间的对话框与链接。
 - **退出 Solaris**（D41）：托盘菜单的「退出 Solaris」、macOS 的 ⌘Q 和 Dock 的「退出」、关闭动作为 `quit` 时关闭
   窗口，都调用 `DesktopViewModel.quit`。它先经 `OverviewViewModel.disconnect_to_quit` 断开本用户的隧道：发的是与
   「断开」相同的 `Stop`，服务据此清除 `was_running`、取消睡眠唤醒恢复（architecture.md §5.2），概览页的开关照常显示

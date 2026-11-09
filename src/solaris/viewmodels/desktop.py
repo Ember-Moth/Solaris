@@ -3,6 +3,7 @@ requests to show it, and quitting.
 
 Closing the window into the tray leaves the tunnel running in the service or the system
 extension; on macOS Solaris then leaves the Dock and stays in the menu bar (desktop/dock.py).
+A moment later the window gives back the memory its pages took (desktop/memory.py).
 Quitting Solaris disconnects first (D41); only the installer's ``--quit`` and the system's
 quit at the end of the session leave the tunnel as it is (docs/ui.md §8).
 """
@@ -15,7 +16,9 @@ from collections.abc import Callable
 from PySide6.QtCore import Property, QObject, Qt, QTimer, QUrl, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QmlElement, QmlUncreatable
+from PySide6.QtQuick import QQuickWindow
 
+from solaris.desktop import memory
 from solaris.desktop.dock import ACCESSORY, REGULAR, Application, MacApplication
 from solaris.desktop.titlebar import titlebar_style
 from solaris.desktop.tray import taskbar_is_light, tray_icon
@@ -166,6 +169,13 @@ class DesktopViewModel(QObject):
         """Main.qml: the window was shown or hidden, whichever way: the menu bar's 打开主窗口,
         a second launch, an install link, the dialogs that bring it back, or closing it."""
         self._dock(shown=shown)
+
+    @Slot(QQuickWindow)
+    def releaseWindow(self, window: QQuickWindow) -> None:
+        """Main.qml, a moment after the window hid, once it has let its pages go: give back
+        the memory drawing the window took (desktop/memory.py)."""
+        if not window.isVisible():
+            memory.release(window, native=not self._windows)
 
     def _dock(self, *, shown: bool) -> None:
         """macOS: in the Dock and ⌘Tab while the window shows; while it hides, in the menu bar

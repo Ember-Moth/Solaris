@@ -14,9 +14,10 @@ from pathlib import Path
 import pytest
 from PySide6.QtCore import QCoreApplication
 from PySide6.QtGui import QGuiApplication
+from PySide6.QtQuick import QQuickWindow
 from pytestqt.qtbot import QtBot
 
-from solaris.desktop import session
+from solaris.desktop import memory, session
 from solaris.desktop.dock import ACCESSORY, QT_NO_FOREGROUND_ENV, REGULAR, open_in_menu_bar
 from solaris.desktop.instance import (
     CONNECT_TIMEOUT_MS,
@@ -327,6 +328,23 @@ def test_closing_the_window(
     assert mac.property("trayIconMask")
     assert not mac.property("showOnTrayClick")
     assert mac.property("trayIconOff").endswith("tray-template-off.svg")
+
+
+def test_hidden_the_window_gives_back_its_memory(
+    qapp: QCoreApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Main.qml asks once the window has hidden for a while and let its pages go. Windows keeps
+    the native window, which its frame is set up on (desktop/titlebar.py)."""
+    released: list[bool] = []
+    monkeypatch.setattr(memory, "release", lambda window, native: released.append(native))
+    settings = DatabaseSettingsStore(open_database(tmp_path))
+    window = QQuickWindow()
+    for platform in ("darwin", "win32"):
+        DesktopViewModel(settings, tray_available=True, platform=platform).releaseWindow(window)
+    assert released == [True, False]
+    window.show()  # shown again in the meantime
+    DesktopViewModel(settings, tray_available=True).releaseWindow(window)
+    assert released == [True, False]
 
 
 # -- macOS: the Dock while the window shows, the menu bar only while it hides -------------------
