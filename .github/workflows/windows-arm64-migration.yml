@@ -60,7 +60,7 @@ jobs:
           UV_PYTHON_ARCH: aarch64
         shell: pwsh
         run: |
-          choco install nsis --yes --no-progress
+          ./package/windows/install-nsis.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           uv sync --frozen
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

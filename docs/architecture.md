@@ -805,6 +805,8 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
     1603 一般失败、1633 不是 64 位的 Windows 10 及以上、1638 已装在别的目录。
   - 签名（D42，第 10 节）：发布构建的安装器和卸载器都由 Artifact Signing 签名，卸载器经 makensis 的 `!uninstfinalize`
     在放进安装器之前签名；安装目录里的程序在编译安装包之前签好。
+  - NSIS：工作流用 `package/windows/install-nsis.ps1` 从 Chocolatey 安装。社区源出错时 choco 什么都没装也返回成功，
+    所以脚本最多试四次，直到 `makensis` 存在并能运行，否则这一步就失败，不留到构建时才发现。
   - 验证：CI 的 `windows-installer` job 在 `windows-latest` 上构建不签名的安装包，由 `package/windows/smoke-test.ps1`
     首次安装通过 UI Automation 操作真实安装窗口，之后打开界面、静默升级、静默卸载（保留数据）、再安装、以 `/PURGE` 卸载，核对文件、服务的
     路径、启动方式、账户、恢复策略与管道监听、注册表、快捷方式、计划任务，升级和卸载时界面自己退出（退出码 0，

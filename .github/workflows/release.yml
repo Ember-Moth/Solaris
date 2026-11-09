@@ -279,7 +279,7 @@ jobs:
           go-version-file: src/core/go.mod
           cache-dependency-path: src/core/go.sum
       - name: NSIS
-        run: choco install nsis --yes --no-progress
+        run: ./package/windows/install-nsis.ps1
       - name: Install (locked)
         run: uv sync --frozen
       - uses: actions/cache@v6

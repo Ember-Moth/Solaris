@@ -410,7 +410,7 @@ jobs:
         with:
           enable-cache: true
       - name: NSIS
-        run: choco install nsis --yes --no-progress
+        run: ./package/windows/install-nsis.ps1
       - name: Build the custom Win32 surface and read-only harness
         run: uv run --frozen python scripts/build_installer_ui.py --preview --arch ${{ matrix.arch }}
       - name: Exercise installer UI and capture screenshots
@@ -461,7 +461,7 @@ jobs:
           go-version-file: src/core/go.mod
           cache-dependency-path: src/core/go.sum
       - name: NSIS
-        run: choco install nsis --yes --no-progress
+        run: ./package/windows/install-nsis.ps1
       - name: Install (locked)
         run: uv sync --frozen
       - name: Installer cleanup regression
