@@ -482,31 +482,4 @@ Item {
             }
         }
     }
-
-    // A group-style box (DESIGN.md "分组") whose rows scroll inside it. A list clips to a
-    // rectangle, so the border is drawn over the rows, with the page's background past its
-    // rounded corners: a row scrolled into a corner does not show beyond the curve.
-    component ListBox: Rectangle {
-        color: Theme.surface
-        radius: Theme.radiusMd
-
-        Rectangle {
-            z: 1
-            anchors.fill: parent
-            anchors.margins: -Theme.space1
-            radius: Theme.radiusMd + Theme.space1
-            color: "transparent"
-            border.width: Theme.space1 + 1
-            border.color: Theme.background
-        }
-
-        Rectangle {
-            z: 1
-            anchors.fill: parent
-            radius: Theme.radiusMd
-            color: "transparent"
-            border.width: 1
-            border.color: Theme.border
-        }
-    }
 }

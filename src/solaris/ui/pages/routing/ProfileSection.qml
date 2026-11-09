@@ -8,44 +8,28 @@ import "../../components"
 // 订阅自带 (docs/routing.md §4.3): the profile whose own rules route; while it runs, its
 // groups and rules, read only.
 ColumnLayout {
-    id: section
+    id: profilePane
 
     required property RoutingViewModel routing
     required property ShellViewModel shell
     required property DialogOpener opener
-    required property ScrollView view  // the page, which the rule table scrolls
+    required property real availableHeight
     readonly property ProfileRoutes profile: routing.profileRoutes
-
-    // The read-only rule table scrolls the page with the arrows.
-    function scrollBy(dy: real) {
-        const flickable = section.view.contentItem as Flickable
-        flickable.contentY = Math.max(0, Math.min(flickable.contentHeight - flickable.height, flickable.contentY + dy))
-    }
+    readonly property string query: profile.query
+    readonly property string profileId: profile.profileId
 
     spacing: Theme.space5
-    onVisibleChanged: ruleRows.place()
-    Component.onCompleted: ruleRows.place()
-
-    // The page scrolled, or what is above the rule table changed its height.
-    Connections {
-        target: section.view.contentItem as Flickable
-
-        function onContentYChanged() {
-            ruleRows.place()
-        }
-
-        function onHeightChanged() {
-            ruleRows.place()
-        }
-
-        function onContentHeightChanged() {
-            ruleRows.place()
-        }
+    onQueryChanged: ruleList.positionViewAtBeginning()
+    onProfileIdChanged: {
+        groupList.positionViewAtBeginning()
+        ruleList.positionViewAtBeginning()
     }
 
     RowLayout {
+        id: toolbar
+
         Layout.fillWidth: true
-        visible: section.profile.hasProfiles && section.profile.hasRules
+        visible: profilePane.profile.hasProfiles && profilePane.profile.hasRules
         spacing: Theme.space3
 
         UiText {
@@ -61,20 +45,20 @@ ColumnLayout {
             Layout.preferredWidth: 220
             Layout.maximumWidth: 220
             Layout.minimumWidth: 120
-            options: section.profile.options
-            current: section.profile.profileId
+            options: profilePane.profile.options
+            current: profilePane.profile.profileId
             accessibleName: qsTr("使用的订阅")
-            enabled: !section.routing.busy
-            onPicked: value => section.profile.use(value)
+            enabled: !profilePane.routing.busy
+            onPicked: value => profilePane.profile.use(value)
         }
 
         SearchField {
             Layout.preferredWidth: Math.max(180, placeholderWidth)
             implicitHeight: Theme.controlSm
-            visible: section.profile.running
+            visible: profilePane.profile.running
             placeholderText: qsTr("搜索规则")
-            text: section.profile.query
-            onTextEdited: section.profile.setQuery(text)
+            text: profilePane.profile.query
+            onTextEdited: profilePane.profile.setQuery(text)
         }
 
         Item {
@@ -85,20 +69,22 @@ ColumnLayout {
         AppButton {
             id: convertButton
 
-            visible: section.profile.profileId !== "" && section.routing.coreAvailable
+            visible: profilePane.profile.profileId !== "" && profilePane.routing.coreAvailable
             text: qsTr("以此创建我的方案")
-            enabled: !section.routing.busy && !section.routing.transfer.busy
+            enabled: !profilePane.routing.busy && !profilePane.routing.transfer.busy
             onClicked: {
-                section.opener.from(convertButton, Focus.reasonAfter(convertButton))
-                section.routing.transfer.convertProfile()
+                profilePane.opener.from(convertButton, Focus.reasonAfter(convertButton))
+                profilePane.routing.transfer.convertProfile()
             }
         }
     }
 
     AccessibleText {
+        id: transferError
+
         Layout.fillWidth: true
         visible: text !== ""
-        text: section.routing.transfer.error
+        text: profilePane.routing.transfer.error
         role: Theme.type.caption
         color: Theme.danger
         wrapMode: Text.Wrap
@@ -108,7 +94,7 @@ ColumnLayout {
     Group {
         Layout.fillWidth: true
         Layout.maximumWidth: 720
-        visible: !section.profile.hasRules
+        visible: !profilePane.profile.hasRules
 
         GroupRow {
             divider: false
@@ -119,13 +105,13 @@ ColumnLayout {
 
                 AccessibleText {
                     Layout.fillWidth: true
-                    text: section.profile.hasProfiles ? qsTr("订阅里没有规则") : qsTr("尚未导入订阅")
+                    text: profilePane.profile.hasProfiles ? qsTr("订阅里没有规则") : qsTr("尚未导入订阅")
                     role: Theme.type.labelMd
                 }
 
                 AccessibleText {
                     Layout.fillWidth: true
-                    text: section.profile.hasProfiles ? qsTr("这些订阅只有节点；改用我的方案后，它们的节点组成节点池") : qsTr("导入订阅后才能使用它的规则")
+                    text: profilePane.profile.hasProfiles ? qsTr("这些订阅只有节点；改用我的方案后，它们的节点组成节点池") : qsTr("导入订阅后才能使用它的规则")
                     role: Theme.type.caption
                     color: Theme.textMuted
                     elide: Text.ElideRight
@@ -134,12 +120,12 @@ ColumnLayout {
 
             AppButton {
                 variant: "compact"
-                text: section.profile.hasProfiles ? qsTr("改用我的方案") : qsTr("导入订阅")
+                text: profilePane.profile.hasProfiles ? qsTr("改用我的方案") : qsTr("导入订阅")
                 onClicked: {
-                    if (section.profile.hasProfiles)
-                        section.routing.setMode("plan")
+                    if (profilePane.profile.hasProfiles)
+                        profilePane.routing.setMode("plan")
                     else
-                        section.shell.setPage("profiles")
+                        profilePane.shell.setPage("profiles")
                 }
             }
         }
@@ -149,7 +135,7 @@ ColumnLayout {
     Group {
         Layout.fillWidth: true
         Layout.maximumWidth: 720
-        visible: section.profile.hasRules && !section.profile.running && section.profile.counts !== ""
+        visible: profilePane.profile.hasRules && !profilePane.profile.running && profilePane.profile.counts !== ""
 
         GroupRow {
             divider: false
@@ -157,7 +143,7 @@ ColumnLayout {
 
             AccessibleText {
                 Layout.fillWidth: true
-                text: section.profile.counts
+                text: profilePane.profile.counts
                 role: Theme.type.bodySm
                 color: Theme.textSecondary
                 elide: Text.ElideRight
@@ -165,52 +151,80 @@ ColumnLayout {
         }
     }
 
-    // The profile runs: its groups and rules, read only.
     GridLayout {
         id: sourcePanes
 
-        readonly property bool twoPanes: width >= 260 + Theme.space6 + 440
+        readonly property bool twoPanes: profilePane.width >= 260 + Theme.space6 + 440
+        readonly property real availableHeight: profilePane.availableHeight - toolbar.implicitHeight - profilePane.spacing
+                                                - (transferError.visible ? transferError.implicitHeight + profilePane.spacing : 0)
+        readonly property real stackedGroupsHeight: (availableHeight - rowSpacing
+                                                     - 2 * (groupsLabel.implicitHeight + Theme.space2)) * 2 / 5
 
         Layout.fillWidth: true
-        visible: section.profile.running
+        Layout.fillHeight: true
+        visible: profilePane.profile.running
         columns: twoPanes ? 2 : 1
         columnSpacing: Theme.space6
         rowSpacing: Theme.space5
 
         ColumnLayout {
-            Layout.preferredWidth: sourcePanes.twoPanes ? 260 : sourcePanes.width
+            Layout.preferredWidth: sourcePanes.twoPanes ? 260 : -1
             Layout.fillWidth: !sourcePanes.twoPanes
-            Layout.alignment: Qt.AlignTop
+            Layout.fillHeight: sourcePanes.twoPanes
             spacing: Theme.space2
 
             RowLayout {
                 Layout.fillWidth: true
 
                 SectionLabel {
+                    id: groupsLabel
+
                     Layout.fillWidth: true
                     text: qsTr("策略组")
                 }
 
                 UiText {
-                    text: section.profile.groupCount
+                    text: profilePane.profile.groupCount
                     role: Theme.type.caption
                     color: Theme.textMuted
                 }
             }
 
-            Group {
+            ScrollableListBox {
                 Layout.fillWidth: true
+                Layout.fillHeight: sourcePanes.twoPanes
+                Layout.minimumHeight: Theme.rowDouble + 2
+                Layout.preferredHeight: sourcePanes.twoPanes ? -1
+                                       : Math.min(groupList.count * Theme.rowDouble + 2, sourcePanes.stackedGroupsHeight)
+                activeFocusOnTab: groupList.count > 0
+                Accessible.role: Accessible.List
+                Accessible.name: qsTr("策略组")
+                list: groupList
+                rowHeight: Theme.rowDouble
 
-                Repeater {
-                    model: section.profile.groups
+                ListView {
+                    id: groupList
 
-                    GroupRow {
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    currentIndex: -1
+                    keyNavigationEnabled: false
+                    highlightFollowsCurrentItem: false
+                    reuseItems: true
+                    model: profilePane.profile.groups
+                    ScrollBar.vertical: ScrollBar {}
+
+                    delegate: GroupRow {
                         id: sourceGroup
 
                         required property int index
                         required property string name
                         required property string caption
 
+                        width: groupList.width
+                        height: implicitHeight
                         divider: index > 0
 
                         ColumnLayout {
@@ -239,7 +253,7 @@ ColumnLayout {
 
         ColumnLayout {
             Layout.fillWidth: true
-            Layout.alignment: Qt.AlignTop
+            Layout.fillHeight: true
             spacing: Theme.space2
 
             RowLayout {
@@ -251,49 +265,91 @@ ColumnLayout {
                 }
 
                 UiText {
-                    text: section.profile.ruleCount
+                    text: profilePane.profile.ruleCount
                     role: Theme.type.caption
                     color: Theme.textMuted
                 }
             }
 
-            // The read-only rule table (DESIGN.md "只读规则表"): one Tab stop; the
-            // arrows scroll the page.
-            Item {
+            ScrollableListBox {
                 id: sourceRules
 
                 Layout.fillWidth: true
-                implicitHeight: sourceRuleGroup.implicitHeight
+                Layout.fillHeight: true
+                Layout.minimumHeight: Theme.rowHeader + Theme.rowSingle + 2
                 activeFocusOnTab: true
                 Accessible.role: Accessible.Table
                 Accessible.name: qsTr("规则")
-                Accessible.focusable: true
-                Keys.onUpPressed: section.scrollBy(-36)
-                Keys.onDownPressed: section.scrollBy(36)
-                Keys.onPressed: event => {
-                    if (event.key === Qt.Key_PageUp || event.key === Qt.Key_PageDown) {
-                        section.scrollBy((event.key === Qt.Key_PageUp ? -1 : 1) * section.view.height * 0.9)
-                        event.accepted = true
+                list: ruleList
+                rowHeight: 36
+
+                Rectangle {
+                    id: ruleHeader
+
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: 1
+                    height: Theme.rowHeader
+                    color: Theme.surfaceSubtle
+                    Accessible.ignored: true
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: Theme.space4
+                        anchors.rightMargin: Theme.space4
+                        spacing: Theme.space3
+
+                        UiText {
+                            Layout.fillWidth: true
+                            text: qsTr("匹配")
+                            role: Theme.type.caption
+                            color: Theme.textMuted
+                        }
+
+                        UiText {
+                            Layout.preferredWidth: 140
+                            text: qsTr("目标")
+                            role: Theme.type.caption
+                            color: Theme.textMuted
+                        }
                     }
                 }
 
-                FocusRing {
-                    targetRadius: Theme.radiusMd
-                    visible: sourceRules.activeFocus
-                }
+                ListView {
+                    id: ruleList
 
-                Group {
-                    id: sourceRuleGroup
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: ruleHeader.bottom
+                    anchors.bottom: parent.bottom
+                    anchors.margins: 1
+                    anchors.topMargin: 0
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    currentIndex: -1
+                    keyNavigationEnabled: false
+                    highlightFollowsCurrentItem: false
+                    reuseItems: true
+                    model: profilePane.profile.rules
+                    ScrollBar.vertical: ScrollBar {}
 
-                    width: parent.width
+                    delegate: Item {
+                        id: sourceRule
 
-                    Rectangle {
-                        Layout.fillWidth: true
-                        implicitHeight: Theme.rowHeader
-                        topLeftRadius: Theme.radiusMd - 1
-                        topRightRadius: Theme.radiusMd - 1
-                        color: Theme.surfaceSubtle
-                        Accessible.ignored: true
+                        required property string match
+                        required property string target
+
+                        width: ruleList.width
+                        height: sourceRules.rowHeight
+                        Accessible.role: Accessible.Row
+                        Accessible.name: qsTr("%1，%2").arg(match).arg(target)
+
+                        Rectangle {
+                            width: parent.width
+                            height: 1
+                            color: Theme.divider
+                        }
 
                         RowLayout {
                             anchors.fill: parent
@@ -303,113 +359,67 @@ ColumnLayout {
 
                             UiText {
                                 Layout.fillWidth: true
-                                text: qsTr("匹配")
-                                role: Theme.type.caption
-                                color: Theme.textMuted
+                                text: sourceRule.match
+                                role: Theme.type.dataSm
+                                color: Theme.textSecondary
+                                elide: Text.ElideRight
                             }
 
                             UiText {
                                 Layout.preferredWidth: 140
-                                text: qsTr("目标")
-                                role: Theme.type.caption
-                                color: Theme.textMuted
+                                text: sourceRule.target
+                                role: Theme.type.bodySm
+                                elide: Text.ElideRight
                             }
-                        }
-                    }
-
-                    // As tall as all the rows, and the list in it makes only the rows the
-                    // page shows, with a screen of them on either side: a profile can bring
-                    // ten thousand rules, and a row each would hold up the window for seconds.
-                    Item {
-                        id: ruleRows
-
-                        readonly property int rowHeight: 36
-                        readonly property ProfileRoutes profile: section.profile
-
-                        // Move the list over the part of the rows in sight.
-                        function place() {
-                            const flickable = section.view.contentItem as Flickable
-                            const top = mapToItem(flickable.contentItem, 0, 0).y
-                            const total = ruleList.count * rowHeight
-                            const first = Math.floor(Math.max(0, flickable.contentY - top - flickable.height) / rowHeight)
-                            const from = Math.min(first * rowHeight, total)
-                            const to = Math.max(from, Math.min(total, flickable.contentY - top + 2 * flickable.height))
-                            ruleList.y = from
-                            ruleList.height = to - from
-                            ruleList.contentY = ruleList.originY + from
-                        }
-
-                        Layout.fillWidth: true
-                        implicitHeight: ruleList.count * rowHeight
-                        onHeightChanged: place()
-
-                        ListView {
-                            id: ruleList
-
-                            width: parent.width
-                            interactive: false
-                            currentIndex: -1
-                            keyNavigationEnabled: false
-                            highlightFollowsCurrentItem: false
-                            reuseItems: true
-                            model: ruleRows.profile.rules
-                            onOriginYChanged: ruleRows.place()
-
-                            delegate: Item {
-                                id: sourceRule
-
-                                required property string match
-                                required property string target
-
-                                width: ruleList.width
-                                height: ruleRows.rowHeight
-                                Accessible.role: Accessible.Row
-                                Accessible.name: qsTr("%1，%2").arg(match).arg(target)
-
-                                Rectangle {
-                                    width: parent.width
-                                    height: 1
-                                    color: Theme.divider
-                                }
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: Theme.space4
-                                    anchors.rightMargin: Theme.space4
-                                    spacing: Theme.space3
-
-                                    UiText {
-                                        Layout.fillWidth: true
-                                        text: sourceRule.match
-                                        role: Theme.type.dataSm
-                                        color: Theme.textSecondary
-                                        elide: Text.ElideRight
-                                    }
-
-                                    UiText {
-                                        Layout.preferredWidth: 140
-                                        text: sourceRule.target
-                                        role: Theme.type.bodySm
-                                        elide: Text.ElideRight
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    GroupRow {
-                        visible: section.profile.rulesEmpty
-                        rowHeight: Theme.rowSingle
-
-                        AccessibleText {
-                            Layout.fillWidth: true
-                            text: qsTr("没有匹配的规则")
-                            role: Theme.type.bodySm
-                            color: Theme.textMuted
                         }
                     }
                 }
+
+                GroupRow {
+                    anchors.left: ruleList.left
+                    anchors.right: ruleList.right
+                    anchors.top: ruleList.top
+                    height: implicitHeight
+                    visible: profilePane.profile.rulesEmpty
+                    rowHeight: Theme.rowSingle
+
+                    AccessibleText {
+                        Layout.fillWidth: true
+                        text: qsTr("没有匹配的规则")
+                        role: Theme.type.bodySm
+                        color: Theme.textMuted
+                    }
+                }
             }
+        }
+    }
+
+    component ScrollableListBox: ListBox {
+        id: box
+
+        required property ListView list
+        required property int rowHeight
+
+        function scrollBy(dy: real) {
+            const first = list.originY
+            const last = Math.max(first, first + list.contentHeight - list.height)
+            list.contentY = Math.max(first, Math.min(last, list.contentY + dy))
+        }
+
+        Accessible.focusable: activeFocusOnTab
+        Keys.onUpPressed: scrollBy(-rowHeight)
+        Keys.onDownPressed: scrollBy(rowHeight)
+        Keys.onPressed: event => {
+            if (event.key === Qt.Key_PageUp || event.key === Qt.Key_PageDown) {
+                scrollBy((event.key === Qt.Key_PageUp ? -1 : 1) * list.height * 0.9)
+                event.accepted = true
+            }
+        }
+
+        FocusRing {
+            z: 2
+            targetRadius: Theme.radiusMd
+            visible: box.activeFocus
         }
     }
 }

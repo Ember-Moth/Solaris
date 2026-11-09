@@ -89,9 +89,13 @@ ScrollView {
 
     ColumnLayout {
         width: page.availableWidth
+        height: profileSection.visible && profileSection.profile.running
+                ? Math.max(page.availableHeight, implicitHeight) : implicitHeight
         spacing: Theme.space5
 
         PageHeader {
+            id: pageHeader
+
             Layout.fillWidth: true
             Layout.topMargin: Theme.titlebarPageTop
             Layout.leftMargin: Theme.pageX
@@ -115,7 +119,10 @@ ScrollView {
 
         // -- 订阅自带 ----------------------------------------------------------------------
         ProfileSection {
+            id: profileSection
+
             Layout.fillWidth: true
+            Layout.fillHeight: profileSection.profile.running
             Layout.leftMargin: Theme.pageX
             Layout.rightMargin: Theme.pageX
             Layout.bottomMargin: Theme.pageBottom
@@ -123,7 +130,8 @@ ScrollView {
             routing: page.routing
             shell: page.shell
             opener: dialogOpener
-            view: page
+            availableHeight: page.availableHeight - pageHeader.implicitHeight
+                             - Theme.titlebarPageTop - Theme.pageBottom - Theme.space5
         }
 
         // -- 我的方案 ----------------------------------------------------------------------

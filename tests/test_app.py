@@ -772,8 +772,9 @@ def test_a_profile_with_thousands_of_rules_makes_only_the_rows_in_sight(
     assert 0 < len(shown) < 200
     assert loaded.on_screen(shown["DOMAIN-SUFFIX,site0.example.com"])
     # Scrolled to the end, the last rows are made in their place.
-    flickable = page.property("contentItem")
-    flickable.setProperty("contentY", flickable.property("contentHeight") - flickable.height())
+    _, rule_list = find_all(page, lambda i: i.metaObject().className() == "QQuickListView")
+    end = rule_list.property("originY") + rule_list.property("contentHeight") - rule_list.height()
+    rule_list.setProperty("contentY", end)
     qtbot.wait(50)
     shown = made()
     assert len(shown) < 200
