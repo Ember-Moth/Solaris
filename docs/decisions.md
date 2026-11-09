@@ -1,6 +1,6 @@
 # 决策
 
-本文记录 Solaris 的设计决策。代码注释和其他文档按编号引用它们（如"D19"），所以编号不变、不重用；新的决策从 D45
+本文记录 Solaris 的设计决策。代码注释和其他文档按编号引用它们（如"D19"），所以编号不变、不重用；新的决策从 D46
 接着编号。每条只写结论，理由和细节在"详见"一栏的文档里。
 
 ## 待决策
@@ -17,7 +17,7 @@
 | D4 | 覆写只做 Merge，不做 Script；一份全局覆写，加上每份订阅各一份 | [ui.md](ui.md) §4、[architecture.md](architecture.md) §3.2 |
 | D5 | 属主注销时停止隧道，下次登录后恢复 | [architecture.md](architecture.md) §5.4 |
 | D5b | Windows 上别的用户的隧道在运行时，管理员经 UAC 确认后可以接管：停掉对方的隧道、写回对方的系统代理，自己成为属主；不是管理员只能等对方断开或注销。界面经 UAC 启动服务自己的接管辅助进程（`solaris-service.exe -take-over`），服务凭客户端 token 里启用的 Administrators 组认定管理员 | [architecture.md](architecture.md) §5.4、[ui.md](ui.md) §8 |
-| D6 | 订阅一键导入注册 `solaris://install-config?url=…` 和 `clash://install-config` | [release.md](release.md) §7 |
+| D6 | 订阅一键导入注册 `solaris://install-config?url=…` 和 `clash://install-config`（另见 D45） | [release.md](release.md) §7 |
 | D7 | macOS 的配置和 Windows 一样，经控制协议的 `Start` / `Reload` 传入，不经 `startVPNTunnel(options:)` | [architecture.md](architecture.md) §6.2 |
 | D8 | 不给 provider message 分片：配置照旧用一条消息经 `Start` / `Reload` 发给系统扩展。单条消息的上限在测试 Mac 上用大配置核实，真带不动时再重新决定 | [architecture.md](architecture.md) §6.3 |
 | D9 | 提供深色主题；深色的颜色先在 DESIGN.md 里定义，再由它生成 | [ui.md](ui.md) §6、[DESIGN.md](../DESIGN.md)"深色" |
@@ -56,3 +56,4 @@
 | D42 | Windows 发布用 Azure Artifact Signing（原 Trusted Signing）签名，取代 D29。发布工作流经 GitHub OIDC 以 `release` 环境专用的托管标识登录 Azure（不选订阅），用 signtool 和 Artifact Signing 的 dlib 给安装目录里没有发布者签名的 exe、dll、pyd，以及安装界面插件、卸载器和安装器签名并加时间戳，任一步失败整个任务失败；dlib 只有 x86、x64 版，ARM64 runner 在 x64 仿真下运行它们。证书有效期只有几天、每天轮换，签名者只按证书主题里经验证的组织名 `Herta Network LLC` 和这个证书配置文件专属的 EKU 识别，不认具体证书或中间 CA：发布构建的服务（`SignedRelease`）这样校验界面，更新器这样校验下载的安装包 | [release.md](release.md) §1、§3、[architecture.md](architecture.md) §5.3、§10 |
 | D43 | 1.0.0 之后的版本，GitHub Release 不再上传源代码包 `Solaris-<版本>-source.tar.gz`，只有三个安装包和 `SHA256SUMS`。对应的源代码在哪里，由发布说明的「源代码与许可」和 NOTICES 的开头写明：Solaris 是本仓库的 `v<版本>` 标签；mihomo 是 `github.com/Ember-Moth/mihomo` 上由这个标签的 `src/core/go.mod` 里 `replace` 固定的提交；其他 Go 模块（包括 Ember-Moth 的 cronet-go、sing-snell）的版本和校验和由 `go.mod`、`go.sum` 固定，从 Go 模块代理（默认 `proxy.golang.org`）取得；GitHub 给每个 Release 自动附带的"Source code"只有本仓库的代码。理由：项目公开，clone 仓库就能拿到源代码；源代码包约 492 MB，大头是 `go mod vendor` 带进来的 cronet-go 各平台预编译库，每个版本都要再传一份。GPL 方面：做法对应 GPL-3.0 第 6 条 d 项，不随二进制附带源代码，而是在二进制旁边写明对应源代码在哪个网络服务器上，并保证在需要的期限内一直可以取得。取舍是源代码不再是一个自足的文件，而是分在三处：本仓库的标签、mihomo 分支的固定提交和 Go 模块代理，从 v1.0.0 起这三处都一直可以取得。前两处由本项目保管，`v*` 标签和 mihomo 分支上被引用过的提交不删除；Go 模块代理是第三方服务，不归本项目控制，而第 6 条 d 项写明源代码不论放在谁的服务器上，保证可以取得的仍是发布者，所以代理上取不到某个模块时要由本项目另行提供。已发布的 1.0.0 Release 和它的源代码包保留不动：1.0.0 的 NOTICES 指向那个文件 | [release.md](release.md) §1、§5 |
 | D44 | 1.0.0 之后，mihomo 增强版改在上游 `Alpha` 分支之上维护：Ember-Moth/mihomo 的 `Alpha` 分支是上游 `Alpha` 加上本项目的提交（Naive、AnyTLS + REALITY、REALITY 握手对齐、VLESS 反向代理、运行状态与 GEO 读取的同步修复），Solaris 的 replace 固定到其中的提交。Snell 改用上游的原生实现（含 v6），去掉 sing-snell，配置参数与上游一致：v6 模式是 `mode`，没有 `user-key`，v5 按 v4 连接，v6 不支持 http/tls 混淆。改用前确认没有用户在用 Snell，所以不做旧参数的兼容。代价是内核包含上游尚未正式发布的改动，升级时随上游 `Alpha` 变基。1.0.0 引用的 `Meta` 分支提交保留不动（D43） | [mihomo-fork.md](mihomo-fork.md)、[architecture.md](architecture.md) |
+| D45 | 一键导入另外注册 `mihomo://install-config`（Clash Party）和 `clashmeta://install-config`（Clash Meta for Android、FlClash、Remnawave 的订阅页），格式、解析和处理与 `clash://` 相同：macOS 写进 `Info.plist`，Windows 安装器写在 HKLM，卸载时只删仍指向本程序的键。深链仍只预填导入表单，由用户按「导入」，不自动导入（任何网页都能打开这种链接）。Windows 上用户自己 HKCU 的注册优先于 HKLM：界面启动时检查四个 scheme 在 HKCU 的打开命令，只在它指向的程序不存在（而所在的盘存在）时删除这个用户级的键，让 Solaris 在 HKLM 的注册生效，并记日志写明 scheme 和原来的命令；指向仍存在的程序时不动，判断不了的命令也不动。不采纳「最后安装的客户端接管」：不覆盖用户仍然有效的选择，网页要指定 Solaris 时用 `solaris://` | [release.md](release.md) §6、§7 |

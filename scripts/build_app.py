@@ -57,7 +57,7 @@ MINIMUM_MACOS = "26.0"  # Product floor (D28), independent of individual library
 # Not "Solaris": the volume is case-insensitive, and Contents/MacOS/solaris holds the package's
 # data (ui/, translations/) where the compiled modules look for it.
 EXECUTABLE = "SolarisUI"
-URL_SCHEMES = ("solaris", "clash")  # one-click import (D6); the UI handles the links
+URL_SCHEMES = ("solaris", "clash", "mihomo", "clashmeta")  # one-click import (D6, D45): links.py
 CORE_VERSION_KEY = "SolarisCoreVersion"  # read by solaris.host.extension.bundled_host
 MIHOMO_MODULE = "github.com/metacubex/mihomo"
 NUITKA_VERSION = "4.2.2"

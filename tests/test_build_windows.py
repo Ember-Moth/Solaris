@@ -20,6 +20,7 @@ import yaml
 
 from scripts import build_installer_ui, build_windows
 from scripts.build_apple import BuildError
+from solaris.desktop.links import SCHEMES
 
 
 def _pe(machine: int) -> bytes:
@@ -392,6 +393,38 @@ def test_the_installer_script_signs_both_programs_or_fails() -> None:
     )
     assert f"!uninstfinalize {command}" in block
     assert f"!finalize {command}" in block
+
+
+def _macro(script: str, name: str) -> str:
+    start = script.index(f"!macro {name} ")
+    return script[start : script.index("!macroend", start)]
+
+
+def test_the_installer_registers_every_install_link_scheme() -> None:
+    # One-click import (D6, D45): every scheme links.py takes, as the smoke test checks.
+    script = build_windows.INSTALLER_SCRIPT.read_text(encoding="utf-8")
+    registered = re.findall(r"^\s*!insertmacro RegisterScheme (\S+)$", script, re.MULTILINE)
+    unregistered = re.findall(r"^\s*!insertmacro UnregisterScheme (\S+)$", script, re.MULTILINE)
+    assert registered == unregistered == list(SCHEMES)
+    # Installing writes HKLM over another client's registration there, opening this install.
+    register = _macro(script, "RegisterScheme")
+    command = "Software\\Classes\\${SCHEME}\\shell\\open\\command"
+    assert f'WriteRegStr HKLM "{command}" "" \'${{LINK_COMMAND}}\'' in register
+    assert 'WriteRegStr HKLM "Software\\Classes\\${SCHEME}" "URL Protocol" ""' in register
+    assert '!define LINK_COMMAND \'"$INSTDIR\\${CLIENT}" "%1"\'' in script
+    # Uninstalling deletes only a key that still opens this installation; an upgrade keeps it.
+    unregister = _macro(script, "UnregisterScheme")
+    assert f'ReadRegStr $0 HKLM "{command}" ""' in unregister
+    assert "${If} $0 == '${LINK_COMMAND}'" in unregister
+    assert 'DeleteRegKey HKLM "Software\\Classes\\${SCHEME}"' in unregister
+    assert "HKCU" not in register + unregister  # the user's own: the UI's (associations.py)
+    uninstall = script[script.index('Section "!un.${PRODUCT}"') :]
+    upgrade_returns = uninstall.index("Return")
+    assert all(uninstall.index(f"UnregisterScheme {s}") > upgrade_returns for s in SCHEMES)
+    # The CI smoke test checks the same list on a real install and uninstall.
+    smoke_test = (build_windows.SIGN_SCRIPT.parent / "smoke-test.ps1").read_text(encoding="utf-8")
+    (listed,) = re.findall(r"^\$Schemes = @\((.*)\)$", smoke_test, re.MULTILINE)
+    assert [name.strip().strip("'") for name in listed.split(",")] == list(SCHEMES)
 
 
 @REQUIRES_NSIS

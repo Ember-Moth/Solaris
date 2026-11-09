@@ -8,8 +8,8 @@
 「关于」分组（[ui.md](ui.md) 第 8 节）。面向用户的材料：README 的"下载与安装"、[PRIVACY.md](../PRIVACY.md) 和发布
 说明的模板 `.github/release-notes.md`。
 
-Windows 安装包由 Azure Artifact Signing 签名（D42），更新时核对校验和与签名者（第 3 节）。`solaris:` 和 `clash:` 两个 scheme 由打包向
-系统注册（macOS 的 Info.plist，Windows 安装器写在 HKLM，第 6 节）。
+Windows 安装包由 Azure Artifact Signing 签名（D42），更新时核对校验和与签名者（第 3 节）。`solaris:`、`clash:`、`mihomo:`、
+`clashmeta:` 四个 scheme 由打包向系统注册（macOS 的 Info.plist，Windows 安装器写在 HKLM，第 6 节）。
 
 Windows 安装器采用自定义 Win32 界面（D39），由 MSVC 编译为 NSIS 的 x86 Unicode 插件；它只随安装器/卸载器
 解压到临时目录，不成为应用运行时依赖。界面按实际步骤显示进度，外观见 [DESIGN.md](../DESIGN.md)「Windows 安装器」。原有静默参数保留，发布冒烟测试同时覆盖交互安装和静默升级/卸载。ARM64 上该 x86 安装引导由系统仿真运行，安装后的应用与服务原生运行。
@@ -252,31 +252,49 @@ GitHub 把正文里的换行原样显示，所以模板的段落不折行；除 
 - Google OAuth 客户端不进仓库：环境变量 `SOLARIS_GOOGLE_CLIENT_ID`、`SOLARIS_GOOGLE_CLIENT_SECRET` 都设了时，两个构建
   脚本把它写成 `build/<平台>/google_client.json`，以 `--include-data-files` 放到 `solaris/google_client.json`；只设了一个
   时构建失败（storage.md 第 4 节）。
-- `solaris:` 和 `clash:` 两个 scheme 由打包注册：macOS 在 `Info.plist` 的 `CFBundleURLTypes` 里，Windows
-  由安装器写在 HKLM 的 `Software\Classes\solaris` 和 `Software\Classes\clash` 下，命令是
-  `"<安装目录>\Solaris.exe" "%1"`。写在 HKLM 而不是 HKCU：安装器以管理员身份运行，这个管理员不一定是使用者本人。
-  `clash:` 可能已被其他客户端注册：安装时覆盖 HKLM 里的（用户自己 HKCU 里的仍优先），卸载时只删除仍指向本程序的键。
+- `solaris:`、`clash:`、`mihomo:`、`clashmeta:` 四个 scheme（`links.SCHEMES`，D6、D45）由打包注册：macOS 在
+  `Info.plist` 的 `CFBundleURLTypes` 里（`scripts/build_app.py` 的 `URL_SCHEMES`），Windows 由安装器写在 HKLM 的
+  `Software\Classes\<scheme>` 下，命令是 `"<安装目录>\Solaris.exe" "%1"`。写在 HKLM 而不是 HKCU：安装器以管理员
+  身份运行，这个管理员不一定是使用者本人。后三个可能已被其他客户端注册：安装时覆盖 HKLM 里的，卸载时只删除仍指向
+  本程序的键。
+- 用户自己 HKCU 的 `Software\Classes\<scheme>` 优先于 HKLM。别的客户端删除后可能在那里留下一个打开命令指向已经
+  不存在的程序的键，Windows 打开这个 scheme 的链接时就报「找不到应用程序」，Solaris 收不到链接。界面在 Windows 上
+  启动时（以这个用户身份运行，`desktop/associations.py`，D45）在后台线程里对四个 scheme 逐个检查 HKCU 的
+  `<scheme>\shell\open\command`：
+  - 按 CreateProcess 的规则找出命令里的程序：带引号的到右引号为止；不带引号的依次是到每个空格为止的一段，路径
+    含空格时每段都算；没有扩展名的加上 `.exe`。先展开 `%NAME%` 形式的环境变量（REG_EXPAND_SZ 和 REG_SZ 都展开）。
+  - 只有这些路径都不存在、而它所在的盘存在时，才删除整个 HKCU `Software\Classes\<scheme>` 键，让 HKLM 里 Solaris 的
+    注册生效；删除时记一条警告日志，写明 scheme 和原来的命令。
+  - 程序仍然存在（用户装着的其他客户端）时不动：不抢占用户有效的选择，「最后安装的接管」不采纳。键或命令不存在时
+    也不动。
+  - 判断不了的命令不动，记一条警告日志：不是完整的本地路径（只有文件名、要在 PATH 里找，或盘符相对、UNC 网络
+    路径）、引号不配对、含有未设置的变量或文件名不能有的字符、不是字符串的值；盘本身不在（未插入的移动盘、未连接的
+    映射盘）、读注册表或文件出错时也一样。
+  - 只在 Windows 自己的 Qt 平台（`windows`）上做；macOS、Linux 和测试用的 `offscreen` 平台不碰注册表。只有拿到
+    单实例锁的界面做，转交链接后退出的第二个界面不做。
 
 ## 7. 一键导入
 
-服务商网站上的「一键导入」按钮打开 `solaris://install-config?url=<订阅链接>&name=<名称>`，或 Clash 系客户端通用的
-`clash://install-config?url=…&name=…`（D6）。代码在 `src/solaris/desktop/links.py`。
+服务商网站上的「一键导入」按钮打开 `solaris://install-config?url=<订阅链接>&name=<名称>`，或其他客户端注册的同样
+格式的链接：Clash 系客户端通用的 `clash://`（D6）、Clash Party 的 `mihomo://`、Clash Meta for Android 和 FlClash 的
+`clashmeta://`（Remnawave 的订阅页也生成这种，D45）。后三个也可能由别的客户端注册，网页要指定 Solaris 时用
+`solaris://`。代码在 `src/solaris/desktop/links.py`。
 
-- **解析**：scheme 是 `solaris` 或 `clash`（不区分大小写），主机是 `install-config`（允许末尾的 `/`）；查询参数按
-  `application/x-www-form-urlencoded` 解码，`url` 必填，`name` 可选（去掉首尾空白，最长 100 个字符）。`url` 必须是
-  http 或 https 的链接。不符合的链接视为无法识别。没有编码的 `&` 会把订阅链接截断，这种链接无法正确识别，与其他
-  客户端相同。
+- **解析**：scheme 是 `solaris`、`clash`、`mihomo` 或 `clashmeta`（不区分大小写），主机是 `install-config`
+  （允许末尾的 `/`）；查询参数按 `application/x-www-form-urlencoded` 解码，`url` 必填，`name` 可选（去掉首尾空白，
+  最长 100 个字符）。`url` 必须是 http 或 https 的链接。不符合的链接视为无法识别。没有编码的 `&` 会把订阅链接截断，
+  这种链接无法正确识别，与其他客户端相同。
 - **到达**：
   - macOS：LaunchServices 发来 Apple Event，Qt 把它转成应用对象上的 `QFileOpenEvent`（`url()` 是这个链接）。
     `links.LinkReceiver` 是装在应用对象上的事件过滤器，从 `app.main` 一开始就装好；冷启动时链接可能在界面加载
     之前到达，先存着，界面加载后再交出。
-  - Windows：安装器注册的命令把链接作为命令行参数传入，`app.main` 从 `sys.argv` 里取第一个 `solaris:` 或
-    `clash:` 开头的参数。
+  - Windows：安装器注册的命令把链接作为命令行参数传入，`app.main` 从 `sys.argv` 里取第一个以这四个 scheme 之一
+    开头的参数。用户自己 HKCU 里失效的注册会挡住安装器的注册，界面启动时清除（第 6 节）。
   - 已经有界面在运行时，后来的界面把链接转发给它（ui.md 第 8 节"单实例"），然后退出。
 - **处理**（`ViewModels.open_link`）：显示并激活窗口，切到订阅页，打开"从链接导入"的表单，填好订阅链接和名称，
   焦点放在订阅链接上，由用户检查后按「导入」。之后走正常的导入流程：下载、`inspect_source`、校验，失败照常写在
   表单里。正在导入时到达的链接被忽略。无法识别的链接也显示窗口和订阅页，标题栏写「无法识别的导入链接」。
-- 链接只预填表单，不会自动导入：任何网页都能打开这个链接，必须由用户确认。
+- 链接只预填表单，不会自动导入：任何网页都能打开这个链接，必须由用户确认。四个 scheme 都一样（D45）。
 
 ## 8. 测试
 
@@ -291,7 +309,13 @@ GitHub 把正文里的换行原样显示，所以模板的段落不折行；除 
   Windows 安装包在确认框里写明未签名和"未知发布者"；诊断 zip
   的内容，订阅链接、名称、路径、覆写原文和方案内容不出现在任何文件里，设置项全部归了类；许可证列表与搜索。
 - `tests/test_licenses.py`：见第 5 节。
-- `tests/test_links.py`：两种 scheme 的解析和拒绝；第二个界面把链接转交给第一个；`QFileOpenEvent`；打开订阅页、
-  预填表单、焦点在订阅链接上、没有自动导入。
+- `tests/test_links.py`：四种 scheme 的解析（大小写、末尾的 `/`）和拒绝（缺 `url`、别的主机或 scheme）；命令行和
+  `QFileOpenEvent` 收到每种 scheme 的链接；第二个界面把链接转交给第一个；打开订阅页、预填表单、焦点在订阅链接上、
+  没有自动导入。
+- `tests/test_associations.py`：在假的注册表和文件系统上清除 HKCU 失效注册的规则（带引号、不带引号、带参数、
+  环境变量、程序在与不在、盘不在、键不存在、判断不了、读写出错），以及只在 Windows 的 Qt 平台上运行；Windows 上另用
+  一个临时键测真实的读取和删除。`tests/test_build_windows.py` 核对安装器注册、卸载的 scheme 与 `links.SCHEMES`
+  一致，`tests/test_apple.py` 核对 `Info.plist` 的 `CFBundleURLTypes`。CI 的 `smoke-test.ps1` 在真实安装上检查
+  四个 scheme 的注册和卸载，并确认界面启动时删除指向不存在程序的 HKCU 注册、保留指向存在程序的。
 - 组装整个界面的测试和预览都不连 GitHub：测试用 `offline_updater`，`scripts/preview.py` 用回环地址上的假发布，
   `--update` 时它比当前版本新。

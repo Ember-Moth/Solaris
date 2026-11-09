@@ -1,8 +1,10 @@
 """Install links: a provider's 一键导入 button (docs/release.md §7, decision D6).
 
-``solaris://install-config?url=<subscription>&name=<name>``, or the Clash clients' common
-``clash://install-config?url=…``, fills in the import form; the user imports from there.
-Any web page can open such a link, so it never imports by itself.
+``solaris://install-config?url=<subscription>&name=<name>``, or the same with the schemes
+other clients take: the Clash clients' common ``clash:``, and (D45) ``mihomo:`` (Clash Party)
+and ``clashmeta:`` (Clash Meta for Android, FlClash, Remnawave's subscription page), fills in
+the import form; the user imports from there. Any web page can open such a link, so it never
+imports by itself.
 
 A link arrives as a command-line argument on Windows (the installer registers the scheme),
 as an Apple Event on macOS, which Qt turns into a QFileOpenEvent on the application, or
@@ -22,7 +24,7 @@ from PySide6.QtGui import QFileOpenEvent
 from solaris.models.profiles import ProfileError
 from solaris.models.subscription import check_url
 
-SCHEMES = ("solaris", "clash")
+SCHEMES = ("solaris", "clash", "mihomo", "clashmeta")  # registered by the packaging
 ACTION = "install-config"
 MAX_NAME = 100
 MAX_LINK = 8192  # longer is no subscription link

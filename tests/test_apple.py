@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 
 from scripts import build_app, build_apple, build_dmg, macos
+from solaris.desktop.links import SCHEMES
 
 MANAGER = build_apple.APPLE / "Manager"
 NATIVE_MACOS = pytest.mark.skipif(
@@ -47,6 +48,34 @@ def test_app_minimum_keeps_product_floor_and_stricter_dependencies(
 
     monkeypatch.setattr(build_app, "_output", output)
     assert build_app.check_ui(bundle) == expected
+
+
+def test_the_app_registers_every_install_link_scheme(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # One-click import (D6, D45): LaunchServices opens Solaris for each scheme links.py takes.
+    def ditto(command: list[str | Path], **_: object) -> None:
+        assert command[0] == "ditto"
+        source, target = Path(command[1]), Path(command[2])
+        shutil.copytree(source, target, symlinks=True, dirs_exist_ok=True)
+
+    monkeypatch.setattr(build_app, "BUILD", tmp_path / "build")
+    monkeypatch.setattr(build_app, "_run", ditto)
+    ui = tmp_path / "SolarisUI.app"
+    (ui / "Contents").mkdir(parents=True)
+    (ui / "Contents" / "Info.plist").write_bytes(plistlib.dumps({"CFBundleExecutable": "ui"}))
+    dylib = tmp_path / "SolarisManager.framework"
+    dylib.mkdir()
+    extension = tmp_path / "Tunnel.systemextension"
+    (extension / "Contents").mkdir(parents=True)
+    (extension / "Contents" / "Info.plist").write_bytes(plistlib.dumps({"CFBundleVersion": "7"}))
+    app = build_app.assemble(ui, dylib, extension, "1.0.1", "core", "26.0")
+    info = plistlib.loads((app / "Contents" / "Info.plist").read_bytes())
+    assert info["CFBundleURLTypes"] == [
+        {"CFBundleURLName": build_apple.APP_ID, "CFBundleURLSchemes": list(SCHEMES)}
+    ]
+    assert SCHEMES == ("solaris", "clash", "mihomo", "clashmeta")
+    assert info["CFBundleVersion"] == "7"
 
 
 def test_universal_ui_checks_the_minimum_and_dependencies_in_both_slices(

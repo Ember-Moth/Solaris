@@ -139,8 +139,8 @@ VIAddVersionKey /LANG=${LANG_ENGLISH} "LegalCopyright" "GPL-3.0-only"
   WriteRegStr HKLM "Software\Classes\${SCHEME}\shell\open\command" "" '${LINK_COMMAND}'
 !macroend
 
-; Another client may have registered clash: since; leave the scheme alone unless it still
-; opens this installation.
+; Another client may have registered clash:, mihomo: or clashmeta: since; leave the scheme
+; alone unless it still opens this installation.
 !macro UnregisterScheme SCHEME
   ReadRegStr $0 HKLM "Software\Classes\${SCHEME}\shell\open\command" ""
   ${If} $0 == '${LINK_COMMAND}'
@@ -263,10 +263,13 @@ Section
   WriteRegDWORD HKLM "${UNINSTALL_KEY}" "NoRepair" 1
   ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
   WriteRegDWORD HKLM "${UNINSTALL_KEY}" "EstimatedSize" $0
-  ; In HKLM: the installer runs as an administrator who may not be the user. A clash: key in
-  ; a user's own HKCU, from another client, still wins for that user.
+  ; In HKLM: the installer runs as an administrator who may not be the user. A key in a
+  ; user's own HKCU, from another client, still wins for that user; the UI removes one whose
+  ; program no longer exists when that user starts it (D45).
   !insertmacro RegisterScheme solaris
   !insertmacro RegisterScheme clash
+  !insertmacro RegisterScheme mihomo
+  !insertmacro RegisterScheme clashmeta
   CreateShortcut "$SMPROGRAMS\${PRODUCT}.lnk" "$INSTDIR\${CLIENT}"
 
   ; Created, or pointed at this installation again, and started; it restores the tunnel
@@ -355,6 +358,8 @@ Section "!un.${PRODUCT}" UninstallProgram
   !insertmacro Setup remove-tasks
   !insertmacro UnregisterScheme solaris
   !insertmacro UnregisterScheme clash
+  !insertmacro UnregisterScheme mihomo
+  !insertmacro UnregisterScheme clashmeta
   Delete "$SMPROGRAMS\${PRODUCT}.lnk"
   DeleteRegKey HKLM "${UNINSTALL_KEY}"
   !insertmacro UiStep 2
