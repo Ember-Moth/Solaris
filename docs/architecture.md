@@ -244,9 +244,9 @@ Solaris 保留 `github.com/metacubex/mihomo` 导入路径，通过 go.mod replac
 [Ember-Moth/mihomo](https://github.com/Ember-Moth/mihomo) 的明确版本（D38）。内核和原生依赖版本以
 [`src/core/go.mod`](../src/core/go.mod) 与 go.sum 为准，状态和许可证清单使用实际替换版本。
 用户侧参数及示例见 [mihomo 配置指南](mihomo-fork.md)。
-Snell v4/v5 改由 sing-snell 实现，保留 v1–v3，并增加 v6、`user-key` 与 `version6-mode`；这些字段在订阅和自定义方案中保留。
-Snell v3–v6 的 UDP 经 TCP 承载，不支持 v5 QUIC proxy；v4/v5 数据报仍受单条记录的载荷上限约束。
-v6 模式需与服务端一致，显式 `unsafe-raw` 模式不提供加密及 PSK 验证；默认模式不变。Cronet Go 绑定与 sing-snell 使用 Ember-Moth 的 MetaCubeX/sing 适配版本；
+分支建在上游的 `Alpha` 分支上（D44），Snell v1–v6 用上游的实现：v5 按 v4 连接，v6 的 `mode` 需与服务端一致，
+显式 `unsafe-raw` 模式不提供加密及 PSK 验证；v3–v6 的 UDP 经 TCP 承载，不支持 v5 QUIC proxy。
+Cronet Go 绑定使用 Ember-Moth 的 MetaCubeX/sing 适配版本；
 Cronet 原生库由 `Ember-Moth/cronet-go/all` 的模块依赖选定。
 Windows 的绝对路径加载必须调用同一套 Ember-Moth 绑定，不能混入旧 SagerNet Go 绑定的加载状态。
 

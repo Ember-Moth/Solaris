@@ -91,12 +91,12 @@ func TestForkSnellSurvivesAdmissionAndComposition(t *testing.T) {
 				}
 				var retained []string
 				if sample.version >= 4 {
-					node["user-key"], node["reuse"] = "test-user-key", true
-					retained = append(retained, "user-key: test-user-key", "reuse: true")
+					node["reuse"] = true
+					retained = append(retained, "reuse: true")
 				}
 				if sample.mode != "" {
-					node["version6-mode"] = sample.mode
-					retained = append(retained, "version6-mode: "+sample.mode)
+					node["mode"] = sample.mode
+					retained = append(retained, "mode: "+sample.mode)
 				}
 				admitted, err := admitProfile(forkProfile(t, node, composed), noTUN)
 				if err != nil {
@@ -122,7 +122,12 @@ func TestForkSnellSurvivesAdmissionAndComposition(t *testing.T) {
 			version int
 			key     string
 			value   any
-		}{{3, "user-key", "test-user-key"}, {5, "version6-mode", "unshaped"}, {6, "version6-mode", "invalid"}, {6, "psk", "short"}} {
+		}{
+			{5, "mode", "unshaped"},
+			{6, "mode", "invalid"},
+			{6, "psk", "short"},
+			{6, "obfs-opts", map[string]any{"mode": "tls"}},
+		} {
 			node := map[string]any{
 				"name": "node", "type": "snell", "server": "127.0.0.1", "port": 443,
 				"psk": "test-snell-password", "version": sample.version,

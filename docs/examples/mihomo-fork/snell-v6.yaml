@@ -9,11 +9,9 @@ proxies:
     port: 44046
     psk: 'CHANGE_ME_SNELL_PSK'
     version: 6
-    version6-mode: default
+    mode: default
     udp: false
     reuse: false
-    # 多用户服务端需要时取消注释并填写；不需要时保持注释。
-    # user-key: 'CHANGE_ME_USER_KEY'
 
 proxy-groups:
   - name: PROXY

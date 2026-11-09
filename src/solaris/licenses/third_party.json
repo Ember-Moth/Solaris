@@ -414,7 +414,7 @@
     },
     {
       "name": "github.com/Ember-Moth/mihomo",
-      "version": "v1.19.33-0.20261103155416-c2de0f865c7e",
+      "version": "v1.19.33-0.20261109111141-2ca4a5328ae5",
       "license": "GPL-3.0-only",
       "kind": "go",
       "url": "https://github.com/Ember-Moth/mihomo",
@@ -423,18 +423,8 @@
       ]
     },
     {
-      "name": "github.com/Ember-Moth/sing-snell",
-      "version": "v0.0.0-20261103142549-a3b26775de24",
-      "license": "GPL-3.0-or-later",
-      "kind": "go",
-      "url": "https://github.com/Ember-Moth/sing-snell",
-      "notices": [
-        34
-      ]
-    },
-    {
       "name": "github.com/enfein/mieru/v3",
-      "version": "v3.38.1",
+      "version": "v3.39.0",
       "license": "GPL-3.0-only",
       "kind": "go",
       "url": "https://github.com/enfein/mieru",
@@ -946,7 +936,7 @@
     },
     {
       "name": "github.com/metacubex/sing",
-      "version": "v0.5.8",
+      "version": "v0.5.9",
       "license": "GPL-3.0-or-later",
       "kind": "go",
       "url": "https://github.com/metacubex/sing",
@@ -996,7 +986,7 @@
     },
     {
       "name": "github.com/metacubex/sing-tun",
-      "version": "v0.4.28",
+      "version": "v0.4.29",
       "license": "GPL-3.0-or-later",
       "kind": "go",
       "url": "https://github.com/metacubex/sing-tun",
@@ -1076,7 +1066,7 @@
     },
     {
       "name": "github.com/metacubex/tfo-go",
-      "version": "v0.0.0-20260623020846-376a77860b8c",
+      "version": "v0.0.0-20261026151606-08d83ec08c84",
       "license": "MIT",
       "kind": "go",
       "url": "https://github.com/metacubex/tfo-go",

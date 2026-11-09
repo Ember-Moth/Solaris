@@ -60,7 +60,6 @@ Solaris 使用 [mihomo 增强版](https://github.com/Ember-Moth/mihomo)内核，
 
 - **Naive**：支持 HTTP/2、QUIC，以及兼容服务端上的 UoT。
 - **AnyTLS + REALITY**：支持使用 REALITY 的 AnyTLS 节点。
-- **Snell v4–v6**：支持用户密钥和连接复用，v6 可选择与服务端一致的传输模式。
 
 节点怎么配置、哪些参数需要服务端支持，以及完整 YAML 示例，见 [mihomo 增强版配置指南](docs/mihomo-fork.md)。
 

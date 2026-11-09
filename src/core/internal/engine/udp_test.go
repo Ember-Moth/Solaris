@@ -440,12 +440,6 @@ func udpNodes(credentials nodeCredentials) []udpNode {
 			inbound:  map[string]any{"type": "snell", "psk": snellPSK, "version": version, "udp": true},
 			outbound: map[string]any{"type": "snell", "psk": snellPSK, "version": version, "udp": true},
 		}
-		if version == 4 || version == 5 {
-			// sing-snell paces v4 and v5 records like Surge: a datagram must fit the current
-			// record, which grows by 1421 bytes a record and falls back to 1421 after 31 seconds
-			// without one. The record also holds the command and the target address.
-			node.maxPayload, node.windowed = 1421-1-7, true
-		}
 		nodes = append(nodes, node)
 	}
 	return nodes

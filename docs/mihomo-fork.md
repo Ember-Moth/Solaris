@@ -8,7 +8,7 @@
 | Naive | `type: naive`，HTTP/2、HTTP/3/QUIC、可选 UoT | Naive 兼容服务端；QUIC、UoT 分别需要服务端支持 |
 | AnyTLS + REALITY | AnyTLS 节点可以使用 `reality-opts` | 同时支持 AnyTLS 协议和 REALITY 的端点 |
 | REALITY 握手 | 版本标识对齐 `26.10.29`，默认保留指纹中的 X25519MLKEM768 | 服务端的版本策略和密钥交换能力需要匹配 |
-| Snell v4–v6 | 支持 v4、v5、v6，包含 v6 模式和 `user-key` | 与客户端相同的版本、PSK、模式及用户密钥设置 |
+| Snell v4–v6 | 使用上游 mihomo 的实现，支持 v4、v5、v6 和 v6 模式 | 与客户端相同的版本、PSK 和模式 |
 | VLESS 反向代理 | `type: vless-reverse` 虚拟入站，经 VLESS 节点回连公网端 | 公网端配置反向 VLESS 用户和同名 `vless-reverse` 出站 |
 
 使用完整的 Solaris 安装包，以获得配套的协议支持。
@@ -172,7 +172,7 @@ reality-opts:
 
 ## Snell v4、v5、v6
 
-**务必显式填写 `version`。** 省略它仍按 v1 处理，不会自动协商到 v6。
+Snell 使用上游 mihomo 的实现，参数与上游一致。**务必显式填写 `version`。** 省略它仍按 v1 处理，不会自动协商到 v6。
 
 v4 / v5 的最小节点示例：
 
@@ -186,11 +186,9 @@ proxies:
     version: 4
     udp: false
     reuse: false
-    # 多用户服务端需要时再填写
-    # user-key: 'CHANGE_ME_USER_KEY'
 ```
 
-使用 v5 服务端时改为 `version: 5`。这里的 v5 支持 TCP 传输和 UDP-over-TCP，不包含 Snell v5 QUIC proxy。
+Snell v5 服务端兼容 v4 客户端，填写 `version: 5` 时按 v4 协议连接，不包含 Snell v5 QUIC proxy。
 
 v6 节点示例：
 
@@ -202,26 +200,23 @@ proxies:
     port: 44046
     psk: 'CHANGE_ME_SNELL_PSK'
     version: 6
-    version6-mode: default
+    mode: default
     udp: false
     reuse: false
-    # user-key: 'CHANGE_ME_USER_KEY'
 ```
 
 | 参数 | 规则 |
 | --- | --- |
-| `version` | 支持 `1`–`6`，默认 `1`；v4/v5/v6 使用 sing-snell |
+| `version` | 支持 `1`–`6`，默认 `1`；`5` 按 v4 连接 |
 | `psk` | 与服务端一致；v6 要求 12–255 字节 |
-| `user-key` | v4/v5/v6 的可选用户密钥，与服务端对应；最多 255 字节；不替代 `psk` |
 | `reuse` | v4/v5/v6 可选，默认 `false`；需要 TCP 连接复用时设为 `true`。v2 始终启用复用 |
 | `udp` | 默认 `false`；v3–v6 可设为 `true`，同时需要服务端支持 UDP-over-TCP；v1/v2 不支持 |
-| `version6-mode` | 仅 v6 可用，可选 `default`、`unshaped`、`unsafe-raw`，必须与服务端匹配 |
-| `obfs-opts` | 可选，需与服务端一致；保留 `http`、`tls`、`shadow-tls`、`restls`、`jls` 的配置方式 |
+| `mode` | 仅 v6 可用，可选 `default`、`unshaped`、`unsafe-raw`，必须与服务端匹配；其他版本填写会被拒绝 |
+| `obfs-opts` | 可选，需与服务端一致；`http`、`tls`、`shadow-tls`、`restls`、`jls`，其中 v6 不支持 `http` 和 `tls` |
 
-先用默认 `version6-mode: default` 验证。`unshaped` 保留加密，但去掉默认的记录填充，需要服务端使用相同设置。
+先用默认 `mode: default` 验证。`unshaped` 保留加密，但去掉默认的记录填充，需要服务端使用相同设置。
 **`unsafe-raw` 不提供加密和 PSK 验证，不要把它当成常规加密代理配置。**
 
-v4/v5 的 UDP 数据报受当前记录载荷窗口限制，过大的单个数据报会被拒绝；打开 `udp: true` 不会消除该限制。
 已有 v1–v3 节点不需要为了升级内核而改版本。仅在服务端也已升级时切换客户端的 `version`。
 
 ## VLESS 反向代理
