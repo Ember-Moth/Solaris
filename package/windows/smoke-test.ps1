@@ -5,9 +5,11 @@
 #     ./package/windows/smoke-test.ps1 -Installer build/windows/Solaris-<version>-windows-x64-setup.exe
 #
 # 1. A fresh install: files, service (LocalSystem, automatic, restarts on failure, listening),
-#    the uninstall entry, the solaris: and clash: schemes, the Start menu shortcut.
+#    the uninstall entry, the solaris:, clash:, mihomo: and clashmeta: schemes, the Start
+#    menu shortcut.
 # 2. Solaris.exe --quit with no UI running does nothing; the installed UI starts and opens its
-#    window.
+#    window, and removes the user's own clash: registration that opens a program no longer
+#    there while it keeps a mihomo: one whose program exists (D45).
 # 3. The same installer again, over the running UI: the UI quits when asked (not ended), and
 #    the upgrade restarts the service from the new files.
 # 4. Uninstall over the running UI, which quits likewise: no service, task, registration,
@@ -45,6 +47,8 @@ $Shortcut = Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\So
 $ServiceName = 'SolarisService'
 $Pipe = 'ProtectedPrefix\Administrators\solaris'
 $LinkCommand = "`"$Client`" `"%1`""
+# One-click import (D6, D45): src/solaris/desktop/links.py SCHEMES.
+$Schemes = @('solaris', 'clash', 'mihomo', 'clashmeta')
 $ServiceData = Join-Path $env:ProgramData 'Solaris'
 $UserData = Join-Path $env:LOCALAPPDATA 'Solaris'
 $DumpRoot = 'HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps'
@@ -206,7 +210,7 @@ function Assert-Installed {
     $entry = Get-ItemProperty -LiteralPath $UninstallKey
     Expect ($entry.InstallArchitecture -eq $Architecture) "The uninstall entry has the wrong architecture: $($entry.InstallArchitecture)"
     Expect ($entry.DisplayVersion -eq $Version -and $entry.InstallLocation -eq $Root) "The uninstall entry says $($entry.DisplayVersion) in $($entry.InstallLocation)"
-    foreach ($scheme in 'solaris', 'clash') {
+    foreach ($scheme in $Schemes) {
         $key = "HKLM:\Software\Classes\$scheme"
         $command = (Get-ItemProperty -LiteralPath "$key\shell\open\command").'(default)'
         Expect ($command -eq $LinkCommand) "${scheme}: opens $command"
@@ -253,7 +257,7 @@ function Assert-Removed {
     }
     Expect (-not (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue)) "$ServiceName is still there"
     Expect (-not (Test-Path -LiteralPath $UninstallKey)) 'The uninstall entry is still there'
-    foreach ($scheme in 'solaris', 'clash') {
+    foreach ($scheme in $Schemes) {
         Expect (-not (Test-Path -LiteralPath "HKLM:\Software\Classes\$scheme")) "${scheme}: is still registered"
     }
     $shortcuts = Find-Shortcuts
@@ -322,6 +326,17 @@ function Assert-QuitByItself([string] $During) {
     Expect (-not (Test-Path -LiteralPath $UiLock)) "The UI left $UiLock behind during $During"
 }
 
+# A link registration in the user's own HKCU, as another client makes one; REG_EXPAND_SZ, as
+# some do.
+function Set-UserScheme([string] $Scheme, [string] $Command) {
+    $key = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey("Software\Classes\$Scheme\shell\open\command")
+    try {
+        $key.SetValue('', $Command, [Microsoft.Win32.RegistryValueKind]::ExpandString)
+    } finally {
+        $key.Dispose()
+    }
+}
+
 function Register-Task([string] $Name, [string] $Program) {
     $user = "$($env:USERDOMAIN)\$($env:USERNAME)"
     $action = New-ScheduledTaskAction -Execute $Program -Argument '--background'
@@ -354,8 +369,20 @@ try {
         Expect $false 'Solaris.exe --quit took more than 30 seconds with no UI running'
     }
     Expect (-not (Test-Path -LiteralPath $UserData)) "Solaris.exe --quit made $UserData"
+    $staleKey = 'HKCU:\Software\Classes\clash'
+    $validKey = 'HKCU:\Software\Classes\mihomo'
+    Set-UserScheme 'clash' "`"$env:SystemDrive\Removed Client\Removed Client.exe`" `"%1`""
+    Set-UserScheme 'mihomo' '"%SystemRoot%\System32\cmd.exe" "%1"'
     Start-UI
     Expect (Test-Path -LiteralPath $UserData) "The UI made no $UserData"
+    # The UI looks in the background as it starts.
+    $deadline = [DateTime]::UtcNow.AddSeconds(15)
+    while ((Test-Path -LiteralPath $staleKey) -and [DateTime]::UtcNow -lt $deadline) {
+        Start-Sleep -Milliseconds 250
+    }
+    Expect (-not (Test-Path -LiteralPath $staleKey)) 'The UI left the HKCU clash: registration of a program that is gone'
+    Expect (Test-Path -LiteralPath "$validKey\shell\open\command") 'The UI removed the HKCU mihomo: registration of a program that exists'
+    Remove-Item -LiteralPath $validKey -Recurse -ErrorAction SilentlyContinue
     if ($Signed) { Assert-UIAccepted }
 
     Write-Output '3. Upgrade over the running UI'

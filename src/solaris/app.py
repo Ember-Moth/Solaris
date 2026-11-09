@@ -15,6 +15,7 @@ from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickWindow
 
 from solaris import __version__
+from solaris.desktop.associations import clear_stale_in_background
 from solaris.desktop.dock import open_in_menu_bar
 from solaris.desktop.instance import SingleInstance, ask_to_quit
 from solaris.desktop.links import LinkReceiver, from_arguments
@@ -179,6 +180,8 @@ def main(
     instance = SingleInstance(directory)
     if not instance.claim(link):
         return 0  # the UI already running shows its window, or opens the link
+    # Windows: a stale link registration in the user's own HKCU hides Solaris's (D45).
+    clear_stale_in_background(app.platformName())
     store = store or ProfileStore(directory)
     settings = DatabaseSettingsStore(store.database)
     translations = Translations(app)

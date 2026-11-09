@@ -1,4 +1,4 @@
-"""Install links (docs/release.md §7): parsing both schemes, the ways a link arrives, and the
+"""Install links (docs/release.md §7): parsing every scheme, the ways a link arrives, and the
 import form it fills in."""
 
 from __future__ import annotations
@@ -16,7 +16,14 @@ from PySide6.QtGui import QFileOpenEvent
 from pytestqt.qtbot import QtBot
 
 from solaris.desktop.instance import ACTIVATE, SingleInstance, message
-from solaris.desktop.links import InstallLink, LinkReceiver, from_arguments, parse
+from solaris.desktop.links import (
+    SCHEMES,
+    InstallLink,
+    LinkReceiver,
+    from_arguments,
+    is_link,
+    parse,
+)
 from solaris.models.store import ProfileStore
 from solaris.viewmodels.composition import ViewModels, compose
 from tests.support.releases import offline_updater
@@ -33,6 +40,11 @@ ENCODED = quote(SUBSCRIPTION, safe="")
         (f"solaris://install-config?url={ENCODED}&name=%E6%9C%BA%E5%9C%BA", ("机场",)),
         (f"clash://install-config?url={ENCODED}", ("",)),
         (f"CLASH://Install-Config/?url={ENCODED}&name=Hi", ("Hi",)),
+        # Clash Party's, and Clash Meta for Android's, FlClash's and Remnawave's (D45).
+        (f"mihomo://install-config?url={ENCODED}&name=Party", ("Party",)),
+        (f"clashmeta://install-config?url={ENCODED}&name=%E6%9C%BA%E5%9C%BA", ("机场",)),
+        (f"MiHoMo://INSTALL-CONFIG/?url={ENCODED}", ("",)),
+        (f"ClashMeta://install-config/?name=Meta&url={ENCODED}", ("Meta",)),
         (f"solaris://install-config?name=+%20Spaced%20+&url={ENCODED}", ("Spaced",)),
         (f"solaris://install-config?url={ENCODED}&name=a%0Ab%09c", ("abc",)),
         (f"solaris://install-config?url={ENCODED}&name={'x' * 150}", ("x" * 100,)),
@@ -53,6 +65,15 @@ def test_parse(link: str, parsed: tuple[str]) -> None:
         "solaris://install-config?url=file%3A%2F%2F%2Fetc%2Fpasswd",
         "solaris://install-config?url=javascript%3Aalert(1)",
         "clash://install-config?url=ftp%3A%2F%2Fexample.com%2Fsub",
+        "mihomo://install-config?name=only",
+        "clashmeta://install-config",
+        "clashmeta://install-config/",
+        f"mihomo://install-config/more?url={ENCODED}",
+        f"clashmeta://import?url={ENCODED}",
+        f"meta://install-config?url={ENCODED}",  # schemes Solaris does not take
+        f"clash-meta://install-config?url={ENCODED}",
+        f"clashmetax://install-config?url={ENCODED}",
+        "clashmeta:",
         f"solaris://install-config?url={ENCODED}&name={'x' * 9000}",  # too long
         "solaris:",
         "",
@@ -69,11 +90,29 @@ def test_unencoded_ampersands_cut_the_link() -> None:
     assert parsed.url == "https://sub.example.com/api/v1/client/subscribe?token=abc"
 
 
+def test_every_scheme_in_any_case_is_a_link() -> None:
+    assert SCHEMES == ("solaris", "clash", "mihomo", "clashmeta")
+    for scheme in SCHEMES:
+        for spelling in (scheme, scheme.upper(), scheme.capitalize()):
+            link = f"{spelling}://install-config?url={ENCODED}"
+            assert is_link(link)
+            assert parse(link) == InstallLink(SUBSCRIPTION, "")
+    assert not is_link(f"install-config?url={ENCODED}")
+
+
 def test_link_from_the_command_line() -> None:
     link = f"solaris://install-config?url={ENCODED}"
     assert from_arguments(["--background", link, "clash://other"]) == link
     assert from_arguments(["--background"]) is None
     assert from_arguments(["solaris" + "x" * 9000 + ":"]) is None
+
+
+@pytest.mark.parametrize("scheme", ["mihomo", "clashmeta", "MIHOMO", "ClashMeta"])
+def test_the_command_line_takes_the_other_clients_schemes(scheme: str) -> None:
+    # As Windows starts Solaris for a link: the registered command's "%1".
+    link = f"{scheme}://install-config?url={ENCODED}&name=Mine"
+    assert from_arguments(["--background", link]) == link
+    assert from_arguments([f"{scheme}x://install-config?url={ENCODED}"]) is None
 
 
 def test_the_message_a_later_ui_sends() -> None:
@@ -128,6 +167,27 @@ def test_the_system_opens_a_link(qtbot: QtBot) -> None:
     app.removeEventFilter(receiver)
 
 
+@pytest.mark.parametrize("scheme", ["mihomo", "clashmeta"])
+def test_the_system_opens_the_other_clients_links(qtbot: QtBot, scheme: str) -> None:
+    # macOS: on a launch that the link started, and to the UI already running.
+    app = QCoreApplication.instance()
+    assert app is not None
+    receiver = LinkReceiver(app)
+    seen: list[str] = []
+    receiver.received.connect(seen.append)
+    link = f"{scheme}://install-config?url={ENCODED}&name=Mine"
+    QCoreApplication.sendEvent(app, QFileOpenEvent(QUrl(link)))
+    assert seen == []
+    receiver.ready()
+    QCoreApplication.sendEvent(
+        app, QFileOpenEvent(QUrl(f"{scheme.upper()}://install-config?url=x"))
+    )
+    assert len(seen) == 2
+    assert parse(seen[0]) == InstallLink(SUBSCRIPTION, "Mine")
+    assert seen[1].lower() == f"{scheme}://install-config?url=x"
+    app.removeEventFilter(receiver)
+
+
 @pytest.fixture
 def built(qtbot: QtBot, tmp_path: Path) -> Iterator[ViewModels]:
     store = ProfileStore(tmp_path)
@@ -140,11 +200,12 @@ def built(qtbot: QtBot, tmp_path: Path) -> Iterator[ViewModels]:
     view_models.shutdown()
 
 
-def test_a_link_fills_in_the_import_form(qtbot: QtBot, built: ViewModels) -> None:
+@pytest.mark.parametrize("scheme", SCHEMES)
+def test_a_link_fills_in_the_import_form(qtbot: QtBot, built: ViewModels, scheme: str) -> None:
     shown: list[bool] = []
     built.desktop.showWindowRequested.connect(lambda: shown.append(True))
     with qtbot.waitSignal(built.profiles.importPrefilled):
-        built.open_link(f"solaris://install-config?url={ENCODED}&name=%E6%9C%BA%E5%9C%BA")
+        built.open_link(f"{scheme}://install-config?url={ENCODED}&name=%E6%9C%BA%E5%9C%BA")
     assert shown == [True]
     assert built.shell.currentPage == "profiles"
     assert built.profiles.property("prefillUrl") == SUBSCRIPTION
