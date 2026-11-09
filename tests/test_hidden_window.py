@@ -1,9 +1,11 @@
 """The window lets its pages go while it hides in the tray or the menu bar, and loads them again
 as it shows (docs/ui.md §8, "隐藏时释放"). The offscreen platform has no tray; the window behaves
-as with one. It gives up its native window there as on macOS."""
+as with one. It gives up its native window there as on macOS, except when the tests run on
+Windows: DesktopViewModel keeps the native window on Windows (desktop/memory.py)."""
 
 from __future__ import annotations
 
+import sys
 import time
 from collections.abc import Iterator
 from pathlib import Path
@@ -62,6 +64,8 @@ class Surfaces(QObject):
 
 CREATED = QPlatformSurfaceEvent.SurfaceEventType.SurfaceCreated
 DESTROYED = QPlatformSurfaceEvent.SurfaceEventType.SurfaceAboutToBeDestroyed
+# Windows keeps its native window, whose frame is set up once (desktop/titlebar.py).
+GIVES_UP_NATIVE = sys.platform != "win32"
 
 
 def test_hidden_the_window_lets_its_pages_go_and_shows_them_as_they_were(
@@ -95,7 +99,7 @@ def test_hidden_the_window_lets_its_pages_go_and_shows_them_as_they_were(
     qtbot.waitUntil(lambda: not window.property("holdsPages"), timeout=5000)
     assert pages(window) == set()
     assert not shiboken6.isValid(routing)  # deleted, not just hidden
-    assert surfaces.events == [DESTROYED]
+    assert surfaces.events == ([DESTROYED] if GIVES_UP_NATIVE else [])
 
     view_models.desktop.showWindow()
     # The pages are there for the window's first frame.
@@ -103,7 +107,7 @@ def test_hidden_the_window_lets_its_pages_go_and_shows_them_as_they_were(
     assert pages(window) == PAGES
     assert shell.property("currentPage") == "routing"
     assert page(loaded, "RoutingPage").property("tab") == "groups"
-    assert surfaces.events == [DESTROYED, CREATED]
+    assert surfaces.events == ([DESTROYED, CREATED] if GIVES_UP_NATIVE else [])
     shell.setPage("profiles")
     assert loaded.item(lambda item: item.property("text") == LINK)
     shell.setPage("proxies")
