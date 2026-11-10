@@ -58,6 +58,8 @@ ApplicationWindow {
             holdsPages = false
         }
         desktopViewModel.releaseWindow(window)
+        // The sidebar, the caption buttons and the pages a dialog kept draw their shapes anew.
+        Graphics.renew()
     }
 
     width: Theme.windowDefaultWidth

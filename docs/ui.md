@@ -572,6 +572,13 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
     `DesktopViewModel.releaseWindow`，由 `desktop/memory.py` 删除卸下的页面，回收 QML 和 Python 的垃圾，清空
     `QPixmapCache`，临时关掉 `persistentGraphics` 和 `persistentSceneGraph` 调用 `releaseResources()`，放掉
     场景图、字形和纹理缓存、图形设备和 Qt Quick 的图片缓存。之后仍是持久的，2 秒内隐藏又显示不必重建。
+    - 用 CurveRenderer 画的 `Shape`（`Icon`、Windows 的 `CaptionButtons`、流量图 `TrafficChart`）释放后重新创建：
+      Qt 6.12 的 CurveRenderer 只在路径变化时生成场景图节点，已经画过的 `Shape` 在显示时新建的场景图上什么也不画，
+      侧栏的标记和导航图标、标题栏按钮因此变空白（#45），窗口上开着对话框而留下的页面也一样。三处各把 `Shape` 放在
+      一个 `Loader` 里，`active` 跟随单例 `Graphics.shapes`；Main.qml 在 `releaseWindow` 之后调用 `Graphics.renew()`，
+      趁窗口隐藏全部重建一次，macOS 销毁原生窗口、Windows 保留原生窗口两条路都经过这里。不改用 `GeometryRenderer`：
+      它的抗锯齿要另开多重采样，图标边缘会变。测试用的 offscreen 平台走软件场景图，没有这个问题，
+      `tests/test_hidden_window.py` 检查这些 `Shape` 是新建的，并且画出了像素。
     - macOS 上还销毁原生窗口：它的 Metal 图层一直留着画过的帧（IOSurface，30–50 MB），只有销毁才释放。
       窗口显示时 Qt 重新创建原生窗口，又按有标题栏的外框创建；`TitleBar` 像第一次那样隐藏标题，并还原窗口原来的
       位置和大小（最大化、全屏由 Qt 还原）。Windows 保留原生窗口，`WindowsFrame` 绑在它上面。

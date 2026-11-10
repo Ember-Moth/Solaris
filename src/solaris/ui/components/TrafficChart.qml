@@ -35,31 +35,37 @@ Item {
         }
     }
 
-    Shape {
+    // Made again after the window gives its graphics back (Graphics.qml): the window keeps the
+    // overview while a dialog is open on it, and the lines change only with traffic.
+    Loader {
         anchors.fill: parent
-        preferredRendererType: Shape.CurveRenderer
+        active: Graphics.shapes
 
-        ShapePath {
-            strokeColor: Theme.primary
-            strokeWidth: 1.5
-            fillColor: "transparent"
-            joinStyle: ShapePath.RoundJoin
-            capStyle: ShapePath.RoundCap
+        sourceComponent: Shape {
+            preferredRendererType: Shape.CurveRenderer
 
-            PathPolyline {
-                path: chart.points(chart.down)
+            ShapePath {
+                strokeColor: Theme.primary
+                strokeWidth: 1.5
+                fillColor: "transparent"
+                joinStyle: ShapePath.RoundJoin
+                capStyle: ShapePath.RoundCap
+
+                PathPolyline {
+                    path: chart.points(chart.down)
+                }
             }
-        }
 
-        ShapePath {
-            strokeColor: Theme.chartUpload
-            strokeWidth: 1.5
-            fillColor: "transparent"
-            joinStyle: ShapePath.RoundJoin
-            capStyle: ShapePath.RoundCap
+            ShapePath {
+                strokeColor: Theme.chartUpload
+                strokeWidth: 1.5
+                fillColor: "transparent"
+                joinStyle: ShapePath.RoundJoin
+                capStyle: ShapePath.RoundCap
 
-            PathPolyline {
-                path: chart.points(chart.up)
+                PathPolyline {
+                    path: chart.points(chart.up)
+                }
             }
         }
     }
