@@ -8,17 +8,19 @@ from __future__ import annotations
 import sys
 import time
 from collections.abc import Iterator
+from functools import partial
 from pathlib import Path
 
 import pytest
 import shiboken6
-from PySide6.QtCore import QEvent, QMetaObject, QObject, Qt
-from PySide6.QtGui import QPlatformSurfaceEvent
+from PySide6.QtCore import QEvent, QMetaObject, QObject, QRectF, Qt
+from PySide6.QtGui import QAccessible, QImage, QPlatformSurfaceEvent
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuick import QQuickItem, QQuickWindow
 from pytestqt.qtbot import QtBot
 
 from solaris.app import load_ui
+from solaris.desktop.titlebar import MAC, WINDOWS
 from solaris.host.base import HostError
 from solaris.models.store import ProfileStore
 from solaris.viewmodels.appearance import Appearance
@@ -26,7 +28,7 @@ from solaris.viewmodels.composition import compose
 from tests.support.i18n import ui_language
 from tests.support.releases import offline_updater
 from tests.support.simulated import SimulatedFetcher, SimulatedHost, seed_profiles
-from tests.support.window import PAGES, Loaded, kind, pages
+from tests.support.window import PAGES, Accessible, Loaded, accessible, every_item, kind, pages
 
 LINK = "https://sub.example.com/a"
 
@@ -60,6 +62,32 @@ class Surfaces(QObject):
         if isinstance(event, QPlatformSurfaceEvent):
             self.events.append(event.surfaceEventType())
         return super().eventFilter(watched, event)
+
+
+def shapes(item: QQuickItem) -> list[QQuickItem]:
+    """The shapes under ``item``, shown or not: Icon's, CaptionButtons' and TrafficChart's."""
+    return [found for found in every_item(item) if found.inherits("QQuickShape")]
+
+
+def renewed(before: list[QQuickItem], after: list[QQuickItem]) -> bool:
+    """``after`` are as many shapes as ``before``, and all of them new."""
+    return len(after) == len(before) > 0 and not any(a is b for a in after for b in before)
+
+
+def gone(items: list[QQuickItem]) -> bool:
+    """Every one of ``items`` deleted."""
+    return not any(shiboken6.isValid(item) for item in items)
+
+
+def ink(image: QImage, item: QQuickItem) -> int:
+    """How many pixels of ``item``'s area in ``image``, a grab of its window, differ from the
+    one at the area's top left corner."""
+    ratio = image.devicePixelRatio()
+    area = item.mapRectToScene(QRectF(0, 0, item.width(), item.height()))
+    left, top = round(area.left() * ratio), round(area.top() * ratio)
+    right, bottom = round(area.right() * ratio), round(area.bottom() * ratio)
+    corner = image.pixel(left, top)
+    return sum(image.pixel(x, y) != corner for x in range(left, right) for y in range(top, bottom))
 
 
 CREATED = QPlatformSurfaceEvent.SurfaceEventType.SurfaceCreated
@@ -128,10 +156,17 @@ def test_a_dialog_left_open_keeps_its_page(qtbot: QtBot, loaded: Loaded) -> None
     QMetaObject.invokeMethod(dialog, "open")
     qtbot.waitUntil(lambda: dialog.property("opened"))
 
+    drawn = shapes(window.contentItem())
+    (chart,) = [item for item in every_item(window.contentItem()) if kind(item) == "TrafficChart"]
+    chart_drawn = shapes(chart)
+
     window.close()
     release(loaded)
     assert window.property("holdsPages")
     assert shiboken6.isValid(profiles)
+    # The pages it keeps draw their shapes anew too, the overview's traffic lines among them.
+    assert renewed(drawn, shapes(window.contentItem()))
+    assert renewed(chart_drawn, shapes(chart))
     loaded.view_models.desktop.showWindow()
     assert dialog.property("opened")
 
@@ -140,6 +175,65 @@ def test_a_dialog_left_open_keeps_its_page(qtbot: QtBot, loaded: Loaded) -> None
     window.close()
     release(loaded)
     assert not window.property("holdsPages")
+    assert loaded.warnings == []
+
+
+@pytest.fixture(params=[MAC, WINDOWS])
+def style(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> str:
+    """The window's title bar in this style, whatever system the tests run on, as in
+    test_titlebar.py. Request it before ``loaded``."""
+    monkeypatch.setattr("solaris.viewmodels.desktop.titlebar_style", lambda _: request.param)
+    return request.param
+
+
+@pytest.mark.usefixtures("screen_reader")
+def test_the_sidebar_and_the_caption_buttons_draw_their_shapes_anew(
+    qtbot: QtBot, style: str, loaded: Loaded
+) -> None:
+    """Issue #45: once the window gave its graphics back, Qt Quick's curve renderer drew nothing
+    with the shapes the window keeps, the sidebar's mark and tabs and Windows' caption buttons.
+    The window makes them again. The offscreen platform draws with the software scene graph,
+    which would draw the old shapes too: here they must be new ones, and draw."""
+    view_models, window = loaded.view_models, loaded.window
+    desktop = view_models.desktop
+    in_the_tray(loaded)
+    desktop._windows = style == WINDOWS  # which keeps its native window (desktop/memory.py)
+    qtbot.waitUntil(lambda: view_models.overview.property("connected"))  # every page's tab
+    sidebar = loaded.item(lambda item: kind(item) == "Sidebar")
+    (buttons,) = [
+        item for item in every_item(window.contentItem()) if kind(item) == "CaptionButtons"
+    ]
+    icons = [item for item in every_item(sidebar) if kind(item) == "Icon"]
+    assert len(icons) == 8  # the mark and seven tabs
+    if style == WINDOWS:
+        icons += buttons.childItems()
+    tabs = [item for item in every_item(sidebar) if kind(item) == "NavItem"]
+
+    def told() -> list[tuple[Accessible, int]]:
+        """What a screen reader is told of each tab, and how many parts it reads in it."""
+        return [
+            (accessible(tab), QAccessible.queryAccessibleInterface(tab).childCount())
+            for tab in tabs
+        ]
+
+    before_told = told()
+    tabs[1].forceActiveFocus()
+    surfaces = Surfaces(window)
+
+    for _ in range(3):
+        before = shapes(sidebar) + shapes(buttons)
+        surfaces.events.clear()
+        window.close()
+        release(loaded)
+        assert renewed(before, shapes(sidebar) + shapes(buttons))
+        qtbot.waitUntil(partial(gone, before))  # once the event loop deletes them
+        assert surfaces.events == ([] if style == WINDOWS else [DESTROYED])
+
+        desktop.showWindow()
+        image = window.grabWindow()
+        assert [ink(image, icon) > 0 for icon in icons] == [True] * len(icons)
+        assert told() == before_told
+        assert tabs[1].hasFocus()
     assert loaded.warnings == []
 
 

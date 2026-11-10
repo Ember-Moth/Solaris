@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Shapes
 
@@ -12,31 +13,36 @@ Item {
     implicitHeight: size
     Accessible.ignored: true
 
-    Shape {
-        width: 24
-        height: 24
-        scale: icon.size / 24
-        transformOrigin: Item.TopLeft
-        preferredRendererType: Shape.CurveRenderer
+    // Made again after the window gives its graphics back (Graphics.qml).
+    Loader {
+        active: Graphics.shapes
 
-        ShapePath {
-            strokeColor: icon.color
-            strokeWidth: 2
-            fillColor: "transparent"
-            capStyle: ShapePath.RoundCap
-            joinStyle: ShapePath.RoundJoin
+        sourceComponent: Shape {
+            width: 24
+            height: 24
+            scale: icon.size / 24
+            transformOrigin: Item.TopLeft
+            preferredRendererType: Shape.CurveRenderer
 
-            PathSvg {
-                path: Icons.paths[icon.name] ?? ""
+            ShapePath {
+                strokeColor: icon.color
+                strokeWidth: 2
+                fillColor: "transparent"
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+
+                PathSvg {
+                    path: Icons.paths[icon.name] ?? ""
+                }
             }
-        }
 
-        ShapePath {
-            strokeColor: "transparent"
-            fillColor: icon.color
+            ShapePath {
+                strokeColor: "transparent"
+                fillColor: icon.color
 
-            PathSvg {
-                path: Icons.fills[icon.name] ?? ""
+                PathSvg {
+                    path: Icons.fills[icon.name] ?? ""
+                }
             }
         }
     }

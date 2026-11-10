@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Shapes
@@ -32,19 +33,24 @@ Row {
         Accessible.name: text
 
         contentItem: Item {
-            Shape {
+            // Made again after the window gives its graphics back (Graphics.qml).
+            Loader {
                 anchors.centerIn: parent
                 width: 10
                 height: 10
-                preferredRendererType: Shape.CurveRenderer
+                active: Graphics.shapes
 
-                ShapePath {
-                    strokeColor: control.closes && (control.lit || control.held) ? "white" : Theme.text
-                    strokeWidth: 1
-                    fillColor: "transparent"
+                sourceComponent: Shape {
+                    preferredRendererType: Shape.CurveRenderer
 
-                    PathSvg {
-                        path: control.glyph
+                    ShapePath {
+                        strokeColor: control.closes && (control.lit || control.held) ? "white" : Theme.text
+                        strokeWidth: 1
+                        fillColor: "transparent"
+
+                        PathSvg {
+                            path: control.glyph
+                        }
                     }
                 }
             }
