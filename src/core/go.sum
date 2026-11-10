@@ -2,8 +2,8 @@ github.com/Ember-Moth/cronet-go v0.0.0-20261103143108-5a29f59dd943 h1:lnvZF1E2xw
 github.com/Ember-Moth/cronet-go v0.0.0-20261103143108-5a29f59dd943/go.mod h1:DIkj7CKGf+kJU50DWjU3MI0BA4OJJOEgrCEfQm4Wygs=
 github.com/Ember-Moth/cronet-go/all v0.0.0-20261103143108-5a29f59dd943 h1:PbN61cU+X6NLdvhSJTntjROHH0CdP5tw4QZp0+OIQ9s=
 github.com/Ember-Moth/cronet-go/all v0.0.0-20261103143108-5a29f59dd943/go.mod h1:75TQVb4V/SnmEZY0vEMAAb/9hNwIvrviTVDOLg2qarI=
-github.com/Ember-Moth/mihomo v1.19.33-0.20261109111141-2ca4a5328ae5 h1:4vdGyg1ukZrlDDOySwbYjk9770NkLXZOczbAN68pXTc=
-github.com/Ember-Moth/mihomo v1.19.33-0.20261109111141-2ca4a5328ae5/go.mod h1:gIeSBR4hKbYNlNEqOjTrDkLd9c8yP3ha/yB0Vtmh/jY=
+github.com/Ember-Moth/mihomo v1.19.33-0.20261110083707-ba68f8657166 h1:JyPMlQJCO/41Sw8fqetf793iG2De+ekiYCSEKlLZMb4=
+github.com/Ember-Moth/mihomo v1.19.33-0.20261110083707-ba68f8657166/go.mod h1:gIeSBR4hKbYNlNEqOjTrDkLd9c8yP3ha/yB0Vtmh/jY=
 github.com/Microsoft/go-winio v0.6.4 h1:kJF2pamtYCWXf0xAT8sAkwKC0pMl2HYBrRPHAqyUc+g=
 github.com/Microsoft/go-winio v0.6.4/go.mod h1:1xl5JXG4ze/m74GH6Dc4Mwxfc3VL5siRVQjIAlHH07U=
 github.com/RyuaNerin/go-krypto v1.3.0 h1:smavTzSMAx8iuVlGb4pEwl9MD2qicqMzuXR2QWp2/Pg=

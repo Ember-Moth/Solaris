@@ -183,11 +183,12 @@ uv run python scripts/gen_screenshots.py
 
 维护配置示例时，按 `src/core/go.mod` 锁定的版本核对参数、互斥条件和服务端要求：
 
-- [mihomo 增强版 Naive 说明](https://github.com/Ember-Moth/mihomo/blob/2ca4a5328ae5e4bc7c5bf97316a78f0e0eccafe6/docs/naive.md)
-- [Naive 参数与校验](https://github.com/Ember-Moth/mihomo/blob/2ca4a5328ae5e4bc7c5bf97316a78f0e0eccafe6/adapter/outbound/naive_options.go)
-- [AnyTLS 参数与模式互斥](https://github.com/Ember-Moth/mihomo/blob/2ca4a5328ae5e4bc7c5bf97316a78f0e0eccafe6/adapter/outbound/anytls.go)
-- [REALITY 参数](https://github.com/Ember-Moth/mihomo/blob/2ca4a5328ae5e4bc7c5bf97316a78f0e0eccafe6/adapter/outbound/reality.go)与[握手实现](https://github.com/Ember-Moth/mihomo/blob/2ca4a5328ae5e4bc7c5bf97316a78f0e0eccafe6/component/tls/reality.go)
-- [Snell 参数](https://github.com/Ember-Moth/mihomo/blob/2ca4a5328ae5e4bc7c5bf97316a78f0e0eccafe6/adapter/outbound/snell.go)与[v6 传输](https://github.com/Ember-Moth/mihomo/blob/2ca4a5328ae5e4bc7c5bf97316a78f0e0eccafe6/transport/snell/v6.go)
+- [mihomo 增强版 Naive 说明](https://github.com/Ember-Moth/mihomo/blob/ba68f865716656faeb7072275aca0185f495c71b/docs/naive.md)
+- [Naive 参数与校验](https://github.com/Ember-Moth/mihomo/blob/ba68f865716656faeb7072275aca0185f495c71b/adapter/outbound/naive_options.go)
+- [AnyTLS 参数与模式互斥](https://github.com/Ember-Moth/mihomo/blob/ba68f865716656faeb7072275aca0185f495c71b/adapter/outbound/anytls.go)
+- [REALITY 参数](https://github.com/Ember-Moth/mihomo/blob/ba68f865716656faeb7072275aca0185f495c71b/adapter/outbound/reality.go)与[握手实现](https://github.com/Ember-Moth/mihomo/blob/ba68f865716656faeb7072275aca0185f495c71b/component/tls/reality.go)
+- [Snell 参数](https://github.com/Ember-Moth/mihomo/blob/ba68f865716656faeb7072275aca0185f495c71b/adapter/outbound/snell.go)与[v6 传输](https://github.com/Ember-Moth/mihomo/blob/ba68f865716656faeb7072275aca0185f495c71b/transport/snell/v6.go)
+- [Nowhere NW3 说明](https://github.com/Ember-Moth/mihomo/blob/ba68f865716656faeb7072275aca0185f495c71b/docs/nowhere.md)
 - [Solaris 的内核集成与约束](architecture.md)
 
 ## 目录

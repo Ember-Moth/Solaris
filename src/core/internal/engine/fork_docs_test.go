@@ -42,6 +42,7 @@ func TestForkDocumentedProfiles(t *testing.T) {
 			// Templates contain no usable credentials. Substitute a parser-only key
 			// fixture and a loopback address; no connection is dialed by this test.
 			source = bytes.ReplaceAll(source, []byte("CHANGE_ME_REALITY_PUBLIC_KEY"), []byte("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"))
+			source = bytes.ReplaceAll(source, []byte("CHANGE_ME_NOWHERE_KEY"), []byte("0123456789abcdef0123456789abcdef"))
 			source = bytes.ReplaceAll(source, []byte("proxy.example.com"), []byte("127.0.0.1"))
 			admitted, err := admitProfile(admission.Profile{Config: source}, noTUN)
 			if err != nil {

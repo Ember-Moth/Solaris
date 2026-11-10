@@ -116,6 +116,7 @@ var adapterTypes = map[string]C.AdapterType{
 	"reject": C.Reject, "rematch": C.Rematch, "ssh": C.Ssh, "mieru": C.Mieru, "anytls": C.AnyTLS,
 	"sudoku": C.Sudoku, "masque": C.Masque, "trusttunnel": C.TrustTunnel, "openvpn": C.OpenVPN,
 	"tailscale": C.Tailscale, "zerotier": C.ZeroTier, "easytier": C.EasyTier,
+	"naive": C.Naive, "nowhere": C.Nowhere, // the fork's (D38)
 }
 
 // meshTypes are the outbounds that reach the user's own devices and networks rather

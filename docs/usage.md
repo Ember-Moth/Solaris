@@ -34,7 +34,7 @@ Windows：运行安装程序并允许管理员授权，授权提示里的发布�
    ![「概览」页：连接已打开，显示出站模式、当前节点、实时流量和最近连接](images/overview-light.png)
 
 macOS 未连接时，部分导入内容会显示「连接后读取」；连接时会完成读取和校验。
-配置错误时，按提示修正后重试。Naive、AnyTLS + REALITY 和 Snell 的示例见 [配置指南](mihomo-fork.md)。
+配置错误时，按提示修正后重试。Naive、AnyTLS + REALITY、Snell 和 Nowhere 的示例见 [配置指南](mihomo-fork.md)。
 
 ## 分流与节点
 

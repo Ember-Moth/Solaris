@@ -1,0 +1,25 @@
+# 配置模板：替换示例地址、端口和 CHANGE_ME 参数后再导入。
+# 参数与限制见 ../../mihomo-fork.md。MATCH 规则将流量交给 PROXY。
+mode: rule
+
+proxies:
+  - name: Nowhere
+    type: nowhere
+    server: proxy.example.com
+    port: 2000
+    # 共享密钥：Portal 上 nowhere generate-key 生成的 32 个小写十六进制字符。
+    password: 'CHANGE_ME_NOWHERE_KEY'
+    network: tcp
+    morph: true
+    udp: true
+    # 自签证书时填写叶子证书的 SHA-256（64 位小写十六进制）。
+    # pin: 'CHANGE_ME_CERTIFICATE_SHA256'
+
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies:
+      - Nowhere
+
+rules:
+  - MATCH,PROXY

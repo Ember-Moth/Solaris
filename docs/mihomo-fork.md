@@ -9,6 +9,7 @@
 | AnyTLS + REALITY | AnyTLS 节点可以使用 `reality-opts` | 同时支持 AnyTLS 协议和 REALITY 的端点 |
 | REALITY 握手 | 版本标识对齐 `26.10.29`，默认保留指纹中的 X25519MLKEM768 | 服务端的版本策略和密钥交换能力需要匹配 |
 | Snell v4–v6 | 使用上游 mihomo 的实现，支持 v4、v5、v6 和 v6 模式 | 与客户端相同的版本、PSK 和模式 |
+| Nowhere NW3 | `type: nowhere`，经 TLS 或 QUIC 连接，转发 TCP 和 UDP，支持 Morph | Nowhere 3.3 的 Portal，共享密钥和 Morph 设置一致 |
 | VLESS 反向代理 | `type: vless-reverse` 虚拟入站，经 VLESS 节点回连公网端 | 公网端配置反向 VLESS 用户和同名 `vless-reverse` 出站 |
 
 使用完整的 Solaris 安装包，以获得配套的协议支持。
@@ -28,6 +29,7 @@
 | [snell-v4.yaml](examples/mihomo-fork/snell-v4.yaml) | Snell v4 |
 | [snell-v5.yaml](examples/mihomo-fork/snell-v5.yaml) | Snell v5 的 TCP 传输 |
 | [snell-v6.yaml](examples/mihomo-fork/snell-v6.yaml) | Snell v6 默认模式 |
+| [nowhere.yaml](examples/mihomo-fork/nowhere.yaml) | Nowhere NW3，经 TLS 连接 |
 
 1. 打开需要的示例文件，下载原始内容，修改参数后保存为 UTF-8 的 `.yaml` 文件。
 2. 在 Solaris 的「订阅」页点击「导入文件」。
@@ -219,6 +221,42 @@ proxies:
 
 已有 v1–v3 节点不需要为了升级内核而改版本。仅在服务端也已升级时切换客户端的 `version`。
 
+## Nowhere NW3
+
+`type: nowhere` 是 [Nowhere 3.3](https://github.com/NodePassProject/Nowhere/releases/tag/v3.3.0) 的客户端（Vector），协议版本 NW3：
+经 TLS 或 QUIC 连接服务端（Portal），转发 TCP 和 UDP，支持 Morph。不需要额外的运行库。
+
+```yaml
+proxies:
+  - name: Nowhere
+    type: nowhere
+    server: proxy.example.com
+    port: 2000
+    password: 'CHANGE_ME_NOWHERE_KEY'
+    network: tcp
+    morph: true
+    udp: true
+    # sni: portal.example.com
+    # pin: 'CHANGE_ME_CERTIFICATE_SHA256'
+```
+
+| 参数 | 规则 |
+| --- | --- |
+| `password` | 共享密钥，恰好 32 个小写十六进制字符，按文本使用，不做十六进制解码；即 Portal 上 `nowhere generate-key` 生成的值 |
+| `network` | `tcp`（默认）经 TLS 连接，`udp` 经 QUIC 连接。只决定到 Portal 的连接方式，与转发的是 TCP 还是 UDP 无关；不会自动换用另一种 |
+| `morph` | 默认 `true`，必须与 Portal 一致 |
+| `udp` | 默认 `true`，转发 UDP；两种连接方式都支持 |
+| `sni` | 可选，覆盖校验证书用的主机名；实际连接的仍是 `server` |
+| `pin` | 可选，叶子证书的 SHA-256（64 位小写十六进制）。填写后代替 CA 和主机名校验，用于自签证书；指纹要通过可信渠道取得 |
+| `tcp-prelude`、`udp-prelude` | 可选，`fade`（默认）、`full8`、`low7`；不需要与 Portal 一致 |
+| `handshake-timeout`、`setup-timeout` | 可选，单位毫秒；`0` 使用默认值 |
+
+两种连接方式都要求 TLS 1.3 和 ALPN `nw3`。`skip-cert-verify`、`client-fingerprint` 和自定义 `alpn` 会被拒绝；
+Morph 只遮蔽 TLS/QUIC 之下的传输，不代替证书验证。只实现客户端，不能作为 Portal；Nowhere v1.x（`now/1`）不兼容。
+
+订阅里的分享链接 `nowhere://<密钥>@<地址>:<端口>?net=udp&morph=1#名称` 可以直接识别：`net` 默认 `tcp`，`morph` 默认 `1`，
+`sni` 和 `pin` 会保留。
+
 ## VLESS 反向代理
 
 反向代理让外部设备经你的公网 VLESS 服务端，访问这台电脑及其所在的内网。Solaris 作为内网端：
@@ -276,6 +314,7 @@ sub-rules:
 | QUIC 能连接，但 UDP 应用不通 | QUIC 传输和目标 UDP 转发是两件事。Naive 需要 UoT，Snell 需要 `udp: true`，两者都需要服务端支持 |
 | REALITY 公钥或 short ID 校验失败 | 替换占位符；公钥使用 32 字节的无填充 Base64URL；short ID 使用最多 16 位的偶数长度十六进制字符串 |
 | AnyTLS 提示指纹或安全模式错误 | 使用有效 `client-fingerprint`；不要把 REALITY 与 ECH、客户端证书或其他安全模式混用 |
+| Nowhere 提示共享密钥无效 | 密钥必须是恰好 32 个小写十六进制字符，与 Portal 的 `nowhere generate-key` 输出一致 |
 | Snell v6 或新字段不能使用 | 核对实际内核版本、显式 `version: 6`、PSK 长度和模式；服务端也要支持该版本 |
 | 导入后仍使用旧节点 | 确认正在使用该订阅的规则，或已把它加入「我的方案」节点池，再检查出站模式、策略组选择和分流规则 |
 | TCP 测速成功但实际请求失败 | TCP 测速只证明端口连接，不验证协议认证、REALITY 或 UDP；继续做 HTTP 测速和实际请求。Naive 请使用 HTTP 测速 |

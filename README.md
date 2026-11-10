@@ -60,6 +60,7 @@ Solaris 使用 [mihomo 增强版](https://github.com/Ember-Moth/mihomo)内核，
 
 - **Naive**：支持 HTTP/2、QUIC，以及兼容服务端上的 UoT。
 - **AnyTLS + REALITY**：支持使用 REALITY 的 AnyTLS 节点。
+- **Nowhere NW3**：Nowhere 3.3 的客户端，经 TLS 或 QUIC 连接，转发 TCP 和 UDP。
 
 节点怎么配置、哪些参数需要服务端支持，以及完整 YAML 示例，见 [mihomo 增强版配置指南](docs/mihomo-fork.md)。
 
