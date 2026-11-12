@@ -488,7 +488,10 @@ def test_language_switches_while_running(qtbot: QtBot, loaded: Loaded) -> None:
         ]
         assert view_models.proxies.property("sortOptions")[0]["label"] == "Default"
         assert view_models.profiles.property("summary") == "3 subscriptions"
-        assert view_models.profiles.property("autoUpdateLabel") == "Update every 12 hours"
+        assert (
+            view_models.profiles.property("model").rows[0].autoUpdateLabel
+            == "Update every 12 hours"
+        )
         assert view_models.settings.property("languageOptions")[0]["label"] == "System"
 
         view_models.settings.setLanguage("zh")

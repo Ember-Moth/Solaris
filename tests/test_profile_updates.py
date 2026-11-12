@@ -15,6 +15,7 @@ from solaris.host.base import ProxyGroup
 from solaris.models.store import ProfileStore
 from solaris.viewmodels.composition import ViewModels, compose
 from tests.support.simulated import SAMPLE_CONFIG, SimulatedFetcher, SimulatedHost, seed_profiles
+from tests.support.window import Loaded, kind
 
 NOW = datetime(2026, 10, 29, 12).timestamp()
 # The sample with a rule more, and with a node more.
@@ -23,6 +24,118 @@ MORE_NODES = SAMPLE_CONFIG.replace(
     "proxy-groups:",
     "  - {name: 香港 04, type: http, server: node9.example.net, port: 443}\nproxy-groups:",
 )
+
+
+def test_profile_editor_keeps_bad_input_and_saves_metadata(qtbot: QtBot, loaded: Loaded) -> None:
+    models = loaded.view_models
+    models.shell.setPage("profiles")
+    original = models.library.snapshot().get("sample-a")
+    models.profiles.editProfile(original.id)
+    qtbot.waitUntil(lambda: loaded.focused_text() == original.name)
+    name = loaded.overlay_items(
+        lambda item: kind(item) == "AppTextField" and item.property("text") == original.name
+    )[0]
+    address = loaded.overlay_items(
+        lambda item: kind(item) == "AppTextField" and item.property("text") == original.url
+    )[0]
+    name.setProperty("text", "Renamed subscription")
+    address.setProperty("text", "file:///not-a-subscription")
+    save = loaded.overlay_items(
+        lambda item: (
+            kind(item) == "AppButton" and item.property("text") == "保存" and item.isVisible()
+        )
+    )[0]
+    loaded.click(qtbot, save)
+    qtbot.waitUntil(lambda: bool(models.profiles.editError))
+    assert models.library.snapshot().get(original.id).name == original.name
+    assert address.property("text") == "file:///not-a-subscription"
+    address.setProperty("text", "https://updated.example/sub")
+    with qtbot.waitSignal(models.profiles.editSaved):
+        loaded.click(qtbot, save)
+    updated = models.library.snapshot().get(original.id)
+    assert (updated.name, updated.url) == ("Renamed subscription", "https://updated.example/sub")
+    assert loaded.warnings == []
+
+
+def test_profile_editor_validates_and_restores_the_selected_interval(
+    qtbot: QtBot, loaded: Loaded
+) -> None:
+    models = loaded.view_models
+    models.shell.setPage("profiles")
+    models.profiles.editProfile("sample-a")
+    qtbot.waitUntil(lambda: loaded.focused_text() == "示例订阅 A")
+    field = loaded.overlay_items(lambda item: kind(item) == "AutoUpdateField" and item.isVisible())[
+        0
+    ]
+    save = loaded.overlay_items(
+        lambda item: (
+            kind(item) == "AppButton" and item.property("text") == "保存" and item.isVisible()
+        )
+    )[0]
+    for invalid in ("", "0", "-1", "1.5", "1,000"):
+        field.setProperty("intervalText", invalid)
+        assert not save.isEnabled()
+    field.setProperty("intervalText", "6")
+    with qtbot.waitSignal(models.profiles.editSaved):
+        loaded.click(qtbot, save)
+    assert models.library.snapshot().get("sample-a").auto_update_hours == 6
+    assert rows(models.profiles, "model")[0].autoUpdateLabel == "每 6 小时自动更新"
+
+    models.profiles.editProfile("sample-a")
+    qtbot.waitUntil(lambda: loaded.focused_text() == "示例订阅 A")
+    assert field.property("intervalText") == "6"
+    field.setProperty("checked", False)
+    with qtbot.waitSignal(models.profiles.editSaved):
+        loaded.click(qtbot, save)
+    assert models.library.snapshot().get("sample-a").auto_update_hours == 0
+    assert loaded.warnings == []
+
+
+def test_import_form_saves_a_custom_interval(qtbot: QtBot, loaded: Loaded) -> None:
+    models = loaded.view_models
+    models.profiles.prefillImport("https://new.example/sub", "Custom interval")
+    models.shell.setPage("profiles")
+    qtbot.waitUntil(lambda: loaded.focused_text() == "https://new.example/sub")
+    field = loaded.item(lambda item: kind(item) == "AutoUpdateField" and item.isVisible())
+    field.setProperty("intervalText", "3")
+    submit = loaded.item(
+        lambda item: (
+            kind(item) == "AppButton" and item.property("text") == "导入" and item.isVisible()
+        )
+    )
+    with qtbot.waitSignal(models.profiles.imported):
+        loaded.click(qtbot, submit)
+    assert models.library.snapshot().profiles[-1].auto_update_hours == 3
+    assert loaded.warnings == []
+
+
+def test_node_link_dialog_imports_a_batch_without_downloading(qtbot: QtBot, loaded: Loaded) -> None:
+    models = loaded.view_models
+    models.shell.setPage("profiles")
+    qtbot.waitUntil(lambda: models.shell.currentPage == "profiles")
+    button = loaded.item(
+        lambda item: kind(item) == "AppButton" and item.property("text") == "导入节点"
+    )
+    loaded.click(qtbot, button)
+    editors = loaded.overlay_items(lambda item: kind(item) == "CodeEditor" and item.isVisible())
+    assert len(editors) == 1
+    editors[0].setProperty(
+        "text",
+        "vless://12345678-1234-1234-1234-123456789abc@node.example:443#Tokyo\ntrojan://secret@other.example:443#Singapore",
+    )
+    submit = loaded.overlay_items(
+        lambda item: (
+            kind(item) == "AppButton" and item.property("text") == "导入" and item.isVisible()
+        )
+    )[0]
+    before = len(models.library.snapshot().profiles)
+    with qtbot.waitSignal(models.profiles.imported):
+        loaded.click(qtbot, submit)
+    profiles = models.library.snapshot().profiles
+    assert len(profiles) == before + 1
+    assert profiles[-1].is_node_links
+    assert profiles[-1].proxy_count == 2
+    assert loaded.warnings == []
 
 
 def prop(view_model: QObject, name: str) -> Any:

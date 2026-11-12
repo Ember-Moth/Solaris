@@ -183,13 +183,21 @@ class LibraryCore:
             except HostError, ProfileError:
                 continue
 
-    async def read(self, text: str, profile_id: str | None) -> SourceInspection | None:
+    async def read(
+        self, text: str, profile_id: str | None, *, node_links: bool = False
+    ) -> SourceInspection | None:
         """Have the core read a profile's text: whether it brings rules, and with rules,
         that they run as a configuration of their own with the overrides of ``profile_id``
         (None for a new profile). None while no core can answer."""
         if not self.host.core_available:
             return None
         inspection = await self.inspect(text)
+        if node_links or (profile_id is not None and self.list.get(profile_id).is_node_links):
+            # The provider converter can skip malformed lines; direct node imports
+            # must not silently lose part of what the user pasted.
+            expected = len([line for line in text.splitlines() if line.strip()])
+            if not expected or len(inspection.nodes) != expected:
+                raise ProfileError("invalid_node_links", "not every link produced a node")
         if inspection.has_rules:
             await self.host.validate(TunnelConfig(text, await self.overrides(profile_id)))
         return inspection

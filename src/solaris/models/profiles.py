@@ -36,9 +36,9 @@ class Usage:
 class Profile:
     id: str
     name: str
-    kind: str  # KIND_SUBSCRIPTION or KIND_FILE
+    kind: str  # KIND_SUBSCRIPTION or KIND_FILE (including pasted node links)
     url: str = ""  # the subscription link
-    path: str = ""  # the file a KIND_FILE profile was imported from
+    path: str = ""  # the original local file; empty for pasted node links
     auto_update_hours: int = 0  # subscriptions only; 0 turns automatic updates off
     updated_at: float = 0.0  # unix seconds of the last download or import
     usage: Usage | None = None
@@ -55,6 +55,14 @@ class Profile:
     @property
     def is_subscription(self) -> bool:
         return self.kind == KIND_SUBSCRIPTION
+
+    @property
+    def is_node_links(self) -> bool:
+        return self.kind == KIND_FILE and not self.path
+
+    @property
+    def can_update(self) -> bool:
+        return self.is_subscription or bool(self.path)
 
 
 @dataclass(frozen=True)

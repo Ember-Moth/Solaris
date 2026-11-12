@@ -106,6 +106,26 @@ def check_url(url: str) -> str:
     return url
 
 
+def node_links(text: str) -> str:
+    """Keep one share URI per line; the core owns protocol parsing and validation.
+
+    Local node profiles use the existing file-profile storage/backup format, with
+    no external path to re-read. Do not download these URIs as subscriptions.
+    """
+    text = decode_config(text.encode("utf-8"))
+    lines = list(dict.fromkeys(line.strip() for line in text.splitlines() if line.strip()))
+    for number, line in enumerate(lines, 1):
+        scheme, separator, body = line.partition("://")
+        if (
+            not separator
+            or not body
+            or not scheme.isascii()
+            or not scheme.replace("+", "").isalnum()
+        ):
+            raise ProfileError("invalid_node_links", f"line {number}")
+    return "\n".join(lines) + "\n"
+
+
 class UrlFetcher:
     def __init__(self, *, timeout_s: float = TIMEOUT_S, max_bytes: int = MAX_CONFIG_BYTES) -> None:
         self._timeout_s = timeout_s

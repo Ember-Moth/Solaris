@@ -86,6 +86,259 @@ def test_import_url_validates_and_stores(tmp_path: Path) -> None:
     assert scene.store.load() == profiles
 
 
+NODE_LINK = "vless://12345678-1234-1234-1234-123456789abc@node.example:443?security=tls#Tokyo"
+
+
+def test_custom_update_interval_is_persisted_and_controls_when_updates_are_due(
+    tmp_path: Path,
+) -> None:
+    scene = Scene(tmp_path, seeded=False)
+    imported = run(
+        lambda: scene.library.profiles.import_url("https://sub.example/a", interval_hours=6)
+    )
+    (profile,) = imported.profiles
+    assert scene.store.load().get(profile.id).auto_update_hours == 6
+    scene.now += 6 * 3600 - 1
+    run(scene.library.profiles.update_due)
+    assert scene.library.snapshot().get(profile.id).updated_at == NOW
+    scene.now += 1
+    run(scene.library.profiles.update_due)
+    assert scene.library.snapshot().get(profile.id).updated_at == scene.now
+
+    # Editing unrelated metadata and an idempotent enable keep the chosen interval.
+    run(lambda: scene.library.profiles.edit(profile.id, "Renamed", profile.url, True))
+    run(lambda: scene.library.profiles.set_auto_update(profile.id, True))
+    assert scene.store.load().get(profile.id).auto_update_hours == 6
+    run(
+        lambda: scene.library.profiles.edit(
+            profile.id, "Renamed", profile.url, True, interval_hours=24
+        )
+    )
+    last = scene.library.snapshot().get(profile.id).updated_at
+    scene.now += 24 * 3600 - 1
+    run(scene.library.profiles.update_due)
+    assert scene.library.snapshot().get(profile.id).updated_at == last
+    scene.now += 1
+    run(scene.library.profiles.update_due)
+    assert scene.library.snapshot().get(profile.id).updated_at == scene.now
+
+    run(
+        lambda: scene.library.profiles.edit(
+            profile.id, "Renamed", profile.url, False, interval_hours=0
+        )
+    )
+    last = scene.library.snapshot().get(profile.id).updated_at
+    scene.now += 100 * 24 * 3600
+    run(scene.library.profiles.update_due)
+    assert scene.library.snapshot().get(profile.id).updated_at == last
+    assert scene.store.load().get(profile.id).auto_update_hours == 0
+
+
+@pytest.mark.parametrize("hours", [0, -1, 1.5, True, 2_147_483_648])
+def test_invalid_update_interval_neither_downloads_nor_changes_metadata(
+    tmp_path: Path, hours
+) -> None:
+    scene = Scene(tmp_path)
+    before = scene.store.load()
+    scene.fetcher.error = ProfileError(
+        "unexpected_download", "invalid interval reached the fetcher"
+    )
+    with pytest.raises(ProfileError, match="invalid_update_interval"):
+        run(
+            lambda: scene.library.profiles.import_url(
+                "https://sub.example/new", interval_hours=hours
+            )
+        )
+    with pytest.raises(ProfileError, match="invalid_update_interval"):
+        run(
+            lambda: scene.library.profiles.edit(
+                "sample-a", "New", "https://new.example", True, interval_hours=hours
+            )
+        )
+    assert scene.store.load() == before
+
+
+def test_custom_update_interval_survives_backup(tmp_path: Path) -> None:
+    from solaris.models.backup import REPLACE, Backups
+
+    scene = Scene(tmp_path / "source", seeded=False)
+    imported = run(
+        lambda: scene.library.profiles.import_url("https://sub.example/a", interval_hours=3)
+    )
+    snapshot = Backups(scene.store.database, device="source", app_version="1.2.1").snapshot()
+    target = ProfileStore(tmp_path / "target")
+    try:
+        Backups(target.database, device="target", app_version="1.2.1").restore(snapshot, REPLACE)
+        assert target.load().get(imported.profiles[0].id).auto_update_hours == 3
+    finally:
+        target.close()
+
+
+def test_edit_preserves_profile_content_identity_and_references(tmp_path: Path) -> None:
+    scene = Scene(tmp_path)
+    original = scene.library.snapshot().get("sample-a")
+    text = scene.store.read_config(original.id)
+    scene.store.write_override(original.id, "prepend-rules: []\n")
+    changed = run(
+        lambda: scene.library.profiles.edit(
+            original.id, "New name", "https://new.example/sub", False
+        )
+    )
+    edited = changed.get(original.id)
+    assert edited.id == original.id
+    assert (edited.name, edited.url, edited.auto_update_hours) == (
+        "New name",
+        "https://new.example/sub",
+        0,
+    )
+    assert changed.active == original.id
+    assert edited.in_pool == original.in_pool
+    assert scene.store.read_config(original.id) == text
+    assert scene.store.read_override(original.id) == "prepend-rules: []\n"
+    assert edited.usage is None
+    assert edited.updated_at == 0
+    stored = scene.store.load().get(original.id)
+    assert (stored.name, stored.url, stored.auto_update_hours) == (edited.name, edited.url, 0)
+
+
+@pytest.mark.parametrize(("name", "url"), [(" ", "https://new.example"), ("Name", "file:///bad")])
+def test_invalid_profile_edit_keeps_saved_metadata(tmp_path: Path, name: str, url: str) -> None:
+    scene = Scene(tmp_path)
+    original = scene.store.load()
+    with pytest.raises(ProfileError):
+        run(lambda: scene.library.profiles.edit("sample-a", name, url, True))
+    assert scene.store.load() == original
+
+
+@pytest.mark.parametrize("automatic", [False, True])
+@pytest.mark.parametrize("fails", [False, True])
+def test_edited_address_rejects_old_inflight_results_even_after_changing_back(
+    tmp_path: Path, automatic: bool, fails: bool
+) -> None:
+    scene = Scene(tmp_path)
+    old_url = scene.library.snapshot().get("sample-a").url
+    old_text = scene.store.read_config("sample-a")
+
+    async def scenario() -> None:
+        started, finish = asyncio.Event(), asyncio.Event()
+        fetch = scene.fetcher.fetch
+
+        async def delayed(url: str):
+            if url != old_url:
+                return await fetch(url)
+            started.set()
+            await finish.wait()
+            if fails:
+                raise ProfileError("download_failed", "old address failed")
+            return await fetch(url)
+
+        scene.fetcher.body = OTHER_CONFIG.encode()
+        scene.fetcher.fetch = delayed
+        scene.now += 24 * 3600
+        task = asyncio.create_task(
+            scene.library.profiles.update_due()
+            if automatic
+            else scene.library.profiles.update("sample-a")
+        )
+        await started.wait()
+        await scene.library.profiles.edit("sample-a", "New", "https://new.example/sub", False)
+        await scene.library.profiles.edit("sample-a", "Final", old_url, False)
+        finish.set()
+        await task
+
+    run(scenario)
+    assert scene.library.snapshot().get("sample-a").name == "Final"
+    assert scene.store.read_config("sample-a") == old_text
+    assert "sample-a" not in scene.library.snapshot().update_failed
+
+
+def test_pasted_nodes_join_the_pool_and_survive_backup(tmp_path: Path) -> None:
+    from solaris.models.backup import REPLACE, Backups
+
+    scene = Scene(tmp_path / "original", seeded=False)
+    text = NODE_LINK + "\n" + "trojan://secret@other.example:443#Singapore"
+    profiles = run(lambda: scene.library.profiles.import_links(text, "Shared nodes"))
+    (profile,) = profiles.profiles
+    assert profile.is_node_links
+    assert not profile.can_update
+    assert profile.proxy_count == 2
+    assert not profile.has_rules
+    assert profile.in_pool
+    assert profile.auto_update_hours == 0
+    assert scene.library.routing_snapshot().mode == "plan"
+    assert scene.store.read_config(profile.id) == text + "\n"
+    source = Backups(scene.store.database, device="source", app_version="1.2.1")
+    target = ProfileStore(tmp_path / "restored")
+    Backups(target.database, device="target", app_version="1.2.1").restore(
+        source.snapshot(), REPLACE
+    )
+    assert target.load().get(profile.id).is_node_links
+    assert target.load().get(profile.id).unread
+    assert target.read_config(profile.id) == text + "\n"
+    target.close()
+    with pytest.raises(ProfileError, match="no_profile_source"):
+        run(lambda: scene.library.profiles.update(profile.id))
+
+
+def test_node_import_refuses_partial_conversion_without_saving(tmp_path: Path) -> None:
+    scene = Scene(tmp_path, seeded=False)
+    with pytest.raises(ProfileError, match="invalid_node_links"):
+        run(lambda: scene.library.profiles.import_links(NODE_LINK + "\nunknown://bad", "Nodes"))
+    assert scene.store.load().profiles == ()
+
+
+def test_node_import_without_core_stores_original_links_for_later_validation(
+    tmp_path: Path,
+) -> None:
+    scene = Scene(tmp_path, seeded=False)
+    scene.host.core_needs_tunnel = True
+    run(scene.host.stop)
+    profiles = run(
+        lambda: scene.library.profiles.import_links(NODE_LINK + "\n" + NODE_LINK, "Nodes")
+    )
+    (profile,) = profiles.profiles
+    assert profile.unread
+    assert profile.is_node_links
+    assert profile.has_rules is False
+    assert scene.store.read_config(profile.id) == NODE_LINK + "\n"
+    run(scene.library.tunnel.start)
+    reread = scene.library.snapshot().get(profile.id)
+    assert not reread.unread
+    assert reread.proxy_count == 1
+
+
+def test_partial_node_import_is_refused_when_an_offline_core_becomes_available(
+    tmp_path: Path,
+) -> None:
+    scene = Scene(tmp_path, seeded=False)
+    scene.host.core_needs_tunnel = True
+    run(scene.host.stop)
+    profiles = run(
+        lambda: scene.library.profiles.import_links(NODE_LINK + "\nunknown://bad", "Nodes")
+    )
+    with pytest.raises(ProfileError, match="invalid_node_links"):
+        run(scene.library.tunnel.start)
+    assert scene.library.snapshot().get(profiles.profiles[0].id).unread
+
+
+def test_restored_unvalidated_node_batch_cannot_silently_lose_bad_links(tmp_path: Path) -> None:
+    from solaris.models.backup import REPLACE, Backups
+
+    source = Scene(tmp_path / "source", seeded=False)
+    source.host.core_needs_tunnel = True
+    run(source.host.stop)
+    run(lambda: source.library.profiles.import_links(NODE_LINK + "\nunknown://bad", "Nodes"))
+    snapshot = Backups(source.store.database, device="source", app_version="1.2.1").snapshot()
+    target = Scene(tmp_path / "target", seeded=False)
+    restored = Backups(target.store.database, device="target", app_version="1.2.1")
+    run(lambda: target.library.profiles.restore(lambda: restored.restore(snapshot, REPLACE)))
+    (profile,) = target.library.snapshot().profiles
+    assert profile.unread
+    run(target.host.stop)
+    with pytest.raises(ProfileError, match="invalid_node_links"):
+        run(target.library.tunnel.start)
+
+
 def test_import_names_the_profile(tmp_path: Path) -> None:
     scene = Scene(tmp_path)
     profiles = run(

@@ -32,7 +32,7 @@ ScrollView {
         importOpen = false
         urlField.clear()
         nameField.clear()
-        autoUpdate.checked = true
+        autoUpdate.setInterval(page.profiles.defaultAutoUpdateHours)
         page.profiles.clearImportError()
         if (refocus)
             linkButton.forceActiveFocus(Focus.reasonAfter(focused))
@@ -43,7 +43,7 @@ ScrollView {
     function importDraft(): var {
         if (!importOpen)
             return null
-        return { url: urlField.text, name: nameField.text, autoUpdate: autoUpdate.checked }
+        return { url: urlField.text, name: nameField.text, autoUpdate: autoUpdate.checked, interval: autoUpdate.intervalText }
     }
 
     // The form as importDraft() kept it, as the page loads again; the focus stays where it is.
@@ -53,6 +53,7 @@ ScrollView {
         urlField.text = draft.url
         nameField.text = draft.name
         autoUpdate.checked = draft.autoUpdate
+        autoUpdate.intervalText = draft.interval ?? String(page.profiles.defaultAutoUpdateHours)
         importOpen = true
     }
 
@@ -75,8 +76,8 @@ ScrollView {
     }
 
     function submitImport() {
-        if (urlField.text.trim() !== "" && !page.profiles.importing)
-            page.profiles.importUrl(urlField.text, nameField.text, autoUpdate.checked)
+        if (urlField.text.trim() !== "" && !page.profiles.importing && autoUpdate.acceptableInput)
+            page.profiles.importUrl(urlField.text, nameField.text, autoUpdate.checked, autoUpdate.hours)
     }
 
     contentWidth: availableWidth
@@ -95,8 +96,20 @@ ScrollView {
         target: page.profiles
 
         function onImported() {
+            if (nodeLinksDialog.visible) {
+                nodeLinksDialog.close()
+                return
+            }
             if (page.importOpen)
                 page.closeImport()
+        }
+
+        function onEditOpened() {
+            profileDialog.showFor(profileMenu.trigger, profileMenu.triggerFocusReason)
+        }
+
+        function onEditSaved() {
+            profileDialog.close()
         }
 
         // An install link (docs/release.md §7): the form, filled in, for the user to check.
@@ -131,6 +144,14 @@ ScrollView {
             title: qsTr("订阅")
             detail: page.profiles.summary
             detailColor: page.profiles.hasError ? Theme.danger : Theme.textMuted
+
+            AppButton {
+                id: nodeLinksButton
+
+                text: qsTr("导入节点")
+                enabled: !page.profiles.importing
+                onClicked: nodeLinksDialog.showFor(nodeLinksButton, Focus.reasonAfter(nodeLinksButton))
+            }
 
             AppButton {
                 text: qsTr("导入文件")
@@ -235,17 +256,18 @@ ScrollView {
                             Layout.alignment: Qt.AlignBottom
                             text: page.profiles.importing ? qsTr("正在导入…") : qsTr("导入")
                             variant: "primary"
-                            enabled: urlField.text.trim() !== "" && !page.profiles.importing
+                            enabled: urlField.text.trim() !== "" && !page.profiles.importing && autoUpdate.acceptableInput
                             onClicked: page.submitImport()
                         }
                     }
 
-                    AppCheckBox {
+                    AutoUpdateField {
                         id: autoUpdate
 
-                        text: page.profiles.autoUpdateLabel
+                        defaultHours: page.profiles.defaultAutoUpdateHours
                         checked: true
                         enabled: !page.profiles.importing
+                        onAccepted: page.submitImport()
                     }
 
                     AccessibleText {
@@ -448,7 +470,9 @@ ScrollView {
         required property bool updating
         required property string refreshLabel
         required property bool isSubscription
+        required property bool canUpdate
         required property bool autoUpdate
+        required property string autoUpdateLabel
         required property bool inPool
         required property bool hasRules
         readonly property alias moreButton: moreButton
@@ -578,33 +602,42 @@ ScrollView {
         // What the items act on, copied when the menu opens: the row may go meanwhile.
         property string profileId
         property bool isSubscription
+        property bool canUpdate
         property bool updating
         property string refreshLabel
         property bool inPool
         property bool hasRules
+        property string autoUpdateLabel
 
         function openFor(row: ProfileRow, anchor: Item) {
             profileId = row.profileId
             isSubscription = row.isSubscription
+            canUpdate = row.canUpdate
             updating = row.updating
             refreshLabel = row.refreshLabel
             inPool = row.inPool
             hasRules = row.hasRules
             // Triggering toggles `checked` itself, so it is set here rather than bound.
             autoUpdateItem.checked = row.autoUpdate
+            autoUpdateLabel = row.autoUpdateLabel
             openBelow(anchor)
         }
 
         AppMenuItem {
+            text: qsTr("编辑信息…")
+            onTriggered: page.profiles.editProfile(profileMenu.profileId)
+        }
+
+        AppMenuItem {
             text: profileMenu.refreshLabel
-            enabled: !profileMenu.updating
+            enabled: profileMenu.canUpdate && !profileMenu.updating
             onTriggered: page.profiles.updateProfile(profileMenu.profileId)
         }
 
         AppMenuItem {
             id: autoUpdateItem
 
-            text: page.profiles.autoUpdateLabel
+            text: profileMenu.autoUpdateLabel
             checkable: true
             enabled: profileMenu.isSubscription
             onTriggered: page.profiles.setAutoUpdate(profileMenu.profileId, checked)
@@ -663,6 +696,16 @@ ScrollView {
     OverrideDialog {
         id: overrideDialog
 
+        profiles: page.profiles
+    }
+
+    ProfileDialog {
+        id: profileDialog
+        profiles: page.profiles
+    }
+
+    NodeLinksDialog {
+        id: nodeLinksDialog
         profiles: page.profiles
     }
 

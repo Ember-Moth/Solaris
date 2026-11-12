@@ -53,7 +53,9 @@ class ProfileRow:
     updating: bool
     refreshLabel: str
     isSubscription: bool
+    canUpdate: bool
     autoUpdate: bool
+    autoUpdateLabel: str
     hasOverride: bool
     note: str  # 规则使用中 or 不加入节点池, after the source in the caption
     warning: str  # 更新失败, in the warning colour (DESIGN.md "分组与行"); empty otherwise
@@ -72,22 +74,24 @@ def _origin(profile: Profile) -> str:
     """Where the profile comes from: the subscription's host or the file's name."""
     if profile.is_subscription:
         return urlsplit(profile.url).hostname or profile.url
-    return Path(profile.path).name
+    return Path(profile.path).name if profile.path else ""
 
 
 # Module-level text is translated in the ViewModel's context, as self.tr() would.
 def _source(profile: Profile) -> str:
     if profile.is_subscription:
         kind = QCoreApplication.translate("ProfilesViewModel", "订阅")
-    else:
+    elif profile.path:
         kind = QCoreApplication.translate("ProfilesViewModel", "本地文件")
+    else:
+        kind = QCoreApplication.translate("ProfilesViewModel", "节点链接")
     parts = [kind, _origin(profile)]
     if profile.proxy_count:
         count = profile.proxy_count
         parts.append(QCoreApplication.translate("ProfilesViewModel", "%n 个节点", None, count))
     if profile.has_override:
         parts.append(QCoreApplication.translate("ProfilesViewModel", "已覆写"))
-    return " · ".join(parts)
+    return " · ".join(part for part in parts if part)
 
 
 def _usage(profile: Profile) -> tuple[str, float | None]:
@@ -149,6 +153,8 @@ class ProfilesViewModel(QObject):
     routingChanged = Signal()  # the pool or the profile in use may have changed
     routingRequested = Signal()  # 使用它的规则: the view goes to the routing page
     importPrefilled = Signal()  # an install link filled in the import form; the view opens it
+    editOpened = Signal()
+    editSaved = Signal()
 
     def __init__(
         self,
@@ -168,6 +174,9 @@ class ProfilesViewModel(QObject):
         self._import_error = ""
         self._prefill_url = ""
         self._prefill_name = ""
+        self._edit_target = ""
+        self._edit_saving = False
+        self._edit_error = ""
         self._checking = False
         self._error = ""
         self._removal: Removal | None = None  # the last one asked about; its text stays
@@ -335,7 +344,11 @@ class ProfilesViewModel(QObject):
             updating=updating,
             refreshLabel=self._refresh_label(profile),
             isSubscription=profile.is_subscription,
+            canUpdate=profile.can_update,
             autoUpdate=profile.auto_update_hours > 0,
+            autoUpdateLabel=self.tr(
+                "每 %n 小时自动更新", "", profile.auto_update_hours or DEFAULT_AUTO_UPDATE_HOURS
+            ),
             hasOverride=profile.has_override,
             note=self._note(profile),
             warning=self.tr("更新失败")
@@ -354,9 +367,9 @@ class ProfilesViewModel(QObject):
             return self.tr("不加入节点池")
         return ""
 
-    @Property(str, notify=changed)
-    def autoUpdateLabel(self) -> str:
-        return self.tr("每 %n 小时自动更新", "", DEFAULT_AUTO_UPDATE_HOURS)
+    @Property(int, constant=True)
+    def defaultAutoUpdateHours(self) -> int:
+        return DEFAULT_AUTO_UPDATE_HOURS
 
     def _refresh_label(self, profile: Profile) -> str:
         return self.tr("更新") if profile.is_subscription else self.tr("重新读取")
@@ -396,6 +409,66 @@ class ProfilesViewModel(QObject):
     @Slot(str, bool)
     def setAutoUpdate(self, profile_id: str, enabled: bool) -> None:
         self._run(self._library.profiles.set_auto_update(profile_id, enabled))
+
+    @Slot(str)
+    def editProfile(self, profile_id: str) -> None:
+        if self._edit_saving:
+            return
+        self._edit_target = profile_id
+        self._edit_error = ""
+        self.changed.emit()
+        self.editOpened.emit()
+
+    @Property("QVariantMap", notify=changed)  # pyright: ignore[reportArgumentType]
+    def editDetails(self) -> dict[str, Any]:
+        profile = next((p for p in self._list.profiles if p.id == self._edit_target), None)
+        if profile is None:
+            return {}
+        return {
+            "name": profile.name,
+            "url": profile.url,
+            "subscription": profile.is_subscription,
+            "autoUpdate": profile.auto_update_hours > 0,
+            "autoUpdateHours": profile.auto_update_hours,
+        }
+
+    @Property(bool, notify=changed)
+    def editSaving(self) -> bool:
+        return self._edit_saving
+
+    @Property(str, notify=changed)
+    def editError(self) -> str:
+        return self._edit_error
+
+    @Slot(str, str, bool, int)
+    def saveProfile(
+        self, name: str, url: str, auto_update: bool, interval_hours: int | None = None
+    ) -> None:
+        if self._edit_saving:
+            return
+        self._edit_saving = True
+        self._edit_error = ""
+        self.changed.emit()
+
+        def saved(profiles: ProfileList) -> None:
+            self._edit_saving = False
+            self._loaded(profiles)
+            self._routing_touched()
+            self.applied.emit()
+            self.editSaved.emit()
+
+        def failed(error: BaseException) -> None:
+            self._edit_saving = False
+            self._edit_error = failure_text(error)
+            self._loaded(self._library.snapshot())
+
+        self._runner.submit(
+            self._library.profiles.edit(
+                self._edit_target, name, url, auto_update, interval_hours=interval_hours
+            ),
+            saved,
+            failed,
+        )
 
     # -- removal -----------------------------------------------------------------------------
     @Slot(str)
@@ -633,15 +706,33 @@ class ProfilesViewModel(QObject):
         self._error = self.tr("无法识别的导入链接")
         self.changed.emit()
 
-    @Slot(str, str, bool)
-    def importUrl(self, url: str, name: str, auto_update: bool) -> None:
-        self._import(self._library.profiles.import_url(url, name, auto_update), from_link=True)
+    @Slot(str, str, bool, int)
+    def importUrl(
+        self,
+        url: str,
+        name: str,
+        auto_update: bool,
+        interval_hours: int = DEFAULT_AUTO_UPDATE_HOURS,
+    ) -> None:
+        self._import(
+            self._library.profiles.import_url(
+                url, name, auto_update, interval_hours=interval_hours
+            ),
+            from_link=True,
+        )
 
     @Slot(str)
     def importFile(self, file_url: str) -> None:
         """Import the file a FileDialog chose; it passes a file:// URL."""
         path = QUrl(file_url).toLocalFile() or file_url
         self._import(self._library.profiles.import_file(Path(path)), from_link=False)
+
+    @Slot(str, str)
+    def importNodeLinks(self, text: str, name: str) -> None:
+        self._import(
+            self._library.profiles.import_links(text, name.strip() or self.tr("节点链接")),
+            from_link=True,
+        )
 
     # -- active profile ----------------------------------------------------------------------
     def _active(self) -> Profile | None:

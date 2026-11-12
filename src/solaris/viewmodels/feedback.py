@@ -35,6 +35,10 @@ _MESSAGES = {
     # A port or the TUN did not open, e.g. a mixed port another program holds.
     "apply_failed": QT_TRANSLATE_NOOP("Feedback", "配置未能生效"),
     "invalid_url": QT_TRANSLATE_NOOP("Feedback", "链接无效"),
+    "invalid_name": QT_TRANSLATE_NOOP("Feedback", "请输入名称"),
+    "invalid_update_interval": QT_TRANSLATE_NOOP("Feedback", "更新间隔必须为正整数小时"),
+    "invalid_node_links": QT_TRANSLATE_NOOP("Feedback", "节点链接无效，请检查每行链接"),
+    "no_profile_source": QT_TRANSLATE_NOOP("Feedback", "节点链接没有可更新的来源"),
     "download_failed": QT_TRANSLATE_NOOP("Feedback", "下载失败"),
     "http_error": QT_TRANSLATE_NOOP("Feedback", "下载失败"),
     "too_large": QT_TRANSLATE_NOOP("Feedback", "配置文件过大"),

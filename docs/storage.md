@@ -49,7 +49,7 @@
 
 | 表 | 内容 |
 | --- | --- |
-| `profiles` | `id`、`name`、`kind`（`subscription` / `file`）、`in_pool`（是否加入节点池）、`url`、`path`（本地文件配置的原路径）、`auto_update_hours`、`position`、`created_at`、`updated_at`、`deleted_at` |
+| `profiles` | `id`、`name`、`kind`（`subscription` / `file`）、`in_pool`（是否加入节点池）、`url`、`path`（本地文件配置的原路径；粘贴的节点链接用 `file` 且路径为空）、`auto_update_hours`、`position`、`created_at`、`updated_at`、`deleted_at` |
 | `profile_contents` | `profile_id`、配置 YAML 原文、`fetched_at`、用量（upload / download / total / expire）、`proxy_count`、`has_rules`（内核读出的是否带规则）、`unread` 和 `read_yaml`（存下时没有内核能读，连接时再读；内核拒绝时退回上次读过的原文，ui.md 第 3 节）、`updated_at`。这是本机缓存，订阅下载的内容不进入备份 |
 | `overrides` | `scope`（`global` 或某个 `profile_id`）、YAML 原文、`updated_at`、`deleted_at` |
 | `routing_state`、`plans`、`plan_groups`、`plan_rules` | 分流方式、当前使用的配置、节点池设置、分流方案及其策略组和规则条目，字段见 routing.md 第 9 节 |
@@ -79,7 +79,7 @@ D13 定下的方式是**备份与恢复**，不做多设备双向同步：
   `.local`）、`app_version`；
 - `profiles`：配置列表，按列表顺序。每条有 `id`、`name`、`kind`、`url`、`path`、`auto_update_hours`、`in_pool`、
   `position`、`created_at`、`updated_at`。订阅只存链接和更新设置，不存下载到的内容；本地文件配置另有
-  `config`（`yaml` 原文和它的 `updated_at`，即 `profile_contents.updated_at`）；
+  `config`（`yaml` 原文和它的 `updated_at`，即 `profile_contents.updated_at`）；粘贴的节点链接同样以原文保存在这份记录中，恢复后由内核重新读取，未通过的批次不进入节点池；
 - `overrides`：全部覆写，`scope`、`yaml`、`updated_at`；
 - `routing`：`mode`、`profile_id`（当前使用的配置）、`plan_id`（当前使用的方案）、`info_pattern`（信息节点表达式）、
   `updated_at`，以及 `plans`：全部分流方案，每套带 `groups` 和 `rules`，字段与表相同，`egress`、`conditions`、

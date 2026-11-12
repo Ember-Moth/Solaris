@@ -116,6 +116,8 @@ def test_hidden_the_window_lets_its_pages_go_and_shows_them_as_they_were(
     shell.setPage("profiles")
     QMetaObject.invokeMethod(page(loaded, "ProfilesPage"), "openImport")
     loaded.type(qtbot, LINK)
+    interval = loaded.item(lambda item: kind(item) == "AutoUpdateField" and item.isVisible())
+    interval.setProperty("intervalText", "6")
     shell.setPage("routing")
     routing = page(loaded, "RoutingPage")
     routing.setProperty("tab", "groups")
@@ -138,6 +140,10 @@ def test_hidden_the_window_lets_its_pages_go_and_shows_them_as_they_were(
     assert surfaces.events == ([DESTROYED, CREATED] if GIVES_UP_NATIVE else [])
     shell.setPage("profiles")
     assert loaded.item(lambda item: item.property("text") == LINK)
+    restored_interval = loaded.item(
+        lambda item: kind(item) == "AutoUpdateField" and item.isVisible()
+    )
+    assert restored_interval.property("intervalText") == "6"
     shell.setPage("proxies")
     assert proxies.property("currentGroup") == group
     assert loaded.warnings == []

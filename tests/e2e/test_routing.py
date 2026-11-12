@@ -13,6 +13,7 @@ import json
 import subprocess
 import time
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 
 import pytest
 
@@ -31,11 +32,49 @@ from solaris.host.base import (
     bundled_geo_categories,
 )
 from solaris.host.service import ServiceHost
+from solaris.models.library import ProfileLibrary
+from solaris.models.profiles import ProfileError
+from solaris.models.routing import MODE_PLAN, Plan, RoutingStore
+from solaris.models.store import ProfileStore
+from solaris.models.subscription import UrlFetcher
 from tests.e2e.app import Network, Stream
 from tests.e2e.servers import ProxyNode, WebServer, free_port
 from tests.e2e.unix import unix_opener
 
 pytestmark = pytest.mark.e2e
+
+
+def test_pasted_vless_nodes_reach_the_real_pool(service: DevService, tmp_path: Path) -> None:
+    """Import and compose real VLESS nodes without opening a tunnel or dialing the node."""
+    store = ProfileStore(tmp_path / "profiles")
+    store.write_override(None, "dns: null\n")
+    # This checks node conversion and pool admission, not GEO downloads or routing.
+    routing = RoutingStore(store.database)
+    routing.put_plan(Plan("nodes", "Nodes", fallback="DIRECT"))
+    routing.update_state(mode=MODE_PLAN, plan_id="nodes")
+
+    async def scenario(host: ServiceHost) -> None:
+        library = ProfileLibrary(store, host, UrlFetcher())
+        links = (
+            "vless://12345678-1234-1234-1234-123456789abc@127.0.0.1:443?security=tls&sni=edge.example#Tokyo\n"
+            "trojan://secret@127.0.0.1:444?security=tls#Singapore"
+        )
+        imported = await library.profiles.import_links(links, "Pasted nodes")
+        (profile,) = imported.profiles
+        assert profile.proxy_count == 2
+        assert profile.is_node_links
+        report = (await library.routing()).report
+        assert report is not None
+        assert {node.name for node in report.nodes} == {"Tokyo", "Singapore"}
+        assert (await host.get_status()).state == "stopped"
+        with pytest.raises(ProfileError, match="invalid_node_links"):
+            await library.profiles.import_links(links + "\nunknown://bad", "Invalid batch")
+        assert library.snapshot() == imported
+
+    try:
+        on_service(service, scenario)
+    finally:
+        store.close()
 
 
 def nodes_only(network: Network) -> str:

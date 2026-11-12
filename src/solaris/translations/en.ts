@@ -176,6 +176,32 @@
     </message>
 </context>
 <context>
+    <name>AutoUpdateField</name>
+    <message>
+        <source>自动更新</source>
+        <translation>Automatic updates</translation>
+    </message>
+    <message>
+        <source>每</source>
+        <translation>Every</translation>
+    </message>
+    <message>
+        <source>更新间隔（小时）</source>
+        <translation>Update interval (hours)</translation>
+    </message>
+    <message numerus="yes">
+        <source>小时</source>
+        <translation>
+            <numerusform>hour</numerusform>
+            <numerusform>hours</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>更新间隔必须为正整数小时</source>
+        <translation>Enter a positive whole number of hours</translation>
+    </message>
+</context>
+<context>
     <name>BackupViewModel</name>
     <message>
         <source>这不是 Solaris 的备份文件</source>
@@ -861,6 +887,22 @@
     <message>
         <source>链接无效</source>
         <translation>Invalid URL</translation>
+    </message>
+    <message>
+        <source>请输入名称</source>
+        <translation>Enter a name</translation>
+    </message>
+    <message>
+        <source>更新间隔必须为正整数小时</source>
+        <translation>Enter a positive whole number of hours</translation>
+    </message>
+    <message>
+        <source>节点链接无效，请检查每行链接</source>
+        <translation>Invalid node links; check each line</translation>
+    </message>
+    <message>
+        <source>节点链接没有可更新的来源</source>
+        <translation>Node links have no external source to refresh</translation>
     </message>
     <message>
         <source>下载失败</source>
@@ -1789,6 +1831,41 @@
     </message>
 </context>
 <context>
+    <name>NodeLinksDialog</name>
+    <message>
+        <source>导入节点链接</source>
+        <translation>Import node links</translation>
+    </message>
+    <message>
+        <source>名称</source>
+        <translation>Name</translation>
+    </message>
+    <message>
+        <source>可选</source>
+        <translation>Optional</translation>
+    </message>
+    <message>
+        <source>每行一个节点链接，支持 VLESS、VMess、Shadowsocks、Trojan 等格式。</source>
+        <translation>One node link per line. Supports VLESS, VMess, Shadowsocks, Trojan and other formats.</translation>
+    </message>
+    <message>
+        <source>节点链接</source>
+        <translation>Node links</translation>
+    </message>
+    <message>
+        <source>取消</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>正在导入…</source>
+        <translation>Importing…</translation>
+    </message>
+    <message>
+        <source>导入</source>
+        <translation>Import</translation>
+    </message>
+</context>
+<context>
     <name>OverrideDialog</name>
     <message>
         <source># 例：在规则最前面加一条直连规则
@@ -2399,6 +2476,37 @@ prepend-rules:
     </message>
 </context>
 <context>
+    <name>ProfileDialog</name>
+    <message>
+        <source>编辑订阅信息</source>
+        <translation>Edit subscription details</translation>
+    </message>
+    <message>
+        <source>名称</source>
+        <translation>Name</translation>
+    </message>
+    <message>
+        <source>订阅地址</source>
+        <translation>Subscription URL</translation>
+    </message>
+    <message>
+        <source>修改地址后保留现有配置，下次更新使用新地址。</source>
+        <translation>The existing configuration is kept. The next update uses the new URL.</translation>
+    </message>
+    <message>
+        <source>取消</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>正在保存…</source>
+        <translation>Saving…</translation>
+    </message>
+    <message>
+        <source>保存</source>
+        <translation>Save</translation>
+    </message>
+</context>
+<context>
     <name>ProfileRoutes</name>
     <message>
         <source>只有节点</source>
@@ -2581,6 +2689,10 @@ prepend-rules:
         <translation>Overrides</translation>
     </message>
     <message>
+        <source>导入节点</source>
+        <translation>Import nodes</translation>
+    </message>
+    <message>
         <source>全局覆写</source>
         <translation>Global override</translation>
     </message>
@@ -2603,6 +2715,10 @@ prepend-rules:
     <message>
         <source> · %1</source>
         <translation> · %1</translation>
+    </message>
+    <message>
+        <source>编辑信息…</source>
+        <translation>Edit details…</translation>
     </message>
     <message>
         <source>复制订阅链接</source>
@@ -2669,6 +2785,10 @@ prepend-rules:
     <message>
         <source>订阅和它的覆写会从本机删除，无法恢复。</source>
         <translation>The subscription and its override will be deleted from this computer. This can’t be undone.</translation>
+    </message>
+    <message>
+        <source>节点链接</source>
+        <translation>Node links</translation>
     </message>
     <message>
         <source>订阅会从本机删除，无法恢复。</source>

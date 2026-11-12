@@ -176,6 +176,7 @@ def test_rows_and_menus_are_read_out(qtbot: QtBot, loaded: Loaded) -> None:
     items = loaded.overlay_items(lambda i: kind(i) == "AppMenuItem")
     names = [(accessible(i).role, accessible(i).name) for i in items]
     assert names == [
+        (Role.MenuItem, "编辑信息…"),
         (Role.MenuItem, "更新"),
         (Role.MenuItem, "每 12 小时自动更新"),
         (Role.MenuItem, "复制订阅链接"),
@@ -184,7 +185,7 @@ def test_rows_and_menus_are_read_out(qtbot: QtBot, loaded: Loaded) -> None:
         (Role.MenuItem, "不加入节点池"),
         (Role.MenuItem, "删除"),
     ]
-    assert not accessible(items[1]).checked  # 示例订阅 B is updated by hand
+    assert not accessible(items[2]).checked  # 示例订阅 B is updated by hand
     loaded.key(qtbot, Qt.Key.Key_Escape)
 
     content = show_page(qtbot, loaded, "connections")
@@ -239,8 +240,7 @@ def test_keyboard_alone_imports_uses_and_deletes_a_profile(qtbot: QtBot, loaded:
 
     # 使用它的规则 routes with its rules and goes to the routing page.
     loaded.key(qtbot, Qt.Key.Key_Space)
-    for _ in range(5):
-        loaded.key(qtbot, Qt.Key.Key_Down, wait=10)
+    focus_menu_item(qtbot, loaded, "使用它的规则")
     with qtbot.waitSignal(profiles.applied):
         loaded.key(qtbot, Qt.Key.Key_Return, wait=0)
     assert view_models.shell.property("currentPage") == "routing"
@@ -252,8 +252,7 @@ def test_keyboard_alone_imports_uses_and_deletes_a_profile(qtbot: QtBot, loaded:
     qtbot.wait(200)  # the menu fades out
     more.forceActiveFocus(Qt.FocusReason.TabFocusReason)
     loaded.key(qtbot, Qt.Key.Key_Space)
-    for _ in range(7):
-        loaded.key(qtbot, Qt.Key.Key_Down, wait=10)
+    focus_menu_item(qtbot, loaded, "删除")
     loaded.key(qtbot, Qt.Key.Key_Return)
     qtbot.waitUntil(lambda: loaded.focused_text() == "取消")
     loaded.key(qtbot, Qt.Key.Key_Tab)
@@ -282,19 +281,26 @@ def more_button(loaded: Loaded, name: str) -> QQuickItem:
     return more
 
 
-def open_menu_item(qtbot: QtBot, loaded: Loaded, more: QQuickItem, downs: int) -> None:
-    """Open a row's menu from the keyboard and run its item ``downs`` arrows down."""
+def focus_menu_item(qtbot: QtBot, loaded: Loaded, text: str) -> None:
+    """Find an enabled item with arrows, without depending on unrelated menu entries."""
+    for _ in range(16):
+        loaded.key(qtbot, Qt.Key.Key_Down, wait=10)
+        if loaded.focused_text() == text:
+            return
+    raise AssertionError(f"keyboard could not reach menu item {text!r}")
+
+
+def open_menu_item(qtbot: QtBot, loaded: Loaded, more: QQuickItem, text: str) -> None:
     more.forceActiveFocus(Qt.FocusReason.TabFocusReason)
     loaded.key(qtbot, Qt.Key.Key_Space)
-    for _ in range(downs):
-        loaded.key(qtbot, Qt.Key.Key_Down, wait=10)
+    focus_menu_item(qtbot, loaded, text)
     loaded.key(qtbot, Qt.Key.Key_Return)
 
 
 def test_deleting_a_row_focuses_the_one_that_takes_its_place(qtbot: QtBot, loaded: Loaded) -> None:
     profiles = loaded.view_models.profiles
     show_page(qtbot, loaded, "profiles")
-    open_menu_item(qtbot, loaded, more_button(loaded, "示例订阅 B"), 7)  # 删除
+    open_menu_item(qtbot, loaded, more_button(loaded, "示例订阅 B"), "删除")
     qtbot.waitUntil(lambda: loaded.focused_text() == "取消")
     loaded.key(qtbot, Qt.Key.Key_Tab)
     loaded.key(qtbot, Qt.Key.Key_Return)
@@ -305,7 +311,7 @@ def test_deleting_a_row_focuses_the_one_that_takes_its_place(qtbot: QtBot, loade
 
     # Cancelling leaves the focus where the menu was opened.
     more = more_button(loaded, "本地配置")
-    open_menu_item(qtbot, loaded, more, 5)  # 删除: a local file has two items fewer
+    open_menu_item(qtbot, loaded, more, "删除")
     qtbot.waitUntil(lambda: loaded.focused_text() == "取消")
     loaded.key(qtbot, Qt.Key.Key_Escape, wait=0)
     qtbot.waitUntil(lambda: loaded.focused() is more)
@@ -319,7 +325,7 @@ def test_saving_an_override_returns_to_the_rows_more_button(qtbot: QtBot, loaded
     more = more_button(loaded, "示例订阅 B")
 
     def edit() -> None:
-        open_menu_item(qtbot, loaded, more, 4)  # 编辑覆写…
+        open_menu_item(qtbot, loaded, more, "编辑覆写…")
         qtbot.waitUntil(lambda: kind(loaded.focused()).startswith("TextArea"))
 
     # Esc cancels from inside the editor.

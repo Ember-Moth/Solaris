@@ -386,7 +386,7 @@ def test_importing_from_a_link(qtbot: QtBot, view_models: ViewModels) -> None:
     assert prop(profiles, "summary") == "4 份订阅"
     row = rows(profiles)[-1]
     assert (row.name, row.active, row.autoUpdate) == ("新订阅", False, True)
-    assert prop(profiles, "autoUpdateLabel") == "每 12 小时自动更新"
+    assert prop(profiles, "model").rows[-1].autoUpdateLabel == "每 12 小时自动更新"
 
 
 def test_import_failures(qtbot: QtBot, view_models: ViewModels, tmp_path: Path) -> None:

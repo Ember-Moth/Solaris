@@ -37,14 +37,30 @@ from solaris.models.profiles import (
     Usage,
 )
 from solaris.models.routing import MODE_PLAN, MODE_PROFILE, Plan
-from solaris.models.subscription import Fetcher, check_url, decode_config, read_config_file
+from solaris.models.subscription import (
+    Fetcher,
+    check_url,
+    decode_config,
+    node_links,
+    read_config_file,
+)
 
 if TYPE_CHECKING:
     from solaris.models.library.core import LibraryCore
 
 DEFAULT_AUTO_UPDATE_HOURS = 12
+# Qt's integer slot and the interval editor use signed 32-bit integers.
+MAX_AUTO_UPDATE_HOURS = 2_147_483_647
 # After a failed automatic update, wait this long before the next attempt.
 RETRY_AFTER_S = 30 * 60
+
+
+def _update_interval(enabled: bool, hours: int) -> int:
+    if not enabled:
+        return 0
+    if type(hours) is not int or not 1 <= hours <= MAX_AUTO_UPDATE_HOURS:
+        raise ProfileError("invalid_update_interval", "expected positive whole hours")
+    return hours
 
 
 @dataclass(frozen=True)
@@ -72,9 +88,18 @@ class Profiles:
     def __init__(self, core: LibraryCore, fetcher: Fetcher) -> None:
         self._core = core
         self._fetcher = fetcher
+        self._source_epochs: dict[str, int] = {}
 
     # -- import ------------------------------------------------------------------------------
-    async def import_url(self, url: str, name: str = "", auto_update: bool = True) -> ProfileList:
+    async def import_url(
+        self,
+        url: str,
+        name: str = "",
+        auto_update: bool = True,
+        *,
+        interval_hours: int = DEFAULT_AUTO_UPDATE_HOURS,
+    ) -> ProfileList:
+        hours = _update_interval(auto_update, interval_hours)
         url = check_url(url)
         download = await self._fetcher.fetch(url)
         text = decode_config(download.body)
@@ -83,7 +108,7 @@ class Profiles:
             name=name.strip() or download.filename or urlsplit(url).hostname or url,
             kind=KIND_SUBSCRIPTION,
             url=url,
-            auto_update_hours=DEFAULT_AUTO_UPDATE_HOURS if auto_update else 0,
+            auto_update_hours=hours,
             updated_at=self._core.clock(),
             usage=download.usage,
         )
@@ -104,7 +129,7 @@ class Profiles:
 
     async def _add(self, profile: Profile, text: str) -> ProfileList:
         core = self._core
-        inspection = await core.read(text, None)
+        inspection = await core.read(text, None, node_links=profile.is_node_links)
         if inspection is None:
             # Read at the next connect, which settles the rest (Tunnel._read_unread).
             await asyncio.to_thread(core.store.write_config, profile.id, text)
@@ -135,17 +160,102 @@ class Profiles:
             await core.reload_if_running()
         return core.list
 
+    async def import_links(self, text: str, name: str) -> ProfileList:
+        text = node_links(text)
+        if not name.strip():
+            raise ProfileError("invalid_name", "a name is required")
+        profile = Profile(
+            id=uuid.uuid4().hex,
+            name=name.strip(),
+            kind=KIND_FILE,
+            updated_at=self._core.clock(),
+            has_rules=False,
+        )
+        async with self._core.lock:
+            return await self._add(profile, text)
+
+    async def edit(
+        self,
+        profile_id: str,
+        name: str,
+        url: str,
+        auto_update: bool,
+        *,
+        interval_hours: int | None = None,
+    ) -> ProfileList:
+        """Edit metadata without replacing the ID, cached configuration or its references.
+
+        A new subscription address is used on the next update. Downloads started
+        against the previous address cannot commit after this edit, even after A→B→A.
+        """
+        if not name.strip():
+            raise ProfileError("invalid_name", "a name is required")
+        core = self._core
+        async with core.lock:
+            profile = core.list.get(profile_id)
+            url = check_url(url) if profile.is_subscription else profile.url
+            source_changed = url != profile.url
+            hours = _update_interval(
+                auto_update and profile.is_subscription,
+                interval_hours
+                if interval_hours is not None
+                else profile.auto_update_hours or DEFAULT_AUTO_UPDATE_HOURS,
+            )
+            edited = replace(
+                profile,
+                name=name.strip(),
+                url=url,
+                auto_update_hours=hours if profile.is_subscription else 0,
+                usage=None if source_changed else profile.usage,
+                updated_at=0 if source_changed else profile.updated_at,
+            )
+            updated = core.list.put(edited)
+            recompose = (
+                edited.name != profile.name and profile.in_pool and core.state.mode == MODE_PLAN
+            )
+            report = (
+                await core.validate_plan(core.current_plan(), updated) if recompose else core.report
+            )
+            await core.save(updated)
+            if source_changed:
+                self._source_epochs[profile_id] = self._source_epochs.get(profile_id, 0) + 1
+                core.mark_failed(profile_id, None)
+            core.report = report
+            if recompose:
+                await core.reload_if_running()
+            return core.list
+
+    def _same_source(self, profile: Profile, epoch: int) -> bool:
+        try:
+            current = self._core.list.get(profile.id)
+        except ProfileError:
+            return False
+        return (current.kind, current.url, current.path) == (
+            profile.kind,
+            profile.url,
+            profile.path,
+        ) and (self._source_epochs.get(profile.id, 0) == epoch)
+
     # -- update ------------------------------------------------------------------------------
     async def update(self, profile_id: str) -> Updated:
         """Download a subscription again, or re-read a file, and reload it if it is in use
         and its text changed."""
         core = self._core
         profile = core.list.get(profile_id)
+        if not profile.can_update:
+            raise ProfileError("no_profile_source", "pasted nodes have no external source")
+        epoch = self._source_epochs.get(profile_id, 0)
         try:
             text, usage, inspection = await self._fetch_again(profile)
             async with core.lock:
+                core.list.get(profile_id)  # deletion/restoration still reports unknown_profile
+                if not self._same_source(profile, epoch):
+                    return Updated(core.list, False, False)
                 changed, applied = await self._commit_update(profile_id, text, usage, inspection)
         except Exception:
+            core.list.get(profile_id)
+            if not self._same_source(profile, epoch):
+                return Updated(core.list, False, False)
             core.mark_failed(profile_id, core.clock())
             raise
         core.mark_failed(profile_id, None)
@@ -161,12 +271,24 @@ class Profiles:
         now = core.clock()
         changed = applied = False
         for profile in [p for p in core.list.profiles if self._due(p, now)]:
+            # Earlier downloads may have yielded while this profile was edited,
+            # refreshed or removed. Schedule from its current metadata.
+            try:
+                profile = core.list.get(profile.id)
+            except ProfileError:
+                continue
+            if not self._due(profile, now):
+                continue
+            epoch = self._source_epochs.get(profile.id, 0)
             try:
                 text, usage, inspection = await self._fetch_again(profile)
                 async with core.lock:
+                    if not self._same_source(profile, epoch):
+                        continue
                     new, in_use = await self._commit_update(profile.id, text, usage, inspection)
             except Exception:
-                core.mark_failed(profile.id, now)
+                if self._same_source(profile, epoch):
+                    core.mark_failed(profile.id, now)
             else:
                 core.mark_failed(profile.id, None)
                 changed |= new
@@ -313,8 +435,12 @@ class Profiles:
     async def set_auto_update(self, profile_id: str, enabled: bool) -> ProfileList:
         core = self._core
         async with core.lock:
-            hours = DEFAULT_AUTO_UPDATE_HOURS if enabled else 0
-            profile = replace(core.list.get(profile_id), auto_update_hours=hours)
+            profile = core.list.get(profile_id)
+            hours = _update_interval(
+                enabled and profile.is_subscription,
+                profile.auto_update_hours or DEFAULT_AUTO_UPDATE_HOURS,
+            )
+            profile = replace(profile, auto_update_hours=hours)
             await core.save(core.list.put(profile))
             return core.list
 

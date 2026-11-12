@@ -408,3 +408,27 @@ func TestInspect(t *testing.T) {
 		t.Fatal("an empty subscription inspected fine")
 	}
 }
+
+func TestPastedVLESSLinksKeepCredentialsAndTransport(t *testing.T) {
+	const uuid = "12345678-1234-1234-1234-123456789abc"
+	link := "vless://" + uuid + "@[2001:db8::1]:443?encryption=none&security=tls&sni=edge.example&type=ws&path=%2Fproxy#Tokyo"
+	parsed, err := parseSubscription([]byte(link + "\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(parsed.proxies) != 1 {
+		t.Fatalf("got %d nodes", len(parsed.proxies))
+	}
+	node := parsed.proxies[0]
+	if node["type"] != "vless" || node["uuid"] != uuid || node["server"] != "2001:db8::1" || node["servername"] != "edge.example" || node["tls"] != true || node["network"] != "ws" {
+		t.Fatalf("node fields were not preserved: %v", node)
+	}
+	options, ok := node["ws-opts"].(map[string]any)
+	if !ok || options["path"] != "/proxy" {
+		t.Fatalf("websocket options = %v", node["ws-opts"])
+	}
+	inspection, err := Inspect([]byte(link+"\ntrojan://secret@other.example:443#Singapore\n"), "")
+	if err != nil || len(inspection.GetNodes()) != 2 || inspection.GetHasRules() {
+		t.Fatalf("node import = %v, %v", inspection, err)
+	}
+}

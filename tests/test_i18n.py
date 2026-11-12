@@ -184,7 +184,7 @@ def test_english_profiles(qtbot: QtBot, view_models: ViewModels) -> None:
     assert (c.source, c.refreshLabel) == ("Local file · config.yaml · 9 proxies", "Reload")
     assert prop(profiles, "activeDetail") == "sub.example.com · Updated 2 hours ago"
     assert prop(profiles, "activeExpiry") == "Expires Dec 31, 2026"
-    assert prop(profiles, "autoUpdateLabel") == "Update every 12 hours"
+    assert prop(profiles, "model").rows[0].autoUpdateLabel == "Update every 12 hours"
     assert prop(profiles, "globalOverrideDetail") == "Applies to both routing modes · Not set"
 
     # The two sentences of a removal's consequences are joined with a space.

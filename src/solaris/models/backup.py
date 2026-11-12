@@ -674,6 +674,14 @@ def _restore_configs(
             "updated_at = excluded.updated_at",
             (profile["id"], config["yaml"], updated_at),
         )
+        if not profile["path"]:
+            # Pasted node batches carry no trusted inspection in the snapshot.
+            # Recheck every URI before the restored batch may join a live pool.
+            connection.execute(
+                "UPDATE profile_contents SET unread = 1, proxy_count = NULL, "
+                "has_rules = 0, read_yaml = NULL WHERE profile_id = ?",
+                (profile["id"],),
+            )
 
 
 def _restore_routing_state(
