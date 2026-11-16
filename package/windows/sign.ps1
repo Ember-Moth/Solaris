@@ -57,21 +57,51 @@ function Get-SignatureProblem([string] $File) {
         return "$($signature.Status): $($signature.StatusMessage)"
     }
     if ($signature.SignatureType -ne 'Authenticode') {
-        return "signed only in this machine's $($signature.SignatureType)"
+        return Get-OwnSignatureProblem $File
     }
-    $certificate = $signature.SignerCertificate
-    $name = $certificate.GetNameInfo([Security.Cryptography.X509Certificates.X509NameType]::SimpleName, $false)
+    $problem = Get-CertificateProblem $signature.SignerCertificate
+    if ($problem) {
+        return $problem
+    }
+    if ($null -eq $signature.TimeStamperCertificate) {
+        return 'the signature has no timestamp'
+    }
+    return $null
+}
+
+# Get-AuthenticodeSignature reports a file whose hash is in one of this machine's catalogs by
+# that catalog, even once the file carries a signature of its own: the Visual C++ runtime on the
+# ARM64 runner, whose image catalogs it, is signed here and still reads as Catalog. Users'
+# machines may lack the catalog, so such a file's own signature is checked: the certificate
+# read from the file, and signtool, which verifies the embedded signature and its timestamp
+# without looking in catalogs.
+function Get-OwnSignatureProblem([string] $File) {
+    try {
+        $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new(
+            [Security.Cryptography.X509Certificates.X509Certificate]::CreateFromSignedFile($File))
+    } catch {
+        return "signed only in this machine's Catalog"
+    }
+    if (-not $env:SIGNTOOL -or -not (Test-Path -LiteralPath $env:SIGNTOOL -PathType Leaf)) {
+        return "listed in this machine's Catalog; verifying its own signature needs SIGNTOOL"
+    }
+    & $env:SIGNTOOL verify /pa /tw /q $File | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        return "its own signature does not verify with a timestamp (signtool exit code $LASTEXITCODE)"
+    }
+    return Get-CertificateProblem $certificate
+}
+
+function Get-CertificateProblem([Security.Cryptography.X509Certificates.X509Certificate2] $Certificate) {
+    $name = $Certificate.GetNameInfo([Security.Cryptography.X509Certificates.X509NameType]::SimpleName, $false)
     if ($name -ne $Signer) {
         return "signed by '$name', not '$Signer'"
     }
-    $usages = @($certificate.Extensions |
+    $usages = @($Certificate.Extensions |
             Where-Object { $_ -is [Security.Cryptography.X509Certificates.X509EnhancedKeyUsageExtension] } |
             ForEach-Object { $_.EnhancedKeyUsages } | ForEach-Object { $_.Value })
     if ($usages -notcontains $SignerEku) {
         return "signed by '$name' without the extended key usage $SignerEku"
-    }
-    if ($null -eq $signature.TimeStamperCertificate) {
-        return 'the signature has no timestamp'
     }
     return $null
 }
