@@ -225,6 +225,31 @@ function Assert-Installed {
     Write-Output "Installed $Version; $ServiceName running as process $($service.ProcessId)"
 }
 
+# Whether $File carries a signature of its own that Windows trusts. Get-AuthenticodeSignature
+# reports a file whose hash is in one of the runner's catalogs by that catalog, even once the
+# file carries its own signature (the Visual C++ runtime on the ARM64 image; sign.ps1 signs it):
+# then the file must hold a signature, and signtool, which does not look in catalogs, must
+# verify it.
+function Test-OwnSignature([string] $File) {
+    $signature = Get-AuthenticodeSignature -LiteralPath $File
+    if ($signature.Status -ne 'Valid') {
+        return $false
+    }
+    if ($signature.SignatureType -eq 'Authenticode') {
+        return $true
+    }
+    try {
+        [void][Security.Cryptography.X509Certificates.X509Certificate]::CreateFromSignedFile($File)
+    } catch {
+        return $false
+    }
+    if (-not $env:SIGNTOOL) {
+        return $false
+    }
+    & $env:SIGNTOOL verify /pa /q $File | Out-Null
+    return $LASTEXITCODE -eq 0
+}
+
 function Assert-Signed {
     # One argument per file: Windows PowerShell joins an array given to sign.ps1's remaining
     # arguments into one string.
@@ -233,10 +258,8 @@ function Assert-Signed {
     $programs = @(Get-ChildItem -LiteralPath $Root -Recurse -File |
             Where-Object { @('.exe', '.dll', '.pyd') -contains $_.Extension.ToLowerInvariant() })
     # Its own signature: one in a catalog of the runner's proves nothing on a user's machine.
-    $untrusted = @($programs | Where-Object {
-            $signature = Get-AuthenticodeSignature -LiteralPath $_.FullName
-            $signature.Status -ne 'Valid' -or $signature.SignatureType -ne 'Authenticode'
-        } | ForEach-Object { $_.FullName.Substring($Root.Length + 1) })
+    $untrusted = @($programs | Where-Object { -not (Test-OwnSignature $_.FullName) } |
+            ForEach-Object { $_.FullName.Substring($Root.Length + 1) })
     Expect ($untrusted.Count -eq 0) "Installed without a signature of its own that Windows trusts: $($untrusted -join ', ')"
     $started = @(Select-String -LiteralPath (Join-Path $ServiceData 'service.log') -Pattern 'msg="service started"')
     Expect ($started.Count -gt 0 -and $started[-1].Line -match ' signed=true') 'The service does not run as a signed release'
