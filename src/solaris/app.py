@@ -31,7 +31,7 @@ from solaris.models.backup_google import GoogleDriveProvider, configured_provide
 from solaris.models.backup_icloud import bundled_provider
 from solaris.models.credentials import KeyringCredentials
 from solaris.models.database import DATABASE_NAME
-from solaris.models.settings import DatabaseSettingsStore, SettingsStore, write_settings
+from solaris.models.settings import DatabaseSettingsStore, SettingsStore, seed_new_install
 from solaris.models.store import ProfileStore, default_data_dir
 from solaris.models.subscription import Fetcher, UrlFetcher
 from solaris.product import DISPLAY_NAME, PIPE_NAME
@@ -140,6 +140,17 @@ def stored_appearance(settings: SettingsStore) -> str:
     return "" if mode == "system" else mode
 
 
+def open_store(directory: Path, platform: str = sys.platform) -> ProfileStore:
+    """The profiles and settings in ``directory``. With no database there yet, this is a new
+    installation, which starts with settings of its own (D46); an existing one keeps the
+    defaults it had."""
+    new = not (directory / DATABASE_NAME).exists()
+    store = ProfileStore(directory)
+    if new:
+        seed_new_install(store.database, platform)
+    return store
+
+
 def main(
     host: TunnelHost | None = None,
     store: ProfileStore | None = None,
@@ -183,14 +194,7 @@ def main(
         return 0  # the UI already running shows its window, or opens the link
     # Windows: a stale link registration in the user's own HKCU hides Solaris's (D45).
     clear_stale_in_background(app.platformName())
-    if store is None:
-        new_windows_install = sys.platform == "win32" and not (directory / DATABASE_NAME).exists()
-        store = ProfileStore(directory)
-        if new_windows_install:
-            with store.database.transaction() as connection:
-                write_settings(
-                    connection, {"system_proxy": False}, store.database.clock(), keep=True
-                )
+    store = store or open_store(directory)
     settings = DatabaseSettingsStore(store.database)
     translations = Translations(app)
     translations.apply(resolve_language(language or settings.current.language))

@@ -254,3 +254,19 @@ def write_settings(
         f"ON CONFLICT (key) DO {conflict}",
         [(name, json.dumps(value), now) for name, value in values.items()],
     )
+
+
+def new_install_settings(platform: str) -> dict[str, Any]:
+    """What a new installation stores as it first starts, where it starts other than the
+    defaults that earlier installations keep (D46). On Windows only TUN takes over: the system
+    proxy, on loopback, shuts out Microsoft Store and the other packaged apps, which may not
+    reach loopback, while TUN carries their traffic anyway."""
+    return {"system_proxy": False} if platform == "win32" else {}
+
+
+def seed_new_install(database: Database, platform: str) -> None:
+    """Store ``new_install_settings`` in the database a new installation just made."""
+    values = new_install_settings(platform)
+    if values:
+        with database.transaction() as connection:
+            write_settings(connection, values, database.clock(), keep=True)

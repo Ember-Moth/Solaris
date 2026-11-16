@@ -1,6 +1,6 @@
 # 决策
 
-本文记录 Solaris 的设计决策。代码注释和其他文档按编号引用它们（如"D19"），所以编号不变、不重用；新的决策从 D46
+本文记录 Solaris 的设计决策。代码注释和其他文档按编号引用它们（如"D19"），所以编号不变、不重用；新的决策从 D47
 接着编号。每条只写结论，理由和细节在"详见"一栏的文档里。
 
 ## 待决策
@@ -37,7 +37,7 @@
 | D23 | Tor 出口用 arti-client，经 pyo3 运行在界面进程，作为实验功能；界面进程不在时（如崩溃）Tor 不可用，连接被拒绝（未实现） | [exits.md](exits.md) §4 |
 | D24 | 保留 Tailscale、ZeroTier、EasyTier 出站；它们不进节点池和任何策略组，作为"组网"出站单独列出、供规则引用；只用作出站，安全项关闭 EasyTier 对外提供出口和子网的选项 | [mesh.md](mesh.md) |
 | D25 | VPN Gate 作为第三种链式出口：经节点拉列表，只用 TCP 的 OpenVPN 服务器，按国家和评分挑选；默认负载均衡组按网站分配服务器并跳过失效的，也可选只用一台；定位是换 IP 和住宅 IP，不宣传隐私 | [exits.md](exits.md) §5 |
-| D26 | 界面上只有一个连接开关（概览页出站分组第一行）；连接时怎样接管流量由设置页"接管方式"决定，Windows 全新安装默认开启 TUN、关闭系统代理；macOS 上 TUN 是必选的 | [DESIGN.md](../DESIGN.md)"连接开关"、[ui.md](ui.md) §8 |
+| D26 | 界面上只有一个连接开关（概览页出站分组第一行）；连接时怎样接管流量由设置页"接管方式"决定，TUN 和系统代理默认都开（Windows 新安装的系统代理默认值已被 D46 取代）；macOS 上 TUN 是必选的 | [DESIGN.md](../DESIGN.md)"连接开关"、[ui.md](ui.md) §8 |
 | D27 | 订阅由 Python 下载、Go 内核解析和校验，只此一份解析。没有内核能应答时（macOS 隧道断开）先存下原文，连接后、`Start` 之前再解析和校验；界面在没有内核时隐藏需要它的部分 | [ui.md](ui.md) §3 |
 | D28 | 最低支持 macOS 26：PySide6 保持 6.12，不为 macOS 15 降到 6.11 | [apple/README.md](../apple/README.md)"组装 Solaris.app" |
 | D29 | **已被 D42 取代。** 1.0.0 的 Windows 安装包不签名：服务对客户端只做文件身份校验，检查更新只核对 SHA-256。已安装的 1.0.0 没有签名者常量，照常接受签了名的安装包 | [release.md](release.md) §3、[architecture.md](architecture.md) §5.3 |
@@ -57,3 +57,4 @@
 | D43 | 1.0.0 之后的版本，GitHub Release 不再上传源代码包 `Solaris-<版本>-source.tar.gz`，只有三个安装包和 `SHA256SUMS`。对应的源代码在哪里，由发布说明的「源代码与许可」和 NOTICES 的开头写明：Solaris 是本仓库的 `v<版本>` 标签；mihomo 是 `github.com/Ember-Moth/mihomo` 上由这个标签的 `src/core/go.mod` 里 `replace` 固定的提交；其他 Go 模块（包括 Ember-Moth 的 cronet-go、sing-snell）的版本和校验和由 `go.mod`、`go.sum` 固定，从 Go 模块代理（默认 `proxy.golang.org`）取得；GitHub 给每个 Release 自动附带的"Source code"只有本仓库的代码。理由：项目公开，clone 仓库就能拿到源代码；源代码包约 492 MB，大头是 `go mod vendor` 带进来的 cronet-go 各平台预编译库，每个版本都要再传一份。GPL 方面：做法对应 GPL-3.0 第 6 条 d 项，不随二进制附带源代码，而是在二进制旁边写明对应源代码在哪个网络服务器上，并保证在需要的期限内一直可以取得。取舍是源代码不再是一个自足的文件，而是分在三处：本仓库的标签、mihomo 分支的固定提交和 Go 模块代理，从 v1.0.0 起这三处都一直可以取得。前两处由本项目保管，`v*` 标签和 mihomo 分支上被引用过的提交不删除；Go 模块代理是第三方服务，不归本项目控制，而第 6 条 d 项写明源代码不论放在谁的服务器上，保证可以取得的仍是发布者，所以代理上取不到某个模块时要由本项目另行提供。已发布的 1.0.0 Release 和它的源代码包保留不动：1.0.0 的 NOTICES 指向那个文件 | [release.md](release.md) §1、§5 |
 | D44 | 1.0.0 之后，mihomo 增强版改在上游 `Alpha` 分支之上维护：Ember-Moth/mihomo 的 `Alpha` 分支是上游 `Alpha` 加上本项目的提交（Naive、AnyTLS + REALITY、REALITY 握手对齐、VLESS 反向代理、运行状态与 GEO 读取的同步修复），Solaris 的 replace 固定到其中的提交。Snell 改用上游的原生实现（含 v6），去掉 sing-snell，配置参数与上游一致：v6 模式是 `mode`，没有 `user-key`，v5 按 v4 连接，v6 不支持 http/tls 混淆。改用前确认没有用户在用 Snell，所以不做旧参数的兼容。代价是内核包含上游尚未正式发布的改动，升级时随上游 `Alpha` 变基。1.0.0 引用的 `Meta` 分支提交保留不动（D43） | [mihomo-fork.md](mihomo-fork.md)、[architecture.md](architecture.md) |
 | D45 | 一键导入另外注册 `mihomo://install-config`（Clash Party）和 `clashmeta://install-config`（Clash Meta for Android、FlClash、Remnawave 的订阅页），格式、解析和处理与 `clash://` 相同：macOS 写进 `Info.plist`，Windows 安装器写在 HKLM，卸载时只删仍指向本程序的键。深链仍只预填导入表单，由用户按「导入」，不自动导入（任何网页都能打开这种链接）。Windows 上用户自己 HKCU 的注册优先于 HKLM：界面启动时检查四个 scheme 在 HKCU 的打开命令，只在它指向的程序不存在（而所在的盘存在）时删除这个用户级的键，让 Solaris 在 HKLM 的注册生效，并记日志写明 scheme 和原来的命令；指向仍存在的程序时不动，判断不了的命令也不动。不采纳「最后安装的客户端接管」：不覆盖用户仍然有效的选择，网页要指定 Solaris 时用 `solaris://` | [release.md](release.md) §6、§7 |
+| D46 | Windows 新安装（首次启动时还没有本地数据库）默认只用 TUN 接管：启动时把系统代理存为关闭，TUN 照旧默认开启；已有的安装沿用 D26 的默认值（两项都开），保存过的设置不变。理由：系统代理指向本机回环地址，而 Microsoft Store 等打包应用默认不能访问回环地址，开着系统代理会打不开（#46）；TUN 已接管它们的流量。macOS 上总是 TUN，不受影响 | [ui.md](ui.md) §8、[DESIGN.md](../DESIGN.md)"连接开关" |

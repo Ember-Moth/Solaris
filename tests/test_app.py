@@ -12,7 +12,7 @@ from PySide6.QtQuick import QQuickItem
 from PySide6.QtTest import QTest
 from pytestqt.qtbot import QtBot
 
-from solaris.app import MAIN_QML, switch_language
+from solaris.app import MAIN_QML, open_store, switch_language
 from solaris.desktop.dock import ACCESSORY, REGULAR
 from solaris.desktop.instance import LOCK_NAME
 from solaris.host.base import TAKEOVER_NONE, TAKEOVER_SETTINGS, TAKEOVER_TUN, HostError, Rule
@@ -695,64 +695,33 @@ def test_quit_command_closes_the_running_ui(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    ("existing", "saved", "expected"),
-    [(False, None, False), (True, None, True), (True, True, True), (True, False, False)],
+    ("platform", "existing", "saved", "expected"),
+    [
+        ("win32", False, None, False),  # new on Windows: only TUN (D46)
+        ("win32", True, None, True),  # earlier installations keep both on
+        ("win32", True, True, True),
+        ("win32", True, False, False),
+        ("darwin", False, None, True),  # the extension always uses TUN; nothing to seed
+    ],
 )
-def test_windows_startup_uses_tun_only_for_new_installs(
-    tmp_path: Path, existing: bool, saved: bool | None, expected: bool
+def test_a_new_windows_installation_takes_over_with_tun_only(
+    tmp_path: Path, platform: str, existing: bool, saved: bool | None, expected: bool
 ) -> None:
     if existing:
         store = ProfileStore(tmp_path)
         if saved is not None:
-            with store.database.transaction() as connection:
-                connection.execute(
-                    "INSERT INTO settings VALUES ('system_proxy', ?, 0)",
-                    ("true" if saved else "false",),
-                )
+            DatabaseSettingsStore(store.database).update(system_proxy=saved)
         store.close()
-
-    startup = """
-import sys
-from pathlib import Path
-from types import SimpleNamespace
-
-from PySide6.QtCore import QCoreApplication, QTimer
-
-from solaris import app
-from solaris.host.base import TAKEOVER_SETTINGS
-from tests.support.releases import offline_updater
-from tests.support.simulated import SimulatedFetcher, SimulatedHost
-
-directory = Path(sys.argv.pop(1))
-app.default_data_dir = lambda: directory
-app.sys = SimpleNamespace(platform="win32", argv=sys.argv)
-load_ui = app.load_ui
-
-def load(engine, view_models):
-    print(view_models.overview.tunEnabled, view_models.overview.systemProxyEnabled)
-    QTimer.singleShot(0, lambda: QCoreApplication.exit(0))
-    return load_ui(engine, view_models)
-
-app.load_ui = load
-sys.exit(app.main(
-    host=SimulatedHost(takeover=TAKEOVER_SETTINGS),
-    fetcher=SimulatedFetcher(),
-    updater=offline_updater(directory),
-))
-"""
-    result = subprocess.run(
-        [sys.executable, "-c", startup, str(tmp_path)],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=True,
-        timeout=30,
-    )
-    assert result.stdout.splitlines() == [f"True {expected}"]
-    reopened = ProfileStore(tmp_path)
+    store = open_store(tmp_path, platform)
     try:
-        options = DatabaseSettingsStore(reopened.database).current.run_options()
+        options = DatabaseSettingsStore(store.database).current.run_options()
         assert (options.tun_enabled, options.system_proxy_enabled) == (True, expected)
+    finally:
+        store.close()
+    # Seeded once: the next start is an existing installation and keeps what is stored.
+    reopened = open_store(tmp_path, platform)
+    try:
+        assert DatabaseSettingsStore(reopened.database).current.system_proxy == expected
     finally:
         reopened.close()
 
