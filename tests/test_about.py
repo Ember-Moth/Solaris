@@ -6,6 +6,7 @@ diagnostics archive and the license list (docs/release.md)."""
 
 from __future__ import annotations
 
+import asyncio
 import json
 import threading
 import zipfile
@@ -124,11 +125,27 @@ def settle(qtbot: QtBot, about: AboutViewModel, *states: str) -> None:
 # -- update ------------------------------------------------------------------------------------
 
 
+@pytest.mark.parametrize(
+    ("system", "machine", "installer", "hint"),
+    [("darwin", "arm64", DMG, "磁盘映像"), ("win32", "AMD64", EXE, "管理员权限")],
+)
 def test_update_from_check_to_install(
-    qtbot: QtBot, built: ViewModels, github: FakeGitHub, tmp_path: Path
+    qtbot: QtBot,
+    built: ViewModels,
+    github: FakeGitHub,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    system: str,
+    machine: str,
+    installer: str,
+    hint: str,
 ) -> None:
     opened = Opened()
-    about = about_for(built, updater_for(github, tmp_path), opened)
+    about = built.about
+    monkeypatch.setattr(
+        about, "_updater", updater_for(github, tmp_path, system=system, machine=machine)
+    )
+    monkeypatch.setattr(about, "_opener", opened)
     assert prop(about, "version") == "1.0.0"
     assert prop(about, "updateButton") == "检查更新"
     assert prop(about, "updateStatus") == ""
@@ -147,15 +164,21 @@ def test_update_from_check_to_install(
     assert prop(about, "updateButton") == "打开安装包…"
     assert prop(about, "downloadProgress") == 1.0
 
-    with qtbot.waitSignal(about.installRequested):
+    with (
+        qtbot.assertNotEmitted(built.desktop.quitRequested),
+        qtbot.waitSignal(about.installRequested),
+    ):
         about.runUpdateAction()
     assert opened.paths == []  # nothing opens before the user confirms
     assert prop(about, "installTitle") == "打开 Solaris 1.1.0 的安装包？"
-    assert "磁盘映像" in prop(about, "installMessage")
-    about.confirmInstall()
-    qtbot.waitUntil(lambda: bool(opened.paths))
-    assert opened.paths == [tmp_path / "data" / "updates" / DMG]
-    assert prop(about, "updateState") == "ready"
+    assert hint in prop(about, "installMessage")
+    assert "退出" in prop(about, "installMessage")
+    with qtbot.waitSignal(built.desktop.quitRequested):
+        about.confirmInstall()
+        assert not prop(about, "updateButtonEnabled")
+        about.confirmInstall()
+    assert opened.paths == [tmp_path / "data" / "updates" / installer]
+    assert asyncio.run(built.host.get_status()).state == "running"
 
 
 @pytest.mark.parametrize("signed", [True, False])
@@ -277,8 +300,9 @@ def test_a_swapped_installer_is_not_opened(
     about.runUpdateAction()
     settle(qtbot, about, "ready")
     (tmp_path / "data" / "updates" / DMG).write_bytes(b"something else")
-    about.confirmInstall()
-    settle(qtbot, about, "failed")
+    with qtbot.assertNotEmitted(about.installerOpened):
+        about.confirmInstall()
+        settle(qtbot, about, "failed")
     assert prop(about, "updateStatus") == "下载的文件与校验和不符"
     assert opened.paths == []
 
@@ -291,8 +315,9 @@ def test_the_system_cannot_open_it(
     settle(qtbot, about, "available")
     about.runUpdateAction()
     settle(qtbot, about, "ready")
-    about.confirmInstall()
-    settle(qtbot, about, "failed")
+    with qtbot.assertNotEmitted(about.installerOpened):
+        about.confirmInstall()
+        settle(qtbot, about, "failed")
     assert prop(about, "updateStatus") == f"无法打开安装包：{DMG}"
 
 

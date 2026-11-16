@@ -57,7 +57,7 @@ _FAILURES = {
 # without a Windows signer, such as 1.0.0.
 UNSIGNED_INSTALLER = QT_TRANSLATE_NOOP(
     "AboutViewModel",
-    "安装包未签名，Windows 会提示“未知发布者”。安装器会请求管理员权限，并在升级前关闭界面。",
+    "安装包未签名，Windows 会提示“未知发布者”。安装器会请求管理员权限，打开后 Solaris 会退出。",
 )
 
 COMPONENT_KINDS = {
@@ -109,6 +109,7 @@ class AboutViewModel(QObject):
     changed = Signal()
     optionsChanged = Signal()  # the UI language changed
     installRequested = Signal()  # the view asks before the installer is opened
+    installerOpened = Signal()
     _progressed = Signal(int, int)  # from the download's thread
     _verifying = Signal()
     # The store tells its listeners on the thread that wrote; the timers live on this one.
@@ -336,10 +337,13 @@ class AboutViewModel(QObject):
     def installMessage(self) -> str:
         installer = self._check.installer if self._check else None
         if not (installer and installer.endswith(".exe")):
-            return self.tr("将打开磁盘映像，把 Solaris 拖到“应用程序”文件夹即可升级。")
+            return self.tr(
+                "打开磁盘映像后 Solaris 会退出。"
+                "将 Solaris 拖到“应用程序”文件夹，替换旧版本即可升级。"
+            )
         if self._downloaded is not None and not self._downloaded.signed:
             return self.tr(UNSIGNED_INSTALLER)
-        return self.tr("安装器会请求管理员权限，并在升级前关闭界面。")
+        return self.tr("安装器会请求管理员权限，打开后 Solaris 会退出。")
 
     @Slot()
     def runUpdateAction(self) -> None:
@@ -422,8 +426,12 @@ class AboutViewModel(QObject):
         if self._state != READY or downloaded is None:
             return
 
+        self._set_state(VERIFYING)
+
         def ready(path: Path) -> None:
-            if not self._opener(path):
+            if self._opener(path):
+                self.installerOpened.emit()
+            else:
                 self._fail_text(self.tr("无法打开安装包：{name}").format(name=path.name))
 
         def failed(error: BaseException) -> None:
