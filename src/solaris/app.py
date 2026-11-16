@@ -30,7 +30,8 @@ from solaris.i18n import Translations, resolve_language
 from solaris.models.backup_google import GoogleDriveProvider, configured_provider
 from solaris.models.backup_icloud import bundled_provider
 from solaris.models.credentials import KeyringCredentials
-from solaris.models.settings import DatabaseSettingsStore, SettingsStore
+from solaris.models.database import DATABASE_NAME
+from solaris.models.settings import DatabaseSettingsStore, SettingsStore, write_settings
 from solaris.models.store import ProfileStore, default_data_dir
 from solaris.models.subscription import Fetcher, UrlFetcher
 from solaris.product import DISPLAY_NAME, PIPE_NAME
@@ -182,7 +183,14 @@ def main(
         return 0  # the UI already running shows its window, or opens the link
     # Windows: a stale link registration in the user's own HKCU hides Solaris's (D45).
     clear_stale_in_background(app.platformName())
-    store = store or ProfileStore(directory)
+    if store is None:
+        new_windows_install = sys.platform == "win32" and not (directory / DATABASE_NAME).exists()
+        store = ProfileStore(directory)
+        if new_windows_install:
+            with store.database.transaction() as connection:
+                write_settings(
+                    connection, {"system_proxy": False}, store.database.clock(), keep=True
+                )
     settings = DatabaseSettingsStore(store.database)
     translations = Translations(app)
     translations.apply(resolve_language(language or settings.current.language))

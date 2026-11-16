@@ -17,6 +17,8 @@ from solaris.desktop.dock import ACCESSORY, REGULAR
 from solaris.desktop.instance import LOCK_NAME
 from solaris.host.base import TAKEOVER_NONE, TAKEOVER_SETTINGS, TAKEOVER_TUN, HostError, Rule
 from solaris.i18n import Translations
+from solaris.models.settings import DatabaseSettingsStore
+from solaris.models.store import ProfileStore
 from solaris.viewmodels import settings as settings_view_model
 from solaris.viewmodels.composition import ViewModels
 from tests.support.appearance import SystemColorScheme
@@ -690,6 +692,69 @@ def test_quit_command_closes_the_running_ui(tmp_path: Path) -> None:
     assert not (tmp_path / LOCK_NAME).exists()
     # With no UI running, the command has nothing to wait for.
     assert subprocess.run(quit_command, cwd=ROOT, timeout=30).returncode == 0
+
+
+@pytest.mark.parametrize(
+    ("existing", "saved", "expected"),
+    [(False, None, False), (True, None, True), (True, True, True), (True, False, False)],
+)
+def test_windows_startup_uses_tun_only_for_new_installs(
+    tmp_path: Path, existing: bool, saved: bool | None, expected: bool
+) -> None:
+    if existing:
+        store = ProfileStore(tmp_path)
+        if saved is not None:
+            with store.database.transaction() as connection:
+                connection.execute(
+                    "INSERT INTO settings VALUES ('system_proxy', ?, 0)",
+                    ("true" if saved else "false",),
+                )
+        store.close()
+
+    startup = """
+import sys
+from pathlib import Path
+from types import SimpleNamespace
+
+from PySide6.QtCore import QCoreApplication, QTimer
+
+from solaris import app
+from solaris.host.base import TAKEOVER_SETTINGS
+from tests.support.releases import offline_updater
+from tests.support.simulated import SimulatedFetcher, SimulatedHost
+
+directory = Path(sys.argv.pop(1))
+app.default_data_dir = lambda: directory
+app.sys = SimpleNamespace(platform="win32", argv=sys.argv)
+load_ui = app.load_ui
+
+def load(engine, view_models):
+    print(view_models.overview.tunEnabled, view_models.overview.systemProxyEnabled)
+    QTimer.singleShot(0, lambda: QCoreApplication.exit(0))
+    return load_ui(engine, view_models)
+
+app.load_ui = load
+sys.exit(app.main(
+    host=SimulatedHost(takeover=TAKEOVER_SETTINGS),
+    fetcher=SimulatedFetcher(),
+    updater=offline_updater(directory),
+))
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", startup, str(tmp_path)],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=30,
+    )
+    assert result.stdout.splitlines() == [f"True {expected}"]
+    reopened = ProfileStore(tmp_path)
+    try:
+        options = DatabaseSettingsStore(reopened.database).current.run_options()
+        assert (options.tun_enabled, options.system_proxy_enabled) == (True, expected)
+    finally:
+        reopened.close()
 
 
 def test_quitting_leaves_even_when_the_window_hides_instead() -> None:
