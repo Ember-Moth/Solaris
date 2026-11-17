@@ -36,6 +36,8 @@ func (s *Service) beginSession(session uint32, signIn bool) (context.Context, ui
 	if !signIn && ours {
 		s.ownerSessionSequence = sequence
 		s.signedOut = true
+		s.loginVerified = false
+		s.wantRunning = false
 		s.cancelPowerLocked()
 	}
 	return ctx, sequence, ours

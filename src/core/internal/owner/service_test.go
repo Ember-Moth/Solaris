@@ -33,6 +33,7 @@ type machine struct {
 	sessions map[uint32]string
 	proxies  map[string]sysproxy.Settings
 	restarts int
+	logons   map[uint32]int64
 }
 
 func newMachine() *machine {
@@ -49,6 +50,16 @@ func (m *machine) SessionUser(session uint32) (string, error) {
 		return sid, nil
 	}
 	return "", fmt.Errorf("no session %d", session)
+}
+
+func (m *machine) SessionLogonTime(session uint32) (int64, error) {
+	if value, ok := m.logons[session]; ok {
+		if value <= 0 {
+			return 0, fmt.Errorf("unavailable logon time")
+		}
+		return value, nil
+	}
+	return int64(session) + 1000, nil
 }
 
 func (m *machine) SignedIn(sid string) []uint32 {
@@ -324,10 +335,53 @@ func TestOtherUserWaitsForTheTunnel(t *testing.T) {
 	}
 }
 
-// The tunnel comes back when its owner is signed in: at once when the service starts
-// while they are, otherwise at their next sign-in, and never for another user's (D5).
-func TestTunnelComesBackForItsOwner(t *testing.T) {
+// Service recovery preserves a connection only within the same Windows logon.
+func TestTunnelRecoveryIsScopedToLogon(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		session uint32
+		logon   int64
+		recover bool
+	}{
+		{"service restart", 1, 1001, true},
+		{"new session", 4, 1004, false},
+		{"reused session after reboot", 1, 2001, false},
+		{"cannot query logon", 1, 0, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, m := t.TempDir(), newMachine()
+			m.sessions[1] = alice
+			if err := SaveRecord(root, Record{SID: alice, Session: 1}); err != nil {
+				t.Fatal(err)
+			}
+			service, core, home := start(t, root, m)
+			core.running = true
+			if err := service.Applied(profile(false), current); err != nil {
+				t.Fatal(err)
+			}
+			if !(kept{home}).wasRunning() {
+				t.Fatal("connection intent was not kept")
+			}
+			// No Close or SignedOut: model a crash or an abrupt power loss.
+			m.sessions = map[uint32]string{tc.session: alice}
+			m.logons = map[uint32]int64{tc.session: tc.logon}
+			service, core, _ = start(t, root, m)
+			if core.running != tc.recover || service.ResumeAllowed() != tc.recover {
+				t.Fatalf("running=%v allowed=%v, want %v", core.running, service.ResumeAllowed(), tc.recover)
+			}
+			if tc.recover && (len(core.resumed) != 1 || !proto.Equal(core.resumed[0], profile(false))) {
+				t.Fatalf("resumed %v", core.resumed)
+			}
+			if !tc.recover && (len(core.resumed) != 0 || (kept{home}).wasRunning()) {
+				t.Fatal("previous logon's connection survived")
+			}
+		})
+	}
+}
+
+func TestNewLoginWaitsForExplicitConnection(t *testing.T) {
 	root, m := t.TempDir(), newMachine()
+	m.sessions[1] = alice
 	if err := SaveRecord(root, Record{SID: alice, Session: 1}); err != nil {
 		t.Fatal(err)
 	}
@@ -336,59 +390,65 @@ func TestTunnelComesBackForItsOwner(t *testing.T) {
 	if err := service.Applied(profile(false), current); err != nil {
 		t.Fatal(err)
 	}
-	if !(kept{home}).wasRunning() {
-		t.Fatal("was_running is not kept")
-	}
-
-	// The machine restarts: nobody is signed in when the service starts.
+	// The service starts before anyone has signed in.
 	m.sessions = map[uint32]string{}
 	service, core, _ = start(t, root, m)
-	if len(core.resumed) != 0 {
-		t.Fatal("resumed before the owner signed in")
-	}
 	m.sessions[2] = bob
 	service.SignedIn(2)
 	if len(core.resumed) != 0 {
 		t.Fatal("resumed for another user")
 	}
 	m.sessions[4] = alice
+	// A power event before SessionLogon finishes cannot bypass logon verification.
+	if service.ResumeAllowed() {
+		t.Fatal("recovery allowed before logon verification")
+	}
 	service.SignedIn(4)
-	if len(core.resumed) != 1 || !proto.Equal(core.resumed[0], profile(false)) {
-		t.Fatalf("resumed %v", core.resumed)
+	if len(core.resumed) != 0 || (kept{home}).wasRunning() {
+		t.Fatal("resumed at a new login")
 	}
-	if record, _, _ := LoadRecord(root); record.Session != 4 {
-		t.Fatalf("record = %+v", record)
+	core.running = true // explicit UI start, including an enabled login task
+	if err := service.Applied(profile(false), current); err != nil {
+		t.Fatal(err)
 	}
-
-	// Signing out of another session leaves the tunnel; signing out of the owner's stops it
-	// and keeps it coming back.
+	service, core, _ = start(t, root, m)
+	if !core.running {
+		t.Fatal("explicit start did not allow same-logon recovery")
+	}
 	service.SignedOut(2)
 	if !core.running {
-		t.Fatal("stopped at another user's sign-out")
+		t.Fatal("stopped for another user's logoff")
 	}
 	delete(m.sessions, 4)
 	service.SignedOut(4)
-	if core.running || !(kept{Home(root, alice)}).wasRunning() {
-		t.Fatalf("running %v after the owner signed out", core.running)
+	if core.running || (kept{home}).wasRunning() {
+		t.Fatal("owner logoff retained connection intent")
 	}
 	m.sessions[5] = alice
 	service.SignedIn(5)
-	if len(core.resumed) != 2 {
-		t.Fatalf("resumed %d times", len(core.resumed))
+	if core.running {
+		t.Fatal("resumed after logoff")
 	}
+}
 
-	// A service restart while the owner is signed in brings it back at once; after Stop,
-	// nothing does.
-	_, core, _ = start(t, root, m)
-	if len(core.resumed) != 1 {
-		t.Fatal("not resumed at service start")
-	}
-	core.running = false
-	if err := core.host.Stopped(); err != nil {
+func TestLegacyOwnerDoesNotRecoverAcrossLogin(t *testing.T) {
+	root, m := t.TempDir(), newMachine()
+	m.sessions[1] = alice
+	if err := SaveRecord(root, Record{SID: alice, Session: 1}); err != nil {
 		t.Fatal(err)
 	}
-	if _, core, _ = start(t, root, m); len(core.resumed) != 0 {
-		t.Fatal("resumed after Stop")
+	service, core, _ := start(t, root, m)
+	core.running = true
+	if err := service.Applied(profile(false), current); err != nil {
+		t.Fatal(err)
+	}
+	// Old versions kept no logon timestamp. Fail closed until the UI connects.
+	if err := SaveRecord(root, Record{SID: alice, Session: 1}); err != nil {
+		t.Fatal(err)
+	}
+	service, core, _ = start(t, root, m)
+	if core.running || service.ResumeAllowed() {
+		t.Fatal("legacy state silently resumed")
 	}
 }
 
@@ -459,8 +519,7 @@ func TestSystemProxyIsTheOwners(t *testing.T) {
 	}
 
 	// Signing out leaves the service unable to write the owner's settings; their next
-	// sign-in brings the tunnel back over the settings it kept, so Stop restores theirs and
-	// not the service's own.
+	// sign-in restores those settings before a new explicit connection.
 	delete(m.sessions, 1)
 	service.SignedOut(1)
 	if _, saved, _ := (kept{home}).previousProxy(); !saved || service.SystemProxyEnabled() {
@@ -468,6 +527,13 @@ func TestSystemProxyIsTheOwners(t *testing.T) {
 	}
 	m.sessions[3] = alice
 	service.SignedIn(3)
+	if core.running || m.proxies[alice] != theirs {
+		t.Fatalf("running %v, proxy %+v before explicit connection", core.running, m.proxies[alice])
+	}
+	core.running = true
+	if err := service.Applied(profile(true), current); err != nil {
+		t.Fatal(err)
+	}
 	if !core.running || m.proxies[alice] != sysproxy.Core(7890) {
 		t.Fatalf("running %v, proxy %+v after sign-in", core.running, m.proxies[alice])
 	}

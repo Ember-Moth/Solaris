@@ -34,7 +34,7 @@ func (s *Service) cancelPowerLocked() {
 
 func (s *Service) resumeAllowedLocked() bool {
 	return !s.closed && s.ctx.Err() == nil && !s.signedOut && !s.resumeBlocked &&
-		!s.power.event.Sleeping && s.wantRunning && s.bound && !s.restarting &&
+		!s.power.event.Sleeping && s.loginVerified && s.wantRunning && s.bound && !s.restarting &&
 		s.owner != nil && s.profile != nil && len(s.platform.SignedIn(s.owner.SID)) > 0
 }
 

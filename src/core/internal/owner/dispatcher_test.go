@@ -154,6 +154,8 @@ func TestCancelledResumeKeepsItsGuardWhileTheStartRuns(t *testing.T) {
 	}
 	engine := &stubEngine{entered: make(chan struct{}), release: make(chan struct{})}
 	service, dispatcher, _ := front(t, root, machine, engine)
+	// This exercises resume after the current logon has been verified by SignedIn.
+	service.loginVerified = true
 
 	ctx, cancel := context.WithCancel(context.Background())
 	resumed := make(chan error, 1)

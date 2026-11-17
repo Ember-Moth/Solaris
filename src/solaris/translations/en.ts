@@ -4075,6 +4075,10 @@ Your subscriptions, settings, and credentials are kept; connecting again will re
 <context>
     <name>SettingsViewModel</name>
     <message>
+        <source>登录时打开并自动连接</source>
+        <translation>Open and connect automatically at login</translation>
+    </message>
+    <message>
         <source>跟随系统</source>
         <translation>System</translation>
     </message>

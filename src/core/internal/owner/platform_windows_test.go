@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
@@ -114,5 +115,31 @@ func TestSecureDirRefusesOthersDirectories(t *testing.T) {
 	}
 	if err := secureDir(link, ""); err == nil {
 		t.Fatal("secured through a link")
+	}
+}
+
+func TestWTSInfoLayout(t *testing.T) {
+	var info wtsInfo
+	if unsafe.Sizeof(info) != 216 || unsafe.Offsetof(info.LogonTime) != 200 {
+		t.Fatalf("WTSINFOW size=%d logon offset=%d", unsafe.Sizeof(info), unsafe.Offsetof(info.LogonTime))
+	}
+}
+
+func TestSessionLogonTime(t *testing.T) {
+	var session uint32
+	if err := windows.ProcessIdToSessionId(uint32(os.Getpid()), &session); err != nil {
+		t.Fatal(err)
+	}
+	if session == 0 {
+		t.Skip("the test runner has no interactive logon")
+	}
+	platform := windowsPlatform{}
+	first, err := platform.SessionLogonTime(session)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := platform.SessionLogonTime(session)
+	if err != nil || first <= 0 || first != second {
+		t.Fatalf("logon time %d -> %d: %v", first, second, err)
 	}
 }

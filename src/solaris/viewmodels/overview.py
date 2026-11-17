@@ -11,7 +11,7 @@ from typing import Any
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 from PySide6.QtQml import QmlElement, QmlUncreatable
 
-from solaris.desktop.login import open_login_settings
+from solaris.desktop.login import LoginItem, LoginItemStatus, open_login_settings
 from solaris.host.base import HostError, ProxyGroup, TunnelHost
 from solaris.i18n import QT_TRANSLATE_NOOP
 from solaris.models import format as fmt
@@ -61,11 +61,17 @@ class OverviewViewModel(QObject):
         parent: QObject | None = None,
         *,
         take_over: Callable[[], Coroutine[Any, Any, None]] | None = None,
+        login_item: LoginItem | None = None,
     ) -> None:
         """``settings`` keeps the TUN and system proxy switches for the next connection.
         ``take_over`` stops another user's running tunnel and makes this user the owner
-        (D5b); None where the user cannot, as on a Windows account that is no administrator."""
+        (D5b); None where the user cannot, as on a Windows account that is no administrator.
+        ``login_item`` is supplied only for a Windows login launch; it authorizes one connect."""
         super().__init__(parent)
+        self._login_item = login_item
+        self._login_pending = login_item is not None
+        self._login_checked = False
+        self._login_deadline = 0.0
         self._host = host
         self._take_over = take_over
         self._library = library
@@ -105,13 +111,52 @@ class OverviewViewModel(QObject):
         self._timer.timeout.connect(self.refresh)
 
     def start(self) -> None:
+        if self._login_pending and self._login_item is not None:
+            self._login_deadline = time.monotonic() + 60
+            self._runner.submit(
+                asyncio.to_thread(self._login_item.status),
+                self._login_status,
+                self._login_failed,
+            )
         self.refresh()
         self._timer.start()
 
     def stop(self) -> None:
+        self._login_pending = False
         self._timer.stop()
 
+    def _login_status(self, status: LoginItemStatus) -> None:
+        if not status.enabled or status.needs_approval:
+            self._login_pending = False
+        self._login_checked = True
+        self._try_login_connection()
+
+    def _login_failed(self, error: BaseException) -> None:
+        if self._login_pending:
+            self._login_pending = False
+            self._connection_error = failure_text(error)
+            self.changed.emit()
+
+    def _try_login_connection(self) -> None:
+        # Only the Windows login launch requests this. The OS task, not the cached
+        # setting, grants the one attempt. Polling may wait for the service to start,
+        # but must never retry a failed connect or undo a user's disconnect.
+        if not self._login_pending:
+            return
+        if time.monotonic() >= self._login_deadline or self._other_user:
+            self._login_pending = False
+            return
+        if not self._login_checked or self._snapshot is None:
+            return
+        if self._state() != "stopped" or self._recovery() != "none":
+            self._login_pending = False
+            return
+        if self._can_toggle_connection():
+            self.setConnected(True)
+
     def _settings_changed(self, before: Settings, after: Settings) -> None:
+        if before.launch_at_login and not after.launch_at_login:
+            self._login_pending = False
         if (before.tun, before.system_proxy) != (after.tun, after.system_proxy):
             self.changed.emit()  # the switches show the settings while stopped
         elif before.delay_test != after.delay_test:
@@ -155,6 +200,7 @@ class OverviewViewModel(QObject):
         if snapshot.groups is not None:
             self._groups = snapshot.groups
         self._refreshed(settles)
+        self._try_login_connection()
 
     def _failed(self, error: BaseException, settles: int) -> None:
         self._refreshing = False
@@ -163,6 +209,7 @@ class OverviewViewModel(QObject):
         self._refresh_code = error.code if isinstance(error, HostError) else ""
         self._other_user = self._refresh_code == "owned_by_other_user"
         self._refreshed(settles)
+        self._try_login_connection()
 
     def _refreshed(self, settles: int) -> None:
         """``settles`` is the action done before this refresh started; 0 for none."""
@@ -236,6 +283,7 @@ class OverviewViewModel(QObject):
     def setConnected(self, on: bool) -> None:
         """The connection switch (D26): connect with what the settings page's switches ask
         for, as far as the host takes it over, or disconnect."""
+        self._login_pending = False
         if not self._can_toggle_connection() or on == (self._connected() or self._recovering()):
             return
         if on:
@@ -259,6 +307,7 @@ class OverviewViewModel(QObject):
         the switch it does not wait for an action on its way. ``done`` runs once the tunnel
         is down, ``failed`` when it is not within ``timeout`` seconds. False, with neither
         run, when there is no tunnel of this user's to disconnect."""
+        self._login_pending = False
         if not self._tunnel_ours():
             return False
 

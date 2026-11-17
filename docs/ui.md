@@ -425,7 +425,7 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
 | `language` | `system`、`zh`、`en` | `system` | 同步 | 界面语言（第 5 节） |
 | `appearance` | `system`、`light`、`dark` | `system` | 同步 | 外观；主题按它取色 |
 | `close_action` | `tray`、`quit` | `tray` | 本机 | 关闭主窗口时留在托盘，隧道继续运行；还是退出 Solaris，先断开隧道（D41） |
-| `launch_at_login` | 布尔 | `false` | 本机 | 登录时打开界面。以系统里的登录项为准，界面每次读到系统的状态就写回这里 |
+| `launch_at_login` | 布尔 | `false` | 本机 | 登录时打开界面；Windows 同时自动连接。以系统里的登录项为准，界面每次读到系统的状态就写回这里 |
 | `tun` | 布尔 | `true` | 本机 | 设置页「接管方式」的 TUN 开关：连接时是否开启 TUN。macOS 上总是开启，不看这一项 |
 | `system_proxy` | 布尔 | `true` | 本机 | 设置页「接管方式」的系统代理开关：连接时是否设置系统代理。只有 Windows 服务设置系统代理 |
 | `mixed_port` | 1024–65535 | 7890 | 本机 | 混合端口，总是覆盖配置里的 `mixed-port` |
@@ -626,7 +626,8 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
   - Qt 把 ⌘Q、Dock 的「退出」和系统在注销、重启、关机时的请求都报告为 `Quit` 事件；Qt 6 处理它时会先逐个关闭窗口，
     有窗口拒绝就放弃退出，而主窗口在 `tray` 时正是拒绝关闭、改为隐藏，所以 `app.Application` 自己处理这个事件：
     用户的请求交给 `DesktopViewModel.quit`，系统的请求直接离开事件循环，不断开（Windows 由服务按 D5 在属主注销时
-    停止并在下次登录时恢复）。`desktop/session.py` 区分两者：macOS 上只有系统发来的退出 Apple Event 带
+    停止并清除旧连接意图，下次登录由启用的登录项发起连接）。`desktop/session.py` 区分两者：macOS 上只有系统发来的
+    退出 Apple Event 带
     `kAEQuitReason`；其他平台上 `Quit` 事件只来自系统（Windows 的 `WM_ENDSESSION`），托盘的退出不经过它。
     离开事件循环用 `exit`，不用 `quit`：macOS 上 `quit` 会经 `terminate:` 再变成一个 `Quit` 事件。
   - 应用内更新的下载和校验在界面进程里，退出时随之取消，不拖住退出。Windows 安装器用 `--quit` 关闭界面，不断开，
@@ -688,6 +689,10 @@ UI 只保存和传递覆写原文，解析与合并在内核里做；模拟宿�
     任务名 `Solaris (<域>_<用户名>)`。用计划任务而不是注册表的 `Run` 键：登录后立即启动，不受 Windows
     对启动项的延迟；卸载器按同一个任务名清理（`package/windows/setup.ps1`）。读状态用
     `schtasks /Query /XML`，用户在任务计划程序里禁用的任务视为关闭。
+    Windows 的说明为「登录时打开并自动连接」。仅登录任务的 `--background` 启动检查真实任务状态并
+    发起一次连接，使用当前分流和 TUN / 系统代理设置；手动打开保持原有行为。服务尚未就绪时最多等待
+    一分钟，不反复重试连接失败，不覆盖已有连接或后台恢复，不接管其他用户的隧道。用户断开、退出或
+    关闭登录项时取消尚未发出的自动连接；无有效配置时显示现有连接错误。macOS 的登录项行为不变。
   - macOS：`SMAppService.mainAppService` 的 `register` / `unregister`（macOS 13 起），经 ctypes 调用
     Objective-C 运行时，不依赖 PyObjC。状态为 `requiresApproval` 时设置页提示到系统设置的登录项里允许，并给出
     「打开系统设置」链接。登录项启动时不带 `--background`，界面会显示窗口。

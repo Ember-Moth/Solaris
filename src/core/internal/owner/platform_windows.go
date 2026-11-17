@@ -143,3 +143,34 @@ func (p windowsPlatform) SignedIn(sid string) []uint32 {
 	}
 	return found
 }
+
+// WTSINFOW from wtsapi32.h (WTSSessionInfo = 24). LogonTime, unlike the numeric session
+// ID, changes when a user signs in again, including after Fast Startup or an abrupt reboot.
+// https://learn.microsoft.com/windows/win32/api/wtsapi32/ns-wtsapi32-wtsinfow
+type wtsInfo struct {
+	State, SessionID                                                   uint32
+	IncomingBytes, OutgoingBytes                                       uint32
+	IncomingFrames, OutgoingFrames                                     uint32
+	IncomingCompressedBytes, OutgoingCompressedBytes                   uint32
+	WinStationName                                                     [32]uint16
+	Domain                                                             [17]uint16
+	UserName                                                           [21]uint16
+	ConnectTime, DisconnectTime, LastInputTime, LogonTime, CurrentTime int64
+}
+
+var querySessionInformation = windows.NewLazySystemDLL("wtsapi32.dll").NewProc("WTSQuerySessionInformationW")
+
+func (windowsPlatform) SessionLogonTime(session uint32) (int64, error) {
+	var info *wtsInfo
+	var size uint32
+	ok, _, err := querySessionInformation.Call(0, uintptr(session), 24,
+		uintptr(unsafe.Pointer(&info)), uintptr(unsafe.Pointer(&size)))
+	if ok == 0 {
+		return 0, fmt.Errorf("query session logon time: %w", err)
+	}
+	defer windows.WTSFreeMemory(uintptr(unsafe.Pointer(info)))
+	if info == nil || uintptr(size) < unsafe.Sizeof(wtsInfo{}) || info.SessionID != session || info.LogonTime <= 0 {
+		return 0, errors.New("session has no valid logon time")
+	}
+	return info.LogonTime, nil
+}

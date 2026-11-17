@@ -208,6 +208,7 @@ def main(
         login_item=login_item or default_login_item(),
         tray_available=tray_supported(app.platformName()),
         start_hidden=start_hidden,
+        connect_at_login=sys.platform == "win32" and start_hidden,
         updater=updater,
         icloud=bundled_provider(),
         google=google or configured_provider(KeyringCredentials()),

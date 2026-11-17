@@ -224,8 +224,10 @@ func TestSignOutCancelsResumeBeforeTheCoreConnects(t *testing.T) {
 		t.Fatal("resume survived sign-out")
 	}
 	s.SessionChanged(1, true)
-	// The resume is over once Applied, after the core, has cleared its guard.
-	eventually(t, func() bool { return core.Running() && !(kept{home}).resumeInterrupted() })
+	eventually(t, func() bool { s.mu.Lock(); defer s.mu.Unlock(); return len(s.sessionJobs) == 0 })
+	if core.Running() || s.ResumeAllowed() || (kept{home}).wasRunning() {
+		t.Fatal("sign-in after logoff restored an old connection")
+	}
 }
 
 func TestOwnerChangeCancelsTheFormerOwnersRecovery(t *testing.T) {

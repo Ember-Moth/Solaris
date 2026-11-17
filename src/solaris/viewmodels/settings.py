@@ -214,6 +214,8 @@ class SettingsViewModel(QObject):
             return self.tr("仅安装版可用")
         if self._login.needs_approval:
             return self.tr("需要在系统设置的登录项中允许")
+        if sys.platform == "win32":
+            return self.tr("登录时打开并自动连接")
         return ""
 
     @Slot()

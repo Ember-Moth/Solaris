@@ -199,7 +199,8 @@ def test_launch_at_login(qtbot: QtBot, view_models: ViewModels, login_item: Fake
 
     login_item.fail = True
     settings.setLaunchAtLogin(True)
-    qtbot.waitUntil(lambda: prop(settings, "launchAtLoginDetail") != "")
+    # Windows shows a detail before the request settles; wait for the request instead.
+    qtbot.waitUntil(lambda: prop(settings, "launchAtLoginAvailable"))
     expected = "无法更改登录时打开：access is denied"  # noqa: RUF001
     assert prop(settings, "launchAtLoginDetail") == expected
     assert not prop(settings, "launchAtLogin")
