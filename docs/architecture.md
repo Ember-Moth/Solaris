@@ -498,10 +498,10 @@ C:\Program Files\Solaris\            默认位置；可自定义，安装目录�
 
 C:\ProgramData\Solaris\              仅 SYSTEM 与 Administrators 可访问
 ├── service.log                        服务日志；启动时超过 1 MiB 就移到 service.log.1
-├── owner.json                         属主的 SID，和他最近一次认领或登录所在的会话
+├── owner.json                         属主的 SID、会话编号和连接所属的 Windows 登录时间
 └── users\<SID>\                       该用户的 mihomo home 目录（IsSafePath 根）：只有 SYSTEM 能写，属主能读
     ├── profile.json                   最近一次 Start / Reload 生效的请求：配置来源、覆写、运行选项（protojson）
-    ├── state.json                     was_running：属主下次登录时是否恢复隧道
+    ├── state.json                     was_running：同一次 Windows 登录中是否恢复隧道
     ├── resume-attempt.json            自动恢复尚未完成的保护标记，仅含开始时间；阻止崩溃循环
     ├── proxy.json                     服务的系统代理生效期间，属主自己原来的代理设置（5.5 节）
     ├── GeoSite.dat、GeoIP.dat、geoip.metadb、ASN.mmdb  GEO 数据：打开 engine 前从 geodata\ 补齐，之后由 engine 更新
@@ -533,10 +533,12 @@ UI 必须使用 Nuitka standalone 模式。onefile 模式会解压到 `%TEMP%` �
 - **持久化**：`Start`、`Reload` 生效后写 `profile.json` 并置 `was_running`；`Stop` 清除 `was_running`；
   `SetSystemProxy` 改写 `profile.json` 里的系统代理开关。写入失败只记日志，已经生效的请求照常成功。节点选择由
   mihomo 的 `store-selected` 存在 home 的 `cache.db` 里（3.3 节第 5 条）。
-- **恢复**：`was_running` 为真时，在属主登录着的时候恢复，走与 `Start` 相同的流水线，系统代理也照 `profile.json`
-  打开。服务启动时属主已经登录（服务重启、升级）就立即恢复；否则（开机）等属主的 SessionLogon。开机后先登录的
-  其他用户因此不会走属主的隧道，与 D5 一致。
-- 服务停止（关机、升级）时还原属主的系统代理，`was_running` 保留，下次启动时一并恢复。
+- **恢复**：`was_running` 为真且仍是原来的 Windows 登录会话时才恢复，走与 `Start` 相同的流水线。
+  `Start`、`Reload` 生效时记录 WTS 的 `LogonTime`；恢复时同时核对 SID、会话编号和登录时间。
+  同一次登录中的服务重启、升级仍恢复，睡眠唤醒仍按 D34；重新登录或重启后不沿用旧连接意图。
+  会话编号被复用、旧版本没有登录时间、查询登录时间失败时，都不能凭旧状态自动连接。
+  开机后由用户启用的登录计划任务启动界面并连接；未启用时，服务可空闲运行，但不自动建立隧道。
+- 服务停止（关机、升级）时还原属主的系统代理，`was_running` 保留供同一次登录中的恢复使用。
 - 分层期限与卡死恢复见 4.1.1 节。SCM 请求停止或关机时最多等待 20 秒清理，超过后结束进程；显式服务停止不触发恢复循环。
 
 **睡眠与唤醒**（D34，`internal/power`、`internal/owner/power.go`）：
@@ -605,9 +607,9 @@ CI 的 `smoke-test.ps1` 用 PowerShell 连一次装好的服务的管道，只�
   用户"；其余情况（没有属主，或属主的隧道没在运行）为"空闲"。
 - 属主以外的调用者只能调用 `GetInfo` 和 `Claim`，其余方法得到 `not_claimed` 或 `owned_by_other_user`（4.3 节）。
 - `Claim`：调用者已是属主时成功（会话变了就记下新的）；服务没有属主，或属主的隧道没在运行时，改认调用者，服务
-  重启（5.2 节）；另一个用户的隧道在运行时返回 `owned_by_other_user`。属主注销后，隧道等他下次登录再恢复，这期间
-  其他用户可以认领，因为原属主可能不再登录；认领之后原属主的隧道不再恢复。
-- 属主注销他所在的会话时停止隧道，保留 `was_running`，属主下次登录后自动恢复（决策 D5）。TUN 是全局的，不停止的
+  重启（5.2 节）；另一个用户的隧道在运行时返回 `owned_by_other_user`。属主注销后清除连接意图，这期间
+  其他用户可以认领；原属主下次登录是否连接由其登录项决定，不自动接管其他用户的隧道。
+- 属主注销他所在的会话时停止隧道并清除 `was_running`（决策 D5）。TUN 是全局的，不停止的
   话，其他用户的流量会走属主的订阅。
 - 界面（`ServiceHost`）只在要做事时认领：只读的请求（状态、代理组、规则、订阅、GEO 分类、停止、关闭连接）遇到
   `not_claimed` 时按内核停止作答，不认领。两个用户同时开着界面时，各自的轮询因此不会把服务抢来抢去（每换一次
@@ -752,7 +754,7 @@ macOS 不监听任何 socket，控制消息全部走 Network Extension 自带的
 | 订阅拖住内核或泄漏 | 事件缓存在有界缓冲区，满了丢弃最旧的；超过 30 秒未拉取的订阅自动失效 |
 | 其他用户接管隧道 | 属主 SID 校验；另一个用户的隧道运行时不能认领，只有经 UAC 提权的管理员能接管（5.4 节）；一个服务进程只打开一个属主的 home |
 | 同一用户的其他进程借界面接管隧道 | 接管要求客户端 token 启用 Administrators 组，只有经 UAC 确认的提权进程有；界面不提权，服务的可执行文件不提权运行时通不过客户端校验 |
-| 其他用户的流量走属主的隧道 | 属主注销时停止隧道，只在属主登录时恢复（D5） |
+| 其他用户的流量走属主的隧道 | 属主注销时停止隧道；同一次登录内恢复，新登录由启用的登录项连接（D5） |
 | 系统代理留在失效的端口上 | 停止、注销、服务停止时写回属主原来的设置；写不了就存着，等他下次登录 |
 | 局域网暴露 | `allow-lan` 和监听 `0.0.0.0` 的 listeners 默认关闭，由用户显式开启 |
 | Google 登录时，同一台机器上的其他程序抢先请求回环端口上的监听 | 只接受带本次随机 `state` 的请求；授权码要配合只在界面进程内存里的 PKCE `code_verifier` 才能换到令牌；令牌存系统凭据库（[storage.md](storage.md) 第 4 节） |

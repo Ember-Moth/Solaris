@@ -137,6 +137,7 @@ def compose(
     login_item: LoginItem | None = None,
     tray_available: bool = False,
     start_hidden: bool = False,
+    connect_at_login: bool = False,
     appearance: Appearance | None = None,
     updater: Updater | None = None,
     credentials: CredentialStore | None = None,
@@ -146,6 +147,7 @@ def compose(
 ) -> ViewModels:
     """``clock`` dates profile updates and subscription expiry. The settings live in the
     profiles' database unless given. ``tray_available`` and ``start_hidden``: see DesktopViewModel.
+    ``connect_at_login`` requests one connection on an enabled Windows login launch.
     ``appearance`` defaults to the stored choice; the settings page changes it from then on.
     ``updater`` defaults to GitHub's releases, downloaded into the profiles' directory.
     ``credentials`` keeps the WARP account; the system's credential store by default.
@@ -163,7 +165,14 @@ def compose(
         credentials=credentials,
     )
     shell = ShellViewModel(host, runner)
-    overview = OverviewViewModel(host, library, runner, settings_store, take_over=take_over)
+    overview = OverviewViewModel(
+        host,
+        library,
+        runner,
+        settings_store,
+        take_over=take_over,
+        login_item=login_item if connect_at_login else None,
+    )
     system_extension = SystemExtensionViewModel(
         host,
         library,

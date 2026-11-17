@@ -28,6 +28,8 @@ const (
 type Record struct {
 	SID     string `json:"sid"`
 	Session uint32 `json:"session"`
+	// LogonTime scopes recovery to the login that last connected, not a reused session ID.
+	LogonTime int64 `json:"logon_time,omitempty"`
 }
 
 // ValidSID accepts the string form of a SID ("S-1-5-21-…"), which names the owner's home

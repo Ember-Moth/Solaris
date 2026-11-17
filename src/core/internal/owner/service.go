@@ -28,6 +28,8 @@ type Platform interface {
 	SecureDir(dir, reader string) error
 	// SessionUser is the SID of the user signed in to session.
 	SessionUser(session uint32) (string, error)
+	// SessionLogonTime is the Windows logon FILETIME, stable across service restarts.
+	SessionLogonTime(session uint32) (int64, error)
 	// SignedIn lists the sessions sid is signed in to.
 	SignedIn(sid string) []uint32
 	ReadProxy(session uint32) (sysproxy.Settings, error)
@@ -58,7 +60,7 @@ type Service struct {
 
 	// proxyMu orders changes to the owner's system proxy, which go through the OS as the
 	// owner and can take a while, and guards proxy.json. keepMu orders the writes of what
-	// the next sign-in needs. Either comes before mu, which only guards the state below:
+	// same-logon recovery needs. Either comes before mu, which only guards the state below:
 	// it is never held across the OS proxy or the core, so admission and a Stop's intent
 	// wait for nothing slower than a small write.
 	proxyMu sync.Mutex
@@ -67,6 +69,7 @@ type Service struct {
 	mu                   sync.Mutex
 	closed               bool
 	signedOut            bool
+	loginVerified        bool // recovery was authorized in this Windows logon session
 	resumeBlocked        bool
 	resumeToken          uint64
 	power                powerState
@@ -142,7 +145,7 @@ func Open(ctx context.Context, root, geodataDir string, platform Platform, log *
 }
 
 // Attach hands the service the core, then brings the owner's tunnel back if it was up and
-// they are signed in; otherwise their next sign-in does (§5.2).
+// they are still in the same Windows logon session (§5.2).
 func (s *Service) Attach(core Core) {
 	s.core = core
 	s.mu.Lock()
@@ -294,12 +297,28 @@ func (s *Service) claimLocked(caller peer.Identity) error {
 
 func (s *Service) Applied(start *controlpb.StartRequest, current func() bool) error {
 	s.mu.Lock()
+	session := s.owner.Session
+	s.mu.Unlock()
+	logon, err := s.platform.SessionLogonTime(session)
+	if err != nil {
+		// Connection still works, but an unidentifiable login must not recover silently.
+		s.log.Warn("read the connecting session's logon time", "error", err)
+		logon = 0
+	}
+	s.mu.Lock()
 	if s.closed || s.ctx.Err() != nil || !current() {
 		s.mu.Unlock()
 		return context.Canceled
 	}
 	s.profile = start
 	s.wantRunning = true
+	s.loginVerified = true
+	if s.owner.Session == session {
+		s.owner.LogonTime = logon
+	} else {
+		s.owner.LogonTime = 0
+	}
+	s.saveRecordLocked()
 	s.mu.Unlock()
 	s.keep()
 	var applied error
@@ -415,7 +434,7 @@ func (s *Service) SystemProxyEnabled() bool {
 }
 
 // Close gives the owner their proxy settings back as the service stops, for a shutdown or an
-// upgrade. was_running stays, so the next start brings the tunnel and the proxy back.
+// upgrade. was_running stays for recovery within the same Windows logon session.
 func (s *Service) Close() {
 	s.cancel()
 	s.mu.Lock()
@@ -431,7 +450,7 @@ func (s *Service) Close() {
 	}
 }
 
-// SignedIn follows a sign-in to session. The owner gets their tunnel back if it was up;
+// SignedIn follows a sign-in to session. Only the same logon may recover an old tunnel;
 // a user whose proxy settings the service left behind gets them back.
 func (s *Service) SignedIn(session uint32) {
 	ctx, sequence, _ := s.beginSession(session, true)
@@ -448,6 +467,7 @@ func (s *Service) signedIn(ctx context.Context, session uint32, sequence uint64)
 		s.log.Warn("read the user of a new session", "session", session, "error", err)
 		return
 	}
+	logon, logonErr := s.platform.SessionLogonTime(session)
 	s.mu.Lock()
 	if ctx.Err() != nil || s.closed || (s.owner != nil && s.owner.SID == sid && sequence < s.ownerSessionSequence) {
 		s.mu.Unlock()
@@ -458,8 +478,17 @@ func (s *Service) signedIn(ctx context.Context, session uint32, sequence uint64)
 		s.restoreStrayProxy(sid, session)
 		return
 	}
+	sameLogin := logonErr == nil && logon > 0 && s.owner.Session == session && s.owner.LogonTime == logon
+	s.loginVerified = sameLogin
+	if !sameLogin {
+		// New logins connect only through the UI's enabled login task. In particular,
+		// a reboot or a lost logoff event must not turn stale was_running into consent.
+		s.wantRunning = false
+		s.cancelPowerLocked()
+	}
 	if s.owner.Session != session {
 		s.owner.Session = session
+		s.owner.LogonTime = 0
 		s.saveRecordLocked()
 	}
 	s.ownerSessionSequence = sequence
@@ -467,6 +496,11 @@ func (s *Service) signedIn(ctx context.Context, session uint32, sequence uint64)
 	profile := s.profile
 	resume := profile != nil && s.resumeAllowedLocked() && !s.running()
 	s.mu.Unlock()
+	if !sameLogin {
+		if err := s.keepRunning(); err != nil {
+			s.log.Warn("clear the previous login's connection intent", "error", err)
+		}
+	}
 	if !resume {
 		if err := s.restoreLeftProxy(); err != nil {
 			s.log.Warn("restore the owner's proxy settings", "error", err)
@@ -494,6 +528,9 @@ func (s *Service) signedOutOf(ctx context.Context, session uint32, ours bool) {
 	if !ours {
 		return
 	}
+	if err := s.keepRunning(); err != nil {
+		s.log.Warn("clear connection intent at sign-out", "error", err)
+	}
 	if err := s.core.SuspendContext(ctx); err != nil {
 		s.log.Error("stop the tunnel at the owner's sign-out", "error", err)
 		return
@@ -501,7 +538,7 @@ func (s *Service) signedOutOf(ctx context.Context, session uint32, ours bool) {
 	s.log.Info("stopped the tunnel at the owner's sign-out", "session", session)
 }
 
-// keep writes what the next sign-in needs. A failure only costs that, so it is logged
+// keep writes what same-logon recovery needs. A failure only costs that, so it is logged
 // rather than failing the request that already took effect.
 func (s *Service) keep() {
 	if err := s.keepProfile(); err != nil {

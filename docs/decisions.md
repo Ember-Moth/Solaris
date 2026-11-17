@@ -15,7 +15,7 @@
 | D2 | macOS 提供 arm64 + x86_64 通用 DMG，UI、Python/Qt、管理库和扩展均含两个架构；Windows 提供 x64，并按 D40 扩展到 ARM64 | [architecture.md](architecture.md) §6.1、[release.md](release.md) §1 |
 | D3 | Windows 服务带 `with_gvisor` 构建，四种 TUN 栈都提供，由用户在设置里选择，两个平台都默认 `mips`；macOS 系统扩展同样带 `with_gvisor`，"跟随配置"而配置没写栈时 fd 模式用 gVisor 栈 | [architecture.md](architecture.md) §3.4 |
 | D4 | 覆写只做 Merge，不做 Script；一份全局覆写，加上每份订阅各一份 | [ui.md](ui.md) §4、[architecture.md](architecture.md) §3.2 |
-| D5 | 属主注销时停止隧道，下次登录后恢复 | [architecture.md](architecture.md) §5.4 |
+| D5 | Windows 属主注销时停止隧道并清除连接意图；同一次登录中的服务重启或睡眠唤醒可恢复，新登录由启用的登录项打开界面并连接 | [architecture.md](architecture.md) §5.4 |
 | D5b | Windows 上别的用户的隧道在运行时，管理员经 UAC 确认后可以接管：停掉对方的隧道、写回对方的系统代理，自己成为属主；不是管理员只能等对方断开或注销。界面经 UAC 启动服务自己的接管辅助进程（`solaris-service.exe -take-over`），服务凭客户端 token 里启用的 Administrators 组认定管理员 | [architecture.md](architecture.md) §5.4、[ui.md](ui.md) §8 |
 | D6 | 订阅一键导入注册 `solaris://install-config?url=…` 和 `clash://install-config`（另见 D45） | [release.md](release.md) §7 |
 | D7 | macOS 的配置和 Windows 一样，经控制协议的 `Start` / `Reload` 传入，不经 `startVPNTunnel(options:)` | [architecture.md](architecture.md) §6.2 |
