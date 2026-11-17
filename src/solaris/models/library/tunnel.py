@@ -16,7 +16,7 @@ from contextlib import contextmanager
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
-from solaris.host.base import HostError, RunOptions, SourceInspection
+from solaris.host.base import HostError, RunOptions, SourceInspection, TunnelConfig
 from solaris.models import plans
 from solaris.models.library.core import has_rules, live_options
 from solaris.models.profiles import ProfileError
@@ -79,7 +79,20 @@ class Tunnel:
             try:
                 if prepared:
                     await self._read_unread()
-                config = await core.current_config(options=options)
+                resume = next(
+                    (
+                        p
+                        for p in core.list.profiles
+                        if not p.unread
+                        and core.should_resume_profile(has_rules(p, core.inspections) is True)
+                    ),
+                    None,
+                )
+                if resume is not None:
+                    text = await asyncio.to_thread(core.store.read_config, resume.id)
+                    config = TunnelConfig(text, await core.overrides(resume.id), options=options)
+                else:
+                    config = await core.current_config(options=options)
                 if config is None:
                     raise ProfileError("no_profile", "import a profile first")
                 with _naming_switches(options):
@@ -89,6 +102,12 @@ class Tunnel:
                     with contextlib.suppress(HostError):
                         await core.host.stop()
                 raise
+            if resume is not None:
+                # Only a successful Start consumes the deferred recovery. A retry must
+                # still find it after unread profiles have been inspected and persisted.
+                await core.save(replace(core.list, active=resume.id))
+                await core.store_mode(MODE_PROFILE, None)
+                core.report = None
             if config.composition is not None:
                 core.report = report
 
@@ -148,7 +167,9 @@ class Tunnel:
         core.report = None  # the pool may have more nodes
         if mode is not None and mode != core.state.mode:
             plan = (core.current_plan() or plans.default_plan()) if mode == MODE_PLAN else None
-            await core.store_mode(mode, plan)
+            await core.store_mode(
+                mode, plan, resume_profile=core.state.mode == MODE_PROFILE and mode == MODE_PLAN
+            )
         in_use = core.list.active if core.state.mode == MODE_PROFILE else None
         if in_use in refused:
             raise refused[in_use]

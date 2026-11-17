@@ -61,6 +61,7 @@ def test_a_new_database(tmp_path: Path) -> None:
             None,
             None,
             0.0,
+            0,
         )
     database.close()
 
@@ -263,3 +264,34 @@ def test_v1_subscription_migrates_with_cached_body_and_no_entity_tag(tmp_path: P
         assert store.cached_etag("p", p.url) is None
     finally:
         store.close()
+
+
+def test_v2_routing_migration_preserves_an_existing_choice(tmp_path: Path) -> None:
+    from solaris.models.routing import RoutingStore
+
+    path = tmp_path / DATABASE_NAME
+    old = Database(path, migrations=MIGRATIONS[:2])
+    with old.transaction() as connection:
+        connection.execute(
+            "UPDATE routing_state SET mode = 'plan', profile_id = 'p', plan_id = 'mine', "
+            "info_pattern = 'custom', updated_at = 100"
+        )
+        connection.execute(
+            "INSERT INTO plans(id, name, fallback, position, created_at, updated_at) "
+            "VALUES ('mine', 'Personal', 'DIRECT', 0, 100, 100)"
+        )
+    old.close()
+    database = Database(path)
+    try:
+        routing = RoutingStore(database)
+        state = routing.state()
+        assert (state.mode, state.profile_id, state.plan_id, state.info_pattern) == (
+            "plan",
+            "p",
+            "mine",
+            "custom",
+        )
+        assert not state.resume_profile
+        assert routing.plans()[0].name == "Personal"
+    finally:
+        database.close()

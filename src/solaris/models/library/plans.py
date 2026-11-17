@@ -62,6 +62,7 @@ class Plans:
         core = self._core
         async with core.lock:
             if mode == core.state.mode:
+                await core.confirm_routing()
                 return core.routing()
             if mode == MODE_PROFILE:
                 await core.inspect_missing()
@@ -91,6 +92,8 @@ class Plans:
                 core.state = await asyncio.to_thread(
                     core.routing_store.update_state, plan_id=plan.id
                 )
+            if core.state.mode == MODE_PLAN:
+                await core.confirm_routing()
             return core.routing()
 
     async def put_plan(self, plan: Plan) -> Routing:
@@ -99,6 +102,8 @@ class Plans:
         core = self._core
         async with core.lock:
             await core.apply_plan(plan)
+            if core.state.mode == MODE_PLAN and plan.id == core.state.plan_id:
+                await core.confirm_routing()
             return core.routing()
 
     async def create_plan(self, name: str, base: str | None) -> Routing:
@@ -111,6 +116,8 @@ class Plans:
                 plan = plans.copy_plan(next(p for p in core.plans if p.id == base), name)
             await core.apply_plan(plan, current=True)
             core.state = await asyncio.to_thread(core.routing_store.update_state, plan_id=plan.id)
+            if core.state.mode == MODE_PLAN:
+                await core.confirm_routing()
             return core.routing()
 
     async def delete_plan(self, plan_id: str) -> Routing:
@@ -126,6 +133,8 @@ class Plans:
                 core.state = await asyncio.to_thread(
                     core.routing_store.update_state, plan_id=successor.id
                 )
+                if core.state.mode == MODE_PLAN:
+                    await core.confirm_routing()
             await asyncio.to_thread(core.routing_store.delete_plan, plan_id)
             core.plans = await asyncio.to_thread(core.routing_store.plans)
             return core.routing()

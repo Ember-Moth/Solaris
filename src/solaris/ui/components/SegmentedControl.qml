@@ -8,6 +8,7 @@ Rectangle {
 
     property var options: []  // [{value, label}]
     property string current
+    property bool allowReselect: false
     property string accessibleName
     signal picked(string value)
 
@@ -39,7 +40,7 @@ Rectangle {
                 Accessible.role: Accessible.RadioButton
                 Accessible.name: modelData.label
                 onClicked: {
-                    if (!selected)
+                    if (!selected || root.allowReselect)
                         root.picked(modelData.value)
                 }
 

@@ -34,6 +34,7 @@ class RoutingState:
     profile_id: str | None = None  # the profile MODE_PROFILE uses
     plan_id: str | None = None  # the plan MODE_PLAN uses
     info_pattern: str | None = None  # None for DEFAULT_INFO_PATTERN
+    resume_profile: bool = False  # the plan temporarily replaced unavailable subscription rules
 
 
 @dataclass(frozen=True)
@@ -76,9 +77,9 @@ class RoutingStore:
     def state(self) -> RoutingState:
         with self._database.reading() as connection:
             row = connection.execute(
-                "SELECT mode, profile_id, plan_id, info_pattern FROM routing_state"
+                "SELECT mode, profile_id, plan_id, info_pattern, resume_profile FROM routing_state"
             ).fetchone()
-        return RoutingState(*row)
+        return RoutingState(*row[:4], resume_profile=bool(row[4]))
 
     def update_state(self, **changes: Any) -> RoutingState:
         """Store the fields given; the others keep what is stored, whoever wrote it."""

@@ -677,3 +677,18 @@ def test_a_merge_brings_back_what_was_deleted_before_the_tombstones_went(tmp_pat
     assert [r.id for r in plan.rules] == ["r-tg", "r-ip"]
     # The global override's tombstone is younger, so its deletion still wins.
     assert machine.store.read_override(None) == ""
+
+
+@pytest.mark.parametrize("mode", [REPLACE, MERGE])
+@pytest.mark.parametrize("incoming_newer", [False, True])
+def test_restore_resets_local_fallback_only_when_accepting_routing(
+    tmp_path: Path, mode: str, incoming_newer: bool
+) -> None:
+    target = Machine(tmp_path / "target", now=200)
+    target.routing.update_state(mode=MODE_PLAN, resume_profile=True)
+    source = Machine(tmp_path / "source", now=300 if incoming_newer else 100)
+    source.routing.update_state(mode=MODE_PLAN)
+    snapshot = source.snapshot()
+    assert "resume_profile" not in snapshot.document["routing"]
+    target.at(400).backups.restore(snapshot, mode)
+    assert target.routing.state().resume_profile == (mode == MERGE and not incoming_newer)
