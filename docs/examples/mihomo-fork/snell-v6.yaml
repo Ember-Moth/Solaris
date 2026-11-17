@@ -10,6 +10,7 @@ proxies:
     psk: 'CHANGE_ME_SNELL_PSK'
     version: 6
     mode: default
+    # userkey: 'CHANGE_ME_SNELL_USERKEY' # 服务端按用户区分时填写
     udp: false
     reuse: false
 

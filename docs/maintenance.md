@@ -343,6 +343,13 @@ exits.md 第 9 节的待实测项。
    标签触发同一个工作流：先批准 macOS 和两个 Windows 架构的构建任务，它们成功后再批准 release job。release job 核对安装包，
    写 `SHA256SUMS`，把这四个文件放进一个**草稿** Release（不上传源代码包，D43）。同一个标签已有 Release 时这一步失败，
    要先删掉旧的草稿再重新运行。标签发布后不删除，也不移到别的提交：它就是这个版本的源代码。
+
+   同时在 `Ember-Moth/mihomo` 上给这个版本 `replace` 固定的提交打 `solaris-v<版本>`（5.4 节），以后变基强推 `Alpha`
+   时它仍然取得到：
+
+   ```bash
+   git tag -a solaris-v1.0.0 <提交> -m "mihomo source pinned by Solaris v1.0.0" && git push origin solaris-v1.0.0
+   ```
 4. **草稿**：从草稿下载三个安装包，在测试机上再装一遍；在"更新内容"下写这个版本的变化，删掉模板里的注释行。
 5. **发布**，二选一：
    - **正式发布**，保留"Set as the latest release"：已安装的 Solaris 检查更新时会提示这个版本；
@@ -396,8 +403,14 @@ exits.md 第 9 节的待实测项。
 
 ### 5.4 依赖升级
 
-- **mihomo 增强版**：固定到 `Meta` 分支的明确提交或 tag（`src/core/go.mod`），不使用浮动分支作为构建输入。发布过的版本
-  固定的提交是那个版本对应的源代码（D43），不要用 force push 或删除分支、tag 让它们从 `Ember-Moth/mihomo` 上消失。mihomo 的运行时（`hub`、`executor`、`tunnel` 等
+- **mihomo 增强版**：固定到 Ember-Moth/mihomo `Alpha` 分支（D44）的明确提交（`src/core/go.mod` 的 `replace`），不使用浮动
+  分支作为构建输入。发布过的版本固定的提交是那个版本对应的源代码（D43），不要让它们从 `Ember-Moth/mihomo` 上消失：
+  每个发布版本在 fork 上有一个 annotated tag `solaris-v<版本>` 指向它固定的提交（第 4 节第 3 步）。随上游 `Alpha`
+  变基后要强推 `Alpha`，强推前先确认当前固定的提交已经有这样的 tag，强推用 `--force-with-lease`；`Meta` 分支（1.0.0
+  的提交）不动。界面显示的内核版本是 replace 伪版本去掉时间戳和哈希（[ui.md](ui.md)），伪版本的基准是 fork 上最近的
+  上游发布 tag，所以 fork 只同步到已包含的上游发布的前一个：包含 v1.19.34 时同步 v1.19.33，伪版本是
+  `v1.19.34-0.…`，界面显示 v1.19.34；`require` 里的 `github.com/metacubex/mihomo` 写已包含的最新上游发布。上游原样的
+  发布 tag 推到 fork 不会让已发布的伪版本失效。mihomo 的运行时（`hub`、`executor`、`tunnel` 等
   包级状态）只在 engine 里用（`imports_test.go` 检查）；`admission`、`compose`、`vpngate` 用 mihomo 无状态的解析
   函数、类型和常量，升级时这几处也要核对。升级前跑完整测试，并按 [architecture.md](architecture.md) §3.3 逐条复核
   安全要求和 3.4 节的发布构建标签。

@@ -8,7 +8,7 @@
 | Naive | `type: naive`，HTTP/2、HTTP/3/QUIC、可选 UoT | Naive 兼容服务端；QUIC、UoT 分别需要服务端支持 |
 | AnyTLS + REALITY | AnyTLS 节点可以使用 `reality-opts` | 同时支持 AnyTLS 协议和 REALITY 的端点 |
 | REALITY 握手 | 版本标识对齐 `26.10.29`，默认保留指纹中的 X25519MLKEM768 | 服务端的版本策略和密钥交换能力需要匹配 |
-| Snell v4–v6 | 使用上游 mihomo 的实现，支持 v4、v5、v6 和 v6 模式 | 与客户端相同的版本、PSK 和模式 |
+| Snell v4–v6 | 使用上游 mihomo 的实现，支持 v4、v5、v6、v6 模式和 v6 的 `userkey` | 与客户端相同的版本、PSK 和模式；按用户区分时还要有分配的 userkey |
 | Nowhere NW3 | `type: nowhere`，经 TLS 或 QUIC 连接，转发 TCP 和 UDP，支持 Morph | Nowhere 3.3 的 Portal，共享密钥和 Morph 设置一致 |
 | VLESS 反向代理 | `type: vless-reverse` 虚拟入站，经 VLESS 节点回连公网端 | 公网端配置反向 VLESS 用户和同名 `vless-reverse` 出站 |
 
@@ -203,6 +203,7 @@ proxies:
     psk: 'CHANGE_ME_SNELL_PSK'
     version: 6
     mode: default
+    # userkey: 'CHANGE_ME_SNELL_USERKEY'
     udp: false
     reuse: false
 ```
@@ -214,6 +215,7 @@ proxies:
 | `reuse` | v4/v5/v6 可选，默认 `false`；需要 TCP 连接复用时设为 `true`。v2 始终启用复用 |
 | `udp` | 默认 `false`；v3–v6 可设为 `true`，同时需要服务端支持 UDP-over-TCP；v1/v2 不支持 |
 | `mode` | 仅 v6 可用，可选 `default`、`unshaped`、`unsafe-raw`，必须与服务端匹配；其他版本填写会被拒绝 |
+| `userkey` | 仅 v6 可用，可选，最长 255 字节；作为 Snell 请求里的 ClientID 发给服务端，用于区分用户，按服务端分配的值填写。省略时 ClientID 为空；其他版本填写会被拒绝 |
 | `obfs-opts` | 可选，需与服务端一致；`http`、`tls`、`shadow-tls`、`restls`、`jls`，其中 v6 不支持 `http` 和 `tls` |
 
 先用默认 `mode: default` 验证。`unshaped` 保留加密，但去掉默认的记录填充，需要服务端使用相同设置。

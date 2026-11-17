@@ -3,6 +3,7 @@ package engine
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/metacubex/mihomo/common/yaml"
@@ -83,8 +84,12 @@ func TestForkSnellSurvivesAdmissionAndComposition(t *testing.T) {
 		for _, sample := range []struct {
 			version int
 			mode    string
-		}{{3, ""}, {4, ""}, {5, ""}, {6, "default"}, {6, "unshaped"}, {6, "unsafe-raw"}} {
-			t.Run(fmt.Sprintf("composed=%t/v%d/%s", composed, sample.version, sample.mode), func(t *testing.T) {
+			userKey string
+		}{
+			{3, "", ""}, {4, "", ""}, {5, "", ""}, {6, "default", ""}, {6, "unshaped", ""}, {6, "unsafe-raw", ""},
+			{6, "default", "solaris-client"},
+		} {
+			t.Run(fmt.Sprintf("composed=%t/v%d/%s/userkey=%t", composed, sample.version, sample.mode, sample.userKey != ""), func(t *testing.T) {
 				node := map[string]any{
 					"name": "node", "type": "snell", "server": "127.0.0.1", "port": 443,
 					"psk": "test-snell-password", "version": sample.version, "udp": true,
@@ -97,6 +102,10 @@ func TestForkSnellSurvivesAdmissionAndComposition(t *testing.T) {
 				if sample.mode != "" {
 					node["mode"] = sample.mode
 					retained = append(retained, "mode: "+sample.mode)
+				}
+				if sample.userKey != "" {
+					node["userkey"] = sample.userKey
+					retained = append(retained, "userkey: "+sample.userKey)
 				}
 				admitted, err := admitProfile(forkProfile(t, node, composed), noTUN)
 				if err != nil {
@@ -127,6 +136,8 @@ func TestForkSnellSurvivesAdmissionAndComposition(t *testing.T) {
 			{6, "mode", "invalid"},
 			{6, "psk", "short"},
 			{6, "obfs-opts", map[string]any{"mode": "tls"}},
+			{4, "userkey", "solaris-client"}, // v6 only
+			{6, "userkey", strings.Repeat("k", 256)},
 		} {
 			node := map[string]any{
 				"name": "node", "type": "snell", "server": "127.0.0.1", "port": 443,

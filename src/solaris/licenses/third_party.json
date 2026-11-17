@@ -374,7 +374,7 @@
     },
     {
       "name": "github.com/easytier/easytier/easytier-go",
-      "version": "v0.0.0-20260910071355-3d0c9c3ca5e2",
+      "version": "v0.0.0-20261111015056-2abb1676b475",
       "license": "LGPL-3.0-only",
       "kind": "go",
       "url": "https://github.com/easytier/easytier",
@@ -414,7 +414,7 @@
     },
     {
       "name": "github.com/Ember-Moth/mihomo",
-      "version": "v1.19.33-0.20261110083707-ba68f8657166",
+      "version": "v1.19.34-0.20261117082241-15fb245e9278",
       "license": "GPL-3.0-only",
       "kind": "go",
       "url": "https://github.com/Ember-Moth/mihomo",
@@ -966,7 +966,7 @@
     },
     {
       "name": "github.com/metacubex/sing-shadowsocks",
-      "version": "v0.2.13",
+      "version": "v0.2.14",
       "license": "GPL-3.0-or-later",
       "kind": "go",
       "url": "https://github.com/metacubex/sing-shadowsocks",
@@ -1086,7 +1086,7 @@
     },
     {
       "name": "github.com/metacubex/utls",
-      "version": "v1.8.8",
+      "version": "v1.9.0-alpha.1",
       "license": "BSD-3-Clause",
       "kind": "go",
       "url": "https://github.com/metacubex/utls",

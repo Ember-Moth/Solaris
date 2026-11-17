@@ -10,8 +10,8 @@ require (
 	github.com/Ember-Moth/cronet-go v0.0.0-20261103143108-5a29f59dd943
 	github.com/Microsoft/go-winio v0.6.4
 	github.com/dlclark/regexp2 v1.12.0
-	github.com/easytier/easytier/easytier-go v0.0.0-20260910071355-3d0c9c3ca5e2
-	github.com/metacubex/mihomo v1.19.33
+	github.com/easytier/easytier/easytier-go v0.0.0-20261111015056-2abb1676b475
+	github.com/metacubex/mihomo v1.19.34
 	github.com/metacubex/quic-go v0.61.1-0.20260727080200-2548683b76f4
 	github.com/metacubex/sing v0.5.9
 	github.com/metacubex/sing-tun v0.4.29
@@ -96,7 +96,7 @@ require (
 	github.com/metacubex/sevenzip v1.6.4 // indirect
 	github.com/metacubex/sing-mux v0.3.12 // indirect
 	github.com/metacubex/sing-quic v0.0.0-20260904234848-1c242664697a // indirect
-	github.com/metacubex/sing-shadowsocks v0.2.13 // indirect
+	github.com/metacubex/sing-shadowsocks v0.2.14 // indirect
 	github.com/metacubex/sing-shadowsocks2 v0.2.8 // indirect
 	github.com/metacubex/sing-vmess v0.2.5 // indirect
 	github.com/metacubex/sing-wireguard v0.0.0-20261002050126-e5fa1a607406 // indirect
@@ -104,7 +104,7 @@ require (
 	github.com/metacubex/ssh v0.1.0 // indirect
 	github.com/metacubex/tailscale-wireguard-go v0.0.0-20260725073821-e61ab99cede2 // indirect
 	github.com/metacubex/tfo-go v0.0.0-20261026151606-08d83ec08c84 // indirect
-	github.com/metacubex/utls v1.8.8 // indirect
+	github.com/metacubex/utls v1.9.0-alpha.1 // indirect
 	github.com/metacubex/wazero v0.0.0-20260628025728-9ae6bdcf2a7d // indirect
 	github.com/metacubex/wireguard-go v0.0.0-20250820062549-a6cecdd7f57f // indirect
 	github.com/metacubex/yamux v0.0.0-20250918083631-dd5f17c0be49 // indirect
@@ -179,4 +179,4 @@ require (
 	golang.org/x/tools v0.50.0 // indirect
 )
 
-replace github.com/metacubex/mihomo => github.com/Ember-Moth/mihomo v1.19.33-0.20261110083707-ba68f8657166
+replace github.com/metacubex/mihomo => github.com/Ember-Moth/mihomo v1.19.34-0.20261117082241-15fb245e9278
