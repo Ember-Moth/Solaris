@@ -208,7 +208,28 @@ def _schema_1(connection: sqlite3.Connection) -> None:
 # A released schema is never edited in place. From 1.0.0 on, a schema change appends a
 # migration from the version before, with a test that migrates a database of that version
 # with data in it, so that a database any release wrote stays readable.
-MIGRATIONS: tuple[Migration, ...] = (_schema_1,)
+def _schema_2(connection: sqlite3.Connection) -> None:
+    for column in ("etag", "tag_resource", "website", "support"):
+        connection.execute(
+            f"ALTER TABLE profile_contents ADD COLUMN {column} TEXT NOT NULL DEFAULT ''"
+        )
+    # Also cover direct content writes, D27 rollback and changes made by backup restore.
+    connection.execute("""
+        CREATE TRIGGER invalidate_content_tag AFTER UPDATE OF yaml ON profile_contents
+        BEGIN UPDATE profile_contents SET etag = '', tag_resource = ''
+              WHERE profile_id = NEW.profile_id; END
+    """)
+    connection.execute("""
+        CREATE TRIGGER invalidate_subscription_metadata
+        AFTER UPDATE OF url, kind, deleted_at ON profiles
+        WHEN OLD.url IS NOT NEW.url OR OLD.kind IS NOT NEW.kind
+          OR OLD.deleted_at IS NOT NEW.deleted_at
+        BEGIN UPDATE profile_contents SET etag = '', tag_resource = '', website = '', support = ''
+              WHERE profile_id = NEW.id; END
+    """)
+
+
+MIGRATIONS: tuple[Migration, ...] = (_schema_1, _schema_2)
 SCHEMA_VERSION = len(MIGRATIONS)
 
 

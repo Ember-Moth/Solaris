@@ -239,3 +239,27 @@ def test_a_database_nobody_closed_closes_quietly(tmp_path: Path) -> None:
         Database(tmp_path / DATABASE_NAME)
         gc.collect()
     assert not [w for w in caught if issubclass(w.category, ResourceWarning)]
+
+
+def test_v1_subscription_migrates_with_cached_body_and_no_entity_tag(tmp_path: Path) -> None:
+    from solaris.models.store import ProfileStore
+
+    old = Database(tmp_path / DATABASE_NAME, migrations=MIGRATIONS[:1])
+    with old.transaction() as connection:
+        connection.execute(
+            "INSERT INTO profiles "
+            "(id, name, kind, url, auto_update_hours, position, created_at, updated_at) "
+            "VALUES ('p', 'Personal', 'subscription', 'https://sub.example', -6, 0, 1, 1)"
+        )
+        connection.execute(
+            "INSERT INTO profile_contents(profile_id,yaml,updated_at) VALUES ('p','saved',1)"
+        )
+    old.close()
+    store = ProfileStore(tmp_path)
+    try:
+        p = store.load().get("p")
+        assert (p.name, p.auto_update_hours, p.website, p.support) == ("Personal", -6, "", "")
+        assert store.read_config("p") == "saved"
+        assert store.cached_etag("p", p.url) is None
+    finally:
+        store.close()

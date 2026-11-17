@@ -32,7 +32,7 @@ ScrollView {
         importOpen = false
         urlField.clear()
         nameField.clear()
-        autoUpdate.setInterval(true, page.profiles.defaultAutoUpdateHours)
+        autoUpdate.setInterval(true, 0)
         page.profiles.clearImportError()
         if (refocus)
             linkButton.forceActiveFocus(Focus.reasonAfter(focused))
@@ -53,7 +53,7 @@ ScrollView {
         urlField.text = draft.url
         nameField.text = draft.name
         autoUpdate.checked = draft.autoUpdate
-        autoUpdate.intervalText = draft.interval ?? String(page.profiles.defaultAutoUpdateHours)
+        autoUpdate.intervalText = draft.interval ?? ""
         importOpen = true
     }
 
@@ -77,7 +77,7 @@ ScrollView {
 
     function submitImport() {
         if (urlField.text.trim() !== "" && !page.profiles.importing && autoUpdate.acceptableInput)
-            page.profiles.importUrl(urlField.text, nameField.text, autoUpdate.checked, autoUpdate.hours)
+            page.profiles.importUrl(urlField.text, nameField.text, autoUpdate.checked, autoUpdate.hours, autoUpdate.suggested)
     }
 
     contentWidth: availableWidth
@@ -264,6 +264,7 @@ ScrollView {
                     AutoUpdateField {
                         id: autoUpdate
 
+                        allowSuggestion: true
                         defaultHours: page.profiles.defaultAutoUpdateHours
                         checked: true
                         enabled: !page.profiles.importing

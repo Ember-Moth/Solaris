@@ -7,9 +7,11 @@ ColumnLayout {
     id: field
 
     required property int defaultHours
+    property bool allowSuggestion: false
+    readonly property bool suggested: allowSuggestion && interval.text === ""
     property alias checked: toggle.checked
     property alias intervalText: interval.text
-    readonly property bool acceptableInput: !checked || (interval.acceptableInput && Number.isInteger(Number(interval.text)))
+    readonly property bool acceptableInput: !checked || suggested || (interval.acceptableInput && Number.isInteger(Number(interval.text)))
     // The interval typed, 0 when it is not a whole number of hours; kept while updates are
     // off, so that turning them on again brings it back (Profile.auto_update_hours).
     readonly property int hours: interval.acceptableInput && Number.isInteger(Number(interval.text)) ? Number(interval.text) : 0
@@ -19,7 +21,7 @@ ColumnLayout {
 
     function setInterval(enabled: bool, hours: int) {
         checked = enabled
-        intervalText = String(hours > 0 ? hours : defaultHours)
+        intervalText = allowSuggestion && hours === 0 ? "" : String(hours > 0 ? hours : defaultHours)
     }
 
     RowLayout {
@@ -31,7 +33,7 @@ ColumnLayout {
         }
 
         UiText {
-            text: qsTr("每")
+            text: field.allowSuggestion ? qsTr("更新间隔（小时）") : qsTr("每")
             role: Theme.type.bodySm
             color: Theme.textSecondary
             opacity: field.checked ? 1 : Theme.disabledOpacity
@@ -41,7 +43,8 @@ ColumnLayout {
             id: interval
 
             Layout.preferredWidth: 80
-            text: String(field.defaultHours)
+            text: field.allowSuggestion ? "" : String(field.defaultHours)
+            placeholderText: field.allowSuggestion ? qsTr("自动") : ""
             enabled: field.checked
             inputMethodHints: Qt.ImhDigitsOnly
             validator: IntValidator { bottom: 1 }
@@ -52,10 +55,20 @@ ColumnLayout {
 
         UiText {
             text: qsTr("小时", "", Number(interval.text) === 1 ? 1 : 2)
+            visible: !field.allowSuggestion
             role: Theme.type.bodySm
             color: Theme.textSecondary
             opacity: field.checked ? 1 : Theme.disabledOpacity
         }
+    }
+
+    AccessibleText {
+        Layout.fillWidth: true
+        visible: field.checked && field.suggested
+        text: qsTr("使用订阅建议的间隔，未提供时每 %1 小时更新").arg(field.defaultHours)
+        role: Theme.type.caption
+        color: Theme.textSecondary
+        wrapMode: Text.Wrap
     }
 
     AccessibleText {

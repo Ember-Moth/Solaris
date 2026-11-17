@@ -53,6 +53,8 @@ class Profile:
     # Stored while no core could read it (macOS, tunnel down; D27): the core reads it at the
     # next connect. Until then it has no node count and may or may not bring rules.
     unread: bool = False
+    website: str = ""
+    support: str = ""
 
     @property
     def is_subscription(self) -> bool:

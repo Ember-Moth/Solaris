@@ -34,11 +34,12 @@ from solaris.models.profiles import (
     Profile,
     ProfileError,
     ProfileList,
-    Usage,
 )
 from solaris.models.routing import MODE_PLAN, MODE_PROFILE, Plan
 from solaris.models.subscription import (
+    Download,
     Fetcher,
+    NotModified,
     check_url,
     decode_config,
     node_links,
@@ -100,23 +101,38 @@ class Profiles:
         name: str = "",
         auto_update: bool = True,
         *,
-        interval_hours: int = DEFAULT_AUTO_UPDATE_HOURS,
+        interval_hours: int | None = None,
     ) -> ProfileList:
-        hours = _update_interval(auto_update, interval_hours)
+        hours = _update_interval(
+            auto_update, DEFAULT_AUTO_UPDATE_HOURS if interval_hours is None else interval_hours
+        )
         url = check_url(url)
         download = await self._fetcher.fetch(url)
         text = decode_config(download.body)
+        if auto_update and interval_hours is None and download.interval is not None:
+            hours = _update_interval(True, download.interval)
         profile = Profile(
             id=uuid.uuid4().hex,
-            name=name.strip() or download.filename or urlsplit(url).hostname or url,
+            name=name.strip()
+            or download.title
+            or download.filename
+            or urlsplit(url).hostname
+            or url,
             kind=KIND_SUBSCRIPTION,
             url=url,
             auto_update_hours=hours,
             updated_at=self._core.clock(),
             usage=download.usage,
+            website=download.website,
+            support=download.support,
         )
         async with self._core.lock:
-            return await self._add(profile, text)
+            result = await self._add(profile, text)
+            if download.etag:
+                await asyncio.to_thread(
+                    self._core.store.accept_etag, profile.id, profile.url, text, download.etag
+                )
+            return result
 
     async def import_file(self, path: Path) -> ProfileList:
         text = await asyncio.to_thread(read_config_file, path)
@@ -208,6 +224,8 @@ class Profiles:
                 url=url,
                 auto_update_hours=hours if profile.is_subscription else 0,
                 usage=None if source_changed else profile.usage,
+                website="" if source_changed else profile.website,
+                support="" if source_changed else profile.support,
                 updated_at=0 if source_changed else profile.updated_at,
             )
             updated = core.list.put(edited)
@@ -247,12 +265,7 @@ class Profiles:
             raise ProfileError("no_profile_source", "pasted nodes have no external source")
         epoch = self._source_epochs.get(profile_id, 0)
         try:
-            text, usage, inspection = await self._fetch_again(profile)
-            async with core.lock:
-                core.list.get(profile_id)  # deletion/restoration still reports unknown_profile
-                if not self._same_source(profile, epoch):
-                    return Updated(core.list, False, False)
-                changed, applied = await self._commit_update(profile_id, text, usage, inspection)
+            changed, applied = await self._refresh(profile, epoch)
         except Exception:
             core.list.get(profile_id)
             if not self._same_source(profile, epoch):
@@ -280,20 +293,12 @@ class Profiles:
                 continue
             if not self._due(profile, now):
                 continue
-            epoch = self._source_epochs.get(profile.id, 0)
             try:
-                text, usage, inspection = await self._fetch_again(profile)
-                async with core.lock:
-                    if not self._same_source(profile, epoch):
-                        continue
-                    new, in_use = await self._commit_update(profile.id, text, usage, inspection)
+                result = await self.update(profile.id)
             except Exception:
-                if self._same_source(profile, epoch):
-                    core.mark_failed(profile.id, now)
-            else:
-                core.mark_failed(profile.id, None)
-                changed |= new
-                applied |= in_use
+                continue  # update marked the failure unless the source was removed
+            changed |= result.changed
+            applied |= result.applied
         return Updated(core.list, changed, applied)
 
     def _due(self, profile: Profile, now: float) -> bool:
@@ -305,23 +310,72 @@ class Profiles:
             return now - failed_at >= RETRY_AFTER_S
         return now - profile.updated_at >= profile.auto_update_hours * 3600
 
-    async def _fetch_again(
-        self, profile: Profile
-    ) -> tuple[str, Usage | None, SourceInspection | None]:
-        """The profile's new text, read by the host, or unread while no core can read it;
-        downloads run outside the lock."""
+    async def _refresh(
+        self, profile: Profile, epoch: int, *, restoring: bool = False
+    ) -> tuple[bool, bool]:
+        core = self._core
+        download: Download | None = None
         if profile.is_subscription:
-            download = await self._fetcher.fetch(profile.url)
-            text, usage = decode_config(download.body), download.usage
+            tag = None
+            if not restoring and not profile.unread and profile.id not in core.failed:
+                tag = await asyncio.to_thread(core.store.cached_etag, profile.id, profile.url)
+            if tag:
+                response = await self._fetcher.fetch_if_changed(profile.url, tag)
+                if isinstance(response, NotModified):
+                    async with core.lock:
+                        current = core.list.get(profile.id)
+                        if not self._same_source(profile, epoch):
+                            return False, False
+                        # A competing update, edit or restore may have replaced the body.
+                        if (
+                            not current.unread
+                            and profile.id not in core.failed
+                            and await asyncio.to_thread(
+                                core.store.cached_etag, profile.id, profile.url
+                            )
+                            == tag
+                        ):
+                            checked = replace(
+                                current,
+                                updated_at=core.clock(),
+                                usage=response.usage or current.usage,
+                                website=current.website
+                                if response.website is None
+                                else response.website,
+                                support=current.support
+                                if response.support is None
+                                else response.support,
+                            )
+                            await core.save(core.list.put(checked))
+                            return False, False
+                else:
+                    download = response
+            if download is None:
+                download = await self._fetcher.fetch(profile.url)
+            text = decode_config(download.body)
+        elif restoring:
+            text = await asyncio.to_thread(core.store.read_config, profile.id)
         else:
-            text, usage = await asyncio.to_thread(read_config_file, Path(profile.path)), None
-        return text, usage, await self._core.read(text, profile.id)
+            text = await asyncio.to_thread(read_config_file, Path(profile.path))
+        inspection = await core.read(text, profile.id)
+        async with core.lock:
+            core.list.get(profile.id)
+            if not self._same_source(profile, epoch):
+                return False, False
+            result = await self._commit_update(
+                profile.id, text, download, inspection, reload=not restoring
+            )
+            if download is not None:
+                await asyncio.to_thread(
+                    core.store.accept_etag, profile.id, profile.url, text, download.etag
+                )
+            return result
 
     async def _commit_update(
         self,
         profile_id: str,
         text: str,
-        usage: Usage | None,
+        download: Download | None,
         inspection: SourceInspection | None,
         *,
         reload: bool = True,
@@ -333,12 +387,15 @@ class Profiles:
         core = self._core
         # The profile may have been removed while it downloaded.
         profile = core.list.get(profile_id)
+        if download is not None:
+            profile = replace(
+                profile, usage=download.usage, website=download.website, support=download.support
+            )
         if inspection is not None and not await self._changed(profile, text):
             core.inspections[profile_id] = inspection
             dated = replace(
                 profile,
                 updated_at=core.clock(),
-                usage=usage,
                 proxy_count=inspection.node_count,
                 has_rules=inspection.has_rules,
             )
@@ -348,7 +405,6 @@ class Profiles:
             unread = replace(
                 profile,
                 updated_at=core.clock(),
-                usage=usage,
                 proxy_count=None,
                 has_rules=None,
                 unread=True,
@@ -362,7 +418,6 @@ class Profiles:
         refreshed = replace(
             profile,
             updated_at=core.clock(),
-            usage=usage,
             proxy_count=inspection.node_count,
             has_rules=inspection.has_rules,
             unread=False,
@@ -550,6 +605,8 @@ class Profiles:
         core = self._core
         async with core.lock:
             await asyncio.to_thread(write)
+            for previous in core.list.profiles:
+                self._source_epochs[previous.id] = self._source_epochs.get(previous.id, 0) + 1
             core.list = await asyncio.to_thread(core.store.load)
             core.state = await asyncio.to_thread(core.routing_store.state)
             core.plans = await asyncio.to_thread(core.routing_store.plans)
@@ -558,16 +615,12 @@ class Profiles:
             core.inspections.clear()
             core.report = None
         for profile in core.list.profiles:
+            epoch = self._source_epochs.get(profile.id, 0)
             try:
-                if profile.is_subscription:
-                    text, usage, inspection = await self._fetch_again(profile)
-                else:
-                    text, usage = await asyncio.to_thread(core.store.read_config, profile.id), None
-                    inspection = await core.read(text, profile.id)
-                async with core.lock:
-                    await self._commit_update(profile.id, text, usage, inspection, reload=False)
+                await self._refresh(profile, epoch, restoring=True)
             except Exception:
-                core.mark_failed(profile.id, core.clock())
+                if self._same_source(profile, epoch):
+                    core.mark_failed(profile.id, core.clock())
         async with core.lock:
             if core.state.mode == MODE_PROFILE and core.list.active_profile() is None:
                 successor = core.first_with_rules(core.list)

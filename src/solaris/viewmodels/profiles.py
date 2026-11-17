@@ -24,6 +24,7 @@ from solaris.models.library import (
 )
 from solaris.models.profiles import Profile, ProfileList
 from solaris.models.routing import MODE_PLAN, MODE_PROFILE
+from solaris.models.subscription import web_link
 from solaris.viewmodels.common.async_runner import AsyncRunner
 from solaris.viewmodels.common.keyed_list import KeyedListModel
 from solaris.viewmodels.feedback import failure_text
@@ -429,6 +430,8 @@ class ProfilesViewModel(QObject):
             "url": profile.url,
             "subscription": profile.is_subscription,
             "autoUpdate": profile.auto_update_hours > 0,
+            "website": web_link(profile.website),
+            "support": web_link(profile.support),
             "autoUpdateHours": profile.auto_update_interval,  # also kept while off
         }
 
@@ -706,17 +709,18 @@ class ProfilesViewModel(QObject):
         self._error = self.tr("无法识别的导入链接")
         self.changed.emit()
 
-    @Slot(str, str, bool, int)
+    @Slot(str, str, bool, int, bool)
     def importUrl(
         self,
         url: str,
         name: str,
         auto_update: bool,
-        interval_hours: int = DEFAULT_AUTO_UPDATE_HOURS,
+        interval_hours: int | None = None,
+        suggested: bool = False,
     ) -> None:
         self._import(
             self._library.profiles.import_url(
-                url, name, auto_update, interval_hours=interval_hours
+                url, name, auto_update, interval_hours=None if suggested else interval_hours
             ),
             from_link=True,
         )

@@ -31,6 +31,7 @@ from solaris.models.database import (
     sync_rows,
 )
 from solaris.models.profiles import Profile, ProfileError, ProfileList, Usage
+from solaris.models.subscription import EntityTag
 from solaris.product import DISPLAY_NAME
 
 GLOBAL_SCOPE = "global"  # the scope of the global override
@@ -90,6 +91,35 @@ class ProfileStore:
             raise ProfileError("config_missing", f"no config stored for {profile_id}")
         return row[0]
 
+    def cached_etag(self, profile_id: str, url: str) -> EntityTag | None:
+        with _stored(), self.database.reading() as connection:
+            row = connection.execute(
+                "SELECT c.etag, c.tag_resource FROM profile_contents c "
+                "JOIN profiles p ON p.id = c.profile_id "
+                "WHERE p.id = ? AND p.url = ? AND p.deleted_at IS NULL "
+                "AND c.unread = 0 AND c.yaml != ''",
+                (profile_id, url),
+            ).fetchone()
+        return EntityTag(*row) if row and row[0] and row[1] else None
+
+    def accept_etag(self, profile_id: str, url: str, text: str, etag: EntityTag | None) -> None:
+        # Called under the library lock after this exact body was committed.
+        # Unread bodies become eligible only after inspection.
+        with _stored(), self.database.transaction() as connection:
+            connection.execute(
+                "UPDATE profile_contents SET etag = ?, tag_resource = ? WHERE profile_id = ? "
+                "AND yaml = ? AND EXISTS (SELECT 1 FROM profiles WHERE id = ? AND url = ? "
+                "AND deleted_at IS NULL)",
+                (
+                    etag.value if etag else "",
+                    etag.resource if etag else "",
+                    profile_id,
+                    text,
+                    profile_id,
+                    url,
+                ),
+            )
+
     def write_config(self, profile_id: str, text: str, *, keep_read: bool = False) -> None:
         """Store a profile's config. ``keep_read`` keeps the text a core read last, for
         fall_back, when this one is stored unread (D27)."""
@@ -146,7 +176,7 @@ def load_profiles(connection: sqlite3.Connection) -> ProfileList:
         """
         SELECT p.id, p.name, p.kind, p.url, p.path, p.auto_update_hours, p.in_pool,
                c.fetched_at, c.upload, c.download, c.total, c.expire, c.proxy_count,
-               c.has_rules, c.unread,
+               c.has_rules, c.unread, c.website, c.support,
                o.scope IS NOT NULL AS has_override
         FROM profiles AS p
         LEFT JOIN profile_contents AS c ON c.profile_id = p.id
@@ -185,6 +215,8 @@ def _profile(row: sqlite3.Row) -> Profile:
         in_pool=bool(row["in_pool"]),
         has_rules=None if row["has_rules"] is None else bool(row["has_rules"]),
         unread=bool(row["unread"]),
+        website=row["website"] or "",
+        support=row["support"] or "",
     )
 
 
@@ -205,14 +237,17 @@ def save_profiles(connection: sqlite3.Connection, profiles: ProfileList, now: fl
             profile.proxy_count,
             None if profile.has_rules is None else int(profile.has_rules),
             int(profile.unread),
+            profile.website,
+            profile.support,
         )
         connection.execute(
             "UPDATE profile_contents SET fetched_at = ?, upload = ?, download = ?, total = ?, "
-            "expire = ?, proxy_count = ?, has_rules = ?, unread = ?, "
+            "expire = ?, proxy_count = ?, has_rules = ?, unread = ?, website = ?, support = ?, "
             "read_yaml = CASE WHEN ? THEN read_yaml END, updated_at = ? "
             "WHERE profile_id = ? AND "
-            "(fetched_at, upload, download, total, expire, proxy_count, has_rules, unread) "
-            "IS NOT (?, ?, ?, ?, ?, ?, ?, ?)",
+            "(fetched_at, upload, download, total, expire, proxy_count, has_rules, unread, "
+            "website, support) "
+            "IS NOT (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (*fetched, int(profile.unread), now, profile.id, *fetched),
         )
     connection.execute(

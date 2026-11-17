@@ -186,6 +186,10 @@
         <translation>Every</translation>
     </message>
     <message>
+        <source>自动</source>
+        <translation>Auto</translation>
+    </message>
+    <message>
         <source>更新间隔（小时）</source>
         <translation>Update interval (hours)</translation>
     </message>
@@ -195,6 +199,10 @@
             <numerusform>hour</numerusform>
             <numerusform>hours</numerusform>
         </translation>
+    </message>
+    <message>
+        <source>使用订阅建议的间隔，未提供时每 %1 小时更新</source>
+        <translation>Use the subscription’s interval, or update every %1 hours if none is provided</translation>
     </message>
     <message>
         <source>更新间隔必须为正整数小时</source>
@@ -2492,6 +2500,14 @@ prepend-rules:
     <message>
         <source>修改地址后保留现有配置，下次更新使用新地址。</source>
         <translation>The existing configuration is kept. The next update uses the new URL.</translation>
+    </message>
+    <message>
+        <source>官网</source>
+        <translation>Website</translation>
+    </message>
+    <message>
+        <source>帮助</source>
+        <translation>Help</translation>
     </message>
     <message>
         <source>取消</source>

@@ -66,6 +66,20 @@ AppDialog {
             color: Theme.textSecondary
             wrapMode: Text.Wrap
         }
+        RowLayout {
+            visible: dialog.subscription && (!!dialog.profiles.editDetails.website || !!dialog.profiles.editDetails.support)
+            spacing: Theme.space2
+            AppButton {
+                text: qsTr("官网")
+                visible: !!dialog.profiles.editDetails.website
+                onClicked: Qt.openUrlExternally(dialog.profiles.editDetails.website)
+            }
+            AppButton {
+                text: qsTr("帮助")
+                visible: !!dialog.profiles.editDetails.support
+                onClicked: Qt.openUrlExternally(dialog.profiles.editDetails.support)
+            }
+        }
         AutoUpdateField {
             id: autoUpdate
             Layout.fillWidth: true

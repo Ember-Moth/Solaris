@@ -79,7 +79,7 @@ from solaris.models.routing import (
     RoutingStore,
 )
 from solaris.models.store import ProfileStore
-from solaris.models.subscription import Download
+from solaris.models.subscription import Download, EntityTag
 from tests.support.simulated_core import (
     VPNGATE_NAMES,
     check_config,
@@ -1133,6 +1133,9 @@ class SimulatedFetcher:
         self.filename: str | None = None
         self.error: ProfileError | None = None
         self.requests: list[str] = []
+
+    async def fetch_if_changed(self, url: str, etag: EntityTag) -> Download:
+        return await self.fetch(url)
 
     async def fetch(self, url: str) -> Download:
         self.requests.append(url)

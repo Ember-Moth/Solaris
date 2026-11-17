@@ -7,7 +7,12 @@ follows the system proxy settings, as other subscription clients do.
 from __future__ import annotations
 
 import asyncio
+import base64
+import contextlib
+import hashlib
 import http.client
+import re
+import unicodedata
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -37,14 +42,54 @@ _CONFIG_SUFFIXES = (".yaml", ".yml")
 
 
 @dataclass(frozen=True)
+class EntityTag:
+    value: str
+    resource: str  # digest of the final HTTP URL; signed redirect URLs stay out of the DB
+
+    def matches(self, url: str) -> bool:
+        return self.resource == resource_id(url)
+
+
+def resource_id(url: str) -> str:
+    return hashlib.sha256(url.encode()).hexdigest()
+
+
+class _ConditionalRequest(urllib.request.BaseHandler):
+    def __init__(self, tag: EntityTag) -> None:
+        self.tag = tag
+
+    def http_request(self, request: urllib.request.Request) -> urllib.request.Request:
+        if self.tag.matches(request.full_url):
+            # urllib must re-evaluate the resource on every redirect.
+            request.add_unredirected_header("If-None-Match", self.tag.value)
+        return request
+
+    https_request = http_request
+
+
+@dataclass(frozen=True)
 class Download:
     body: bytes
     usage: Usage | None
     filename: str | None  # suggested by Content-Disposition
+    interval: int | None = None
+    title: str = ""
+    website: str = ""
+    support: str = ""
+    etag: EntityTag | None = None
+
+
+@dataclass(frozen=True)
+class NotModified:
+    usage: Usage | None
+    website: str | None = None
+    support: str | None = None
 
 
 class Fetcher(Protocol):
     async def fetch(self, url: str) -> Download: ...
+
+    async def fetch_if_changed(self, url: str, etag: EntityTag) -> Download | NotModified: ...
 
 
 def parse_userinfo(header: str | None) -> Usage | None:
@@ -88,6 +133,48 @@ def usage_from_headers(headers: Message) -> Usage | None:
         if (value := headers.get(name)) is not None:
             return parse_userinfo(value)
     return None
+
+
+def web_link(value: str) -> str:
+    value = value.strip()
+    if (
+        not value
+        or "\\" in value
+        or any(c.isspace() or ord(c) < 32 or ord(c) == 127 for c in value)
+    ):
+        return ""
+    try:
+        parts = urlsplit(value)
+        if parts.scheme in {"http", "https"} and parts.hostname and parts.username is None:
+            _ = parts.port  # invalid or out-of-range port
+            return value
+    except ValueError:
+        pass
+    return ""
+
+
+def _title(value: str) -> str:
+    value = value.strip()
+    if value.startswith("base64:"):
+        try:
+            value = base64.b64decode(value[7:], validate=True).decode("utf-8")
+        except ValueError:
+            return ""
+    elif not value.isascii():
+        # HTTPMessage decodes wire bytes as Latin-1. Prefer a UTF-8 title when
+        # the bytes are UTF-8; an ordinary Latin-1 title is already decoded.
+        with contextlib.suppress(UnicodeError):
+            value = value.encode("latin-1").decode("utf-8")
+    return "".join(c for c in value if unicodedata.category(c)[0] != "C").strip()[:100]
+
+
+def _etag(value: str, url: str) -> EntityTag | None:
+    # A single RFC 9110 entity tag, including weak tags. A wildcard cannot identify a body.
+    return (
+        EntityTag(value, resource_id(url))
+        if re.fullmatch(r'(?:W/)?"[!#-~\x80-\xff]*"', value)
+        else None
+    )
 
 
 def decode_config(body: bytes) -> str:
@@ -145,24 +232,57 @@ class UrlFetcher:
         self._max_bytes = max_bytes
 
     async def fetch(self, url: str) -> Download:
-        return await asyncio.to_thread(self._fetch, check_url(url))
+        response = await asyncio.to_thread(self._fetch, check_url(url), None)
+        assert isinstance(response, Download)
+        return response
 
-    def _fetch(self, url: str) -> Download:
+    async def fetch_if_changed(self, url: str, etag: EntityTag) -> Download | NotModified:
+        return await asyncio.to_thread(self._fetch, check_url(url), etag)
+
+    def _fetch(self, url: str, etag: EntityTag | None) -> Download | NotModified:
         request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        opener = (
+            urllib.request.build_opener(_ConditionalRequest(etag))
+            if etag
+            else urllib.request.build_opener()
+        )
         try:
-            with urllib.request.urlopen(request, timeout=self._timeout_s) as response:
+            with opener.open(request, timeout=self._timeout_s) as response:
+                if response.status == 206:
+                    raise ProfileError("download_failed", "partial subscription response")
+                length = getattr(response, "length", None)
                 body = response.read(self._max_bytes + 1)
+                if length is not None and len(body) < min(length, self._max_bytes + 1):
+                    raise ProfileError("download_failed", "incomplete subscription response")
                 headers = response.headers
+                resource_url = response.geturl()
         except urllib.error.HTTPError as error:
-            raise ProfileError("http_error", f"HTTP {error.code}") from error
+            with error:
+                if error.code == 304 and etag and etag.matches(error.geturl()):
+                    headers = error.headers
+                    return NotModified(
+                        usage_from_headers(headers),
+                        web_link(headers["Profile-Web-Page-Url"])
+                        if "Profile-Web-Page-Url" in headers
+                        else None,
+                        web_link(headers["Support-Url"]) if "Support-Url" in headers else None,
+                    )
+                raise ProfileError("http_error", f"HTTP {error.code}") from error
         except urllib.error.URLError as error:
             raise ProfileError("download_failed", str(error.reason)) from error
         except (OSError, http.client.HTTPException, ValueError) as error:
             raise ProfileError("download_failed", str(error) or type(error).__name__) from error
         if len(body) > self._max_bytes:
             raise ProfileError("too_large", f"more than {self._max_bytes} bytes")
+        hours = headers.get("Profile-Update-Interval", "").strip()
+        interval = int(hours) if re.fullmatch(r"[0-9]{1,10}", hours) else 0
         return Download(
             body=body,
             usage=usage_from_headers(headers),
             filename=suggested_name(headers.get("Content-Disposition")),
+            title=_title(headers.get("Profile-Title", "")),
+            interval=interval if 0 < interval <= 2_147_483_647 else None,
+            website=web_link(headers.get("Profile-Web-Page-Url", "")),
+            support=web_link(headers.get("Support-Url", "")),
+            etag=_etag(headers.get("ETag", ""), resource_url),
         )
