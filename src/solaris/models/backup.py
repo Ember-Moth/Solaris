@@ -695,13 +695,16 @@ def _restore_routing_state(
             return
         updated_at = routing["updated_at"]
     elif all(row[column] == routing[column] for column in columns):
+        # This local fallback belongs to the previous library, even when the selected
+        # mode and IDs happen to match the replacement snapshot.
+        connection.execute("UPDATE routing_state SET resume_profile = 0")
         return
     else:
         # A database that never chose its routing takes the snapshot's as it was.
         updated_at = routing["updated_at"] if row["updated_at"] == 0 else now
     assigned = ", ".join(f"{column} = ?" for column in columns)
     connection.execute(
-        f"UPDATE routing_state SET {assigned}, updated_at = ?",
+        f"UPDATE routing_state SET {assigned}, resume_profile = 0, updated_at = ?",
         (*(routing[column] for column in columns), updated_at),
     )
 

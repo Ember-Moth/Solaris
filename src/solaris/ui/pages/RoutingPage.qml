@@ -111,6 +111,7 @@ ScrollView {
             SegmentedControl {
                 options: page.routing.modeOptions
                 current: page.routing.mode
+                allowReselect: true
                 accessibleName: qsTr("分流方式")
                 enabled: !page.routing.busy
                 onPicked: value => page.routing.setMode(value)

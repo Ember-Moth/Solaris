@@ -161,8 +161,14 @@ class Profiles:
         if updated.active is None and inspection.has_rules:
             updated = replace(updated, active=profile.id)
         mode = core.state.mode
+        resuming = core.should_resume_profile(inspection.has_rules)
         plan: Plan | None = None
         report: CompositionReport | None = None
+        if resuming:
+            updated = replace(updated, active=profile.id)
+            mode = MODE_PROFILE
+            # Apply before committing the switch; a refused reload leaves the fallback intact.
+            await core.try_config(TunnelConfig(text, await core.overrides(None)))
         if mode is None:
             # The first import picks the routing (routing.md §5.1).
             mode = MODE_PROFILE if inspection.has_rules else MODE_PLAN
@@ -173,7 +179,7 @@ class Profiles:
         core.inspections[profile.id] = inspection
         await core.save(updated)
         core.report = report  # the pool has another profile
-        if core.state.mode is None:
+        if core.state.mode is None or resuming:
             await core.store_mode(mode, plan)
         elif mode == MODE_PLAN:
             await core.reload_if_running()
@@ -457,6 +463,7 @@ class Profiles:
         core = self._core
         async with core.lock:
             if profile_id == core.list.active and core.state.mode == MODE_PROFILE:
+                await core.confirm_routing()
                 return core.list
             profile = core.list.get(profile_id)
             await core.inspect_missing()
@@ -554,7 +561,7 @@ class Profiles:
             core.inspections.pop(profile_id, None)
             core.mark_failed(profile_id, None)
             if mode is not None and mode != core.state.mode:
-                await core.store_mode(mode, plan)
+                await core.store_mode(mode, plan, resume_profile=mode == MODE_PLAN)
             return core.list
 
     # -- overrides: ``None`` is the global override, a profile id that profile's own ----------

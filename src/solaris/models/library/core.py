@@ -233,11 +233,26 @@ class LibraryCore:
             self.failed[profile_id] = failed_at
         self.list = replace(self.list, update_failed=frozenset(self.failed))
 
-    async def store_mode(self, mode: str, plan: Plan | None) -> None:
+    def should_resume_profile(self, has_rules: bool) -> bool:
+        return self.state.mode == MODE_PLAN and self.state.resume_profile and has_rules
+
+    async def confirm_routing(self) -> None:
+        """An explicit user choice cancels automatic recovery, even if the mode is unchanged."""
+        if self.state.resume_profile:
+            self.state = await asyncio.to_thread(
+                self.routing_store.update_state, resume_profile=False
+            )
+
+    async def store_mode(
+        self, mode: str, plan: Plan | None, *, resume_profile: bool = False
+    ) -> None:
         if plan is not None and plan.id not in {p.id for p in self.plans}:
             await asyncio.to_thread(self.routing_store.put_plan, plan)
             self.plans = await asyncio.to_thread(self.routing_store.plans)
-        changes: dict[str, str] = {"mode": mode}
+        changes: dict[str, str | bool] = {
+            "mode": mode,
+            "resume_profile": resume_profile if mode == MODE_PLAN else False,
+        }
         if plan is not None:
             changes["plan_id"] = plan.id
         self.state = await asyncio.to_thread(self.routing_store.update_state, **changes)

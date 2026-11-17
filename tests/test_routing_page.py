@@ -87,3 +87,28 @@ def test_profile_groups_and_rules_scroll_independently(
     assert loaded.on_screen(loaded.item(lambda item: item.property("text") == "没有匹配的规则"))
     assert (top(search), top(header)) == fixed
     assert loaded.warnings == []
+
+
+def test_reselecting_my_plan_cancels_automatic_recovery(qtbot: QtBot, loaded: Loaded) -> None:
+    models = loaded.view_models
+    qtbot.waitUntil(lambda: models.overview.property("connected"))
+    done: list[bool] = []
+
+    async def remove_all() -> bool:
+        for profile in models.library.snapshot().profiles:
+            await models.library.profiles.remove(profile.id)
+        return True
+
+    models.runner.submit(remove_all(), done.append)
+    qtbot.waitUntil(lambda: bool(done))
+    assert models.library.routing_snapshot().state.resume_profile
+    models.routing.reload()
+    models.shell.setPage("routing")
+    qtbot.waitUntil(lambda: models.routing.property("mode") == "plan")
+    control = loaded.item(lambda item: kind(item) == "SegmentedControl")
+    (selected,) = find_all(control, lambda item: item.property("selected") is True)
+    point = selected.mapToScene(QPointF(selected.width() / 2, selected.height() / 2)).toPoint()
+    qtbot.mouseClick(loaded.window, Qt.MouseButton.LeftButton, pos=point)
+    qtbot.waitUntil(lambda: not models.library.routing_snapshot().state.resume_profile)
+    assert models.routing.property("mode") == "plan"
+    assert not loaded.warnings

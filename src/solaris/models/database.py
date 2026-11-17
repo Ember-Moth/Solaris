@@ -229,7 +229,15 @@ def _schema_2(connection: sqlite3.Connection) -> None:
     """)
 
 
-MIGRATIONS: tuple[Migration, ...] = (_schema_1, _schema_2)
+def _schema_3(connection: sqlite3.Connection) -> None:
+    # Local fallback intent; older databases cannot distinguish it from a user's choice.
+    connection.execute(
+        "ALTER TABLE routing_state ADD COLUMN resume_profile INTEGER NOT NULL DEFAULT 0 "
+        "CHECK (resume_profile IN (0, 1))"
+    )
+
+
+MIGRATIONS: tuple[Migration, ...] = (_schema_1, _schema_2, _schema_3)
 SCHEMA_VERSION = len(MIGRATIONS)
 
 

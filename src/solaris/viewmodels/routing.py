@@ -228,7 +228,9 @@ class RoutingViewModel(QObject):
 
     @Slot(str)
     def setMode(self, mode: str) -> None:
-        if mode in MODE_LABELS and mode != self._routing.mode:
+        if mode in MODE_LABELS and (
+            mode != self._routing.mode or self._routing.state.resume_profile
+        ):
             self._flush()
             self._clear_undo()
             self.act(self._library.plans.set_mode(mode))
@@ -457,7 +459,7 @@ class RoutingViewModel(QObject):
 
     @Slot(str)
     def selectPlan(self, plan_id: str) -> None:
-        if plan_id != self.planId:
+        if plan_id != self.planId or self._routing.state.resume_profile:
             self._flush()
             self._clear_undo()
             self.act(self._library.plans.select_plan(plan_id))
