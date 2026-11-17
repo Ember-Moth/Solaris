@@ -71,6 +71,9 @@ def test_read_config_file(tmp_path: Path) -> None:
 
 class _Handler(BaseHTTPRequestHandler):
     agents: ClassVar[list[str]] = []
+    usage_headers: ClassVar[dict[str, str]] = {
+        "Subscription-Userinfo": "upload=1; download=2; total=10; expire=99",
+    }
 
     def do_GET(self) -> None:
         self.agents.append(self.headers.get("User-Agent", ""))
@@ -80,7 +83,8 @@ class _Handler(BaseHTTPRequestHandler):
         body = SAMPLE_CONFIG.encode() if self.path != "/big" else b"x" * 4096
         self.send_response(200)
         self.send_header("Content-Type", "text/yaml; charset=utf-8")
-        self.send_header("Subscription-Userinfo", "upload=1; download=2; total=10; expire=99")
+        for name, value in self.usage_headers.items():
+            self.send_header(name, value)
         self.send_header("Content-Disposition", 'attachment; filename="Local Sub.yaml"')
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
@@ -110,6 +114,89 @@ def test_url_fetcher_downloads_with_usage(server: str) -> None:
     assert download.usage == Usage(1, 2, 10, 99)
     assert download.filename == "Local Sub"
     assert _Handler.agents[-1] == USER_AGENT
+
+
+@pytest.mark.parametrize(
+    "header",
+    [
+        "sUbScRiPtIoN-uSeRiNfO",
+        "X-Amz-Meta-Subscription-Userinfo",
+        "x-amz-meta-subscription-userinfo",
+        "X-Obs-Meta-Subscription-Userinfo",
+        "x-obs-meta-subscription-userinfo",
+        "X-Cos-Meta-Subscription-Userinfo",
+        "x-cos-meta-subscription-userinfo",
+    ],
+)
+def test_url_fetcher_reads_usage_metadata(
+    server: str, monkeypatch: pytest.MonkeyPatch, header: str
+) -> None:
+    monkeypatch.setattr(
+        _Handler, "usage_headers", {header: "upload=1; download=2; total=10; expire=99"}
+    )
+    download = asyncio.run(UrlFetcher().fetch(server + "/sub"))
+    assert download.usage == Usage(1, 2, 10, 99)
+    assert download.body.decode() == SAMPLE_CONFIG
+    assert download.filename == "Local Sub"
+
+
+@pytest.mark.parametrize(
+    ("headers", "usage"),
+    [
+        (
+            {
+                "X-Cos-Meta-Subscription-Userinfo": "upload=4",
+                "X-Obs-Meta-Subscription-Userinfo": "upload=3",
+                "X-Amz-Meta-Subscription-Userinfo": "upload=2",
+                "subscription-userinfo": "upload=1",
+            },
+            Usage(1, 0, 0, 0),
+        ),
+        (
+            {
+                "X-Cos-Meta-Subscription-Userinfo": "upload=4",
+                "X-Obs-Meta-Subscription-Userinfo": "upload=3",
+                "X-Amz-Meta-Subscription-Userinfo": "upload=2",
+            },
+            Usage(2, 0, 0, 0),
+        ),
+        (
+            {
+                "X-Cos-Meta-Subscription-Userinfo": "upload=4",
+                "X-Obs-Meta-Subscription-Userinfo": "upload=3",
+            },
+            Usage(3, 0, 0, 0),
+        ),
+        ({"X-Amz-Meta-Subscription-Userinfo": "upload=2", "Subscription-Userinfo": ""}, None),
+        (
+            {"X-Amz-Meta-Subscription-Userinfo": "upload=2", "Subscription-Userinfo": "color=blue"},
+            None,
+        ),
+        (
+            {"X-Amz-Meta-Subscription-Userinfo": "download=-5; total=nan; expire=99"},
+            Usage(0, 0, 0, 99),
+        ),
+        ({"X-Amz-Meta-Subscription-Userinfo": "color=blue"}, None),
+        ({}, None),
+        (
+            {
+                "Not-Subscription-Userinfo": "upload=1",
+                "X-Amz-Meta-Subscription-Userinfo-Extra": "upload=2",
+                "X-Amz-MetaSubscription-Userinfo": "upload=3",
+            },
+            None,
+        ),
+    ],
+)
+def test_url_fetcher_selects_usage_without_merging_headers(
+    server: str,
+    monkeypatch: pytest.MonkeyPatch,
+    headers: dict[str, str],
+    usage: Usage | None,
+) -> None:
+    monkeypatch.setattr(_Handler, "usage_headers", headers)
+    download = asyncio.run(UrlFetcher().fetch(server + "/sub"))
+    assert download.usage == usage
 
 
 @pytest.mark.parametrize(

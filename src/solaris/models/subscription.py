@@ -27,6 +27,12 @@ TIMEOUT_S = 30.0
 # Start and Reload carry the whole config in one request frame.
 MAX_CONFIG_BYTES = MAX_REQUEST_BYTES - 1024 * 1024
 _USAGE_KEYS = ("upload", "download", "total", "expire")
+_USERINFO_HEADERS = (
+    "Subscription-Userinfo",
+    "X-Amz-Meta-Subscription-Userinfo",
+    "X-Obs-Meta-Subscription-Userinfo",
+    "X-Cos-Meta-Subscription-Userinfo",
+)
 _CONFIG_SUFFIXES = (".yaml", ".yml")
 
 
@@ -75,6 +81,13 @@ def suggested_name(content_disposition: str | None) -> str | None:
     for suffix in _CONFIG_SUFFIXES:
         name = name.removesuffix(suffix)
     return name.strip() or None
+
+
+def usage_from_headers(headers: Message) -> Usage | None:
+    for name in _USERINFO_HEADERS:
+        if (value := headers.get(name)) is not None:
+            return parse_userinfo(value)
+    return None
 
 
 def decode_config(body: bytes) -> str:
@@ -150,6 +163,6 @@ class UrlFetcher:
             raise ProfileError("too_large", f"more than {self._max_bytes} bytes")
         return Download(
             body=body,
-            usage=parse_userinfo(headers.get("Subscription-Userinfo")),
+            usage=usage_from_headers(headers),
             filename=suggested_name(headers.get("Content-Disposition")),
         )
