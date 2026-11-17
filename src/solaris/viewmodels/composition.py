@@ -199,6 +199,7 @@ def compose(
         logs.held,
         crash_directory=store.directory / "crashes",
     )
+    about.installerOpened.connect(desktop.leave)
     backup = BackupViewModel(
         Backups(store.database),
         library,

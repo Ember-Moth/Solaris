@@ -48,8 +48,8 @@
         <translation>The installer wasn’t signed by the Solaris developers</translation>
     </message>
     <message>
-        <source>安装包未签名，Windows 会提示“未知发布者”。安装器会请求管理员权限，并在升级前关闭界面。</source>
-        <translation>The installer isn’t signed, so Windows will say it’s from an unknown publisher. It asks for administrator permission and closes the app before it upgrades.</translation>
+        <source>安装包未签名，Windows 会提示“未知发布者”。安装器会请求管理员权限，打开后 Solaris 会退出。</source>
+        <translation>The installer isn’t signed, so Windows will show an unknown publisher warning. The installer requests administrator permission. Solaris exits once the installer opens.</translation>
     </message>
     <message>
         <source>Python 依赖</source>
@@ -120,12 +120,12 @@
         <translation>Open the Solaris {version} installer?</translation>
     </message>
     <message>
-        <source>安装器会请求管理员权限，并在升级前关闭界面。</source>
-        <translation>The installer asks for administrator permission and closes the app before it upgrades.</translation>
+        <source>安装器会请求管理员权限，打开后 Solaris 会退出。</source>
+        <translation>The installer requests administrator permission. Solaris exits once the installer opens.</translation>
     </message>
     <message>
-        <source>将打开磁盘映像，把 Solaris 拖到“应用程序”文件夹即可升级。</source>
-        <translation>The disk image will open. Drag Solaris to the Applications folder to upgrade.</translation>
+        <source>打开磁盘映像后 Solaris 会退出。将 Solaris 拖到“应用程序”文件夹，替换旧版本即可升级。</source>
+        <translation>Solaris exits once the disk image opens. Drag Solaris to Applications and replace the old version to upgrade.</translation>
     </message>
     <message>
         <source>无法打开安装包：{name}</source>
