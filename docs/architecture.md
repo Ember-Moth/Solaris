@@ -241,14 +241,14 @@ mihomo 提供的可选标签有 `with_gvisor`、`with_low_memory`、`no_tailscal
 - TUN 自动化在 Linux 网络命名空间中运行（第 11 节）；平台验收按 [维护清单](maintenance.md) 执行。
 
 Solaris 保留 `github.com/metacubex/mihomo` 导入路径，通过 go.mod replace 锁定
-[Ember-Moth/mihomo](https://github.com/Ember-Moth/mihomo) 的明确版本（D38）。内核和原生依赖版本以
+[openweir/mihomo](https://github.com/openweir/mihomo) 的明确版本（D38）。内核和原生依赖版本以
 [`src/core/go.mod`](../src/core/go.mod) 与 go.sum 为准，状态和许可证清单使用实际替换版本。
 用户侧参数及示例见 [mihomo 配置指南](mihomo-fork.md)。
 分支建在上游的 `Alpha` 分支上（D44），Snell v1–v6 用上游的实现：v5 按 v4 连接，v6 的 `mode` 需与服务端一致，
 显式 `unsafe-raw` 模式不提供加密及 PSK 验证；v3–v6 的 UDP 经 TCP 承载，不支持 v5 QUIC proxy。
-Cronet Go 绑定使用 Ember-Moth 的 MetaCubeX/sing 适配版本；
-Cronet 原生库由 `Ember-Moth/cronet-go/all` 的模块依赖选定。
-Windows 的绝对路径加载必须调用同一套 Ember-Moth 绑定，不能混入旧 SagerNet Go 绑定的加载状态。
+Cronet Go 绑定使用 openweir 的 MetaCubeX/sing 适配版本；
+Cronet 原生库由 `openweir/cronet-go/all` 的模块依赖选定。
+Windows 的绝对路径加载必须调用同一套 openweir 绑定，不能混入旧 SagerNet Go 绑定的加载状态。
 
 发布标签在 macOS 为 `with_gvisor,with_naive`，Windows 为 `with_gvisor,with_naive,with_purego`。
 Naive 默认 HTTP/2，可用 `quic: true` 选 QUIC；UDP 需要 `udp-over-tcp: true` 及兼容服务端。

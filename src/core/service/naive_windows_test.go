@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	cronet "github.com/Ember-Moth/cronet-go"
+	cronet "github.com/openweir/cronet-go"
 )
 
 func TestNaiveRuntimePinnedToInstallDirectory(t *testing.T) {

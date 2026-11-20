@@ -92,7 +92,7 @@ def test_go_components_match_go_mod() -> None:
     required = go_requirements()
     others = ("Go standard library", WINTUN)
     components = [c for c in licenses.load() if c.kind == "go" and c.name not in others]
-    assert any(c.name == "github.com/Ember-Moth/mihomo" for c in components)
+    assert any(c.name == "github.com/openweir/mihomo" for c in components)
     for component in components:
         assert required.get(component.name) == component.version, component.name
     toolchain = re.search(r"^toolchain (go\S+)$", GO_MOD.read_text("utf-8"), re.M)

@@ -1,6 +1,6 @@
 # mihomo 增强版配置指南
 
-本文面向使用 Solaris 的用户，介绍 [mihomo 增强版](https://github.com/Ember-Moth/mihomo)的扩展能力及其客户端配置方法。
+本文面向使用 Solaris 的用户，介绍 [mihomo 增强版](https://github.com/openweir/mihomo)的扩展能力及其客户端配置方法。
 不同版本的安装包可能支持不同参数，请在「设置 → 关于 → 内核」和对应版本的发布说明中核对支持情况。
 
 | 能力 | 主要变化 | 服务端要求 |

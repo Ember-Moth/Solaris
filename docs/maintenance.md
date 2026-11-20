@@ -344,7 +344,7 @@ exits.md 第 9 节的待实测项。
    写 `SHA256SUMS`，把这四个文件放进一个**草稿** Release（不上传源代码包，D43）。同一个标签已有 Release 时这一步失败，
    要先删掉旧的草稿再重新运行。标签发布后不删除，也不移到别的提交：它就是这个版本的源代码。
 
-   同时在 `Ember-Moth/mihomo` 上给这个版本 `replace` 固定的提交打 `solaris-v<版本>`（5.4 节），以后变基强推 `Alpha`
+   同时在 `openweir/mihomo` 上给这个版本 `replace` 固定的提交打 `solaris-v<版本>`（5.4 节），以后变基强推 `Alpha`
    时它仍然取得到：
 
    ```bash
@@ -403,8 +403,8 @@ exits.md 第 9 节的待实测项。
 
 ### 5.4 依赖升级
 
-- **mihomo 增强版**：固定到 Ember-Moth/mihomo `Alpha` 分支（D44）的明确提交（`src/core/go.mod` 的 `replace`），不使用浮动
-  分支作为构建输入。发布过的版本固定的提交是那个版本对应的源代码（D43），不要让它们从 `Ember-Moth/mihomo` 上消失：
+- **mihomo 增强版**：固定到 openweir/mihomo `Alpha` 分支（D44）的明确提交（`src/core/go.mod` 的 `replace`），不使用浮动
+  分支作为构建输入。发布过的版本固定的提交是那个版本对应的源代码（D43），不要让它们从 `openweir/mihomo` 上消失：
   每个发布版本在 fork 上有一个 annotated tag `solaris-v<版本>` 指向它固定的提交（第 4 节第 3 步）。随上游 `Alpha`
   变基后要强推 `Alpha`，强推前先确认当前固定的提交已经有这样的 tag，强推用 `--force-with-lease`；`Meta` 分支（1.0.0
   的提交）不动。界面显示的内核版本是 replace 伪版本去掉时间戳和哈希（[ui.md](ui.md)），伪版本的基准是 fork 上最近的

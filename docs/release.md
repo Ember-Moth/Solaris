@@ -234,7 +234,7 @@ GitHub 把正文里的换行原样显示，所以模板的段落不折行；除 
   忘了重新生成会失败。
 - **源代码**：GPL-3.0 要求发布二进制时提供对应的源代码。Release 不附带源代码包（D43），发布说明的「源代码与许可」和
   NOTICES 的开头写明在哪里取得：Solaris 是本仓库的 `v<版本>` 标签；服务和扩展链接的 mihomo 是
-  `github.com/Ember-Moth/mihomo` 上由这个标签的 `src/core/go.mod` 里 `replace` 固定的提交；其他 Go 模块的版本和校验和
+  `github.com/openweir/mihomo` 上由这个标签的 `src/core/go.mod` 里 `replace` 固定的提交；其他 Go 模块的版本和校验和
   由 `src/core/go.mod`、`go.sum` 固定，`go mod download` 从 Go 模块代理（默认 `proxy.golang.org`）取得；GitHub 给每个 Release 自动附带的
   "Source code"只有本仓库的代码。所以 `v*` 标签和 mihomo 分支上被引用过的提交都不删除。Qt 和 PySide6 的源代码在
   download.qt.io 的同一版本下。1.0.0 的 Release 附带了源代码包 `Solaris-1.0.0-source.tar.gz`（含 vendor 的 Go

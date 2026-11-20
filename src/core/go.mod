@@ -7,7 +7,6 @@ toolchain go1.27.3
 tool google.golang.org/protobuf/cmd/protoc-gen-go
 
 require (
-	github.com/Ember-Moth/cronet-go v0.0.0-20261103143108-5a29f59dd943
 	github.com/Microsoft/go-winio v0.6.4
 	github.com/dlclark/regexp2 v1.12.0
 	github.com/easytier/easytier/easytier-go v0.0.0-20261111015056-2abb1676b475
@@ -18,6 +17,7 @@ require (
 	github.com/metacubex/tailscale v0.0.0-20260821153257-ff0ecd818181
 	github.com/metacubex/tls v0.1.9
 	github.com/metacubex/zerotier-go v0.0.0-20260813124750-13fa6f45da5f
+	github.com/openweir/cronet-go v0.0.0-20261120115440-78366bd1e919
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/mod v0.41.0
 	golang.org/x/sys v0.49.0
@@ -25,7 +25,6 @@ require (
 )
 
 require (
-	github.com/Ember-Moth/cronet-go/all v0.0.0-20261103143108-5a29f59dd943 // indirect
 	github.com/RyuaNerin/go-krypto v1.3.0 // indirect
 	github.com/Yawning/aez v0.0.0-20211027044916-e49e68abd344 // indirect
 	github.com/ajg/form v1.7.1 // indirect
@@ -113,6 +112,7 @@ require (
 	github.com/mroth/weightedrand/v2 v2.1.0 // indirect
 	github.com/oasisprotocol/deoxysii v0.0.0-20220228165953-2091330c22b7 // indirect
 	github.com/openacid/low v0.1.21 // indirect
+	github.com/openweir/cronet-go/all v0.0.0-20261120115440-78366bd1e919 // indirect
 	github.com/oschwald/maxminddb-golang v1.12.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.27 // indirect
 	github.com/pires/go-proxyproto v0.8.0 // indirect
@@ -179,4 +179,4 @@ require (
 	golang.org/x/tools v0.50.0 // indirect
 )
 
-replace github.com/metacubex/mihomo => github.com/Ember-Moth/mihomo v1.19.34-0.20261117082241-15fb245e9278
+replace github.com/metacubex/mihomo => github.com/openweir/mihomo v1.19.34-0.20261120115516-04e8cc02b0d9

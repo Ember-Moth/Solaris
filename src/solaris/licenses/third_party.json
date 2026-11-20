@@ -393,43 +393,13 @@
       ]
     },
     {
-      "name": "github.com/Ember-Moth/cronet-go",
-      "version": "v0.0.0-20261103143108-5a29f59dd943",
-      "license": "GPL-3.0-or-later",
-      "kind": "go",
-      "url": "https://github.com/Ember-Moth/cronet-go",
-      "notices": [
-        34
-      ]
-    },
-    {
-      "name": "github.com/Ember-Moth/cronet-go/all",
-      "version": "v0.0.0-20261103143108-5a29f59dd943",
-      "license": "GPL-3.0-or-later",
-      "kind": "go",
-      "url": "https://github.com/Ember-Moth/cronet-go",
-      "notices": [
-        34
-      ]
-    },
-    {
-      "name": "github.com/Ember-Moth/mihomo",
-      "version": "v1.19.34-0.20261117082241-15fb245e9278",
-      "license": "GPL-3.0-only",
-      "kind": "go",
-      "url": "https://github.com/Ember-Moth/mihomo",
-      "notices": [
-        35
-      ]
-    },
-    {
       "name": "github.com/enfein/mieru/v3",
       "version": "v3.39.0",
       "license": "GPL-3.0-only",
       "kind": "go",
       "url": "https://github.com/enfein/mieru",
       "notices": [
-        35
+        34
       ]
     },
     {
@@ -439,7 +409,7 @@
       "kind": "go",
       "url": "https://github.com/ericlagergren/aegis",
       "notices": [
-        36
+        35
       ]
     },
     {
@@ -449,7 +419,7 @@
       "kind": "go",
       "url": "https://github.com/ericlagergren/polyval",
       "notices": [
-        37
+        36
       ]
     },
     {
@@ -459,7 +429,7 @@
       "kind": "go",
       "url": "https://github.com/ericlagergren/siv",
       "notices": [
-        38
+        37
       ]
     },
     {
@@ -469,7 +439,7 @@
       "kind": "go",
       "url": "https://github.com/ericlagergren/subtle",
       "notices": [
-        38
+        37
       ]
     },
     {
@@ -479,7 +449,7 @@
       "kind": "go",
       "url": "https://github.com/fsnotify/fsnotify",
       "notices": [
-        39
+        38
       ]
     },
     {
@@ -489,7 +459,7 @@
       "kind": "go",
       "url": "https://github.com/fxamacker/cbor",
       "notices": [
-        40
+        39
       ]
     },
     {
@@ -499,7 +469,7 @@
       "kind": "go",
       "url": "https://github.com/gaukas/godicttls",
       "notices": [
-        41
+        40
       ]
     },
     {
@@ -509,7 +479,7 @@
       "kind": "go",
       "url": "https://github.com/go-ole/go-ole",
       "notices": [
-        42
+        41
       ]
     },
     {
@@ -519,7 +489,7 @@
       "kind": "go",
       "url": "https://github.com/gobwas/httphead",
       "notices": [
-        43
+        42
       ]
     },
     {
@@ -529,7 +499,7 @@
       "kind": "go",
       "url": "https://github.com/gobwas/pool",
       "notices": [
-        44
+        43
       ]
     },
     {
@@ -539,7 +509,7 @@
       "kind": "go",
       "url": "https://github.com/gobwas/ws",
       "notices": [
-        45
+        44
       ]
     },
     {
@@ -549,7 +519,7 @@
       "kind": "go",
       "url": "https://github.com/gofrs/uuid",
       "notices": [
-        46
+        45
       ]
     },
     {
@@ -559,7 +529,7 @@
       "kind": "go",
       "url": "https://github.com/golang/groupcache",
       "notices": [
-        47
+        46
       ]
     },
     {
@@ -569,7 +539,7 @@
       "kind": "go",
       "url": "https://github.com/golang/snappy",
       "notices": [
-        48
+        47
       ]
     },
     {
@@ -579,7 +549,7 @@
       "kind": "go",
       "url": "https://github.com/google/btree",
       "notices": [
-        49
+        48
       ]
     },
     {
@@ -589,7 +559,7 @@
       "kind": "go",
       "url": "https://github.com/google/pprof",
       "notices": [
-        49
+        48
       ]
     },
     {
@@ -599,7 +569,7 @@
       "kind": "go",
       "url": "https://github.com/hashicorp/golang-lru",
       "notices": [
-        50
+        49
       ]
     },
     {
@@ -609,7 +579,7 @@
       "kind": "go",
       "url": "https://github.com/insomniacslk/dhcp",
       "notices": [
-        51
+        50
       ]
     },
     {
@@ -619,7 +589,7 @@
       "kind": "go",
       "url": "https://github.com/josharian/native",
       "notices": [
-        52
+        51
       ]
     },
     {
@@ -629,7 +599,7 @@
       "kind": "go",
       "url": "https://github.com/klauspost/compress",
       "notices": [
-        53
+        52
       ]
     },
     {
@@ -639,7 +609,7 @@
       "kind": "go",
       "url": "https://github.com/klauspost/cpuid",
       "notices": [
-        54
+        53
       ]
     },
     {
@@ -649,7 +619,7 @@
       "kind": "go",
       "url": "https://github.com/klauspost/reedsolomon",
       "notices": [
-        55
+        54
       ]
     },
     {
@@ -659,7 +629,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/age",
       "notices": [
-        56
+        55
       ]
     },
     {
@@ -669,7 +639,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/amneziawg-go",
       "notices": [
-        57
+        56
       ]
     },
     {
@@ -679,7 +649,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/ascon",
       "notices": [
-        58
+        57
       ]
     },
     {
@@ -689,7 +659,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/bart",
       "notices": [
-        59
+        58
       ]
     },
     {
@@ -699,7 +669,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/bbolt",
       "notices": [
-        60
+        59
       ]
     },
     {
@@ -709,7 +679,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/blake3",
       "notices": [
-        61
+        60
       ]
     },
     {
@@ -719,8 +689,8 @@
       "kind": "go",
       "url": "https://github.com/metacubex/chacha",
       "notices": [
-        62,
-        63
+        61,
+        62
       ]
     },
     {
@@ -730,7 +700,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/chi",
       "notices": [
-        64
+        63
       ]
     },
     {
@@ -740,7 +710,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/connect-ip-go",
       "notices": [
-        65
+        64
       ]
     },
     {
@@ -750,7 +720,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/cpu",
       "notices": [
-        66
+        65
       ]
     },
     {
@@ -770,7 +740,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/fswatch",
       "notices": [
-        34
+        66
       ]
     },
     {
@@ -790,7 +760,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/hkdf",
       "notices": [
-        66
+        65
       ]
     },
     {
@@ -800,7 +770,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/hpke",
       "notices": [
-        66
+        65
       ]
     },
     {
@@ -810,7 +780,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/http",
       "notices": [
-        66
+        65
       ]
     },
     {
@@ -830,7 +800,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/jls-tls",
       "notices": [
-        66
+        65
       ]
     },
     {
@@ -860,7 +830,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/mhurl",
       "notices": [
-        66
+        65
       ]
     },
     {
@@ -880,7 +850,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/mlkem",
       "notices": [
-        66
+        65
       ]
     },
     {
@@ -910,7 +880,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/randv2",
       "notices": [
-        35
+        34
       ]
     },
     {
@@ -941,7 +911,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/sing",
       "notices": [
-        34
+        66
       ]
     },
     {
@@ -951,7 +921,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/sing-mux",
       "notices": [
-        34
+        66
       ]
     },
     {
@@ -961,7 +931,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/sing-quic",
       "notices": [
-        34
+        66
       ]
     },
     {
@@ -971,7 +941,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/sing-shadowsocks",
       "notices": [
-        34
+        66
       ]
     },
     {
@@ -981,7 +951,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/sing-shadowsocks2",
       "notices": [
-        34
+        66
       ]
     },
     {
@@ -991,7 +961,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/sing-tun",
       "notices": [
-        34
+        66
       ]
     },
     {
@@ -1011,7 +981,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/sing-vmess",
       "notices": [
-        34
+        66
       ]
     },
     {
@@ -1021,7 +991,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/sing-wireguard",
       "notices": [
-        35
+        34
       ]
     },
     {
@@ -1041,7 +1011,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/ssh",
       "notices": [
-        66
+        65
       ]
     },
     {
@@ -1081,7 +1051,7 @@
       "kind": "go",
       "url": "https://github.com/metacubex/tls",
       "notices": [
-        66
+        65
       ]
     },
     {
@@ -1198,6 +1168,36 @@
       ]
     },
     {
+      "name": "github.com/openweir/cronet-go",
+      "version": "v0.0.0-20261120115440-78366bd1e919",
+      "license": "GPL-3.0-or-later",
+      "kind": "go",
+      "url": "https://github.com/openweir/cronet-go",
+      "notices": [
+        66
+      ]
+    },
+    {
+      "name": "github.com/openweir/cronet-go/all",
+      "version": "v0.0.0-20261120115440-78366bd1e919",
+      "license": "GPL-3.0-or-later",
+      "kind": "go",
+      "url": "https://github.com/openweir/cronet-go",
+      "notices": [
+        66
+      ]
+    },
+    {
+      "name": "github.com/openweir/mihomo",
+      "version": "v1.19.34-0.20261120115516-04e8cc02b0d9",
+      "license": "GPL-3.0-only",
+      "kind": "go",
+      "url": "https://github.com/openweir/mihomo",
+      "notices": [
+        34
+      ]
+    },
+    {
       "name": "github.com/oschwald/maxminddb-golang",
       "version": "v1.12.0",
       "license": "ISC",
@@ -1254,7 +1254,7 @@
       "kind": "go",
       "url": "https://github.com/sagernet/cronet-go",
       "notices": [
-        34
+        66
       ]
     },
     {
@@ -1264,7 +1264,7 @@
       "kind": "go",
       "url": "https://github.com/sagernet/cronet-go",
       "notices": [
-        34
+        66
       ]
     },
     {
@@ -1274,7 +1274,7 @@
       "kind": "go",
       "url": "https://github.com/sagernet/cronet-go",
       "notices": [
-        34
+        66
       ]
     },
     {
@@ -1284,7 +1284,7 @@
       "kind": "go",
       "url": "https://github.com/sagernet/cronet-go",
       "notices": [
-        34
+        66
       ]
     },
     {
@@ -1304,7 +1304,7 @@
       "kind": "go",
       "url": "https://github.com/sina-ghaderi/poly1305",
       "notices": [
-        35
+        34
       ]
     },
     {
@@ -1314,7 +1314,7 @@
       "kind": "go",
       "url": "https://github.com/sina-ghaderi/rabaead",
       "notices": [
-        35
+        34
       ]
     },
     {
@@ -1324,7 +1324,7 @@
       "kind": "go",
       "url": "https://github.com/sina-ghaderi/rabbitio",
       "notices": [
-        49
+        48
       ]
     },
     {
@@ -1515,7 +1515,7 @@
       "kind": "go",
       "url": "https://pkg.go.dev/golang.org/x/crypto",
       "notices": [
-        66
+        65
       ]
     },
     {
@@ -1525,7 +1525,7 @@
       "kind": "go",
       "url": "https://pkg.go.dev/golang.org/x/exp",
       "notices": [
-        66
+        65
       ]
     },
     {
@@ -1535,7 +1535,7 @@
       "kind": "go",
       "url": "https://pkg.go.dev/golang.org/x/net",
       "notices": [
-        66
+        65
       ]
     },
     {
@@ -1545,7 +1545,7 @@
       "kind": "go",
       "url": "https://pkg.go.dev/golang.org/x/sync",
       "notices": [
-        66
+        65
       ]
     },
     {
@@ -1555,7 +1555,7 @@
       "kind": "go",
       "url": "https://pkg.go.dev/golang.org/x/sys",
       "notices": [
-        66
+        65
       ]
     },
     {
@@ -1565,7 +1565,7 @@
       "kind": "go",
       "url": "https://pkg.go.dev/golang.org/x/term",
       "notices": [
-        66
+        65
       ]
     },
     {
@@ -1575,7 +1575,7 @@
       "kind": "go",
       "url": "https://pkg.go.dev/golang.org/x/text",
       "notices": [
-        66
+        65
       ]
     },
     {
@@ -1585,7 +1585,7 @@
       "kind": "go",
       "url": "https://pkg.go.dev/golang.org/x/time",
       "notices": [
-        66
+        65
       ]
     },
     {
@@ -1605,7 +1605,7 @@
       "kind": "go",
       "url": "https://go.dev/",
       "notices": [
-        66,
+        65,
         113
       ]
     },

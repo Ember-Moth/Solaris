@@ -55,7 +55,7 @@
 两个脚本都会先下载钉住版本的 GEO 数据（`scripts/fetch_geodata.py`）。发布用的安装包由 GitHub Actions 的发布工作流
 构建（[release.md](release.md)）。
 
-内核通过 go.mod replace 固定到 `Ember-Moth/mihomo` 的 Meta 提交（D38），包含 Naive、AnyTLS+REALITY 和 Snell v4–v6。
+内核通过 go.mod replace 固定到 `openweir/mihomo` 的 Alpha 提交（D38、D44），包含 Naive、AnyTLS+REALITY 和 Snell v4–v6。
 用户配置与完整示例见 [mihomo 增强版配置指南](mihomo-fork.md)。
 构建脚本启用 `with_naive`，并取 Go 模块图锁定的 Cronet 原生版本：Windows 携带 `libcronet.dll`，macOS 静态链接。
 绑定与原生库必须一起升级；不要仅替换 DLL。普通无标签的 Go 测试/开发服务不含 Naive，可在 Mac 上这样验证：
@@ -183,12 +183,12 @@ uv run python scripts/gen_screenshots.py
 
 维护配置示例时，按 `src/core/go.mod` 锁定的版本核对参数、互斥条件和服务端要求：
 
-- [mihomo 增强版 Naive 说明](https://github.com/Ember-Moth/mihomo/blob/15fb245e92789566cff12e3060ae861534dcf892/docs/naive.md)
-- [Naive 参数与校验](https://github.com/Ember-Moth/mihomo/blob/15fb245e92789566cff12e3060ae861534dcf892/adapter/outbound/naive_options.go)
-- [AnyTLS 参数与模式互斥](https://github.com/Ember-Moth/mihomo/blob/15fb245e92789566cff12e3060ae861534dcf892/adapter/outbound/anytls.go)
-- [REALITY 参数](https://github.com/Ember-Moth/mihomo/blob/15fb245e92789566cff12e3060ae861534dcf892/adapter/outbound/reality.go)与[握手实现](https://github.com/Ember-Moth/mihomo/blob/15fb245e92789566cff12e3060ae861534dcf892/component/tls/reality.go)
-- [Snell 参数](https://github.com/Ember-Moth/mihomo/blob/15fb245e92789566cff12e3060ae861534dcf892/adapter/outbound/snell.go)与[v6 传输](https://github.com/Ember-Moth/mihomo/blob/15fb245e92789566cff12e3060ae861534dcf892/transport/snell/v6.go)
-- [Nowhere NW3 说明](https://github.com/Ember-Moth/mihomo/blob/15fb245e92789566cff12e3060ae861534dcf892/docs/nowhere.md)
+- [mihomo 增强版 Naive 说明](https://github.com/openweir/mihomo/blob/04e8cc02b0d9bedb161d5a32f54f24284d70a043/docs/naive.md)
+- [Naive 参数与校验](https://github.com/openweir/mihomo/blob/04e8cc02b0d9bedb161d5a32f54f24284d70a043/adapter/outbound/naive_options.go)
+- [AnyTLS 参数与模式互斥](https://github.com/openweir/mihomo/blob/04e8cc02b0d9bedb161d5a32f54f24284d70a043/adapter/outbound/anytls.go)
+- [REALITY 参数](https://github.com/openweir/mihomo/blob/04e8cc02b0d9bedb161d5a32f54f24284d70a043/adapter/outbound/reality.go)与[握手实现](https://github.com/openweir/mihomo/blob/04e8cc02b0d9bedb161d5a32f54f24284d70a043/component/tls/reality.go)
+- [Snell 参数](https://github.com/openweir/mihomo/blob/04e8cc02b0d9bedb161d5a32f54f24284d70a043/adapter/outbound/snell.go)与[v6 传输](https://github.com/openweir/mihomo/blob/04e8cc02b0d9bedb161d5a32f54f24284d70a043/transport/snell/v6.go)
+- [Nowhere NW3 说明](https://github.com/openweir/mihomo/blob/04e8cc02b0d9bedb161d5a32f54f24284d70a043/docs/nowhere.md)
 - [Solaris 的内核集成与约束](architecture.md)
 
 ## 目录

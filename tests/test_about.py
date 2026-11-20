@@ -625,11 +625,11 @@ def test_lists_the_licenses(qtbot: QtBot, built: ViewModels, tmp_path: Path) -> 
     assert count > 100
     assert prop(about, "componentsSummary") == f"{count} 个第三方组件"
     names = [row.name for row in model.rows]
-    assert "github.com/Ember-Moth/mihomo" in names
+    assert "github.com/openweir/mihomo" in names
     assert {row.category for row in model.rows} == {"Python 依赖", "Go 模块", "Qt", "字体"}
 
     about.setComponentQuery("MIHOMO")
-    assert [row.name for row in model.rows] == ["github.com/Ember-Moth/mihomo"]
+    assert [row.name for row in model.rows] == ["github.com/openweir/mihomo"]
     about.setComponentQuery("ofl-1.1")
     assert {row.name for row in model.rows} == {
         "Inter",

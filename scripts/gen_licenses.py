@@ -616,7 +616,7 @@ license texts follow the list. Texts that several components share are given onc
 Corresponding source code:
 - Solaris: https://github.com/Ember-Moth/Solaris/tree/v<version>, the repository's tag for
   this version (Settings, About).
-- mihomo: the commit of https://github.com/Ember-Moth/mihomo that the replace directive in
+- mihomo: the commit of https://github.com/openweir/mihomo that the replace directive in
   that tag's src/core/go.mod pins.
 - The other Go modules: the versions and checksums in that tag's src/core/go.mod and
   src/core/go.sum; "go mod download" in src/core fetches them, and mihomo, from the Go

@@ -56,7 +56,7 @@ Solaris 用来管理你的代理订阅、节点和分流规则。无需注册 So
 
 ## 更多网络能力
 
-Solaris 使用 [mihomo 增强版](https://github.com/Ember-Moth/mihomo)内核，在 mihomo 的协议能力上加入：
+Solaris 使用 [mihomo 增强版](https://github.com/openweir/mihomo)内核，在 mihomo 的协议能力上加入：
 
 - **Naive**：支持 HTTP/2、QUIC，以及兼容服务端上的 UoT。
 - **AnyTLS + REALITY**：支持使用 REALITY 的 AnyTLS 节点。
@@ -113,7 +113,7 @@ Solaris 不收集使用统计，也不会自动上传日志或崩溃报告。订
 ## 许可证
 
 Solaris 以 [GPL-3.0-only](LICENSE) 发布，使用基于 [mihomo](https://github.com/MetaCubeX/mihomo) 的
-[mihomo 增强版](https://github.com/Ember-Moth/mihomo)内核。第三方组件及其许可证可在应用的「设置 › 关于 › 开源许可」中查看。
+[mihomo 增强版](https://github.com/openweir/mihomo)内核。第三方组件及其许可证可在应用的「设置 › 关于 › 开源许可」中查看。
 
 ## 赞助与商务合作
 

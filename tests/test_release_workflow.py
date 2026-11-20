@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "release.yml"
 NOTES = ROOT / ".github" / "release-notes.md"
 GO_MOD = ROOT / "src" / "core" / "go.mod"
-MIHOMO = "github.com/Ember-Moth/mihomo"
+MIHOMO = "github.com/openweir/mihomo"
 
 
 def release_job() -> dict[str, Any]:

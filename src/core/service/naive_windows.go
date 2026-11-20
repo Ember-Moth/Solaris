@@ -5,7 +5,7 @@ package main
 import (
 	"path/filepath"
 
-	cronet "github.com/Ember-Moth/cronet-go"
+	cronet "github.com/openweir/cronet-go"
 )
 
 // Pin the privileged service to its installed DLL, never PATH. LoadLibrary remembers
